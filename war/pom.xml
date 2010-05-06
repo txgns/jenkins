@@ -135,6 +135,7 @@ THE SOFTWARE.
                 <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='build-timeout' version='1.6' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/build-timeout.hpi' />
                 <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='copyartifact' version='1.5' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/copyartifact.hpi' />
                 <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="cvs" version="1.1" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/cvs.hpi" />
+                <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='dashboard-view' version='1.5' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/dashboard-view.hpi' />
                 <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='findbugs' version='4.8' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/findbugs.hpi' />
                 <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='git' version='0.8.3' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/git.hpi' />
                 <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='mercurial' version='1.28' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/mercurial.hpi' />
