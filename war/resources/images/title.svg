@@ -1,24 +1,31 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
+
 <svg
    xmlns:dc="http://purl.org/dc/elements/1.1/"
-   xmlns:cc="http://web.resource.org/cc/"
+   xmlns:cc="http://creativecommons.org/ns#"
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:xlink="http://www.w3.org/1999/xlink"
-   xmlns:sodipodi="http://inkscape.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="110"
+   width="250"
    height="35"
    id="svg2"
    sodipodi:version="0.32"
-   inkscape:version="0.43"
-   sodipodi:docbase="C:\Documents and Settings\kohsuke\Desktop"
-   sodipodi:docname="logo.svg"
+   inkscape:version="0.47 r22583"
+   sodipodi:docname="title.svg"
    version="1.0">
   <defs
      id="defs4">
+    <inkscape:perspective
+       sodipodi:type="inkscape:persp3d"
+       inkscape:vp_x="0 : 17.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_z="110 : 17.5 : 1"
+       inkscape:persp3d-origin="55 : 11.666667 : 1"
+       id="perspective15" />
     <linearGradient
        id="linearGradient3054">
       <stop
@@ -37,9 +44,16 @@
        x1="156.411"
        y1="96.022438"
        x2="156.411"
-       y2="2.9507828e-007"
+       y2="2.9507828e-07"
        gradientUnits="userSpaceOnUse"
-       gradientTransform="scale(0.341615,0.322916)" />
+       gradientTransform="scale(0.79234082,0.322916)" />
+    <inkscape:perspective
+       id="perspective2829"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
   </defs>
   <sodipodi:namedview
      id="base"
@@ -48,19 +62,20 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="11.313708"
-     inkscape:cx="113.33181"
+     inkscape:zoom="4"
+     inkscape:cx="130.3626"
      inkscape:cy="7.2246685"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
-     inkscape:window-width="929"
-     inkscape:window-height="608"
-     inkscape:window-x="281"
-     inkscape:window-y="58"
+     inkscape:window-width="1877"
+     inkscape:window-height="1126"
+     inkscape:window-x="2449"
+     inkscape:window-y="281"
      inkscape:grid-points="true"
      inkscape:grid-bbox="true"
-     inkscape:guide-points="true" />
+     inkscape:guide-points="true"
+     inkscape:window-maximized="0" />
   <metadata
      id="metadata7">
     <rdf:RDF>
@@ -77,18 +92,18 @@
      inkscape:groupmode="layer"
      id="layer1">
     <rect
-       style="fill:url(#linearGradient3060);fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:28.51399994;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
+       style="fill:url(#linearGradient3060);fill-opacity:1;fill-rule:nonzero;stroke:none"
        id="rect1307"
-       width="110"
+       width="255.13367"
        height="31"
        x="0"
-       y="-2.2735736e-015"
+       y="-2.2735736e-15"
        rx="0"
        ry="11.898433" />
     <rect
-       style="opacity:1;fill:#fbad3e;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:28.51399994;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
+       style="fill:#fbad3e;fill-opacity:1;fill-rule:nonzero;stroke:none"
        id="rect2182"
-       width="110"
+       width="260.61374"
        height="4"
        x="0"
        y="31"
@@ -96,7 +111,7 @@
        ry="1.5352814" />
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Georgia"
+       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Georgia"
        x="7.1015625"
        y="25"
        id="text2184"
@@ -105,5 +120,16 @@
          id="tspan2186"
          x="7.1015625"
          y="25">Hudson</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Georgia;-inkscape-font-specification:Georgia Bold"
+       x="107.67608"
+       y="25"
+       id="text2184-7"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan2846"
+         x="107.67608"
+         y="25">| certified by InfraDNA</tspan></text>
   </g>
 </svg>
