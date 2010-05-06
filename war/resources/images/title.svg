@@ -10,13 +10,16 @@
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="250"
+   width="273"
    height="35"
    id="svg2"
    sodipodi:version="0.32"
    inkscape:version="0.47 r22583"
    sodipodi:docname="title.svg"
-   version="1.0">
+   version="1.0"
+   inkscape:export-filename="/home/kohsuke/ws/hudson/ich/war/resources/images/title.png"
+   inkscape:export-xdpi="87.428574"
+   inkscape:export-ydpi="87.428574">
   <defs
      id="defs4">
     <inkscape:perspective
@@ -46,7 +49,7 @@
        x2="156.411"
        y2="2.9507828e-07"
        gradientUnits="userSpaceOnUse"
-       gradientTransform="scale(0.79234082,0.322916)" />
+       gradientTransform="scale(0.85057065,0.322916)" />
     <inkscape:perspective
        id="perspective2829"
        inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
@@ -84,6 +87,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -94,7 +98,7 @@
     <rect
        style="fill:url(#linearGradient3060);fill-opacity:1;fill-rule:nonzero;stroke:none"
        id="rect1307"
-       width="255.13367"
+       width="273.88367"
        height="31"
        x="0"
        y="-2.2735736e-15"
@@ -103,7 +107,7 @@
     <rect
        style="fill:#fbad3e;fill-opacity:1;fill-rule:nonzero;stroke:none"
        id="rect2182"
-       width="260.61374"
+       width="273.61374"
        height="4"
        x="0"
        y="31"
@@ -111,7 +115,7 @@
        ry="1.5352814" />
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Georgia"
+       style="font-size:28px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Georgia;-inkscape-font-specification:Georgia Bold"
        x="7.1015625"
        y="25"
        id="text2184"
@@ -123,13 +127,13 @@
     <text
        xml:space="preserve"
        style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Georgia;-inkscape-font-specification:Georgia Bold"
-       x="107.67608"
+       x="127.67608"
        y="25"
        id="text2184-7"
        sodipodi:linespacing="100%"><tspan
          sodipodi:role="line"
          id="tspan2846"
-         x="107.67608"
+         x="127.67608"
          y="25">| certified by InfraDNA</tspan></text>
   </g>
 </svg>
