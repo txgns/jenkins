@@ -39,6 +39,8 @@ public final class License {
     // information parsed from the name
     private int executors;
     private String serverKey;
+    private final long expirationDate;
+    private final String customerName;
 
     License(String key, String certificate) throws GeneralSecurityException, IOException {
         key = key.trim();
@@ -90,6 +92,8 @@ public final class License {
                 if (n.equals("serverKey"))
                     serverKey = v;
             }
+            expirationDate = cert.getNotAfter().getTime();
+            customerName = name.getCommonName();
         }
 
         if (!LicenseManager.getServerKey().equals(serverKey))
@@ -110,12 +114,12 @@ public final class License {
     /**
      * This license is valid until...
      */
-    public Date getExpirationDate() {
-        return cert.getNotAfter();
+    public long getExpirationDate() {
+        return expirationDate;
     }
 
-    public String getCustomerName() throws IOException {
-        return name.getCommonName();
+    public String getCustomerName() {
+        return customerName;
     }
 
     public int getExecutorsLimit() {

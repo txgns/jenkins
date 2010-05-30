@@ -59,6 +59,7 @@ import hudson.init.InitializerFinder;
 import hudson.init.InitMilestone;
 import hudson.init.InitReactorListener;
 import hudson.init.InitStrategy;
+import hudson.license.LicenseManager;
 import hudson.lifecycle.Lifecycle;
 import hudson.logging.LogRecorderManager;
 import hudson.lifecycle.RestartNotSupportedException;
@@ -3321,6 +3322,10 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
             throw e;
         }
         return this;
+    }
+    
+    public LicenseManager getLicense() {
+        return ManagementLink.all().get(LicenseManager.class);
     }
 
     /**
