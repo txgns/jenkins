@@ -54,6 +54,7 @@ THE SOFTWARE.
             name ="${attrs.name ?: '_.'+attrs.field}"
             class="setting-input ${attrs.checkUrl!=null?'validated':''} ${attrs.class}"
             checkUrl="${attrs.checkUrl}"
+            checkMethod="post"
             rows="${h.determineRows(attrs.value)}">
     <st:out value="${attrs.value ?: instance[attrs.field]}" />
   </textarea>

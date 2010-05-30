@@ -1,0 +1,40 @@
+<!--
+Copyright (c) 2004-2009, InfraDNA, Inc.
+
+All Rights Reserved
+-->
+
+<!--
+  Config page
+-->
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+<l:layout title="${%Manage License Key}" norefresh="true">
+  <st:include page="sidepanel.jelly" it="${app}" />
+  <l:main-panel>
+    <f:form method="post" name="config" action="configSubmit">
+      <j:set var="instance" value="${it}" />
+      <j:set var="descriptor" value="${it.descriptor}" />
+
+      <f:entry title="${%Server Key}" field="serverKey">
+        <f:textbox readonly="true" />
+      </f:entry>
+
+      <f:entry title="${%License Key}" field="license">
+        <f:textarea />
+      </f:entry>
+
+      <f:entry title="${%License Certificate}" field="certificate">
+        <f:textarea />
+      </f:entry>
+
+      <f:block>
+        <f:validateButton method="validate" title="Check Validity" with="license,certificate" />
+      </f:block>
+
+      <f:block>
+        <f:submit value="${%Save}" />
+      </f:block>
+    </f:form>
+  </l:main-panel>
+</l:layout>
+</j:jelly>
