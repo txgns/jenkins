@@ -58,6 +58,8 @@ import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
 import org.xml.sax.SAXException;
 
+import com.cloudbees.hudson.model.PsuedoNode;
+
 import javax.servlet.ServletException;
 import java.io.File;
 import java.io.IOException;
@@ -164,8 +166,18 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
     public Node getBuiltOn() {
         if (builtOn==null || builtOn.equals(""))
             return Hudson.getInstance();
-        else
-            return Hudson.getInstance().getNode(builtOn);
+		else {
+			Node node;
+			node = Hudson.getInstance().getNode(builtOn);
+            if (node == null
+                    || (node instanceof Slave && ((Slave) node).getComputer()
+                            .isOffline())) {
+                return new PsuedoNode();
+            } else {
+                return node;
+            }
+        }
+
     }
 
     /**
