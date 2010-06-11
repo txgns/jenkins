@@ -1,6 +1,16 @@
 *.iml
 *.ipr
 *.iws
+*.deb
+*.build
 work
 target
 
+debian/debian/hudson
+debian/debian/files
+debian/binary
+debian/*-stamp
+
+RPMS
+SOURCES
+SRPMS

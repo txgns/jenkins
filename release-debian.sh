@@ -24,7 +24,7 @@ sudo apt-get install -y devscripts || true
 cp $war debian/hudson.war
 cd debian
 debuild -us -uc -B
-scp ../hudson_${ver}_all.deb www-data@download.infradna.com:~/download.infradna.com/ich/debian/binary
+rsync ../hudson_${ver}_all.deb www-data@download.infradna.com:~/download.infradna.com/ich/debian/binary
 
 # build package index
 # see http://wiki.debian.org/SecureApt for more details
@@ -37,6 +37,6 @@ apt-ftparchive -c debian/release.conf release  binary > binary/Release
 # sign the release file
 rm binary/Release.gpg || true
 gpg --no-use-agent --passphrase-file ~/.gpg.passphrase -abs -o binary/Release.gpg binary/Release
-scp binary/Packages.gz binary/Release binary/Release.gpg binary/Contents.gz www-data@download.infradna.com:~/download.infradna.com/ich/debian
+rsync binary/Packages.gz binary/Release binary/Release.gpg binary/Contents.gz www-data@download.infradna.com:~/download.infradna.com/ich/debian
 
 

@@ -49,18 +49,20 @@ esac
 
 # create and publish debian package
 $bin/release-debian.sh $war
-svn commit -m "updated changelog as a part of the release" debian/debian/changelog
 
-# RedHat RPM
-pushd rpm
-  $bin/../redhat/build.sh . $war
-  $bin/../redhat/deploy.sh RPMS/noarch/*.rpm
-popd
-
-# OpenSUSE RPM
-pushd opensuse
-  $bin/../opensuse/build.sh . $war
-  $bin/../opensuse/deploy.sh RPMS/noarch/*.rpm
-popd
+# RedHat/OpenSUSE RPM
+sudo apt-get install -y createrepo || true
+for arch in rpm opensuse; do
+  $ws/$arch/build.sh $war
+  for rpm in $(find $arch opensuse -name '*.rpm'); do
+    ./rpm-sign $(cat ~/.gpg.passphrase) $rpm
+  done
+  createrepo $arch
+  gpg -a --detach-sign --yes --no-use-agent --passphrase-file ~/.gpg.passphrase $arch/repodata/repomd.xml
+  cp infradna.com.key $arch/repodata/repomd.xml.key
+  for dir in RPMS repodata; do
+    rsync -avz --delete $arch/$dir www-data@download.infradna.com:~/download.infradna.com/ich/$arch/$dir
+  done
+done
 
 echo success
