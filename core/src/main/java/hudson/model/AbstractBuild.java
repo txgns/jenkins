@@ -502,7 +502,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
                 }
             } catch (InterruptedException e) {
                 listener.getLogger().println(Messages.AbstractProject_ScmAborted());
-                LOGGER.log(Level.INFO,toString()+" aborted",e);
+                LOGGER.log(Level.INFO, AbstractBuild.this + " aborted", e);
                 throw new RunnerAbortedException();
             }
         }
@@ -582,6 +582,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
                         String msg = "Publisher " + bs.getClass().getName() + " aborted due to exception";
                         e.printStackTrace(listener.error(msg));
                         LOGGER.log(Level.WARNING, msg, e);
+                        setResult(Result.FAILURE);
                     }
             }
             return r;

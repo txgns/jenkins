@@ -93,7 +93,7 @@ public final class CaseResult extends TestResult implements Comparable<CaseResul
         return 0.0f;
     }
 
-    CaseResult(SuiteResult parent, Element testCase, String testClassName) {
+    CaseResult(SuiteResult parent, Element testCase, String testClassName, boolean keepLongStdio) {
         // schema for JUnit report XML format is not available in Ant,
         // so I don't know for sure what means what.
         // reports in http://www.nabble.com/difference-in-junit-publisher-and-ant-junitreport-tf4308604.html#a12265700
@@ -123,27 +123,46 @@ public final class CaseResult extends TestResult implements Comparable<CaseResul
         this.parent = parent;
         duration = parseTime(testCase);
         skipped = isMarkedAsSkipped(testCase);
-        stdout = testCase.elementText("system-out");
-        stderr = testCase.elementText("system-err");
+        @SuppressWarnings("LeakingThisInConstructor")
+        Collection<CaseResult> _this = Collections.singleton(this);
+        stdout = possiblyTrimStdio(_this, keepLongStdio, testCase.elementText("system-out"));
+        stderr = possiblyTrimStdio(_this, keepLongStdio, testCase.elementText("system-err"));
+    }
+
+    private static final int HALF_MAX_SIZE = 500;
+    static String possiblyTrimStdio(Collection<CaseResult> results, boolean keepLongStdio, String stdio) { // HUDSON-6516
+        if (stdio == null) {
+            return null;
+        }
+        if (keepLongStdio) {
+            return stdio;
+        }
+        for (CaseResult result : results) {
+            if (result.errorStackTrace != null) {
+                return stdio;
+            }
+        }
+        int len = stdio.length();
+        int middle = len - HALF_MAX_SIZE * 2;
+        if (middle <= 0) {
+            return stdio;
+        }
+        return stdio.substring(0, HALF_MAX_SIZE) + "...[truncated " + middle + " chars]..." + stdio.substring(len - HALF_MAX_SIZE, len);
     }
 
     /**
      * Used to create a fake failure, when Hudson fails to load data from XML files.
      */
     CaseResult(SuiteResult parent, String testName, String errorStackTrace) {
-        this( parent, (parent==null? "unnamed" : parent.getName()), testName, errorStackTrace, "", null, null, 0.0f, false );
-    }
-
-    CaseResult(SuiteResult parent, String testClassName, String testName, String errorStackTrace, String errorDetails, String stdout, String stderr, float duration, boolean skipped) {
-        this.className = testClassName;
+        this.className = parent == null ? "unnamed" : parent.getName();
         this.testName = testName;
         this.errorStackTrace = errorStackTrace;
-        this.errorDetails = errorDetails;
+        this.errorDetails = "";
         this.parent = parent;
-        this.duration = duration;
-        this.skipped = skipped;
-        this.stdout = stdout;
-        this.stderr = stderr;
+        this.stdout = null;
+        this.stderr = null;
+        this.duration = 0.0f;
+        this.skipped = false;
     }
     
     public ClassResult getParent() {

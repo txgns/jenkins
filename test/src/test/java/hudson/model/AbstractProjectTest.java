@@ -175,13 +175,18 @@ public class AbstractProjectTest extends HudsonTestCase {
                 return true;
             }
 
+            /**
+             * Don't write 'this', so that subtypes can be implemented as anonymous class.
+             */
+            private Object writeReplace() { return new Object(); }
+            
             @Override public boolean requiresWorkspaceForPolling() {
                 return true;
             }
         });
         Thread t = new Thread() {
             @Override public void run() {
-                p.pollSCMChanges(new StreamTaskListener(System.out));
+                p.pollSCMChanges(StreamTaskListener.fromStdout());
             }
         };
         try {
