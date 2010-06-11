@@ -146,6 +146,18 @@ THE SOFTWARE.
                 <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='subversion' version='1.17' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/subversion.hpi' />
                 <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='translation' version='1.4' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/translation.hpi' />
                 <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='warnings' version='3.5' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/warnings.hpi' />
+
+                <!-- proprietary plugins -->
+                <macrodef name="resolvePlugin">
+                  <attribute name="groupId"/>
+                  <attribute name="artifactId"/>
+                  <attribute name="version"/>
+                  <sequential>
+                    <resolveArtifact type='hpi' groupId='@{groupId}' artifactId='@{artifactId}' version='@{version}' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/@{artifactId}.hpi' />
+                  </sequential>
+                </macrodef>
+
+                <resolvePlugin groupId='com.infradna.hudson' artifactId='infradna-backup' version='1.0' />
               </tasks>
             </configuration>
           </execution>
