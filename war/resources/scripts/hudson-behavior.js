@@ -939,7 +939,7 @@ var hudsonRules = {
         e = null; // avoid memory leak
     },
 
-    "DIV.loading" : function(e) { e.style.display = 'none' }
+    "DIV.behavior-loading" : function(e) { e.style.display = 'none' }
 };
 
 function applyTooltip(e,text) {
@@ -1997,6 +1997,7 @@ function validateButton(checkUrl,paramList,button) {
                 : '<a href="" onclick="document.getElementById(\'valerr' + (i=iota++)
                 + '\').style.display=\'block\';return false">ERROR</a><div id="valerr'
                 + i + '" style="display:none">' + rsp.responseText + '</div>';
+          Behaviour.applySubtree(target);
           var s = rsp.getResponseHeader("script");
           if(s!=null)
             try {

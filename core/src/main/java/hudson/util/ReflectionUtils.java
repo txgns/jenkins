@@ -23,13 +23,20 @@
  */
 package hudson.util;
 
+import org.apache.commons.beanutils.PropertyUtils;
 import org.kohsuke.stapler.ClassDescriptor;
 
+import java.beans.PropertyDescriptor;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.AbstractList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Utility code for reflection.
@@ -53,6 +60,21 @@ public class ReflectionUtils extends org.springframework.util.ReflectionUtils {
      */
     public static List<Parameter> getParameters(Method m) {
         return new MethodInfo(m);
+    }
+
+    public static Object getPublicProperty(Object o, String p) throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
+        PropertyDescriptor pd = PropertyUtils.getPropertyDescriptor(o, p);
+        if(pd==null) {
+            // field?
+            try {
+                Field f = o.getClass().getField(p);
+                return f.get(o);
+            } catch (NoSuchFieldException e) {
+                throw new IllegalArgumentException("No such property "+p+" on "+o.getClass());
+            }
+        } else {
+            return PropertyUtils.getProperty(o, p);
+        }
     }
 
     /**
@@ -111,6 +133,13 @@ public class ReflectionUtils extends org.springframework.util.ReflectionUtils {
         }
 
         /**
+         * 0-origin index of this parameter.
+         */
+        public int index() {
+            return index;
+        }
+
+        /**
          * Gets the type of this parameter.
          */
         public Class<?> type() {
@@ -152,5 +181,19 @@ public class ReflectionUtils extends org.springframework.util.ReflectionUtils {
                 return names[index];
             return null;
         }
+    }
+
+    /**
+     * Given the primitive type, returns the VM default value for that type in a boxed form.
+     */
+    public static Object getVmDefaultValueForPrimitiveType(Class<?> type) {
+        return defaultPrimitiveValue.get(type);
+    }
+
+    private static final Map<Class,Object> defaultPrimitiveValue = new HashMap<Class, Object>();
+    static {
+        defaultPrimitiveValue.put(boolean.class,false);
+        defaultPrimitiveValue.put(int.class,0);
+        defaultPrimitiveValue.put(long.class,0L);
     }
 }

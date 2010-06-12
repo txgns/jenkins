@@ -33,7 +33,7 @@ THE SOFTWARE.
   
   <groupId>org.jvnet.hudson.main</groupId>
   <artifactId>pom</artifactId>
-  <version>1.356.1-SNAPSHOT</version>
+  <version>1.361.1-SNAPSHOT</version>
   <packaging>pom</packaging>
   
   <name>Hudson main module</name>
@@ -57,6 +57,7 @@ THE SOFTWARE.
   </ciManagement>
   <scm>
     <connection>scm:git:git@infradna.com:hudson.git</connection>
+    <developerConnection>scm:git:git@infradna.com:hudson.git</developerConnection>
   </scm>
 
   <build>
@@ -335,9 +336,17 @@ THE SOFTWARE.
   </licenses>
 
   <distributionManagement>
-    <site>
-      <id>hudson-www</id>
-      <url>scp://hudson-labs.org/home/kohsuke/www/hudson-labs.org/maven-site/</url>
+    <repository>
+      <id>maven.infradna.com</id>
+      <url>scp://maven.infradna.com/home/maven/repository/releases</url>
+    </repository>
+    <snapshotRepository>
+      <id>maven.infradna.com</id>
+      <url>scp://maven.infradna.com/home/maven/repository/snapshots</url>
+    </snapshotRepository>
+    <site><!-- shall we put this anywhere? -->
+      <id>dummy</id>
+      <url>file:.</url>
     </site>
   </distributionManagement>
 </project>

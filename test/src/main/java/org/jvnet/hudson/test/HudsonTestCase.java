@@ -26,15 +26,7 @@ package org.jvnet.hudson.test;
 import com.gargoylesoftware.htmlunit.DefaultCssErrorHandler;
 import com.gargoylesoftware.htmlunit.javascript.HtmlUnitContextFactory;
 import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLHttpRequest;
-import hudson.CloseProofOutputStream;
-import hudson.FilePath;
-import hudson.Functions;
-import hudson.Main;
-import hudson.PluginManager;
-import hudson.WebAppMain;
-import hudson.EnvVars;
-import hudson.ExtensionList;
-import hudson.DescriptorExtensionList;
+import hudson.*;
 import hudson.Util;
 import hudson.model.AbstractBuild;
 import hudson.model.Computer;
@@ -44,6 +36,8 @@ import hudson.model.Queue.Executable;
 import hudson.security.AbstractPasswordBasedSecurityRealm;
 import hudson.security.GroupDetails;
 import hudson.security.SecurityRealm;
+import hudson.tasks.Builder;
+import hudson.tasks.Publisher;
 import hudson.tools.ToolProperty;
 import hudson.remoting.Which;
 import hudson.Launcher.LocalLauncher;
@@ -63,6 +57,7 @@ import hudson.tasks.Ant;
 import hudson.tasks.Ant.AntInstallation;
 import hudson.tasks.Maven.MavenInstallation;
 import hudson.util.PersistedList;
+import hudson.util.ReflectionUtils;
 import hudson.util.StreamTaskListener;
 import hudson.util.jna.GNUCLibrary;
 
@@ -73,6 +68,7 @@ import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Field;
 import java.net.MalformedURLException;
@@ -81,6 +77,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Arrays;
@@ -117,6 +114,8 @@ import org.jvnet.hudson.test.recipes.Recipe;
 import org.jvnet.hudson.test.recipes.Recipe.Runner;
 import org.jvnet.hudson.test.recipes.WithPlugin;
 import org.jvnet.hudson.test.rhino.JavaScriptDebugger;
+import org.kohsuke.stapler.ClassDescriptor;
+import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.Dispatcher;
 import org.kohsuke.stapler.MetaClass;
 import org.kohsuke.stapler.MetaClassLoader;
@@ -497,7 +496,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
      * Creates {@link LocalLauncher}. Useful for launching processes.
      */
     protected LocalLauncher createLocalLauncher() {
-        return new LocalLauncher(new StreamTaskListener(System.out));
+        return new LocalLauncher(StreamTaskListener.fromStdout());
     }
 
     /**
@@ -661,6 +660,36 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         return new WebClient().search(q);
     }
 
+    /**
+     * Loads a configuration page and submits it without any modifications, to
+     * perform a round-trip configuration test.
+     * <p>
+     * See http://wiki.hudson-ci.org/display/HUDSON/Unit+Test#UnitTest-Configurationroundtriptesting
+     */
+    protected <P extends Job> P configRoundtrip(P job) throws Exception {
+        submit(createWebClient().getPage(job,"configure").getFormByName("config"));
+        return job;
+    }
+
+    /**
+     * Performs a configuration round-trip testing for a builder.
+     */
+    protected <B extends Builder> B configRoundtrip(B before) throws Exception {
+        FreeStyleProject p = createFreeStyleProject();
+        p.getBuildersList().add(before);
+        configRoundtrip(p);
+        return (B)p.getBuildersList().get(before.getClass());
+    }
+
+    /**
+     * Performs a configuration round-trip testing for a publisher.
+     */
+    protected <P extends Publisher> P configRoundtrip(P before) throws Exception {
+        FreeStyleProject p = createFreeStyleProject();
+        p.getPublishersList().add(before);
+        configRoundtrip(p);
+        return (P)p.getPublishersList().get(before.getClass());
+    }
 
 
     /**
@@ -964,6 +993,61 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
 
             assertEquals("Property "+p+" is different",lp,rp);
         }
+    }
+
+    /**
+     * Works like {@link #assertEqualBeans(Object, Object, String)} but figure out the properties
+     * via {@link DataBoundConstructor}
+     */
+    public void assertEqualDataBoundBeans(Object lhs, Object rhs) throws Exception {
+        Constructor<?> lc = findDataBoundConstructor(lhs.getClass());
+        Constructor<?> rc = findDataBoundConstructor(rhs.getClass());
+        assertEquals("Data bound constructor mismatch. Different type?",lc,rc);
+
+        List<String> primitiveProperties = new ArrayList<String>();
+
+        String[] names = ClassDescriptor.loadParameterNames(lc);
+        Class<?>[] types = lc.getParameterTypes();
+        assertEquals(names.length,types.length);
+        for (int i=0; i<types.length; i++) {
+            Object lv = ReflectionUtils.getPublicProperty(lhs, names[i]);
+            Object rv = ReflectionUtils.getPublicProperty(rhs, names[i]);
+
+            if (Iterable.class.isAssignableFrom(types[i])) {
+                Iterable lcol = (Iterable) lv;
+                Iterable rcol = (Iterable) rv;
+                Iterator ltr,rtr;
+                for (ltr=lcol.iterator(), rtr=rcol.iterator(); ltr.hasNext() && rtr.hasNext();) {
+                    Object litem = ltr.next();
+                    Object ritem = rtr.next();
+
+                    if (findDataBoundConstructor(litem.getClass())!=null) {
+                        assertEqualDataBoundBeans(litem,ritem);
+                    } else {
+                        assertEquals(litem,ritem);
+                    }
+                }
+                assertFalse("collection size mismatch between "+lhs+" and "+rhs, ltr.hasNext() ^ rtr.hasNext());
+            } else
+            if (findDataBoundConstructor(types[i])!=null) {
+                // recurse into nested databound objects
+                assertEqualDataBoundBeans(lv,rv);
+            } else {
+                primitiveProperties.add(names[i]);
+            }
+        }
+
+        // compare shallow primitive properties
+        if (!primitiveProperties.isEmpty())
+            assertEqualBeans(lhs,rhs,Util.join(primitiveProperties,","));
+    }
+
+    private Constructor<?> findDataBoundConstructor(Class<?> c) {
+        for (Constructor<?> m : c.getConstructors()) {
+            if (m.getAnnotation(DataBoundConstructor.class)!=null)
+                return m;
+        }
+        return null;
     }
 
     /**
@@ -1524,5 +1608,9 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     static {
         MIME_TYPES.addMimeMapping("js","application/javascript");
         Functions.DEBUG_YUI = true;
+
+        // during the unit test, predictably releasing classloader is important to avoid
+        // file descriptor leak.
+        ClassicPluginStrategy.useAntClassLoader = true;
     }
 }

@@ -27,7 +27,7 @@ THE SOFTWARE.
   <parent>
     <groupId>org.jvnet.hudson.main</groupId>
     <artifactId>pom</artifactId>
-    <version>1.356.1-SNAPSHOT</version>
+    <version>1.361.1-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   
@@ -115,7 +115,7 @@ THE SOFTWARE.
                 <mkdir dir="target/generated-resources" />
 
                 <!-- put executable war header -->
-                <resolveArtifact groupId="org.jvnet.hudson" artifactId="executable-war" version="1.15" type="jar" property="executable-war.jar" />
+                <resolveArtifact groupId="org.jvnet.hudson" artifactId="executable-war" version="1.17" type="jar" property="executable-war.jar" />
                 <unjar src="${executable-war.jar}" dest="target/generated-resources">
                   <patternset>
                     <include name="**/*.class" />
@@ -126,26 +126,38 @@ THE SOFTWARE.
                 <resolveArtifact artifactId="remoting" tofile="${basedir}/target/generated-resources/WEB-INF/remoting.jar" />
                 <resolveArtifact artifactId="remoting" tofile="${basedir}/target/generated-resources/WEB-INF/slave.jar" />
                 <resolveArtifact groupId="${project.groupId}" artifactId="cli" classifier="jar-with-dependencies" version="${project.version}" type="jar" tofile="${basedir}/target/generated-resources/WEB-INF/hudson-cli.jar" />
-                <resolveArtifact groupId="org.jvnet.hudson.winstone" artifactId="winstone" version="0.9.10-hudson-16" type="jar" tofile="${basedir}/target/generated-resources/winstone.jar" />
+                <resolveArtifact groupId="org.jvnet.hudson.winstone" artifactId="winstone" version="0.9.10-hudson-20" type="jar" tofile="${basedir}/target/generated-resources/winstone.jar" />
 
                 <!-- bundled plugins -->
                 <resolveArtifact type="hpi" groupId="${project.groupId}" artifactId="maven-plugin" version="${project.version}" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/maven-plugin.hpi" />
-                <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='active-directory' version='1.16' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/active-directory.hpi' />
-                <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='analysis-core' version='1.8' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/analysis-core.hpi' />
-                <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='build-timeout' version='1.6' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/build-timeout.hpi' />
-                <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='copyartifact' version='1.5' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/copyartifact.hpi' />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="active-directory" version="1.16" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/active-directory.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="analysis-core" version="1.8" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/analysis-core.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="build-timeout" version="1.6" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/build-timeout.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="copyartifact" version="1.5" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/copyartifact.hpi" />
                 <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="cvs" version="1.1" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/cvs.hpi" />
-                <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='dashboard-view' version='1.5' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/dashboard-view.hpi' />
-                <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='findbugs' version='4.8' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/findbugs.hpi' />
-                <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='git' version='0.8.3' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/git.hpi' />
-                <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='mercurial' version='1.28' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/mercurial.hpi' />
-                <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='monitoring' version='1.15.0' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/monitoring.hpi' />
-                <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='parameterized-trigger' version='2.3' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/parameterized-trigger.hpi' />
-                <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='promoted-builds' version='1.7' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/promoted-builds.hpi' />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="dashboard-view" version="1.5" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/dashboard-view.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="findbugs" version="4.8" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/findbugs.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="git" version="0.8.3" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/git.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="mercurial" version="1.28" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/mercurial.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="monitoring" version="1.15.0" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/monitoring.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="parameterized-trigger" version="2.3" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/parameterized-trigger.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="promoted-builds" version="1.7" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/promoted-builds.hpi" />
                 <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="ssh-slaves" version="0.10" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/ssh-slaves.hpi" />
-                <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='subversion' version='1.17' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/subversion.hpi' />
-                <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='translation' version='1.4' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/translation.hpi' />
-                <resolveArtifact type='hpi' groupId='org.jvnet.hudson.plugins' artifactId='warnings' version='3.5' tofile='${basedir}/target/generated-resources/WEB-INF/plugins/warnings.hpi' />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="subversion" version="1.17" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/subversion.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="translation" version="1.4" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/translation.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="warnings" version="3.5" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/warnings.hpi" />
+
+                <!-- proprietary plugins -->
+                <macrodef name="resolvePlugin">
+                  <attribute name="groupId" />
+                  <attribute name="artifactId" />
+                  <attribute name="version" />
+                  <sequential>
+                    <resolveArtifact type="hpi" groupId="@{groupId}" artifactId="@{artifactId}" version="@{version}" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/@{artifactId}.hpi" />
+                  </sequential>
+                </macrodef>
+
+                <resolvePlugin groupId="com.infradna.hudson" artifactId="infradna-backup" version="1.0" />
               </tasks>
             </configuration>
           </execution>
