@@ -1,12 +1,22 @@
-#!/bin/sh 
+#!/bin/sh  -x
 
 # Used to track the branches/tags of an upstream community hudson plugin in svn
 # Should be called while doing initial fetch and each subsequent fetch
+git_svn_check()
+{
+    git svn --help > /dev/null 2> /dev/null
+    if [ $? -ne 0 ]
+    then
+        echo "Got git svn?"
+        exit $status
+    fi
+}
 usage()
 {
   echo "tracks upstream svn repository branches for a given plugin"
   echo "Usage: $0 plugin-name birth-revision"
 }
+git_svn_check
 if [ $# -ne 2 ]
 then
   usage
@@ -34,5 +44,6 @@ do
    fetch = tags/$PLUGIN-$v:refs/remotes/$PLUGIN-$v
 
 EOF
- git svn fetch -r $BIRTH_REV $v
+ git svn fetch $v
+ #git svn fetch -r $BIRTH_REV $v
 done
