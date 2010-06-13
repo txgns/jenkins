@@ -26,6 +26,7 @@ package hudson.model;
 
 import com.thoughtworks.xstream.XStream;
 import hudson.BulkChange;
+import hudson.DNSMultiCast;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.ExtensionList;
@@ -148,6 +149,7 @@ import org.jvnet.hudson.reactor.Milestone;
 import org.jvnet.hudson.reactor.Reactor;
 import org.jvnet.hudson.reactor.ReactorListener;
 import org.jvnet.hudson.reactor.TaskGraphBuilder.Handle;
+import org.kohsuke.args4j.Option;
 import org.kohsuke.stapler.Ancestor;
 import org.kohsuke.stapler.HttpRedirect;
 import org.kohsuke.stapler.HttpResponse;
@@ -422,6 +424,8 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
 
     private transient UDPBroadcastThread udpBroadcastThread;
 
+    private transient DNSMultiCast dnsMultiCast;
+
     /**
      * List of registered {@link ItemListener}s.
      * @deprecated as of 1.286
@@ -622,6 +626,7 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
 
             udpBroadcastThread = new UDPBroadcastThread(this);
             udpBroadcastThread.start();
+            dnsMultiCast = new DNSMultiCast(this);
 
             updateComputerList();
 
@@ -629,7 +634,7 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
                 Computer c = toComputer();
                 if(c!=null)
                     for (ComputerListener cl : ComputerListener.all())
-                        cl.onOnline(c,new StreamTaskListener(System.out));
+                        cl.onOnline(c,StreamTaskListener.fromStdout());
             }
 
             for (ItemListener l : ItemListener.all())
@@ -1971,7 +1976,7 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
     public synchronized TopLevelItem createProject( TopLevelItemDescriptor type, String name, boolean notify )
             throws IOException {
         if(items.containsKey(name))
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Project of the name "+name+" already exists");
 
         TopLevelItem item;
         try {
@@ -2198,6 +2203,8 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
         }
         if(udpBroadcastThread!=null)
             udpBroadcastThread.shutdown();
+        if(dnsMultiCast!=null)
+            dnsMultiCast.close();
         ExternalJob.reloadThread.interrupt();
         Trigger.timer.cancel();
         // TODO: how to wait for the completion of the last job?
@@ -2445,10 +2452,43 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
         doQuietDown().generateResponse(null,rsp,this);
     }
 
-    @CLIMethod(name="quiet-down")
     public synchronized HttpRedirect doQuietDown() {
+        try {
+            return doQuietDown(false,0);
+        } catch (InterruptedException e) {
+            throw new AssertionError(); // impossible
+        }
+    }
+
+    @CLIMethod(name="quiet-down")
+    public synchronized HttpRedirect doQuietDown(
+            @Option(name="-block",usage="Block until the system really quiets down and no builds are running") @QueryParameter boolean block,
+            @Option(name="-timeout",usage="If non-zero, only block up to the specified number of milliseconds") @QueryParameter int timeout) throws InterruptedException {
         checkPermission(ADMINISTER);
         isQuietingDown = true;
+        if (block) {
+            LOGGER.info("Entering the blocking quiet down mode");
+            long start = System.currentTimeMillis();
+            int cnt=0;
+            while (true) {
+                if (!isQuietingDown) {
+                    LOGGER.info("Quiet mode cancelled");
+                    break;
+                }
+                if (overallLoad.computeTotalExecutors() <= overallLoad.computeIdleExecutors()) {// should be really == but be defensive
+                    LOGGER.info("System became fully quiet");
+                    break;
+                }
+                if (timeout>0 && start+timeout<=System.currentTimeMillis()) {
+                    LOGGER.info("Quiet mode time out after "+timeout+"ms");
+                    break;
+                }
+
+                Thread.sleep(1000);
+                if (((cnt++)%60)==0)
+                    LOGGER.info("Waiting for all the jobs to finish. Total="+overallLoad.computeTotalExecutors()+" idle="+overallLoad.computeIdleExecutors());
+            }
+        }
         return new HttpRedirect(".");
     }
 
@@ -2747,6 +2787,7 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
             @Override
             public void run() {
                 try {
+                    SecurityContextHolder.getContext().setAuthentication(ACL.SYSTEM);
                     reload();
                 } catch (IOException e) {
                     LOGGER.log(SEVERE,"Failed to reload Hudson config",e);
@@ -2889,6 +2930,8 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
             @Override
             public void run() {
                 try {
+                    SecurityContextHolder.getContext().setAuthentication(ACL.SYSTEM);
+
                     // give some time for the browser to load the "reloading" page
                     Thread.sleep(5000);
                     lifecycle.restart();
@@ -2916,17 +2959,20 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
             @Override
             public void run() {
                 try {
+                    SecurityContextHolder.getContext().setAuthentication(ACL.SYSTEM);
+
                     // Wait 'til we have no active executors.
-                    while (isQuietingDown
-                           && (overallLoad.computeTotalExecutors() > overallLoad.computeIdleExecutors())) {
-                        Thread.sleep(5000);
-                    }
+                    doQuietDown(true, 0);
+
                     // Make sure isQuietingDown is still true.
                     if (isQuietingDown) {
                         servletContext.setAttribute("app",new HudsonIsRestarting());
                         // give some time for the browser to load the "reloading" page
+                        LOGGER.info("Restart in 5 seconds");
                         Thread.sleep(5000);
                         lifecycle.restart();
+                    } else {
+                        LOGGER.info("Safe-restart mode cancelled");
                     }
                 } catch (InterruptedException e) {
                     LOGGER.log(Level.WARNING, "Failed to restart Hudson",e);
@@ -2973,6 +3019,7 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
             @Override
             public void run() {
                 try {
+                    SecurityContextHolder.getContext().setAuthentication(ACL.SYSTEM);
                     LOGGER.severe(String.format("Shutting down VM as requested by %s from %s",
                                                 exitUser, exitAddr));
                     // Wait 'til we have no active executors.

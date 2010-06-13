@@ -2,6 +2,6 @@
 name=hudson
 enabled=1
 autorefresh=0
-baseurl=http://hudson-labs.org/opensuse/
+baseurl=http://download.infradna.com/ich/opensuse/
 type=rpm-md
 keeppackages=0
