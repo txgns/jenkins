@@ -1,5 +1,8 @@
 package com.cloudbees.hudson.model;
 
+import java.io.File;
+import java.util.Collections;
+
 import hudson.FilePath;
 import hudson.model.AbstractBuild;
 import hudson.model.Cause;
@@ -15,20 +18,35 @@ import org.jvnet.hudson.test.HudsonTestCase;
 
 public class PsuedoNodeTest extends HudsonTestCase {
 
+    public void setUp() throws Exception {
+        super.setUp();
+        System.setProperty("slave.fs.root.on.master", "/tmp/");
+    }
+    
     public void testTranslatePath() throws Exception {
-        Node node = new PsuedoNode();
-        FilePath tmp = node.createPath("/workspace/foo");
-        assertEquals(new FilePath(new FilePath(Hudson.getInstance()
-                .getRootPath().getParent(), "workspace"), "foo"), tmp);
+        PsuedoNode node = new PsuedoNode();
+        FilePath actual = node.createPath(MasterConfig.getSlaveRootOnSlave() + "/workspace/foo");
+        assertEquals(new FilePath(new File("/tmp/workspace/foo")), actual);
 
     }
 
+    public void testTranslateSubDirectoryPath() throws Exception {
+        PsuedoNode node = new PsuedoNode();
+        FilePath actual = node.createPath(MasterConfig.getSlaveRootOnSlave() + "/workspace/foo/bar");
+        assertEquals(new FilePath(new File("/tmp/workspace/foo/bar")), actual);
+
+    }
+
+    
     /**
      * This actually tests our patch to {@link AbstractBuild#getBuiltOn()}
      * 
      * @throws Exception
      */
     public void testReturnPsuedoNode() throws Exception {
+        
+        hudson.setNumExecutors(0);
+        hudson.setNodes(Collections.<Node>emptyList());
         Slave slave = createOnlineSlave();
         FreeStyleProject project = createFreeStyleProject();
 
@@ -44,8 +62,10 @@ public class PsuedoNodeTest extends HudsonTestCase {
         while (slave.getComputer().isOnline()) {
             Thread.sleep(10);
         }
+        
+        hudson.removeNode(slave);
 
-        assertEquals("Once the slave is offline, return the PsuedoNode",
+        assertEquals("Once the slave is removed, return the PsuedoNode",
                 PsuedoNode.class, project.getLastBuiltOn().getClass());
     }
 

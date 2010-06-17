@@ -15,6 +15,8 @@ import hudson.util.DescribableList;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Acts as a stand in for nodes that are no longer online primarily for the
@@ -31,15 +33,17 @@ public class PsuedoNode extends Node {
      */
     @Override
     public FilePath createPath(String absolutePath) {
-        String workspaceDirName = "workspace";
-        File baseMasterPath = Hudson.getInstance().getRootDir().getParentFile();
-        File localWorkspaceDir = new File(baseMasterPath, workspaceDirName);
+        File localSlaveRootDir = MasterConfig.getSlaveRootOnMaster();
 
-        File remoteWorkspace = new File(absolutePath);
-        String workspaceName = remoteWorkspace.getName();
+        File relativePath = FileUtils.relativeTo(new File(absolutePath),
+                new File(MasterConfig.getSlaveRootOnSlave()));
 
-        return Hudson.getInstance().createPath(
-                new File(localWorkspaceDir, workspaceName).getAbsolutePath());
+        try {
+            return Hudson.getInstance().createPath(new File(MasterConfig.getSlaveRootOnMaster(), relativePath.getPath()).getCanonicalPath());
+        } catch (IOException e) {
+            LOGGER.log(Level.WARNING,"Error translating path from slave to master",e);
+            return null;
+        }
 
     }
 
@@ -108,5 +112,7 @@ public class PsuedoNode extends Node {
     public void setNodeName(String name) {
         throw new UnsupportedOperationException();
     }
+    
+    private static final Logger LOGGER = Logger.getLogger(PsuedoNode.class.getName());
 
 }

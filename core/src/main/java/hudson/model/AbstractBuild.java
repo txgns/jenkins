@@ -169,9 +169,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
 		else {
 			Node node;
 			node = Hudson.getInstance().getNode(builtOn);
-            if (node == null
-                    || (node instanceof Slave && ((Slave) node).getComputer()
-                            .isOffline())) {
+            if (node == null) {
                 return new PsuedoNode();
             } else {
                 return node;
