@@ -1,9 +1,13 @@
 package hudson.util;
 
+import com.trilead.ssh2.crypto.Base64;
+import hudson.Functions;
 import hudson.Util;
+import hudson.WebAppMain;
 import hudson.model.Hudson;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
@@ -20,10 +24,11 @@ import static javax.servlet.http.HttpServletResponse.*;
  */
 public final class RegistrationHandler {
 
-    private volatile boolean registered = false;
     private final ServletContext context;
     private static RegistrationHandler instance;
     private static final File LICENSE_FILE = new File(Hudson.getInstance().getRootDir(),"license.key");
+    private static final int SERVER_GEN = 1;
+    private static final int MANUAL = 2;
 
     public synchronized static RegistrationHandler instance(ServletContext context) {
         instance = new RegistrationHandler(context);
@@ -35,38 +40,62 @@ public final class RegistrationHandler {
     }
 
     public boolean isRegistered() {
-        boolean d = registered;
-        return d;
+        return isLicenseKeyValid();
     }
 
     public boolean isLicenseKeyValid() {
-        return LICENSE_FILE.exists();    //need a better way
+        //is this licenseKey valid for this installation?        
+        return LICENSE_FILE.exists();    //need a better way TODO
     }
-    
+
+    public boolean verified(String licenseKey) {
+        //is this licenseKey valid for this installation? -- Note that here, the license file may not be present, we need to do a live verification
+        return true; //for now, trust any key, TODO
+    }
+
+    // VIEW METHODS
     public void doIndex(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, InterruptedException {
         if (!isLicenseKeyValid()) {
             rsp.setStatus(SC_UNAUTHORIZED);
             req.getView(this, "index").forward(req, rsp);
         }
     }
-    
-    public void doRegister(StaplerRequest request, StaplerResponse response, @QueryParameter String licensingMethod,
+
+    public void doRegister(StaplerRequest request, StaplerResponse response, @QueryParameter int licensingMethod,
                          @QueryParameter String userName, @QueryParameter String password, @QueryParameter String email,
                          @QueryParameter String company, @QueryParameter String subscribe,
                          @QueryParameter String licenseKey) throws IOException, ServletException {
         //user has clicked on register button
         if (isServerGenerated(licensingMethod)) {
             JSONObject j = toRegistrationData(userName, password, email, company, subscribe);
+            setPayload(request, j);
+            request.getView(this, "response").forward(request, response);
         } else {
-            if (!verified(licenseKey)) {
+            if (verified(licenseKey)) {
+                writeLicenseKey(licenseKey);
+                resetToHudson();
+                doDone(request, response);
+            } else {
                 request.setAttribute("message", "Invalid License Key, try again"); //i18n
                 request.getView(this, "index").forward(request, response);
             }
         }
     }
 
-    public boolean verified(String licenseKey) {
-        return false; //for now, just make them go the server_generated route
+    public void doDone(StaplerRequest request, StaplerResponse response) throws IOException, ServletException{
+        //called for the last step
+        request.setAttribute("rootUrl", Functions.inferHudsonURL(request));
+        request.getView(this, "done").forward(request, response);
+    }
+    
+    private void resetToHudson() {
+        //an all important method
+        context.setAttribute("app", Hudson.getInstance());
+    }
+
+    private void setPayload(StaplerRequest request, JSONObject j) {
+        String up = "http://www.infradna.com/registerichci?" + new String(Base64.encode(j.toString().getBytes()));
+        request.setAttribute("urlAndPayload", up);
     }
 
     private JSONObject toRegistrationData(String userName, String password, String email, String company, String subscribe) {
@@ -80,8 +109,8 @@ public final class RegistrationHandler {
         return j;
     }
 
-    private static boolean isServerGenerated(String licensingMethod) {
-        return "1".equals(licensingMethod);
+    private static boolean isServerGenerated(int licensingMethod) {
+        return SERVER_GEN == licensingMethod;
     }
 
     private void writeLicenseKey(String licenseKey) {
