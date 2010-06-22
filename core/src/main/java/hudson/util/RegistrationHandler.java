@@ -32,8 +32,6 @@ public final class RegistrationHandler {
 
     private RegistrationHandler(ServletContext context) {
         this.context = context;
-        //if (keyFound)
-        //registered = true;
     }
 
     public boolean isRegistered() {
@@ -45,12 +43,14 @@ public final class RegistrationHandler {
         return LICENSE_FILE.exists();    //need a better way
     }
     
-    public void doDynamic(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, InterruptedException {
-        rsp.setStatus(SC_UNAUTHORIZED);
-        rsp.forward(this, "index", req);
+    public void doIndex(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, InterruptedException {
+        if (!isLicenseKeyValid()) {
+            rsp.setStatus(SC_UNAUTHORIZED);
+            req.getView(this, "index").forward(req, rsp);
+        }
     }
     
-    public void doSubmit(StaplerRequest request, StaplerResponse response, @QueryParameter String licensingMethod,
+    public void doRegister(StaplerRequest request, StaplerResponse response, @QueryParameter String licensingMethod,
                          @QueryParameter String userName, @QueryParameter String password, @QueryParameter String email,
                          @QueryParameter String company, @QueryParameter String subscribe,
                          @QueryParameter String licenseKey) throws IOException, ServletException {
@@ -60,10 +60,9 @@ public final class RegistrationHandler {
         } else {
             if (!verified(licenseKey)) {
                 request.setAttribute("message", "Invalid License Key, try again"); //i18n
-                response.forward(this, "index", request);
+                request.getView(this, "index").forward(request, response);
             }
         }
-        
     }
 
     public boolean verified(String licenseKey) {
