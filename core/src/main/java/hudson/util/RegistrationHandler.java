@@ -78,7 +78,7 @@ public final class RegistrationHandler {
             JSONObject j = toRegistrationData(userName, password, email, company, subscribe);
             setPayload(request, j);
             request.getView(this, "response").forward(request, response);
-        } else {
+        } else if (isManual(licensingMethod)) {
             if (verified(licenseKey)) {
                 writeLicenseKey(licenseKey);
                 doDone(request, response);
@@ -86,6 +86,8 @@ public final class RegistrationHandler {
                 request.setAttribute("message", "Invalid License Key, try again"); //i18n
                 request.getView(this, "index").forward(request, response);
             }
+        } else { //someone just entered this URL, just forward to index instead of redirect
+            request.getView(this, "index").forward(request, response);
         }
     }
 
@@ -121,6 +123,10 @@ public final class RegistrationHandler {
 
     private static boolean isServerGenerated(int licensingMethod) {
         return SERVER_GEN == licensingMethod;
+    }
+
+    private static boolean isManual(int licensingMethod) {
+        return MANUAL == licensingMethod;
     }
 
     private void writeLicenseKey(String licenseKey) {
