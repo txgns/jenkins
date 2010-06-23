@@ -15,6 +15,8 @@ import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.security.SecureRandom;
 import static javax.servlet.http.HttpServletResponse.*;
 
@@ -61,6 +63,12 @@ public final class RegistrationHandler {
         }
     }
 
+    public FormValidation doCheckUserName(@QueryParameter(fixEmpty = true) String userName) {
+        if(userName == null)
+            return FormValidation.error("Provide a UserName");
+        return FormValidation.ok();
+    }
+    
     public void doRegister(StaplerRequest request, StaplerResponse response, @QueryParameter int licensingMethod,
                          @QueryParameter String userName, @QueryParameter String password, @QueryParameter String email,
                          @QueryParameter String company, @QueryParameter String subscribe,
@@ -73,7 +81,6 @@ public final class RegistrationHandler {
         } else {
             if (verified(licenseKey)) {
                 writeLicenseKey(licenseKey);
-                resetToHudson();
                 doDone(request, response);
             } else {
                 request.setAttribute("message", "Invalid License Key, try again"); //i18n
@@ -84,6 +91,8 @@ public final class RegistrationHandler {
 
     public void doDone(StaplerRequest request, StaplerResponse response) throws IOException, ServletException{
         //called for the last step
+        writeLicenseKey(request.getParameter("licenseKey"));
+        resetToHudson();
         request.setAttribute("rootUrl", Functions.inferHudsonURL(request));
         request.getView(this, "done").forward(request, response);
     }
@@ -93,8 +102,9 @@ public final class RegistrationHandler {
         context.setAttribute("app", Hudson.getInstance());
     }
 
-    private void setPayload(StaplerRequest request, JSONObject j) {
-        String up = "http://www.infradna.com/registerichci?" + new String(Base64.encode(j.toString().getBytes()));
+    private void setPayload(StaplerRequest request, JSONObject j) throws UnsupportedEncodingException {
+        //http://www.infradna.com/
+        String up = "http://localhost:9090/register?data=" + URLEncoder.encode(new String(Base64.encode(j.toString().getBytes())), "UTF-8");
         request.setAttribute("urlAndPayload", up);
     }
 
@@ -105,7 +115,7 @@ public final class RegistrationHandler {
         j.put("email", email);
         j.put("company", company);
         j.put("subscribe", subscribe);
-        j.put("instance-id", Util.getDigestOf(Hudson.getInstance().getSecretKey()));
+        j.put("hudson-id", Util.getDigestOf(Hudson.getInstance().getSecretKey()));
         return j;
     }
 

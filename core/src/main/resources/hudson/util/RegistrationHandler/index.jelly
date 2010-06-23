@@ -17,24 +17,24 @@
       <f:form action="register" method="POST" name="registrationForm">
         <f:radioBlock checked="true" name="licensingMethod" title="${%Contact the License Server}" value="1">
           <f:entry title="${%User Name}">
-          <f:textbox name="userName"/>
+          <f:textbox field="userName" name="userName"/>
           </f:entry>
           <f:entry title="${%Password}">
             <f:password name="password"/>
           </f:entry>
           <f:entry title="${%Email}">
-            <f:textbox name="email"/>
+            <f:textbox name="email" field="email"/>
           </f:entry>
           <f:entry title="${%Company}">
             <f:textbox name="company"/>
           </f:entry>
           <f:entry title="${%Subscribe to Correspondence?}">
-          <f:checkbox name="subscribe" checked="false"/>
+          <f:checkbox name="subscribe" checked="true"/>
           </f:entry>
         </f:radioBlock>
         <f:radioBlock checked="false" name="licensingMethod" title="${%Enter the License Key manually}" value="2">
-          <f:entry title="${%User Name}">
-            <f:textbox name="userName"/>
+          <f:entry title="${%User Name}" field="userName">
+            <f:textbox/>
           </f:entry>
           <f:entry title="${%Licese Key}">
             <f:textbox name="licenseKey"/>

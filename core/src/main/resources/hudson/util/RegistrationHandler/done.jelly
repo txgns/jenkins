@@ -3,9 +3,7 @@
   <l:layout title="${%Registering your IcHcI server}">
     <l:side-panel/>
     <l:main-panel>
-      <div>
         License Key validated, enjoy your <a href="${rootUrl}">IcHcI server </a>.
-      </div>
     </l:main-panel>
   </l:layout>
 </j:jelly>
