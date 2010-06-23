@@ -30,18 +30,7 @@ import hudson.model.Hudson;
 import hudson.model.User;
 import hudson.triggers.SafeTimerTask;
 import hudson.triggers.Trigger;
-import hudson.util.HudsonIsLoading;
-import hudson.util.IncompatibleServletVersionDetected;
-import hudson.util.IncompatibleVMDetected;
-import hudson.util.InsufficientPermissionDetected;
-import hudson.util.NoHomeDir;
-import hudson.util.RingBufferLogHandler;
-import hudson.util.NoTempDir;
-import hudson.util.IncompatibleAntVersionDetected;
-import hudson.util.HudsonFailedToLoad;
-import hudson.util.ChartUtil;
-import hudson.util.AWTProblem;
-import hudson.util.JNADoublyLoaded;
+import hudson.util.*;
 import org.jvnet.localizer.LocaleProvider;
 import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.StaplerRequest;
@@ -219,7 +208,12 @@ public final class WebAppMain implements ServletContextListener {
                 @Override
                 public void run() {
                     try {
-                        context.setAttribute(APP,new Hudson(home,context));
+                        Hudson theInstance = new Hudson(home, context);
+                        RegistrationHandler rh = RegistrationHandler.instance(context);
+                        if (rh.isRegistered())
+                            context.setAttribute(APP, theInstance);
+                        else
+                            context.setAttribute(APP, rh);
 
                         // trigger the loading of changelogs in the background,
                         // but give the system 10 seconds so that the first page
