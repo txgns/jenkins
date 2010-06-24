@@ -7,6 +7,7 @@ import hudson.Util;
 import hudson.WebAppMain;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
+import hudson.model.DescriptorByNameOwner;
 import hudson.model.Hudson;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.QueryParameter;
@@ -28,7 +29,7 @@ import static javax.servlet.http.HttpServletResponse.*;
  * @author Kedar Mhaswade (km@infradna.com)
  * Date: Jun 19, 2010
  */
-public final class RegistrationHandler extends AbstractDescribableImpl<RegistrationHandler> {
+public final class RegistrationHandler extends AbstractDescribableImpl<RegistrationHandler> implements DescriptorByNameOwner {
 
     private final ServletContext context;
     private static RegistrationHandler instance;
@@ -136,6 +137,14 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
         } catch(IOException e) {
             //ignore?
         }
+    }
+
+    public String getDisplayName() {
+        return "";    
+    }
+
+    public Descriptor getDescriptorByName(String className) {
+        return Hudson.getInstance().getDescriptorByName(className);
     }
 
     @Extension
