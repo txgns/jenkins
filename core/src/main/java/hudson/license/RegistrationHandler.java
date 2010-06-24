@@ -1,20 +1,19 @@
-package hudson.util;
+package hudson.license;
 
 import com.trilead.ssh2.crypto.Base64;
 import hudson.Extension;
 import hudson.Functions;
 import hudson.Util;
-import hudson.WebAppMain;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
 import hudson.model.DescriptorByNameOwner;
 import hudson.model.Hudson;
+import hudson.util.FormValidation;
+import hudson.util.TextFile;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
-import org.kohsuke.stapler.WebApp;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
@@ -22,7 +21,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.security.SecureRandom;
+
 import static javax.servlet.http.HttpServletResponse.*;
 
 /** Handles Registration. Could be modified to be discoverable.
@@ -104,7 +103,7 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
     }
 
     private void setPayload(StaplerRequest request, JSONObject j) throws UnsupportedEncodingException {
-        //http://www.infradna.com/
+        //http://license.infradna.com/
         String up = "http://localhost:9090/register?data=" + URLEncoder.encode(new String(Base64.encode(j.toString().getBytes())), "UTF-8");
         request.setAttribute("urlAndPayload", up);
     }
@@ -156,7 +155,7 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
 
         public FormValidation doCheckUserName(@QueryParameter(fixEmpty = true) String userName) {
             if(userName == null)
-                return FormValidation.error("Provide a UserName");
+                return FormValidation.error("Provide a User Name");
             return FormValidation.ok();
         }
     }

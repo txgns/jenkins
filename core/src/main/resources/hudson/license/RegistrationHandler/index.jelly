@@ -17,29 +17,29 @@
       <j:set var="instance" value="${it}" />
       <j:set var="descriptor" value="${it.descriptor}" />
       <f:form action="register" method="POST" name="registrationForm">
-        <f:radioBlock checked="true" name="licensingMethod" title="${%Contact the License Server}" value="1">
+        <f:radioBlock checked="true" name="licensingMethod" title="${%Contact the License Server}" value="1" help="server-generated.html">
           <f:entry title="${%User Name}">
           <f:textbox field="userName" name="userName"/>
           </f:entry>
           <f:entry title="${%Password}">
-            <f:password name="password"/>
+            <f:password name="password" field="password"/>
           </f:entry>
           <f:entry title="${%Email}">
             <f:textbox name="email" field="email"/>
           </f:entry>
           <f:entry title="${%Company}">
-            <f:textbox name="company"/>
+            <f:textbox name="company" field="company"/>
           </f:entry>
           <f:entry title="${%Subscribe to Correspondence?}">
-          <f:checkbox name="subscribe" checked="true"/>
+          <f:checkbox name="subscribe" checked="true" field="subscribe"/>
           </f:entry>
         </f:radioBlock>
-        <f:radioBlock checked="false" name="licensingMethod" title="${%Enter the License Key manually}" value="2">
+        <f:radioBlock checked="false" name="licensingMethod" title="${%Enter the License Key manually}" value="2" help="manual.html">
           <f:entry title="${%User Name}" field="userName">
             <f:textbox/>
           </f:entry>
           <f:entry title="${%License Key}">
-            <f:textbox name="licenseKey"/>
+            <f:textbox name="licenseKey" field="licenseKey"/>
           </f:entry>
         </f:radioBlock>
         <f:entry>
