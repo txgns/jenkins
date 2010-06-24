@@ -1,15 +1,19 @@
 package hudson.util;
 
 import com.trilead.ssh2.crypto.Base64;
+import hudson.Extension;
 import hudson.Functions;
 import hudson.Util;
 import hudson.WebAppMain;
+import hudson.model.AbstractDescribableImpl;
+import hudson.model.Descriptor;
 import hudson.model.Hudson;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.WebApp;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
@@ -24,7 +28,7 @@ import static javax.servlet.http.HttpServletResponse.*;
  * @author Kedar Mhaswade (km@infradna.com)
  * Date: Jun 19, 2010
  */
-public final class RegistrationHandler {
+public final class RegistrationHandler extends AbstractDescribableImpl<RegistrationHandler> {
 
     private final ServletContext context;
     private static RegistrationHandler instance;
@@ -63,12 +67,6 @@ public final class RegistrationHandler {
         }
     }
 
-    public FormValidation doCheckUserName(@QueryParameter(fixEmpty = true) String userName) {
-        if(userName == null)
-            return FormValidation.error("Provide a UserName");
-        return FormValidation.ok();
-    }
-    
     public void doRegister(StaplerRequest request, StaplerResponse response, @QueryParameter int licensingMethod,
                          @QueryParameter String userName, @QueryParameter String password, @QueryParameter String email,
                          @QueryParameter String company, @QueryParameter String subscribe,
@@ -137,6 +135,20 @@ public final class RegistrationHandler {
             }
         } catch(IOException e) {
             //ignore?
+        }
+    }
+
+    @Extension
+    public static class DescriptorImpl extends Descriptor<RegistrationHandler> {
+        @Override
+        public String getDisplayName() {
+            return ""; // not used
+        }
+
+        public FormValidation doCheckUserName(@QueryParameter(fixEmpty = true) String userName) {
+            if(userName == null)
+                return FormValidation.error("Provide a UserName");
+            return FormValidation.ok();
         }
     }
 }

@@ -14,6 +14,8 @@
       <j:if test="${message!=null}">
         <st:out value="${message}" />
       </j:if>
+      <j:set var="instance" value="${it}" />
+      <j:set var="descriptor" value="${it.descriptor}" />
       <f:form action="register" method="POST" name="registrationForm">
         <f:radioBlock checked="true" name="licensingMethod" title="${%Contact the License Server}" value="1">
           <f:entry title="${%User Name}">
@@ -36,7 +38,7 @@
           <f:entry title="${%User Name}" field="userName">
             <f:textbox/>
           </f:entry>
-          <f:entry title="${%Licese Key}">
+          <f:entry title="${%License Key}">
             <f:textbox name="licenseKey"/>
           </f:entry>
         </f:radioBlock>
