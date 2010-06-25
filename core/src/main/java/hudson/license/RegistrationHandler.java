@@ -9,7 +9,6 @@ import hudson.model.Descriptor;
 import hudson.model.DescriptorByNameOwner;
 import hudson.model.Hudson;
 import hudson.util.FormValidation;
-import hudson.util.TextFile;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
@@ -22,19 +21,18 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 
-import static javax.servlet.http.HttpServletResponse.*;
+import static javax.servlet.http.HttpServletResponse.SC_UNAUTHORIZED;
 
-/** Handles Registration. Could be modified to be discoverable.
+/**
+ * Handles Registration. Could be modified to be discoverable.
+ *
  * @author Kedar Mhaswade (km@infradna.com)
- * Date: Jun 19, 2010
+ *         Date: Jun 19, 2010
  */
 public final class RegistrationHandler extends AbstractDescribableImpl<RegistrationHandler> implements DescriptorByNameOwner {
 
     private final ServletContext context;
     private static RegistrationHandler instance;
-    private static final File LICENSE_FILE = new File(Hudson.getInstance().getRootDir(),"license.key");
-    private static final int SERVER_GEN = 1;
-    private static final int MANUAL = 2;
 
     public synchronized static RegistrationHandler instance(ServletContext context) {
         instance = new RegistrationHandler(context);
@@ -45,13 +43,11 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
         this.context = context;
     }
 
-    public boolean isRegistered() {
-        return isLicenseKeyValid();
-    }
-
-    public boolean isLicenseKeyValid() {
-        //is this licenseKey valid for this installation?        
-        return LICENSE_FILE.exists();    //need a better way TODO
+    public boolean isLicenseValid() throws IOException {
+        //is this licenseKey valid for this installation?
+        if (!LicenseManager.getConfigFile().exists())
+            return false;
+        return !(new LicenseManager().isExpired());
     }
 
     public boolean verified(String licenseKey) {
@@ -60,43 +56,32 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
     }
 
     // VIEW METHODS
+
     public void doIndex(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, InterruptedException {
-        if (!isLicenseKeyValid()) {
+        if (!isLicenseValid()) {
             rsp.setStatus(SC_UNAUTHORIZED);
             req.getView(this, "index").forward(req, rsp);
         }
     }
 
     public void doRegister(StaplerRequest request, StaplerResponse response, @QueryParameter int licensingMethod,
-                         @QueryParameter String userName, @QueryParameter String password, @QueryParameter String email,
-                         @QueryParameter String company, @QueryParameter String subscribe,
-                         @QueryParameter String licenseKey) throws IOException, ServletException {
+                           @QueryParameter String userName, @QueryParameter String password, @QueryParameter String email,
+                           @QueryParameter String company, @QueryParameter String subscribe,
+                           @QueryParameter String licenseKey) throws IOException, ServletException {
         //user has clicked on register button
-        if (isServerGenerated(licensingMethod)) {
-            JSONObject j = toRegistrationData(userName, password, email, company, subscribe);
-            setPayload(request, j);
-            request.getView(this, "response").forward(request, response);
-        } else if (isManual(licensingMethod)) {
-            if (verified(licenseKey)) {
-                writeLicenseKey(licenseKey);
-                doDone(request, response);
-            } else {
-                request.setAttribute("message", "Invalid License Key, try again"); //i18n
-                request.getView(this, "index").forward(request, response);
-            }
-        } else { //someone just entered this URL, just forward to index instead of redirect
-            request.getView(this, "index").forward(request, response);
-        }
+        JSONObject j = toRegistrationData(userName, password, email, company, subscribe);
+        setPayload(request, j);
+        request.getView(this, "response").forward(request, response);
     }
 
-    public void doDone(StaplerRequest request, StaplerResponse response) throws IOException, ServletException{
+    public void doDone(StaplerRequest request, StaplerResponse response) throws IOException, ServletException {
         //called for the last step
-        writeLicenseKey(request.getParameter("licenseKey"));
+        writeLicenseKey(request.getParameter("privateKey"), request.getParameter("cert"));
         resetToHudson();
         request.setAttribute("rootUrl", Functions.inferHudsonURL(request));
         request.getView(this, "done").forward(request, response);
     }
-    
+
     private void resetToHudson() {
         //an all important method
         context.setAttribute("app", Hudson.getInstance());
@@ -115,31 +100,26 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
         j.put("email", email);
         j.put("company", company);
         j.put("subscribe", subscribe);
-        j.put("hudson-id", Util.getDigestOf(Hudson.getInstance().getSecretKey()));
+        j.put("hudsonId", Util.getDigestOf(Hudson.getInstance().getSecretKey()));
         return j;
     }
 
-    private static boolean isServerGenerated(int licensingMethod) {
-        return SERVER_GEN == licensingMethod;
-    }
-
-    private static boolean isManual(int licensingMethod) {
-        return MANUAL == licensingMethod;
-    }
-
-    private void writeLicenseKey(String licenseKey) {
-        try {
-            TextFile secretFile = new TextFile(LICENSE_FILE);
-            if(!secretFile.exists()) {
-                secretFile.write(licenseKey);
-            }
-        } catch(IOException e) {
-            //ignore?
-        }
+    private void writeLicenseKey(String privateKey, String cert) throws IOException {
+        //we are going to do this at most once
+        //these strings are base64 encoded
+        privateKey = new String(Base64.decode(privateKey.toCharArray()));
+        cert = new String(Base64.decode(cert.toCharArray()));
+        LicenseManager lm = new LicenseManager(privateKey, cert);
+        lm.save();
     }
 
     public String getDisplayName() {
-        return "";    
+        return "";
+    }
+
+    @Override
+    public Descriptor getDescriptor() {
+        return getDescriptorByName(this.getClass().getName());
     }
 
     public Descriptor getDescriptorByName(String className) {
@@ -154,7 +134,7 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
         }
 
         public FormValidation doCheckUserName(@QueryParameter(fixEmpty = true) String userName) {
-            if(userName == null)
+            if (userName == null)
                 return FormValidation.error("Provide a User Name");
             return FormValidation.ok();
         }

@@ -2,6 +2,7 @@ package hudson.license;
 
 import com.trilead.ssh2.crypto.PEMDecoder;
 import com.trilead.ssh2.signature.RSAPrivateKey;
+import hudson.Util;
 import hudson.util.FormValidation;
 import org.jvnet.hudson.crypto.CertificateUtil;
 import sun.security.x509.X500Name;
@@ -96,7 +97,9 @@ public final class License {
             customerName = name.getCommonName();
         }
 
-        if (!LicenseManager.getServerKey().equals(serverKey))
+        String d1 = Util.getDigestOf(LicenseManager.getServerKey());
+        String d2 = Util.getDigestOf(serverKey);
+        if (!d1.equals(d2))
             throw FormValidation.error("This license belongs to another server: "+serverKey);
 
         // make sure that it's got the valid trust chain

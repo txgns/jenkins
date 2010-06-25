@@ -53,6 +53,13 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
         evaluationExpires = f.lastModified() + TimeUnit2.DAYS.toMillis(60);
     }
 
+    public LicenseManager(String license, String certificate) {
+        this.license = license;
+        this.certificate = certificate;
+        File f = new File(Hudson.getInstance().getRootDir(), "secret.key");
+        evaluationExpires = f.lastModified() + TimeUnit2.DAYS.toMillis(60);
+    }
+
     public String getLicense() {
         return license;
     }
@@ -122,13 +129,13 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
     private void parse() {
         try {
             parsed = null;
-            parsed = new License(license,certificate);
+            parsed = new License(license, certificate);
         } catch (Exception e) {
             // failed to parse the license
         }
     }
 
-    private XmlFile getConfigFile() {
+    public static XmlFile getConfigFile() {
         return new XmlFile(new File(Hudson.getInstance().getRootDir(),"license.xml"));
     }
 
@@ -187,7 +194,7 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
     }
 
     /**
-     * Use the installation-unique secret key as the seed of the PKCS12 file key. 
+     * Use the installation-unique secret key as the seed of the PKCS12 file key.
      */
     public static String getServerKey() {
         return Util.getDigestOf("License:PKCS12:"+Hudson.getInstance().getSecretKey());

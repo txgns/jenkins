@@ -210,7 +210,7 @@ public final class WebAppMain implements ServletContextListener {
                     try {
                         Hudson theInstance = new Hudson(home, context);
                         RegistrationHandler rh = RegistrationHandler.instance(context);
-                        if (rh.isRegistered())
+                        if (rh.isLicenseValid())
                             context.setAttribute(APP, theInstance);
                         else
                             context.setAttribute(APP, rh);
