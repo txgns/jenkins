@@ -97,9 +97,8 @@ public final class License {
             customerName = name.getCommonName();
         }
 
-        String d1 = Util.getDigestOf(LicenseManager.getServerKey());
         String d2 = Util.getDigestOf(serverKey);
-        if (!d1.equals(d2))
+        if (!LicenseManager.getServerKey().equals(d2))
             throw FormValidation.error("This license belongs to another server: "+serverKey);
 
         // make sure that it's got the valid trust chain

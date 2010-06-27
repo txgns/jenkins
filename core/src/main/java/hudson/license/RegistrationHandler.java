@@ -100,7 +100,7 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
         j.put("email", email);
         j.put("company", company);
         j.put("subscribe", subscribe);
-        j.put("hudsonId", Util.getDigestOf(Hudson.getInstance().getSecretKey()));
+        j.put("hudsonIdHash", Util.getDigestOf(Hudson.getInstance().getSecretKey()));
         return j;
     }
 

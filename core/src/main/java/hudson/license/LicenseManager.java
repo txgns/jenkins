@@ -197,6 +197,6 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
      * Use the installation-unique secret key as the seed of the PKCS12 file key.
      */
     public static String getServerKey() {
-        return Util.getDigestOf("License:PKCS12:"+Hudson.getInstance().getSecretKey());
+        return Util.getDigestOf(Hudson.getInstance().getSecretKey());
     }
 }
