@@ -1,0 +1,11 @@
+#!/bin/bash -ex
+git checkout ich
+v=$(show-pom-version pom.xml)
+
+git checkout community/master
+mvn -B org.apache.maven.plugins:maven-release-plugin:2.0:update-versions -DdevelopmentVersion=$v
+git commit -am "aligned the version number toward integration"
+id=$(git show --format=format:%H HEAD | head -1)
+git checkout ich
+git merge $id
+
