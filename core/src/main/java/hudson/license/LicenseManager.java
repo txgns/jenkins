@@ -32,7 +32,7 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
     /**
      * PEM encoded RSA private key
      */
-    private String license;
+    private String key;
 
     /**
      * PEM encoded X509 certificate
@@ -41,27 +41,25 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
 
     private transient License parsed;
 
-    private final long evaluationExpires;
+    private final long expires;
 
     public LicenseManager() throws IOException {
         XmlFile xml = getConfigFile();
         if (xml.exists())
             xml.unmarshal(this);
         parse();
-
-        File f = new File(Hudson.getInstance().getRootDir(), "secret.key");
-        evaluationExpires = f.lastModified() + TimeUnit2.DAYS.toMillis(60);
+        expires = parsed.getExpirationDate();
     }
 
-    public LicenseManager(String license, String certificate) {
-        this.license = license;
+    public LicenseManager(String key, String certificate) throws IOException, GeneralSecurityException {
+        this.key = key;
         this.certificate = certificate;
-        File f = new File(Hudson.getInstance().getRootDir(), "secret.key");
-        evaluationExpires = f.lastModified() + TimeUnit2.DAYS.toMillis(60);
+        parsed = new License(key, certificate);
+        expires = parsed.getExpirationDate();
     }
 
-    public String getLicense() {
-        return license;
+    public String getKey() {
+        return key;
     }
 
     public String getCertificate() {
@@ -79,8 +77,8 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
     /**
      * When does the evaluation expire?
      */
-    public long getEvaluationExpires() {
-        return evaluationExpires;
+    public long getExpires() {
+        return expires;
     }
 
     @Override
@@ -115,7 +113,7 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
     }
 
     public HttpResponse doConfigSubmit(StaplerRequest req) throws ServletException, IOException {
-        this.license = req.getSubmittedForm().getString("license");
+        this.key = req.getSubmittedForm().getString("license");
         this.certificate = req.getSubmittedForm().getString("certificate");
         save();
         parse();
@@ -126,12 +124,12 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
         getConfigFile().write(this);
     }
 
-    private void parse() {
+    private void parse() throws IOException {
         try {
             parsed = null;
-            parsed = new License(license, certificate);
+            parsed = new License(key, certificate);
         } catch (Exception e) {
-            // failed to parse the license
+            throw new IOException(e);
         }
     }
 
@@ -153,7 +151,7 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
         long d;
         long now = System.currentTimeMillis();
         if (parsed==null)
-            d = evaluationExpires-now;
+            d = expires -now;
         else
             d = parsed.getExpirationDate()-now;
         return (int)TimeUnit2.MILLISECONDS.toDays(d);
@@ -196,7 +194,7 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
     /**
      * Use the installation-unique secret key as the seed of the PKCS12 file key.
      */
-    public static String getServerKey() {
+    public static String getHudsonIdHash() {
         return Util.getDigestOf(Hudson.getInstance().getSecretKey());
     }
 }

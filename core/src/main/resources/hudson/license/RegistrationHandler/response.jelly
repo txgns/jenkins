@@ -8,15 +8,15 @@
     </l:header>
     <l:side-panel/>
     <l:main-panel>
-      Contacting the License Server ... 
+      ${%Contacting the License Server ...} 
       <form action="done" method="POST" name="doneForm">
-        <input id="licenseKey" type="hidden" name="privateKey" value=""/> <!-- this should be filled by script -->
-        <input id="licenseKey" type="hidden" name="cert" value=""/> <!-- this should be filled by script -->
+        <input id="licenseKey" type="hidden" name="licenseKey" value=""/> <!-- this should be filled by script -->
+        <input id="cert" type="hidden" name="cert" value=""/> <!-- this should be filled by script -->
       </form>
        <script>
         <![CDATA[
         function setLicenseKey(pk, cert) {
-          document.doneForm.privateKey.value = pk;
+          document.doneForm.licenseKey.value = pk;
           document.doneForm.cert.value = cert;
           document.doneForm.submit();
         }

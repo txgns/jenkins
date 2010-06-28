@@ -2,7 +2,6 @@ package hudson.license;
 
 import com.trilead.ssh2.crypto.PEMDecoder;
 import com.trilead.ssh2.signature.RSAPrivateKey;
-import hudson.Util;
 import hudson.util.FormValidation;
 import org.jvnet.hudson.crypto.CertificateUtil;
 import sun.security.x509.X500Name;
@@ -22,7 +21,6 @@ import java.security.cert.X509Certificate;
 import java.security.spec.RSAPrivateKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -97,13 +95,12 @@ public final class License {
             customerName = name.getCommonName();
         }
 
-        String d2 = Util.getDigestOf(serverKey);
-        if (!LicenseManager.getServerKey().equals(d2))
+        if (!LicenseManager.getHudsonIdHash().equals(serverKey))
             throw FormValidation.error("This license belongs to another server: "+serverKey);
 
         // make sure that it's got the valid trust chain
         Set<TrustAnchor> anchors = new HashSet<TrustAnchor>();
-        X509Certificate ca = (X509Certificate) cf.generateCertificate(getClass().getResourceAsStream("/license-root"));
+        X509Certificate ca = (X509Certificate) cf.generateCertificate(getClass().getResourceAsStream("/infradna-root-cacert.pem"));
         anchors.add(new TrustAnchor(ca,null));
 
         try {
