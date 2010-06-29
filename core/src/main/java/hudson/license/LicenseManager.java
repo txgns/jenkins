@@ -113,7 +113,7 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
     }
 
     public HttpResponse doConfigSubmit(StaplerRequest req) throws ServletException, IOException {
-        this.key = req.getSubmittedForm().getString("license");
+        this.key = req.getSubmittedForm().getString("key");
         this.certificate = req.getSubmittedForm().getString("certificate");
         save();
         parse();
@@ -185,8 +185,8 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
         /**
          * Checks the validity of the license key.
          */
-        public FormValidation doValidate(@QueryParameter String license, @QueryParameter String certificate) throws IOException, GeneralSecurityException {
-            License lic = new License(license, certificate);
+        public FormValidation doValidate(@QueryParameter String key, @QueryParameter String certificate) throws IOException, GeneralSecurityException {
+            License lic = new License(key, certificate);
             return FormValidation.ok("Licensed to "+lic.getCustomerName()+"\nValid until "+ SimpleDateFormat.getDateInstance().format(lic.getExpirationDate()));
         }
     }
