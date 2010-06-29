@@ -105,8 +105,8 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
     }
 
     private void setPayload(StaplerRequest request, JSONObject j) throws UnsupportedEncodingException {
-        //http://license.infradna.com/                          TODO
-        String up = "http://localhost:9090/register?data=" + URLEncoder.encode(new String(Base64.encode(j.toString().getBytes())), "UTF-8");
+        //http://localhost:9090/register
+        String up = "http://license.infradna.com/register?data=" + URLEncoder.encode(new String(Base64.encode(j.toString().getBytes())), "UTF-8");
         request.setAttribute("urlAndPayload", up);
     }
 
