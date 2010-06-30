@@ -60,6 +60,7 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
 
     public void doIndex(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, InterruptedException {
         rsp.setStatus(SC_UNAUTHORIZED);
+        req.setAttribute("subscribe", "true");
         if (!LicenseManager.getConfigFile().exists()) {//this is a new IchcI installation
             req.setAttribute("message", "Welcome!");
             req.setAttribute("method", 1);
@@ -74,7 +75,7 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
                 req.setAttribute("message", "The license has expired or is damaged, please enter the details, or contact InfraDNA Inc.");
                 req.setAttribute("method", 2);
             } else { //came here in error?
-                req.setAttribute("method", 1);
+                req.setAttribute("method", 2);
             }
         }
         req.getView(this, "show").forward(req, rsp);
@@ -86,6 +87,7 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
                            @QueryParameter String key, @QueryParameter String cert) throws IOException, ServletException, GeneralSecurityException {
         //user has clicked on register button
         if (method == 1) {//server generated
+            checkForm(request, response, userName, email, company, password, subscribe); //if this method returns here, we are guaranteed to have "workable" registration data
             JSONObject j = toRegistrationData(userName, password, email, company, subscribe);
             setPayload(request, j);
             request.getView(this, "response").forward(request, response);
@@ -93,23 +95,40 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
             LicenseManager lm = null;
             try {
                 lm = new LicenseManager(key, cert);
+                lm.save();
+                if (lm.isExpired()) {
+                    request.setAttribute("method", 2);
+                    request.setAttribute("message", "License expired, retry");
+                    request.getView(this, "show").forward(request, response);
+                } else {//we are good
+                    request.setAttribute("verified", Boolean.TRUE);
+                    request.setAttribute("expiry", new Date(lm.getExpires()));
+                    resetToHudson(request, response);
+                }
             } catch (Exception e) {
                 request.setAttribute("message", "There was a problem: " + e.getMessage() + ", please retry");
-                request.setAttribute("method", 1);
-                request.getView(this, "show").forward(request, response);
-            }
-            lm.save();
-            if (lm.isExpired()) {
                 request.setAttribute("method", 2);
-                request.setAttribute("message", "License expired, retry");
                 request.getView(this, "show").forward(request, response);
-            } else {//we are good
-                request.setAttribute("verified", Boolean.TRUE);
-                request.setAttribute("expiry", new Date(lm.getExpires()));
-                resetToHudson(request, response);
             }
         } else {
             //came here in error?
+            request.getView(this, "show").forward(request, response);
+        }
+    }
+
+    private void checkForm(StaplerRequest request, StaplerResponse response, String userName, String email, String company, String password, String subscribe) throws IOException, ServletException {
+        //Note: we must retain other form input elements, it's annoying to make user re-enter "valid" input
+        if (Util.fixNull(userName).length() == 0 || !validEmail(email) || Util.fixNull(company).length() == 0) {
+            request.setAttribute("message", "Correct the input and retry");
+            request.setAttribute("userName", userName);
+            request.setAttribute("email", email);
+            request.setAttribute("company", company);
+            //remaining
+            request.setAttribute("method", 1);
+            request.setAttribute("password", password);
+            if ("on".equals(subscribe))
+                subscribe = "true"; //very weird hack
+            request.setAttribute("subscribe", subscribe);
             request.getView(this, "show").forward(request, response);
         }
     }
@@ -160,7 +179,7 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
         j.put("password", Util.fixNull(password));
         j.put("email", Util.fixNull(email));
         j.put("company", Util.fixNull(company));
-        j.put("subscribe", Util.fixNull(subscribe));
+        j.put("subscribe", subscribe); //maybe we should send boolean as is?
         j.put("hudsonIdHash", Util.getDigestOf(Hudson.getInstance().getSecretKey()));
         return j;
     }
@@ -188,6 +207,11 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
         return Hudson.getInstance().getDescriptorByName(className);
     }
 
+    private static boolean validEmail(String email) {
+        if (email == null || email.indexOf('@') < 0)
+            return false;
+        return true;
+    }
     @Extension
     public static class DescriptorImpl extends Descriptor<RegistrationHandler> {
         @Override
@@ -202,16 +226,20 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
         }
 
         public FormValidation doCheckEmail(@QueryParameter(fixEmpty = true) String email) {
-            if (email == null)
+            if (!validEmail(email))
                 return FormValidation.error("Provide a valid email");
-            if (email.indexOf('@') < 0)
-                return FormValidation.error("Invalid email address");
             return FormValidation.ok();
         }
 
         public FormValidation doCheckPassword(@QueryParameter(fixEmpty = true) String password) {
             if (password == null)
                 return FormValidation.error("Provide a Password");
+            return FormValidation.ok();
+        }
+
+        public FormValidation doCheckCompany(@QueryParameter(fixEmpty = true) String company) {
+            if (company == null)
+                return FormValidation.error("Provide a Company name");
             return FormValidation.ok();
         }
     }
