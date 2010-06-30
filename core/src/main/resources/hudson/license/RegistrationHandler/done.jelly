@@ -9,8 +9,8 @@
       <table border="0">
         <j:choose>
           <j:when test="${verified}">
-            <h3>Thank you for Registration (License Expires: ${expiry})! Enjoy your<a href="${rootUrl}">IcHcI server</a>.
-            </h3>
+            <h3>Thank you for Registration (License Expires: ${expiry})! </h3> 
+            <h3> Enjoy your <a href="${rootUrl}">IcHcI server</a>. </h3>
           </j:when>
           <j:otherwise>
             <h3>${%License server encountered an error:}</h3>
