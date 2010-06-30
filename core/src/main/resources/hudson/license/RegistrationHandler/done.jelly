@@ -1,9 +1,26 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
   <l:layout title="${%Registering your IcHcI server}">
+    <l:header>
+      <!--meta http-equiv="refresh" content="5" /-->
+    </l:header>
     <l:side-panel/>
     <l:main-panel>
-        License Key validated, enjoy your <a href="${rootUrl}">IcHcI server </a>.
+      <table border="0">
+        <j:choose>
+          <j:when test="${verified}">
+                License verified and installed (expires: ${expiry}), enjoy your <a href="${rootUrl}">IcHcI server</a>.
+          </j:when>
+          <j:otherwise>
+                <f:entry title="${%License server encountered an error:}">
+                  <f:textarea value="${message}"/>
+                </f:entry>
+                <f:entry>
+                  Provide valid information and <a href="${rootUrl}">retry</a>, or contact <a href="mailto:info@infradna.com">us</a> with above details.
+                </f:entry>
+          </j:otherwise>
+        </j:choose>
+      </table>
     </l:main-panel>
   </l:layout>
 </j:jelly>

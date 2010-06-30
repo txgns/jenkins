@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.security.GeneralSecurityException;
+import java.util.Date;
 
 import static javax.servlet.http.HttpServletResponse.SC_UNAUTHORIZED;
 
@@ -44,19 +45,39 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
     }
 
     public boolean isLicenseValid() throws IOException {
-        //is this licenseKey valid for this installation?
-        if (!LicenseManager.getConfigFile().exists())
+        try {
+//is this licenseKey valid for this installation?
+            if (!LicenseManager.getConfigFile().exists())
+                return false;
+            return !(new LicenseManager().isExpired());
+        } catch (IOException e) {
+            e.printStackTrace();
             return false;
-        return !(new LicenseManager().isExpired());
+        }
     }
 
     // VIEW METHODS
 
     public void doIndex(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, InterruptedException {
-        if (!isLicenseValid()) {
-            rsp.setStatus(SC_UNAUTHORIZED);
-            req.getView(this, "index").forward(req, rsp);
+        rsp.setStatus(SC_UNAUTHORIZED);
+        if (!LicenseManager.getConfigFile().exists()) {//this is a new IchcI installation
+            req.setAttribute("message", "Welcome!");
+            req.setAttribute("method", 1);
+        } else {
+            boolean ok;
+            try {
+                ok = !(new LicenseManager().isExpired());
+            } catch(Exception e) {
+                ok = false;
+            }
+            if (!ok) {
+                req.setAttribute("message", "The license has expired or is damaged, please enter the details, or contact InfraDNA Inc.");
+                req.setAttribute("method", 2);
+            } else { //came here in error?
+                req.setAttribute("method", 1);
+            }
         }
+        req.getView(this, "show").forward(req, rsp);
     }
 
     public void doRegister(StaplerRequest request, StaplerResponse response, @QueryParameter int method,
@@ -69,30 +90,53 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
             setPayload(request, j);
             request.getView(this, "response").forward(request, response);
         } else if (method == 2) { //
-            LicenseManager lm = new LicenseManager(key, cert);
-            if (lm.isExpired()) {
-                request.setAttribute("message", "License expired, retry");
-                request.getView(this, "index").forward(request, response);
+            LicenseManager lm = null;
+            try {
+                lm = new LicenseManager(key, cert);
+            } catch (Exception e) {
+                request.setAttribute("message", "There was a problem: " + e.getMessage() + ", please retry");
+                request.setAttribute("method", 1);
+                request.getView(this, "show").forward(request, response);
             }
-            else //we are good
+            lm.save();
+            if (lm.isExpired()) {
+                request.setAttribute("method", 2);
+                request.setAttribute("message", "License expired, retry");
+                request.getView(this, "show").forward(request, response);
+            } else {//we are good
+                request.setAttribute("verified", Boolean.TRUE);
+                request.setAttribute("expiry", new Date(lm.getExpires()));
                 resetToHudson(request, response);
+            }
         } else {
             //came here in error?
-            request.getView(this, "index").forward(request, response);
+            request.getView(this, "show").forward(request, response);
         }
     }
 
-    public void doDone(StaplerRequest request, StaplerResponse response) throws IOException, ServletException, GeneralSecurityException {
+    public void doDone(StaplerRequest request, StaplerResponse response, @QueryParameter String licenseKey, @QueryParameter String cert,
+                       @QueryParameter String message) throws IOException, ServletException, GeneralSecurityException {
         //called for the last step
-        writeLicenseKey(request.getParameter("licenseKey"), request.getParameter("cert"));
-        resetToHudson(request, response);
+        if (Util.fixNull(message).length() == 0) { //no errors
+            Date expiry = writeLicenseKey(request.getParameter("licenseKey"), request.getParameter("cert"));
+            request.setAttribute("verified", Boolean.TRUE);
+            request.setAttribute("expiry", expiry);
+            resetToHudson(request, response);
+        } else {
+            request.setAttribute("verified", Boolean.FALSE);
+            request.setAttribute("message", new String(Base64.decode(message.toCharArray())));
+            request.setAttribute("rootUrl", Functions.inferHudsonURL(request));
+            request.getView(this, "done").forward(request, response);
+        }
     }
 
-    public void doDynamic(StaplerRequest request, StaplerResponse response) throws IOException, ServletException {
+    public void doDynamic(StaplerRequest request, StaplerResponse response) throws IOException, ServletException, InterruptedException {
         String rest = request.getRestOfPath();
         //radioBlock help handling hack without any side-effects (I think)
         if (rest.startsWith("/help-")) {
             request.getView(this, rest.substring(1)).forward(request, response); //just remove the leading '/'
+        } else {
+            doIndex(request, response);
         }
     }
     //VIEW METHODS
@@ -121,13 +165,14 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
         return j;
     }
 
-    private void writeLicenseKey(String privateKey, String cert) throws IOException, GeneralSecurityException {
+    private Date writeLicenseKey(String privateKey, String cert) throws IOException, GeneralSecurityException {
         //we are going to do this at most once
         //these strings are base64 encoded
         privateKey = new String(Base64.decode(privateKey.toCharArray()));
         cert = new String(Base64.decode(cert.toCharArray()));
         LicenseManager lm = new LicenseManager(privateKey, cert);
         lm.save();
+        return new Date(lm.getExpires());
     }
 
     public String getDisplayName() {
@@ -155,6 +200,7 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
                 return FormValidation.error("Provide a User Name");
             return FormValidation.ok();
         }
+
         public FormValidation doCheckEmail(@QueryParameter(fixEmpty = true) String email) {
             if (email == null)
                 return FormValidation.error("Provide a valid email");
@@ -162,8 +208,9 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
                 return FormValidation.error("Invalid email address");
             return FormValidation.ok();
         }
+
         public FormValidation doCheckPassword(@QueryParameter(fixEmpty = true) String password) {
-            if (password== null)
+            if (password == null)
                 return FormValidation.error("Provide a Password");
             return FormValidation.ok();
         }
