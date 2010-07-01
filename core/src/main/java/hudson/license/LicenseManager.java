@@ -147,7 +147,7 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
     /**
      * Gets the remaining days that the license/evaluation is available
      */
-    private int getRemainingDays() {
+    int getRemainingDays() {
         long d;
         long now = System.currentTimeMillis();
         if (parsed==null)
