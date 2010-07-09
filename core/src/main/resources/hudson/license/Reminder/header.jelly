@@ -6,10 +6,10 @@
         <table width="100%" style="border-spacing:2px; position:relative; top:-40px; height:40px">
           <tr>
             <td style="vertical-align: middle; width:32px">
-              <img src="${rootURL}/${it.url}/shield.gif"/>
+              <img src="${imagesURL}/32x32/shield.gif" alt=""/>
             </td>
             <td style="vertical-align: middle; font-weight: bold; font-size: 1.2em;  color: white;">
-              ${blurb}
+              <st:out value="Your license expires in ${it.remainingDays} days. Do you want to renew?"/>
             </td>
             <td style="vertical-align: middle; text-align: right; white-space:nowrap;">
               <form method="post" action="${rootURL}/${it.url}/act" name="${it.id}">

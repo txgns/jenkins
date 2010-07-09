@@ -11,6 +11,7 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
+import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,7 +26,6 @@ public class Reminder extends PageDecorator {
 
     private volatile LicenseManager lm;
     private volatile long lastNagTime;
-    private volatile long lastReminderTime;
     private final AtomicBoolean remind = new AtomicBoolean(true);
     private static Reminder theInstance; //guarded by synchronized method
     private Reminder() {
@@ -56,6 +56,10 @@ public class Reminder extends PageDecorator {
         }
         return false;
     }
+    
+    public int getRemainingDays() {
+        return lm.getRemainingDays();
+    }
 
     public void doAct(StaplerRequest request, StaplerResponse response, @QueryParameter (fixEmpty = true) String yes,
                       @QueryParameter (fixEmpty = true) String no) throws IOException, ServletException {
@@ -70,9 +74,6 @@ public class Reminder extends PageDecorator {
         }
     }
 
-    public void doDynamic(StaplerRequest request, StaplerResponse response) {
-        System.out.println(request);
-    }
     private void findLicenseManager() {
         if (lm == null) {
             ExtensionList<ManagementLink> lms = LicenseManager.all();
