@@ -64,7 +64,7 @@ public class Reminder extends PageDecorator {
     public void doAct(StaplerRequest request, StaplerResponse response, @QueryParameter (fixEmpty = true) String yes,
                       @QueryParameter (fixEmpty = true) String no) throws IOException, ServletException {
         if (yes != null) {
-            response.sendRedirect("http://license.infradna.com/new");
+            response.sendRedirect("http://infradna.com/renew_license");
         } else if (no != null) {
             remind.set(false);
             response.forwardToPreviousPage(request);

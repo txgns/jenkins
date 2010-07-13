@@ -56,6 +56,9 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
             return false;
         }
     }
+    public static String getHudsonIdHash() {
+        return LicenseManager.getHudsonIdHash();
+    }
 
     // VIEW METHODS
 

@@ -9,18 +9,23 @@
       <table border="0">
         <j:choose>
           <j:when test="${verified}">
-            <h3>Thank you for Registration (License Expires: ${expiry})! </h3> 
-            <h3> Enjoy your <a href="${rootUrl}">IcHcI server</a>. </h3>
+            <h1 style="margin-top:4em">
+              ${%Thank you for Registration} (${%License Expires:} ${expiry}).
+            </h1>
+            <p style="color:grey">
+              ${%Enjoy your }<a href="${rootUrl}">${%ICHCI Server}</a>.
+            </p>
           </j:when>
           <j:otherwise>
-            <h3>${%License server encountered an error:}</h3>
-            <f:textbox value="${message}" readonly="true"/>
-            <h3>
-              <a href="${rootUrl}">Retry</a>
-              with valid information, or contact
-              <a href="mailto:info@infradna.com">us</a>
-              with above details.
-            </h3>
+            <div class="error">
+              ${%License server encountered an error:}
+              <f:textbox value="${message}" readonly="true"/>
+              <p>
+                <a href="${rootUrl}">Retry</a> with valid information, or contact
+                <a href="mailto:info@infradna.com">us</a>
+                with above details.
+              </p>
+            </div>
           </j:otherwise>
         </j:choose>
       </table>
