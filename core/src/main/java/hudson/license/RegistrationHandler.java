@@ -25,7 +25,8 @@ import java.util.Date;
 import static javax.servlet.http.HttpServletResponse.SC_UNAUTHORIZED;
 
 /**
- * Handles Registration. Could be modified to be discoverable.
+ * Handles Registration. Could be modified to be discoverable. Note that this has to behave like Hudson instance and
+ * hence special care needs to be taken.
  *
  * @author Kedar Mhaswade (km@infradna.com)
  *         Date: Jun 19, 2010
@@ -61,8 +62,7 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
     public void doIndex(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, InterruptedException {
         rsp.setStatus(SC_UNAUTHORIZED);
         req.setAttribute("subscribe", "true");
-        if (!LicenseManager.getConfigFile().exists()) {//this is a new IchcI installation
-            req.setAttribute("message", "Welcome!");
+        if (!LicenseManager.getConfigFile().exists()) {//this is a new ICHCI installation
             req.setAttribute("method", 1);
         } else {
             boolean ok;
@@ -118,7 +118,7 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
 
     private void checkForm(StaplerRequest request, StaplerResponse response, String userName, String email, String company, String password, String subscribe) throws IOException, ServletException {
         //Note: we must retain other form input elements, it's annoying to make user re-enter "valid" input
-        if (Util.fixNull(userName).length() == 0 || !validEmail(email) || Util.fixNull(company).length() == 0) {
+        if (!validEmail(email) || Util.fixNull(company).length() == 0) {
             request.setAttribute("message", "Correct the input and retry");
             request.setAttribute("userName", userName);
             request.setAttribute("email", email);
@@ -218,13 +218,6 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
         public String getDisplayName() {
             return ""; // not used
         }
-
-        public FormValidation doCheckUserName(@QueryParameter(fixEmpty = true) String userName) {
-            if (userName == null)
-                return FormValidation.error("Provide a User Name");
-            return FormValidation.ok();
-        }
-
         public FormValidation doCheckEmail(@QueryParameter(fixEmpty = true) String email) {
             if (!validEmail(email))
                 return FormValidation.error("Provide a valid email");
@@ -239,7 +232,7 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
 
         public FormValidation doCheckCompany(@QueryParameter(fixEmpty = true) String company) {
             if (company == null)
-                return FormValidation.error("Provide a Company name");
+                return FormValidation.error("Provide a company name");
             return FormValidation.ok();
         }
     }

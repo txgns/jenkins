@@ -1,6 +1,6 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-  <l:layout title="${%Registering your IcHcI server}">
+  <l:layout title="${%Registering your ICHCI server}">
     <l:header>
       <!--meta http-equiv="refresh" content="5" /-->
     </l:header>

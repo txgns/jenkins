@@ -51,7 +51,7 @@ public class Reminder extends PageDecorator {
             nag = true;
             lastNagTime = now;
         }
-        if (lm.getRemainingDays() <= 60 && nag) {
+        if (lm.getRemainingDays() <= 30 && nag) {
             return true;
         }
         return false;

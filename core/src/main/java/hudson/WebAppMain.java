@@ -62,7 +62,7 @@ import java.security.Security;
  */
 public final class WebAppMain implements ServletContextListener {
     private final RingBufferLogHandler handler = new RingBufferLogHandler();
-    private static final String APP = "app";
+    public static final String APP = "app";
 
     /**
      * Creates the sole instance of {@link Hudson} and register it to the {@link ServletContext}.

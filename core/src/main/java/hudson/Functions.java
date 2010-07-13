@@ -75,10 +75,7 @@ import org.apache.commons.jexl.parser.ASTSizeFunction;
 import org.apache.commons.jexl.util.Introspector;
 import org.jvnet.animal_sniffer.IgnoreJRERequirement;
 import org.jvnet.tiger_types.Types;
-import org.kohsuke.stapler.Ancestor;
-import org.kohsuke.stapler.Stapler;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.*;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
@@ -1158,6 +1155,8 @@ public class Functions {
     public static List<PageDecorator> getPageDecorators() {
         // this method may be called to render start up errors, at which point Hudson doesn't exist yet. see HUDSON-3608 
         if(Hudson.getInstance()==null)  return Collections.emptyList();
+        if (!Hudson.getInstance().equals(WebApp.getCurrent().context.getAttribute(WebAppMain.APP)))
+            return Collections.emptyList();
         return PageDecorator.all();
     }
     
