@@ -39,9 +39,12 @@ public class Reminder extends PageDecorator {
         theInstance = new Reminder();
         return theInstance;
     }
-    
+
+    /**
+     * Returns true to show the reminder.
+     */
     public boolean isDue() {
-        if (remind.get() == false)
+        if (!remind.get())
             return false;
         findLicenseManager();
         long last = lastNagTime;
@@ -51,10 +54,7 @@ public class Reminder extends PageDecorator {
             nag = true;
             lastNagTime = now;
         }
-        if (lm.getRemainingDays() <= 30 && nag) {
-            return true;
-        }
-        return false;
+        return lm!=null && lm.getRemainingDays() <= 30 && nag;
     }
     
     public int getRemainingDays() {
@@ -76,7 +76,7 @@ public class Reminder extends PageDecorator {
 
     private void findLicenseManager() {
         if (lm == null) {
-            ExtensionList<ManagementLink> lms = LicenseManager.all();
+            ExtensionList<ManagementLink> lms = ManagementLink.all();
             lm = lms.get(LicenseManager.class); //hope this is not null
         }
     }
