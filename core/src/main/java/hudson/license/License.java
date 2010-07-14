@@ -84,6 +84,7 @@ public final class License {
             o = o.substring(HEADER.length());
             for (String token : o.split(",")) {
                 int pos = token.indexOf('=');
+                if (pos<0)  throw FormValidation.error("Invalid organization name: "+o);
                 String n = token.substring(0, pos);
                 String v = token.substring(pos+1,token.length());
                 if (n.equals("executors"))
