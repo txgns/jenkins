@@ -46,16 +46,12 @@ public final class RegistrationHandler extends AbstractDescribableImpl<Registrat
     }
 
     public boolean isLicenseValid() throws IOException {
-        try {
-//is this licenseKey valid for this installation?
-            if (!LicenseManager.getConfigFile().exists())
-                return false;
-            return !(new LicenseManager().isExpired());
-        } catch (IOException e) {
-            e.printStackTrace();
+        // is this licenseKey valid for this installation?
+        if (!LicenseManager.getConfigFile().exists())
             return false;
-        }
+        return !(new LicenseManager().isExpired());
     }
+    
     public static String getHudsonIdHash() {
         return LicenseManager.getHudsonIdHash();
     }

@@ -21,6 +21,8 @@ import java.io.File;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.SimpleDateFormat;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Manages the license key.
@@ -43,12 +45,16 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
 
     private final long expires;
 
-    public LicenseManager() throws IOException {
-        XmlFile xml = getConfigFile();
-        if (xml.exists())
-            xml.unmarshal(this);
-        parse();
-        expires = parsed.getExpirationDate();
+    public LicenseManager() {
+        try {
+            XmlFile xml = getConfigFile();
+            if (xml.exists())
+                xml.unmarshal(this);
+            parse();
+        } catch (IOException e) {
+            LOGGER.log(Level.WARNING, "Failed to read the existing license",e);
+        }
+        expires = parsed!=null ? parsed.getExpirationDate() : System.currentTimeMillis();
     }
 
     public LicenseManager(String key, String certificate) throws IOException, GeneralSecurityException {
@@ -197,4 +203,6 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
     public static String getHudsonIdHash() {
         return Util.getDigestOf(Hudson.getInstance().getSecretKey());
     }
+
+    private static final Logger LOGGER = Logger.getLogger(LicenseManager.class.getName());
 }
