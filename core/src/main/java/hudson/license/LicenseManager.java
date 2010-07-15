@@ -134,7 +134,7 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
         try {
             parsed = new License(key, certificate);
             expires = parsed.getExpirationDate();
-        } catch (Exception e) {
+        } catch (GeneralSecurityException e) {
             throw new IOException(e);
         }
     }
