@@ -30,6 +30,16 @@ import java.util.Set;
  * @author Kohsuke Kawaguchi
  */
 public final class License {
+    /**
+     * PEM encoded RSA private key
+     */
+    public final String key;
+
+    /**
+     * PEM encoded X509 certificate
+     */
+    public final String certificate;
+
     private final PrivateKey privateKey;
     private final PublicKey publicKey;
     private final X509Certificate cert;
@@ -42,8 +52,8 @@ public final class License {
     private final String customerName;
 
     License(String key, String certificate) throws GeneralSecurityException, IOException {
-        key = key.trim();
-        certificate = certificate.trim();
+        this.key = key = key.trim();
+        this.certificate = certificate = certificate.trim();
 
         try {
             RSAPrivateKey k = (RSAPrivateKey) PEMDecoder.decode(key.toCharArray(), null);

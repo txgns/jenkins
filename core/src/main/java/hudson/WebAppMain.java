@@ -25,6 +25,7 @@ package hudson;
 
 import com.thoughtworks.xstream.converters.reflection.PureJavaReflectionProvider;
 import com.thoughtworks.xstream.core.JVM;
+import hudson.license.LicenseManager;
 import hudson.license.RegistrationHandler;
 import hudson.model.Hudson;
 import hudson.model.User;
@@ -209,8 +210,9 @@ public final class WebAppMain implements ServletContextListener {
                 public void run() {
                     try {
                         Hudson theInstance = new Hudson(home, context);
-                        RegistrationHandler rh = RegistrationHandler.instance(context);
-                        if (rh.isLicenseValid() || Main.isUnitTest)
+                        RegistrationHandler rh = new RegistrationHandler(context);
+                        // is this licenseKey valid for this installation?
+                        if (!LicenseManager.getInstance().isExpired() || Main.isUnitTest)
                             context.setAttribute(APP, theInstance);
                         else
                             context.setAttribute(APP, rh);

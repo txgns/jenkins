@@ -1611,6 +1611,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
 
         // hudson-behavior.js relies on this to decide whether it's running unit tests.
         Main.isUnitTest = true;
+        DNSMultiCast.disabled = true;
 
         // prototype.js calls this method all the time, so ignore this warning.
         XML_HTTP_REQUEST_LOGGER.setFilter(new Filter() {

@@ -11,7 +11,7 @@
       <h1 style="margin-top:4em">
         ${%Contacting the License Server} <span id="progress">...</span>
       </h1>
-      <form action="done" method="POST" name="doneForm">
+      <form action="../done" method="POST" name="doneForm" id="doneForm">
         <input id="licenseKey" type="hidden" name="licenseKey" value=""/>
         <!-- this should be filled by script -->
         <input id="cert" type="hidden" name="cert" value=""/>
@@ -22,14 +22,17 @@
       <script>
         <![CDATA[
         function setLicenseKey(pk, cert, message) {
-          document.doneForm.licenseKey.value = pk;
-          document.doneForm.cert.value = cert;
-          document.doneForm.message.value = message;
-          document.doneForm.submit();
+          $$('licenseKey').value = pk;
+          $$('cert').value = cert;
+          $$('message').value = message;
+          buildFormTree($$('doneForm'));
+          $$('doneForm').submit();
         }
+
+        Behaviour.addLoadEvent(function() {
+          loadScript('${it.registrationURL}');
+        })
         ]]>
-      </script>
-      <script src="${urlAndPayload}">
       </script>
     </l:main-panel>
   </l:layout>

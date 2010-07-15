@@ -1,3 +1,4 @@
+<?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
   <l:layout title="${%Registering your ICHCI server}">
@@ -8,20 +9,19 @@
     <l:main-panel>
       <table border="0">
         <j:choose>
-          <j:when test="${verified}">
+          <j:when test="${it.isValid()}">
             <h1 style="margin-top:4em">
-              ${%Thank you for Registration} (${%License Expires:} ${expiry}).
+              ${%thankYou(it.license.expirationDate)}
             </h1>
-            <p style="color:grey">
-              ${%Enjoy your }<a href="${rootUrl}">${%ICHCI Server}</a>.
+            <p style="color:gray">
+              <j:out value="${%enjoy(rootURL)}"/>
             </p>
           </j:when>
           <j:otherwise>
             <div class="error">
-              ${%License server encountered an error:}
-              <f:textbox value="${message}" readonly="true"/>
+              ${%License server encountered an error:} ${it.message}
               <p>
-                <a href="${rootUrl}">Retry</a> with valid information, or contact
+                <a href="${rootURL}/">Retry</a> with valid information, or contact
                 <a href="mailto:info@infradna.com">us</a>
                 with above details.
               </p>

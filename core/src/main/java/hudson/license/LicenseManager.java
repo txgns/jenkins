@@ -43,25 +43,18 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
 
     private transient License parsed;
 
-    private final long expires;
+    private long expires;
 
     public LicenseManager() {
         try {
             XmlFile xml = getConfigFile();
             if (xml.exists())
                 xml.unmarshal(this);
-            parse();
+            if (key!=null || certificate!=null) // no key set yet. no point in parsing the license.
+                parse();
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Failed to read the existing license",e);
         }
-        expires = parsed!=null ? parsed.getExpirationDate() : System.currentTimeMillis();
-    }
-
-    public LicenseManager(String key, String certificate) throws IOException, GeneralSecurityException {
-        this.key = key;
-        this.certificate = certificate;
-        parsed = new License(key, certificate);
-        expires = parsed.getExpirationDate();
     }
 
     public String getKey() {
@@ -119,11 +112,16 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
     }
 
     public HttpResponse doConfigSubmit(StaplerRequest req) throws ServletException, IOException {
-        this.key = req.getSubmittedForm().getString("key");
-        this.certificate = req.getSubmittedForm().getString("certificate");
+        setLicense(req.getSubmittedForm().getString("key"),
+                   req.getSubmittedForm().getString("certificate"));
+        return HttpResponses.redirectToContextRoot(); // send the user back to the top page
+    }
+
+    public void setLicense(String key, String certificate) throws ServletException, IOException {
+        this.key = key;
+        this.certificate = certificate;
         save();
         parse();
-        return HttpResponses.redirectToContextRoot(); // send the user back to the top page
     }
 
     public void save() throws IOException {
@@ -131,9 +129,11 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
     }
 
     private void parse() throws IOException {
+        parsed = null;
+        expires = 0;
         try {
-            parsed = null;
             parsed = new License(key, certificate);
+            expires = parsed.getExpirationDate();
         } catch (Exception e) {
             throw new IOException(e);
         }
@@ -176,6 +176,7 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
         int d = getRemainingDays();
         if (d<0)
             s += " (Expired)";
+        else
         if (d<60)
             s += " ("+d+" more days)";
         return s;
@@ -202,6 +203,10 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
      */
     public static String getHudsonIdHash() {
         return Util.getDigestOf(Hudson.getInstance().getSecretKey());
+    }
+
+    public static LicenseManager getInstance() {
+        return all().get(LicenseManager.class);
     }
 
     private static final Logger LOGGER = Logger.getLogger(LicenseManager.class.getName());
