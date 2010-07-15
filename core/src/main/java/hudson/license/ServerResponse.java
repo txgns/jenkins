@@ -21,9 +21,13 @@ public class ServerResponse {
 
     @DataBoundConstructor
     public ServerResponse(String licenseKey, String cert, String message) throws IOException {
-        this.licenseKey = licenseKey;
-        this.cert = cert;
-        this.message = Util.fixEmpty(new String(Base64.decode(message.toCharArray()),"UTF-8"));
+        this.licenseKey = base64decode(licenseKey);
+        this.cert = base64decode(cert);
+        this.message = Util.fixEmpty(base64decode(message));
+    }
+
+    private String base64decode(String s) throws IOException {
+        return new String(Base64.decode(s.toCharArray()),"UTF-8");
     }
 
     /**
