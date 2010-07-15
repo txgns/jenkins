@@ -20,7 +20,9 @@ import java.security.cert.TrustAnchor;
 import java.security.cert.X509Certificate;
 import java.security.spec.RSAPrivateKeySpec;
 import java.security.spec.RSAPublicKeySpec;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -126,6 +128,10 @@ public final class License {
      */
     public long getExpirationDate() {
         return expirationDate;
+    }
+
+    public String getExpirationDateString() {
+        return SimpleDateFormat.getDateInstance().format(new Date(expirationDate));
     }
 
     public String getCustomerName() {

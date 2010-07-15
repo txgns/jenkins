@@ -11,7 +11,7 @@
         <j:choose>
           <j:when test="${it.isValid()}">
             <h1 style="margin-top:4em">
-              ${%thankYou(it.license.expirationDate)}
+              ${%thankYou(it.license.expirationDateString)}
             </h1>
             <p style="color:gray">
               <j:out value="${%enjoy(rootURL)}"/>
