@@ -20,7 +20,7 @@ cat debian/debian/changelog ) > debian/changelog.tmp
 mv debian/changelog.tmp debian/debian/changelog
 
 # build the debian package
-sudo apt-get install -y devscripts || true
+sudo apt-get install -y devscripts debhelper || true
 cp $war debian/hudson.war
 cd debian
 debuild -us -uc -B
