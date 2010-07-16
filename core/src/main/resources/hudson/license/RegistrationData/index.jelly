@@ -2,6 +2,7 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
   <st:statusCode value="503" />
+  <st:header name="X-Hudson-Reload" value="force" /><!-- this forces the script in the "Hudson is getting ready to work..." page to reload -->
   <l:layout title="${%Registering your ICHCI server}">
     <l:header>
       <!--meta http-equiv="refresh" content="5" /-->
