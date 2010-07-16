@@ -30,7 +30,7 @@ rsync ../hudson_${ver}_all.deb www-data@download.infradna.com:~/download.infradn
 # see http://wiki.debian.org/SecureApt for more details
 mkdir binary > /dev/null 2>&1 || true
 mv ../hudson_${ver}_all.deb binary
-sudo apt-get install apt-utilshu	
+sudo apt-get install apt-utils
 apt-ftparchive packages binary | tee binary/Packages | gzip -9c > binary/Packages.gz
 apt-ftparchive contents binary | gzip -9c > binary/Contents.gz
 apt-ftparchive -c debian/release.conf release  binary > binary/Release
