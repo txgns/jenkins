@@ -26,6 +26,7 @@ public class RegistrationData extends AbstractDescribableImpl<RegistrationData> 
     public String email;
     public String company;
     public String password;
+    public String passwordAgain;
     public boolean subscribe = true;
 
     public String key;
@@ -43,7 +44,11 @@ public class RegistrationData extends AbstractDescribableImpl<RegistrationData> 
     }
 
     public ServerResponse getManualLicense() throws IOException {
-        return new ServerResponse(key,cert,null);
+        return new ServerResponse(base64encode(key), base64encode(cert), base64encode(""));
+    }
+
+    private static String base64encode(String s) {
+        return new String(Base64.encode(s.getBytes()));
     }
 
     private JSONObject toRegistrationData() {
@@ -74,10 +79,12 @@ public class RegistrationData extends AbstractDescribableImpl<RegistrationData> 
         request.bindJSON(this, request.getSubmittedForm().getJSONObject("method"));
 
         try {
+            message = null;
             getDescriptor().doCheckEmail(email);
             getDescriptor().doCheckPassword(password);
             getDescriptor().doCheckCompany(company);
-            message = null;
+            if (!password.equals(passwordAgain))
+                message = "Passwords don't match";
         } catch (FormValidation e) {
             // TODO: improve the core so that we can get the message out here
             message = "Correct the input and retry";
@@ -93,6 +100,7 @@ public class RegistrationData extends AbstractDescribableImpl<RegistrationData> 
             try {
                 ServerResponse rsp = getManualLicense();
                 rsp.save();
+                request.getServletContext().setAttribute("app", Hudson.getInstance());
                 request.getView(rsp,"index").forward(request,response);
                 return;
             } catch (Exception e) {

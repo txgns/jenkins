@@ -31,6 +31,9 @@
           <f:entry title="${%Password}" field="password">
             <f:password />
           </f:entry>
+          <f:entry title="${%Verify Password}" field="passwordAgain">
+            <f:password />
+          </f:entry>
           <f:entry title="${%Company or Organization}" field="company">
             <f:textbox />
           </f:entry>
@@ -42,10 +45,10 @@
           <f:entry title="${%Hudson Instance ID}" field="hudsonIdHash">
             <f:textbox readonly="true" value="${it.hudsonIdHash}"/>
           </f:entry>
-          <f:entry field="licenseKey" title="${%License Key}">
+          <f:entry field="key" title="${%License Key}">
             <f:textarea />
           </f:entry>
-          <f:entry field="certificate" title="${%License Certificate}">
+          <f:entry field="cert" title="${%License Certificate}">
             <f:textarea />
           </f:entry>
         </f:radioBlock>
