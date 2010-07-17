@@ -65,4 +65,12 @@ for arch in rpm opensuse; do
   done
 done
 
+# generate the permalink redirection
+cat > target/.htaccess << EOF
+Redirect /ichci/latest/hudson.war        http://download.infradna.com/ichci/war/$id/hudson-war-$id.war
+Redirect /ichci/latest/debian/hudson.deb http://download.infradna.com/ichci/debian/binary/hudson_$id_all.deb
+Redirect /ichci/latest/redhat/hudson.rpm http://download.infradna.com/ichci/rpm/RPMS/noarch/hudson-$id-1.1.noarch.rpm
+EOF
+scp target/.htaccess www-data@infradna.com:/var/www/infradna.com/ichci/latest/.htaccess
+
 echo success
