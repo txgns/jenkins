@@ -9,7 +9,14 @@
               <img src="${imagesURL}/32x32/shield.gif" alt=""/>
             </td>
             <td style="vertical-align: middle; font-weight: bold; font-size: 1.2em;  color: white;">
-              <st:out value="Your license expires in ${it.remainingDays} days. Do you want to renew?"/>
+              <j:choose>
+                <j:when test="${it.remainingDays lt 0}">
+                  Your license has expired. Do you want to renew?
+                </j:when>
+                <j:otherwise>
+                  Your license expires in ${it.remainingDays} days. Do you want to renew?
+                </j:otherwise>
+              </j:choose>
             </td>
             <td style="vertical-align: middle; text-align: right; white-space:nowrap;">
               <form method="post" action="${rootURL}/${it.url}/act" name="${it.id}">
