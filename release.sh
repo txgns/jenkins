@@ -58,7 +58,7 @@ for arch in rpm opensuse; do
     ./rpm-sign $(cat ~/.gpg.passphrase) $rpm
   done
   createrepo $arch
-  gpg -a --detach-sign --yes --no-use-agent --passphrase-file ~/.gpg.passphrase $arch/repodata/repomd.xml
+  gpg -a --detach-sign --yes --no-use-agent --batch --no-tty --passphrase-file ~/.gpg.passphrase $arch/repodata/repomd.xml
   cp infradna.com.key $arch/repodata/repomd.xml.key
   for dir in RPMS repodata; do
     rsync -avz --delete $arch/$dir/ www-data@download.infradna.com:~/download.infradna.com/ichci/$arch/$dir
