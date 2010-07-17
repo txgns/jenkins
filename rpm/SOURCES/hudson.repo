@@ -1,4 +1,4 @@
 [hudson]
 name=Hudson
-baseurl=http://download.infradna.com/ichci/redhat/
+baseurl=http://download.infradna.com/ichci/rpm/
 gpgcheck=1
