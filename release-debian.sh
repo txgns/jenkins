@@ -37,6 +37,6 @@ apt-ftparchive -c debian/release.conf release  binary > binary/Release
 # sign the release file
 rm binary/Release.gpg || true
 gpg --no-use-agent --batch --no-tty --passphrase-file ~/.gpg.passphrase -abs -o binary/Release.gpg binary/Release
-rsync binary/Packages.gz binary/Release binary/Release.gpg binary/Contents.gz www-data@download.infradna.com:~/download.infradna.com/ichci/debian
+rsync binary/Packages.gz binary/Release binary/Release.gpg binary/Contents.gz www-data@download.infradna.com:~/download.infradna.com/ichci/debian/binary
 
 
