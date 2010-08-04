@@ -157,8 +157,10 @@ public class Shell extends CommandInterpreter {
 
         @Override
         public boolean configure(StaplerRequest req, JSONObject data) {
-            setShell(req.getParameter("shell"));
-            return true;
+            // Do we need to enable it for any user user?
+//            setShell(req.getParameter("shell"));
+//            return true;
+            return false;
         }
 
         /**
