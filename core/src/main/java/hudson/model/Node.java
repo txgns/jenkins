@@ -140,7 +140,7 @@ public abstract class Node extends AbstractModelObject implements Describable<No
      *      this method can return null if there's no {@link Computer} object for this node,
      *      such as when this node has no executors at all.
      */
-    public final Computer toComputer() {
+    public /*final*/ Computer toComputer() {
         return Hudson.getInstance().getComputer(this);
     }
 

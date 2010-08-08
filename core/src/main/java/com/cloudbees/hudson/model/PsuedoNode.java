@@ -28,6 +28,8 @@ import java.util.logging.Logger;
  */
 public class PsuedoNode extends Node {
 
+    private PsuedoComputer computer = new PsuedoComputer(this);
+    
     /**
      * Translate absolute paths on the slave to absolute paths on the master.
      */
@@ -45,6 +47,21 @@ public class PsuedoNode extends Node {
             return null;
         }
 
+    }
+    
+    @Override
+    public Computer toComputer() {
+        return computer;
+    }
+
+    @Override
+    public DescribableList<NodeProperty<?>, NodePropertyDescriptor> getNodeProperties() {
+        return Hudson.getInstance().getNodeProperties(); // find git, other tools on the master
+    }
+
+    @Override
+    public int getNumExecutors() {
+        return -1;  // just to get past Computer constructor
     }
 
     @Override
@@ -85,16 +102,6 @@ public class PsuedoNode extends Node {
 
     @Override
     public String getNodeName() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public DescribableList<NodeProperty<?>, NodePropertyDescriptor> getNodeProperties() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int getNumExecutors() {
         throw new UnsupportedOperationException();
     }
 
