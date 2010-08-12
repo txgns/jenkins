@@ -21,7 +21,11 @@
   --%>
 
 <%@page contentType="text/html; charset=UTF-8" language="java" session="true" %>
+<html>
+<body>
 <h3>Forbidden</h3>
+</body>
+</html>
 <%
     response.sendError(HttpServletResponse.SC_FORBIDDEN, "ABCDE");
 %>
