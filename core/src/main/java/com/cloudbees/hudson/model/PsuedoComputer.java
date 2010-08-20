@@ -1,6 +1,7 @@
 package com.cloudbees.hudson.model;
 
 import hudson.model.Computer;
+import hudson.model.Hudson.MasterComputer;
 import hudson.remoting.VirtualChannel;
 import hudson.slaves.RetentionStrategy;
 
@@ -38,7 +39,7 @@ public class PsuedoComputer extends Computer {
 
     @Override
     public VirtualChannel getChannel() {
-        throw new UnsupportedOperationException();
+        return MasterComputer.localChannel;
     }
 
     @Override
