@@ -35,6 +35,24 @@ THE SOFTWARE.
       <j:set var="instance" value="${it}" />
       <j:set var="descriptor" value="${instance.descriptor}" />
 
+
+      <input  name="_.numExecutors" value="0"  type="hidden"/>
+        <input name="retry_count" value="5" type="hidden"/>
+      <input name="quiet_period" value="5"  type="hidden"/>
+        <div name="hudson-scm-CVSSCM">
+            <input name="_.cvspassFile" value=" "  type="hidden"/>
+            <input  name="_.cvsExe" value=" "  type="hidden"/>
+        </div>
+        <div name="hudson-tasks-Mailer">
+            <input name="_.smtpServer" value="" class="setting-input" type="hidden"/>
+            <input name="_.defaultSuffix" value="" type="hidden"/>
+            <input name="_.adminAddress" value=""  type="hidden"/>
+            <input default="" name="_.url" value=""  type="hidden"/>
+            <input name="_.useSsl" value="false" type="hidden"/>
+            <input name="_.smtpPort" value=""  type="hidden"/>
+            <input name="_.charset" value="UTF-8"  type="hidden"/>
+        </div>
+
       <!--<f:entry title="${%Home directory}" help="/help/system-config/homeDirectory.html">-->
         <!--${it.rootDir}-->
       <!--</f:entry>-->

@@ -160,7 +160,9 @@ public class Shell extends CommandInterpreter {
             // Do we need to enable it for any user user?
 //            setShell(req.getParameter("shell"));
 //            return true;
-            return false;
+
+            //Return true so that hudson thinks everything is ok with configuration
+            return true;
         }
 
         /**
