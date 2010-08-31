@@ -28,7 +28,9 @@ THE SOFTWARE.
       <l:task icon="images/24x24/document.gif" href="systemProperties" title="${%System Properties}" />
       <l:task icon="images/24x24/document.gif" href="envVars" title="${%Environment Variables}" />
       <l:task icon="images/24x24/document.gif" href="threads" title="${%Thread Dump}" />
-      <!--<l:task icon="images/24x24/notepad.gif" href="script" title="${%Script Console}" />-->
+      <j:if test="${h.getSystemProperty('enable-groovy-console')!=null &amp;&amp; h.getSystemProperty('enable-groovy-console')=='true'}">
+        <l:task icon="images/24x24/notepad.gif" href="script" title="${%Script Console}" />
+      </j:if>
     </l:tasks>
   </l:side-panel>
 </j:jelly>
