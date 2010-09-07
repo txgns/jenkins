@@ -113,6 +113,22 @@ THE SOFTWARE.
         <!-- Sample Security Constraint -->
         <web-resource-collection>
 
+            <!-- This public resources will not require SSO, identity will not be available to them -->
+            <web-resource-name>public-resources</web-resource-name>
+
+            <url-pattern>/people/api/json</url-pattern>
+
+            <http-method>HEAD</http-method>
+            <http-method>GET</http-method>
+            <http-method>POST</http-method>
+            <http-method>PUT</http-method>
+            <http-method>DELETE</http-method>
+
+        </web-resource-collection>
+      </security-constraint>  
+        <security-constraint>
+        <web-resource-collection>
+
             <!-- We're going to protect this resource and make it available only to users in "role1". -->
             <web-resource-name>Hudson</web-resource-name>
 
