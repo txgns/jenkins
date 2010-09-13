@@ -1,7 +1,9 @@
+#Ignore all dot files
+.*
 
-.classpath
-.project
-.settings
+#except .gitignore
+!.gitignore
 target/
-.metadata
-*~
+*.iml
+*.ipr
+*.iws

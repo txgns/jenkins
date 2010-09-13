@@ -35,162 +35,70 @@ THE SOFTWARE.
       <j:set var="instance" value="${it}" />
       <j:set var="descriptor" value="${instance.descriptor}" />
 
+      <f:entry title="${%Home directory}" help="/help/system-config/homeDirectory.html">
+        ${it.rootDir}
+      </f:entry>
+      <f:entry title="${%Quiet period}" help="/help/project-config/quietPeriod.html">
+        <f:textbox clazz="number" name="quiet_period" value="${it.quietPeriod}"/>
+      </f:entry>
+      <f:entry title="${%SCM checkout retry count}" help="/help/project-config/scmCheckoutRetryCount.html">
+        <f:textbox clazz="number" name="retry_count" value="${it.scmCheckoutRetryCount}"/>
+      </f:entry>
 
-      <input  name="_.numExecutors" value="0"  type="hidden"/>
-        <input name="retry_count" value="5" type="hidden"/>
-      <input name="quiet_period" value="5"  type="hidden"/>
-        <div name="hudson-scm-CVSSCM">
-            <input name="_.cvspassFile" value=" "  type="hidden"/>
-            <input  name="_.cvsExe" value=" "  type="hidden"/>
-        </div>
-        <div name="hudson-tasks-Mailer">
-            <input name="_.smtpServer" value="" class="setting-input" type="hidden"/>
-            <input name="_.defaultSuffix" value="" type="hidden"/>
-            <input name="_.adminAddress" value=""  type="hidden"/>
-            <input default="" name="_.url" value=""  type="hidden"/>
-            <input name="_.useSsl" value="false" type="hidden"/>
-            <input name="_.smtpPort" value=""  type="hidden"/>
-            <input name="_.charset" value="UTF-8"  type="hidden"/>
-        </div>
+      <j:if test="${size(it.views) gt 1}">
+        <f:entry title="${%Default view}" help="/help/project-config/defaultView.html">
+          <select class="setting-input" name="primaryView">
+            <j:forEach var="v" items="${it.views}">
+              <f:option value="${v.viewName}" selected="${it.primaryView==v}">
+                ${v.viewName}
+              </f:option>
+            </j:forEach>
+          </select>
+        </f:entry>
+      </j:if>
 
-      <!--<f:entry title="${%Home directory}" help="/help/system-config/homeDirectory.html">-->
-        <!--${it.rootDir}-->
-      <!--</f:entry>-->
-      <!--<f:entry title="${%System Message}" help="/help/system-config/systemMessage.html">-->
-        <!--<f:textarea name="system_message" value="${it.systemMessage}" />-->
-      <!--</f:entry>-->
-      <!--<f:entry title="${%# of executors}" field="numExecutors">-->
-        <!--<f:textbox />-->
-      <!--</f:entry>-->
-      <!--<j:if test="${!empty(it.slaves)}">-->
-        <!--<f:entry title="${%Labels}" field="labelString">-->
-          <!--<f:textbox />-->
-        <!--</f:entry>-->
-        <!--<f:slave-mode name="master.mode" node="${it}" />-->
-      <!--</j:if>-->
-      <!--<f:entry title="${%Quiet period}" help="/help/project-config/quietPeriod.html">-->
-        <!--<f:textbox clazz="number" name="quiet_period" value="${it.quietPeriod}"/>-->
-      <!--</f:entry>-->
-      <!--<f:entry title="${%SCM checkout retry count}" help="/help/project-config/scmCheckoutRetryCount.html">-->
-        <!--<f:textbox clazz="number" name="retry_count" value="${it.scmCheckoutRetryCount}"/>-->
-      <!--</f:entry>-->
-
-      <!--<j:if test="${size(it.views) gt 1}">-->
-        <!--<f:entry title="${%Default view}" help="/help/project-config/defaultView.html">-->
-          <!--<select class="setting-input" name="primaryView">-->
-            <!--<j:forEach var="v" items="${it.views}">-->
-              <!--<f:option value="${v.viewName}" selected="${it.primaryView==v}">-->
-                <!--${v.viewName}-->
-              <!--</f:option>-->
-            <!--</j:forEach>-->
-          <!--</select>-->
-        <!--</f:entry>-->
-      <!--</j:if>-->
-
-      <!--<f:optionalBlock name="use_security" title="${%Enable security}"-->
-                       <!--checked="${it.useSecurity}" help="/help/system-config/enableSecurity.html">-->
-        <!--<f:entry title="${%TCP port for JNLP slave agents}"-->
-            <!--help="/help/system-config/master-slave/slave-agent-port.html">-->
-          <!--<f:radio name="slaveAgentPortType" value="fixed" id="sat.fixed"-->
-                   <!--checked="${it.slaveAgentPort gt 0}" onclick="$('sat.port').disabled=false"/>-->
-          <!--<label for="sat.fixed">${%Fixed}</label> :-->
-          <!--<input type="text" class="number" name="slaveAgentPort" id="sat.port"-->
-             <!--value="${it.slaveAgentPort gt 0 ? it.slaveAgentPort : null}"-->
-             <!--disabled="${it.slaveAgentPort gt 0 ? null : 'true'}"/>-->
-
-          <!--<st:nbsp />-->
-
-          <!--<f:radio name="slaveAgentPortType" value="random" id="sat.random"-->
-                   <!--checked="${it.slaveAgentPort==0}" onclick="$('sat.port').disabled=true" />-->
-          <!--<label for="sat.random">${%Random}</label>-->
-
-          <!--<st:nbsp />-->
-
-          <!--<f:radio name="slaveAgentPortType" value="disable" id="sat.disabled"-->
-                   <!--checked="${it.slaveAgentPort==-1}" onclick="$('sat.port').disabled=true" />-->
-          <!--<label for="sat.disabled">${%Disable}</label>-->
-        <!--</f:entry>-->
-
-        <!--<f:entry title="${%Access Control}">-->
-          <!--<table style="width:100%">-->
-            <!--<f:descriptorRadioList title="${%Security Realm}" varName="realm"-->
-                                   <!--instance="${it.securityRealm}"-->
-                                   <!--descriptors="${h.securityRealmDescriptors}"/>-->
-            <!--<f:descriptorRadioList title="${%Authorization}" varName="authorization"-->
-                                   <!--instance="${it.authorizationStrategy}"-->
-                                   <!--descriptors="${h.authorizationStrategyDescriptors}"/>-->
-          <!--</table>-->
-        <!--</f:entry>-->
-      <!--</f:optionalBlock>-->
-
-      <!--<j:if test="${!empty(h.crumbIssuerDescriptors)}">-->
-	    <!--<f:optionalBlock name="csrf" title="${%Prevent Cross Site Request Forgery exploits}"-->
-	                     <!--checked="${it.useCrumbs}" help="/help/system-config/csrf.html">-->
-	      <!--<f:entry title="${%Crumbs}">-->
-	        <!--<table style="width:100%">-->
-	          <!--<f:descriptorRadioList title="${%Crumb Algorithm}" varName="issuer"-->
-	                                 <!--instance="${it.crumbIssuer}"-->
-	                                 <!--descriptors="${h.crumbIssuerDescriptors}"/>-->
-	        <!--</table>-->
-	      <!--</f:entry>-->
-	    <!--</f:optionalBlock>-->
-      <!--</j:if>-->
-      
-      <!--<f:optionalBlock name="usageStatisticsCollected" checked="${it.usageStatisticsCollected}"-->
-                       <!--title="${%statsBlurb}"-->
-                       <!--help="/help/system-config/usage-statistics.html" />-->
 
         <f:descriptorList title="${%Global properties}"
                           name="globalNodeProperties"
                           descriptors="${h.getNodePropertyDescriptors(it.class)}"
                           instances="${it.globalNodeProperties}" />
 
-      <!-- list config pages from plugins, if any -->
-      <!--<j:forEach var="p" items="${it.pluginManager.plugins}">-->
-        <!--<j:if test="${h.hasView(p.plugin,'config.jelly')}">-->
-          <!--<f:rowSet name="plugin">-->
-            <!--<tr><td>-->
-              <!--<input type="hidden" name="name" value="${p.shortName}"/>-->
-            <!--</td></tr>-->
-            <!--<st:include page="config.jelly" it="${p.plugin}" optional="true"/>-->
-          <!--</f:rowSet>-->
-        <!--</j:if>-->
-      <!--</j:forEach>-->
+       <!--list config pages from plugins, if any-->
+      <j:forEach var="p" items="${it.pluginManager.plugins}">
+        <j:if test="${h.hasView(p.plugin,'config.jelly')}">
+          <f:rowSet name="plugin">
+            <tr><td>
+              <input type="hidden" name="name" value="${p.shortName}"/>
+            </td></tr>
+            <st:include page="config.jelly" it="${p.plugin}" optional="true"/>
+          </f:rowSet>
+        </j:if>
+      </j:forEach>
 
-      <d:taglib uri="local">
-        <!-- display global config pages for the given descriptors -->
-        <d:tag name="globalConfig">
-          <j:invokeStatic var="descriptors" className="${className}" method="all" />
-          <j:forEach var="idx" begin="0" end="${size(descriptors)-1}">
-            <j:set var="descriptor" value="${descriptors[idx]}" />
-            <j:set var="instance" value="${descriptor}" /><!-- this makes the <f:textbox field=.../> work -->
-            <f:rowSet name="${descriptor.jsonSafeClassName}">
-              <st:include page="${descriptor.globalConfigPage}" from="${descriptor}" optional="true"/>
-            </f:rowSet>
-          </j:forEach>
-        </d:tag>
-      </d:taglib>
+          <d:taglib uri="local">
+            <!-- display global config pages for the given descriptors -->
+            <d:tag name="globalConfig">
+              <j:invokeStatic var="descriptors" className="${className}" method="all" />
+              <j:forEach var="idx" begin="0" end="${size(descriptors)-1}">
+                <j:set var="descriptor" value="${descriptors[idx]}" />
+                <j:set var="instance" value="${descriptor}" /><!-- this makes the <f:textbox field=.../> work -->
+                <f:rowSet name="${descriptor.jsonSafeClassName}">
+                  <st:include page="${descriptor.globalConfigPage}" from="${descriptor}" optional="true"/>
+                </f:rowSet>
+              </j:forEach>
+            </d:tag>
+          </d:taglib>
 
-      <!--<local:globalConfig className="hudson.tools.ToolInstallation" />-->
-      <!--<local:globalConfig className="hudson.triggers.Trigger" />-->
-      <!--<local:globalConfig className="hudson.tasks.BuildWrapper" />-->
-      <!--<local:globalConfig className="hudson.tasks.Builder"  />-->
-      <!--<local:globalConfig className="hudson.scm.SCM" />-->
-      <!--<local:globalConfig className="hudson.tasks.Publisher" />-->
-      <!--<local:globalConfig className="hudson.model.JobPropertyDescriptor" />-->
-      <!--<local:globalConfig className="hudson.model.PageDecorator" />-->
+      <local:globalConfig className="hudson.tools.ToolInstallation" />
+      <local:globalConfig className="hudson.triggers.Trigger" />
+      <local:globalConfig className="hudson.tasks.BuildWrapper" />
+      <local:globalConfig className="hudson.tasks.Builder"  />
+      <local:globalConfig className="hudson.scm.SCM" />
+      <local:globalConfig className="hudson.tasks.Publisher" />
+      <local:globalConfig className="hudson.model.JobPropertyDescriptor" />
+      <local:globalConfig className="hudson.model.PageDecorator" />
       <local:globalConfig className="hudson.model.TopLevelItemDescriptor" />
 
-      <!--<j:if test="${!empty(h.getCloudDescriptors())}">-->
-        <!--<f:section title="${%Cloud}">-->
-          <!--<f:block>-->
-            <!--<f:hetero-list name="cloud" hasHeader="true"-->
-                           <!--descriptors="${h.getCloudDescriptors()}"-->
-                           <!--items="${it.clouds}"-->
-                           <!--addCaption="${%Add a new cloud}"/>-->
-          <!--</f:block>-->
-        <!--</f:section>-->
-      <!--</j:if>-->
 
       <f:block>
         <f:submit value="${%Save}" />

@@ -31,6 +31,8 @@ import hudson.diagnosis.OldDataMonitor;
 import hudson.model.listeners.SaveableListener;
 import hudson.util.ReflectionUtils;
 import hudson.util.ReflectionUtils.Parameter;
+import hudson.util.cloudbees.DescriptorFilter;
+import hudson.util.cloudbees.ExtensionFilter;
 import hudson.views.ListViewColumn;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
@@ -133,6 +135,9 @@ public abstract class Descriptor<T extends Describable<T>> implements Saveable {
      * Lazily computed list of properties on {@link #clazz} and on the descriptor itself.
      */
     private transient volatile Map<String, PropertyType> propertyTypes,globalPropertyTypes;
+
+    private transient volatile ExtensionFilter viewFilter;
+
 
     /**
      * Represents a readable property on {@link Describable}.
@@ -570,6 +575,13 @@ public abstract class Descriptor<T extends Describable<T>> implements Saveable {
     }
 
     public String getGlobalConfigPage() {
+        if(viewFilter == null){
+            viewFilter = new DescriptorFilter(Hudson.getInstance().root);
+        }
+        if(viewFilter.canSkip(clazz.getName())){
+            //Do what getViewPage does when a page is not found, that is return non-existent page
+            return "null.jelly";
+        }
         return getViewPage(clazz, "global.jelly");
     }
 

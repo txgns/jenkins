@@ -126,6 +126,7 @@ import hudson.util.VersionNumber;
 import hudson.util.XStream2;
 import hudson.util.Service;
 import hudson.util.IOUtils;
+import hudson.util.cloudbees.DescriptorFilter;
 import hudson.widgets.Widget;
 import net.sf.json.JSONObject;
 import org.acegisecurity.AccessDeniedException;
@@ -2248,6 +2249,115 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
     }
 
 
+
+    public synchronized void doConfigSubmit( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, FormException {
+        BulkChange bc = new BulkChange(this);
+        try {
+            checkPermission(ADMINISTER);
+
+            req.setCharacterEncoding("UTF-8");
+
+            JSONObject json = req.getSubmittedForm();
+            numExecutors = 0;
+            mode = Mode.NORMAL;
+            quietPeriod = json.getInt("quiet_period");
+            primaryView = json.has("primaryView") ? json.getString("primaryView") : getViews().iterator().next().getViewName();
+
+            scmCheckoutRetryCount = json.getInt("retry_count");
+
+            //TODO: Move system message to cloudbees-configure.json
+            //systemMessage = Util.nullify(req.getParameter("system_message"));
+
+            boolean result = true;
+
+            DescriptorFilter filter = new DescriptorFilter(root);
+            for( Descriptor<Builder> d : Builder.all() ){
+                if(filter.canSkip(d.clazz.getName()))
+                    continue;
+                result &= configureDescriptor(req,json,d);
+            }
+
+            for( Descriptor<Publisher> d : Publisher.all() ){
+                if(filter.canSkip(d.clazz.getName()))
+                    continue;
+                result &= configureDescriptor(req,json,d);
+            }
+
+            for( Descriptor<BuildWrapper> d : BuildWrapper.all() )
+                result &= configureDescriptor(req,json,d);
+
+            for( SCMDescriptor scmd : SCM.all() ){
+                if(filter.canSkip(scmd.clazz.getName()))
+                    continue;
+
+                result &= configureDescriptor(req,json,scmd);
+            }
+
+            for( TriggerDescriptor d : Trigger.all() ){
+                if(filter.canSkip(d.clazz.getName()))
+                    continue;
+
+                result &= configureDescriptor(req,json,d);
+            }
+
+            for( JobPropertyDescriptor d : JobPropertyDescriptor.all() ){
+                if(filter.canSkip(d.clazz.getName()))
+                    continue;
+
+                result &= configureDescriptor(req,json,d);
+            }
+
+            for( PageDecorator d : PageDecorator.all() ){
+                if(filter.canSkip(d.clazz.getName()))
+                    continue;
+
+                result &= configureDescriptor(req,json,d);
+            }
+
+            for( Descriptor<CrumbIssuer> d : CrumbIssuer.all() ){
+                if(filter.canSkip(d.clazz.getName()))
+                    continue;
+
+                result &= configureDescriptor(req,json, d);
+            }
+
+            for( ToolDescriptor d : ToolInstallation.all() ){
+                if(filter.canSkip(d.clazz.getName()))
+                    continue;
+
+                result &= configureDescriptor(req,json,d);
+            }
+
+            for( TopLevelItemDescriptor d : TopLevelItemDescriptor.all() ){
+                if(filter.canSkip(d.clazz.getName()))
+                    continue;
+
+                result &= configureDescriptor(req,json,d);
+            }
+            for( JSONObject o : StructuredForm.toList(json,"plugin")){
+                System.out.println("Configuring plugin: "+o.getString("name"));
+                pluginManager.getPlugin(o.getString("name")).getPlugin().configure(req, o);
+            }
+
+            JSONObject np = json.getJSONObject("globalNodeProperties");
+            if (np != null) {
+                globalNodeProperties.rebuild(req, np, NodeProperty.for_(this));
+            }
+
+            version = VERSION;
+
+            save();
+            if(result)
+                rsp.sendRedirect(req.getContextPath()+'/');  // go to the top page
+            else
+                rsp.sendRedirect("configure"); // back to config
+
+        }finally {
+            bc.commit();
+        }
+    }
+
+
 //
 //
 // actions
@@ -2256,7 +2366,7 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
     /**
      * Accepts submission from the configuration page.
      */
-    public synchronized void doConfigSubmit( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, FormException {
+    public synchronized void doConfigSubmit1( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, FormException {
         BulkChange bc = new BulkChange(this);
         try {
             checkPermission(ADMINISTER);
