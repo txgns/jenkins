@@ -73,4 +73,6 @@ Redirect /ichci/latest/redhat/hudson.rpm http://download.infradna.com/ichci/rpm/
 EOF
 scp target/.htaccess www-data@infradna.com:/var/www/infradna.com/ichci/latest/.htaccess
 
+scp $ws/rpm/SOURCES/hudson.repo www-data@infradna.com:/var/www/download.infradna.com/ichci/rpm/
+
 echo success
