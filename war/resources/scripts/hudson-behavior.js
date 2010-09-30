@@ -1895,7 +1895,12 @@ var downloadService = {
 
     download : function(id,url,info, postBack,completionHandler) {
         this.continuations[id] = {postBack:postBack,completionHandler:completionHandler};
-        loadScript(url+"?"+Hash.toQueryString(info));
+        //Handle the case where the updatecenter might be on the local FS. In that case send the post request with no data
+        if(url.indexOf("file:/") == 0){
+            downloadService.post(id, id)
+        }else{
+            loadScript(url+"?"+Hash.toQueryString(info));
+        }
     },
 
     post : function(id,data) {
