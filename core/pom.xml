@@ -28,7 +28,7 @@ THE SOFTWARE.
   <parent>
     <groupId>org.jvnet.hudson.main</groupId>
     <artifactId>pom</artifactId>
-    <version>1.361.2-SNAPSHOT</version>
+    <version>1.361.4-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -177,7 +177,7 @@ THE SOFTWARE.
           <force>true</force><!-- disable staleness check -->
           <factory>org.jvnet.hudson.tools.ExtensionPointListerFactory</factory>
           <options>
-            <option>page=Extension points</option>
+            <!--option>page=Extension points</option> don't update the community page -->
             <option>target=${project.basedir}/target/extension-points.wiki</option>
           </options>
         </configuration>

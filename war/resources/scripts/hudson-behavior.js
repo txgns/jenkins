@@ -1951,7 +1951,7 @@ function applySafeRedirector(url) {
         new Ajax.Request(url, {
             method: "get",
             onFailure: function(rsp) {
-                if(rsp.status==503) {
+                if(rsp.status==503 && rsp.getResponseHeader("X-Hudson-Reload")==null) {
                   // redirect as long as we are still loading
                   window.setTimeout(statusChecker,5000);
                 } else {

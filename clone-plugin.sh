@@ -24,10 +24,11 @@ else
 fi
 git_svn_check
 PLUGIN=$1
-BASE_URL=https://svn.dev.java.net/svn/hudson/trunk/hudson/plugins
+#BASE_URL=https://svn.dev.java.net/svn/hudson/trunk/hudson/plugins
+BASE_URL=file:///Users/deepk/infradna/local/svnmirror/anonsvn/trunk/hudson/plugins
 BIRTH_REV=$(svn log --stop-on-copy $BASE_URL/$PLUGIN | grep ^r|tail -1|sed 's/^r\([1-9][0-9]*\).*/\1/')
 git svn clone -r$BIRTH_REV $BASE_URL/$PLUGIN
 cd $PLUGIN
 git svn fetch
 cd ..
-track-plugin.sh "$PLUGIN" "$BIRTH_REV"
+`dirname $0`/track-plugin.sh "$PLUGIN" "$BIRTH_REV"

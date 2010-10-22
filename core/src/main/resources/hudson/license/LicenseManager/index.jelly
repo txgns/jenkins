@@ -15,11 +15,11 @@ All Rights Reserved
       <j:set var="instance" value="${it}" />
       <j:set var="descriptor" value="${it.descriptor}" />
 
-      <f:entry title="${%Server Key}" field="serverKey">
+      <f:entry title="${%Hudson Instance ID}" field="hudsonIdHash">
         <f:textbox readonly="true" />
       </f:entry>
 
-      <f:entry title="${%License Key}" field="license">
+      <f:entry title="${%License Key}" field="key">
         <f:textarea />
       </f:entry>
 
@@ -28,7 +28,7 @@ All Rights Reserved
       </f:entry>
 
       <f:block>
-        <f:validateButton method="validate" title="Check Validity" with="license,certificate" />
+        <f:validateButton method="validate" title="Check Validity" with="key,certificate" />
       </f:block>
 
       <f:block>

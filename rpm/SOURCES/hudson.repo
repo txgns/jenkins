@@ -1,4 +1,4 @@
 [hudson]
-name=Hudson
-baseurl=http://download.infradna.com/ich/redhat/
+name=InfraDNA's Certified Hudson
+baseurl=http://download.infradna.com/ichci/rpm/
 gpgcheck=1

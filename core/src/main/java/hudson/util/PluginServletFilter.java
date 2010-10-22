@@ -104,6 +104,7 @@ public class PluginServletFilter implements Filter, ExtensionPoint {
         synchronized (LIST)  {
             for (Filter f : LIST)
                 f.destroy();
+            LIST.clear();
         }
     }
 }

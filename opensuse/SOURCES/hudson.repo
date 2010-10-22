@@ -1,7 +1,7 @@
 [hudson]
-name=hudson
+name=InfraDNA's Certified Hudson
 enabled=1
 autorefresh=0
-baseurl=http://download.infradna.com/ich/opensuse/
+baseurl=http://download.infradna.com/ichci/opensuse/
 type=rpm-md
 keeppackages=0

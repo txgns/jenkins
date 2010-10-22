@@ -20,6 +20,7 @@ import java.security.cert.TrustAnchor;
 import java.security.cert.X509Certificate;
 import java.security.spec.RSAPrivateKeySpec;
 import java.security.spec.RSAPublicKeySpec;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
@@ -31,6 +32,16 @@ import java.util.Set;
  * @author Kohsuke Kawaguchi
  */
 public final class License {
+    /**
+     * PEM encoded RSA private key
+     */
+    public final String key;
+
+    /**
+     * PEM encoded X509 certificate
+     */
+    public final String certificate;
+
     private final PrivateKey privateKey;
     private final PublicKey publicKey;
     private final X509Certificate cert;
@@ -39,10 +50,12 @@ public final class License {
     // information parsed from the name
     private int executors;
     private String serverKey;
+    private final long expirationDate;
+    private final String customerName;
 
     License(String key, String certificate) throws GeneralSecurityException, IOException {
-        key = key.trim();
-        certificate = certificate.trim();
+        this.key = key = key.trim();
+        this.certificate = certificate = certificate.trim();
 
         try {
             RSAPrivateKey k = (RSAPrivateKey) PEMDecoder.decode(key.toCharArray(), null);
@@ -83,6 +96,7 @@ public final class License {
             o = o.substring(HEADER.length());
             for (String token : o.split(",")) {
                 int pos = token.indexOf('=');
+                if (pos<0)  throw FormValidation.error("Invalid organization name: "+o);
                 String n = token.substring(0, pos);
                 String v = token.substring(pos+1,token.length());
                 if (n.equals("executors"))
@@ -90,14 +104,16 @@ public final class License {
                 if (n.equals("serverKey"))
                     serverKey = v;
             }
+            expirationDate = cert.getNotAfter().getTime();
+            customerName = name.getCommonName();
         }
 
-        if (!LicenseManager.getServerKey().equals(serverKey))
+        if (!LicenseManager.getHudsonIdHash().equals(serverKey))
             throw FormValidation.error("This license belongs to another server: "+serverKey);
 
         // make sure that it's got the valid trust chain
         Set<TrustAnchor> anchors = new HashSet<TrustAnchor>();
-        X509Certificate ca = (X509Certificate) cf.generateCertificate(getClass().getResourceAsStream("/license-root"));
+        X509Certificate ca = (X509Certificate) cf.generateCertificate(getClass().getResourceAsStream("/infradna-root-cacert.pem"));
         anchors.add(new TrustAnchor(ca,null));
 
         try {
@@ -110,12 +126,16 @@ public final class License {
     /**
      * This license is valid until...
      */
-    public Date getExpirationDate() {
-        return cert.getNotAfter();
+    public long getExpirationDate() {
+        return expirationDate;
     }
 
-    public String getCustomerName() throws IOException {
-        return name.getCommonName();
+    public String getExpirationDateString() {
+        return SimpleDateFormat.getDateInstance().format(new Date(expirationDate));
+    }
+
+    public String getCustomerName() {
+        return customerName;
     }
 
     public int getExecutorsLimit() {

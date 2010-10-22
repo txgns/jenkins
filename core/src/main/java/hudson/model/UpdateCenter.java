@@ -307,7 +307,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
      * Loads the data from the disk into this object.
      */
     public synchronized void load() throws IOException {
-        UpdateSite defaultSite = new UpdateSite("default", config.getUpdateCenterUrl() + "update-center.json");
+        UpdateSite defaultSite = new UpdateSite("ichci", "http://updates.infradna.com/update-center.json");
         XmlFile file = getConfigFile();
         if(file.exists()) {
             try {
@@ -316,8 +316,8 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
                 LOGGER.log(Level.WARNING, "Failed to load "+file, e);
             }
             for (UpdateSite site : sites) {
-                // replace the legacy site with the new site
-                if (site.isLegacyDefault()) {
+                // if this is an overlay to the existing Hudson installation, overwrite the 'default' that points to the Hudson community update center
+                if (site.getId().equals("default")) {
                     sites.remove(site);
                     sites.add(defaultSite);
                     break;
@@ -576,7 +576,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
          *      Absolute URL that ends with '/'.
          */
         public String getUpdateCenterUrl() {
-            return "http://updates.hudson-labs.org/";
+            return "http://updates.infradna.com/";
         }
 
         /**

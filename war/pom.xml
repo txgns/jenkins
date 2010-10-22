@@ -27,7 +27,7 @@ THE SOFTWARE.
   <parent>
     <groupId>org.jvnet.hudson.main</groupId>
     <artifactId>pom</artifactId>
-    <version>1.361.2-SNAPSHOT</version>
+    <version>1.361.4-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   
@@ -157,7 +157,7 @@ THE SOFTWARE.
                   </sequential>
                 </macrodef>
 
-                <resolvePlugin groupId="com.infradna.hudson" artifactId="infradna-backup" version="1.0" />
+                <resolvePlugin groupId="com.infradna.hudson.plugins" artifactId="infradna-backup" version="1.2" />
               </tasks>
             </configuration>
           </execution>

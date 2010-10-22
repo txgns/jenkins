@@ -25,23 +25,13 @@ package hudson;
 
 import com.thoughtworks.xstream.converters.reflection.PureJavaReflectionProvider;
 import com.thoughtworks.xstream.core.JVM;
-import com.sun.jna.Native;
+import hudson.license.LicenseManager;
+import hudson.license.RegistrationHandler;
 import hudson.model.Hudson;
 import hudson.model.User;
 import hudson.triggers.SafeTimerTask;
 import hudson.triggers.Trigger;
-import hudson.util.HudsonIsLoading;
-import hudson.util.IncompatibleServletVersionDetected;
-import hudson.util.IncompatibleVMDetected;
-import hudson.util.InsufficientPermissionDetected;
-import hudson.util.NoHomeDir;
-import hudson.util.RingBufferLogHandler;
-import hudson.util.NoTempDir;
-import hudson.util.IncompatibleAntVersionDetected;
-import hudson.util.HudsonFailedToLoad;
-import hudson.util.ChartUtil;
-import hudson.util.AWTProblem;
-import hudson.util.JNADoublyLoaded;
+import hudson.util.*;
 import org.jvnet.localizer.LocaleProvider;
 import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.StaplerRequest;
@@ -73,7 +63,7 @@ import java.security.Security;
  */
 public final class WebAppMain implements ServletContextListener {
     private final RingBufferLogHandler handler = new RingBufferLogHandler();
-    private static final String APP = "app";
+    public static final String APP = "app";
 
     /**
      * Creates the sole instance of {@link Hudson} and register it to the {@link ServletContext}.
@@ -219,7 +209,13 @@ public final class WebAppMain implements ServletContextListener {
                 @Override
                 public void run() {
                     try {
-                        context.setAttribute(APP,new Hudson(home,context));
+                        Hudson theInstance = new Hudson(home, context);
+                        RegistrationHandler rh = new RegistrationHandler(context);
+                        // is this licenseKey valid for this installation?
+                        if (!LicenseManager.getInstance().isExpired() || Main.isUnitTest)
+                            context.setAttribute(APP, theInstance);
+                        else
+                            context.setAttribute(APP, rh);
 
                         // trigger the loading of changelogs in the background,
                         // but give the system 10 seconds so that the first page
