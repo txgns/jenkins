@@ -1,7 +1,8 @@
 /*
  * The MIT License
  * 
- * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi, Martin Eigenbrodt. Seiji Sogabe
+ * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi,
+ * Martin Eigenbrodt. Seiji Sogabe, Alan Harder
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +41,9 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -80,8 +83,8 @@ import java.awt.image.BufferedImage;
  */
 public final class DependencyGraph implements Comparator<AbstractProject> {
 
-    private Map<AbstractProject, List<Dependency>> forward = new HashMap<AbstractProject, List<Dependency>>();
-    private Map<AbstractProject, List<Dependency>> backward = new HashMap<AbstractProject, List<Dependency>>();
+    private Map<AbstractProject, List<DependencyGroup>> forward = new HashMap<AbstractProject, List<DependencyGroup>>();
+    private Map<AbstractProject, List<DependencyGroup>> backward = new HashMap<AbstractProject, List<DependencyGroup>>();
 
     private boolean built;
 
@@ -133,8 +136,8 @@ public final class DependencyGraph implements Comparator<AbstractProject> {
         return get(backward,p,true);
     }
 
-    private List<AbstractProject> get(Map<AbstractProject, List<Dependency>> map, AbstractProject src, boolean up) {
-        List<Dependency> v = map.get(src);
+    private List<AbstractProject> get(Map<AbstractProject, List<DependencyGroup>> map, AbstractProject src, boolean up) {
+        List<DependencyGroup> v = map.get(src);
         if(v==null) return Collections.emptyList();
         List<AbstractProject> result = new ArrayList<AbstractProject>(v.size());
         for (Dependency d : v) result.add(up ? d.getUpstreamProject() : d.getDownstreamProject());
@@ -155,9 +158,9 @@ public final class DependencyGraph implements Comparator<AbstractProject> {
         return get(backward,p);
     }
 
-    private List<Dependency> get(Map<AbstractProject, List<Dependency>> map, AbstractProject src) {
-        List<Dependency> v = map.get(src);
-        if(v!=null) return v;
+    private List<Dependency> get(Map<AbstractProject, List<DependencyGroup>> map, AbstractProject src) {
+        List<DependencyGroup> v = map.get(src);
+        if(v!=null) return Collections.<Dependency>unmodifiableList(v);
         else        return Collections.emptyList();
     }
 
@@ -175,8 +178,6 @@ public final class DependencyGraph implements Comparator<AbstractProject> {
     public void addDependency(Dependency dep) {
         if(built)
             throw new IllegalStateException();
-        if(dep.getUpstreamProject()==dep.getDownstreamProject())
-            return;
         add(forward,dep.getUpstreamProject(),dep);
         add(backward,dep.getDownstreamProject(),dep);
     }
@@ -249,7 +250,7 @@ public final class DependencyGraph implements Comparator<AbstractProject> {
         return getTransitive(forward,src,false);
     }
 
-    private Set<AbstractProject> getTransitive(Map<AbstractProject, List<Dependency>> direction, AbstractProject src, boolean up) {
+    private Set<AbstractProject> getTransitive(Map<AbstractProject, List<DependencyGroup>> direction, AbstractProject src, boolean up) {
         Set<AbstractProject> visited = new HashSet<AbstractProject>();
         Stack<AbstractProject> queue = new Stack<AbstractProject>();
 
@@ -267,18 +268,26 @@ public final class DependencyGraph implements Comparator<AbstractProject> {
         return visited;
     }
 
-    private void add(Map<AbstractProject, List<Dependency>> map, AbstractProject key, Dependency dep) {
-        List<Dependency> set = map.get(key);
+    private void add(Map<AbstractProject, List<DependencyGroup>> map, AbstractProject key, Dependency dep) {
+        List<DependencyGroup> set = map.get(key);
         if(set==null) {
-            set = new ArrayList<Dependency>();
+            set = new ArrayList<DependencyGroup>();
             map.put(key,set);
         }
-        if(!set.contains(dep))
-            set.add(dep);
+        for (ListIterator<DependencyGroup> it = set.listIterator(); it.hasNext();) {
+            DependencyGroup d = it.next();
+            // Check for existing edge that connects the same two projects:
+            if (d.getUpstreamProject()==dep.getUpstreamProject() && d.getDownstreamProject()==dep.getDownstreamProject()) {
+                d.add(dep);
+                return;
+            }
+        }
+        // Otherwise add to list:
+        set.add(new DependencyGroup(dep));
     }
 
-    private Map<AbstractProject, List<Dependency>> finalize(Map<AbstractProject, List<Dependency>> m) {
-        for (Entry<AbstractProject, List<Dependency>> e : m.entrySet()) {
+    private Map<AbstractProject, List<DependencyGroup>> finalize(Map<AbstractProject, List<DependencyGroup>> m) {
+        for (Entry<AbstractProject, List<DependencyGroup>> e : m.entrySet()) {
             Collections.sort( e.getValue(), NAME_COMPARATOR );
             e.setValue( Collections.unmodifiableList(e.getValue()) );
         }
@@ -434,26 +443,58 @@ public final class DependencyGraph implements Comparator<AbstractProject> {
             return true;
         }
 
+        /**
+         * Does this method point to itself?
+         */
+        public boolean pointsItself() {
+            return upstream==downstream;
+        }
+
         @Override
         public boolean equals(Object obj) {
             if (obj == null) return false;
             if (getClass() != obj.getClass()) return false;
 
-            final Dependency other = (Dependency) obj;
-            if (this.upstream != other.upstream && (this.upstream == null || !this.upstream.equals(other.upstream))) 
-                return false;
-            if (this.downstream != other.downstream && (this.downstream == null || !this.downstream.equals(other.downstream))) 
-                return false;
-
-            return true;
+            final Dependency that = (Dependency) obj;
+            return this.upstream == that.upstream || this.downstream == that.downstream;
         }
 
         @Override
         public int hashCode() {
             int hash = 7;
-            hash = 23 * hash + (this.upstream != null ? this.upstream.hashCode() : 0);
-            hash = 23 * hash + (this.downstream != null ? this.downstream.hashCode() : 0);
+            hash = 23 * hash + this.upstream.hashCode();
+            hash = 23 * hash + this.downstream.hashCode();
             return hash;
+        }
+    }
+
+    /**
+     * Collect multiple dependencies between the same two projects.
+     */
+    private static class DependencyGroup extends Dependency {
+        private Set<Dependency> group = new LinkedHashSet<Dependency>();
+
+        DependencyGroup(Dependency first) {
+            super(first.getUpstreamProject(), first.getDownstreamProject());
+            group.add(first);
+        }
+
+        void add(Dependency next) {
+            group.add(next);
+        }
+
+        @Override
+        public boolean shouldTriggerBuild(AbstractBuild build, TaskListener listener,
+                                          List<Action> actions) {
+            List<Action> check = new ArrayList<Action>();
+            for (Dependency d : group) {
+                if (d.shouldTriggerBuild(build, listener, check)) {
+                    actions.addAll(check);
+                    return true;
+                } else
+                    check.clear();
+            }
+            return false;
         }
     }
 }

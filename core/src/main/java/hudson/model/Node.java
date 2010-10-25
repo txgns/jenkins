@@ -1,7 +1,8 @@
 /*
  * The MIT License
  * 
- * Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Seiji Sogabe, Stephen Connolly
+ * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi,
+ * Seiji Sogabe, Stephen Connolly
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,10 +24,14 @@
  */
 package hudson.model;
 
+import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 import hudson.ExtensionPoint;
 import hudson.FilePath;
 import hudson.FileSystemProvisioner;
 import hudson.Launcher;
+import hudson.model.Queue.Task;
+import hudson.model.labels.LabelAtom;
+import hudson.model.queue.CauseOfBlockage;
 import hudson.node_monitors.NodeMonitor;
 import hudson.remoting.VirtualChannel;
 import hudson.security.ACL;
@@ -163,9 +168,9 @@ public abstract class Node extends AbstractModelObject implements Describable<No
     /**
      * Return the possibly empty tag cloud for the labels of this node.
      */
-    public TagCloud<Label> getLabelCloud() {
-        return new TagCloud<Label>(getAssignedLabels(),new WeightFunction<Label>() {
-            public float weight(Label item) {
+    public TagCloud<LabelAtom> getLabelCloud() {
+        return new TagCloud<LabelAtom>(getAssignedLabels(),new WeightFunction<LabelAtom>() {
+            public float weight(LabelAtom item) {
                 return item.getTiedJobs().size();
             }
         });
@@ -181,8 +186,8 @@ public abstract class Node extends AbstractModelObject implements Describable<No
      * connecting.
      */
     @Exported
-    public Set<Label> getAssignedLabels() {
-         Set<Label> r = Label.parse(getLabelString());
+    public Set<LabelAtom> getAssignedLabels() {
+        Set<LabelAtom> r = Label.parse(getLabelString());
         r.add(getSelfLabel());
         r.addAll(getDynamicLabels());
         return Collections.unmodifiableSet(r);
@@ -194,12 +199,14 @@ public abstract class Node extends AbstractModelObject implements Describable<No
      * the results into Labels.
      * @return HashSet<Label>.
      */
-    private final HashSet<Label> getDynamicLabels() {
-        HashSet<Label> result = new HashSet<Label>();
-        for (LabelFinder labeler : LabelFinder.all())
+    private HashSet<LabelAtom> getDynamicLabels() {
+        HashSet<LabelAtom> result = new HashSet<LabelAtom>();
+        for (LabelFinder labeler : LabelFinder.all()) {
             // Filter out any bad(null) results from plugins
+            // for compatibility reasons, findLabels may return LabelExpression and not atom.
             for (Label label : labeler.findLabels(this))
-                if (label != null) result.add(label);
+                if (label instanceof LabelAtom) result.add((LabelAtom)label);
+        }
         return result;
     }
 
@@ -217,8 +224,38 @@ public abstract class Node extends AbstractModelObject implements Describable<No
     /**
      * Gets the special label that represents this node itself.
      */
-    public Label getSelfLabel() {
-        return Label.get(getNodeName());
+    @WithBridgeMethods(Label.class)
+    public LabelAtom getSelfLabel() {
+        return LabelAtom.get(getNodeName());
+    }
+
+    /**
+     * Called by the {@link Queue} to determine whether or not this node can
+     * take the given task. The default checks include whether or not this node
+     * is part of the task's assigned label, whether this node is in
+     * {@link Mode#EXCLUSIVE} mode if it is not in the task's assigned label,
+     * and whether or not any of this node's {@link NodeProperty}s say that the
+     * task cannot be run.
+     *
+     * @since 1.360
+     */
+    public CauseOfBlockage canTake(Task task) {
+        Label l = task.getAssignedLabel();
+        if(l!=null && !l.contains(this))
+            return CauseOfBlockage.fromMessage(Messages._Node_LabelMissing(getNodeName(),l));   // the task needs to be executed on label that this node doesn't have.
+
+        if(l==null && getMode()== Mode.EXCLUSIVE)
+            return CauseOfBlockage.fromMessage(Messages._Node_BecauseNodeIsReserved(getNodeName()));   // this node is reserved for tasks that are tied to it
+
+        // Check each NodeProperty to see whether they object to this node
+        // taking the task
+        for (NodeProperty prop: getNodeProperties()) {
+            CauseOfBlockage c = prop.canTake(task);
+            if (c!=null)    return c;
+        }
+
+        // Looks like we can take the task
+        return null;
     }
 
     /**

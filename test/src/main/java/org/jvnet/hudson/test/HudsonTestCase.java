@@ -28,9 +28,6 @@ import com.gargoylesoftware.htmlunit.javascript.HtmlUnitContextFactory;
 import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLHttpRequest;
 import hudson.*;
 import hudson.Util;
-import hudson.model.AbstractBuild;
-import hudson.model.Computer;
-import hudson.model.Executor;
 import hudson.model.*;
 import hudson.model.Queue.Executable;
 import hudson.security.AbstractPasswordBasedSecurityRealm;
@@ -57,6 +54,7 @@ import hudson.tasks.Ant;
 import hudson.tasks.Ant.AntInstallation;
 import hudson.tasks.Maven.MavenInstallation;
 import hudson.util.PersistedList;
+import hudson.util.ReflectionUtils;
 import hudson.util.StreamTaskListener;
 import hudson.util.jna.GNUCLibrary;
 
@@ -67,6 +65,7 @@ import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Field;
 import java.net.MalformedURLException;
@@ -75,6 +74,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Arrays;
@@ -111,6 +111,8 @@ import org.jvnet.hudson.test.recipes.Recipe;
 import org.jvnet.hudson.test.recipes.Recipe.Runner;
 import org.jvnet.hudson.test.recipes.WithPlugin;
 import org.jvnet.hudson.test.rhino.JavaScriptDebugger;
+import org.kohsuke.stapler.ClassDescriptor;
+import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.Dispatcher;
 import org.kohsuke.stapler.MetaClass;
 import org.kohsuke.stapler.MetaClassLoader;
@@ -140,6 +142,9 @@ import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebRequestSettings;
 import com.gargoylesoftware.htmlunit.xml.XmlPage;
 import com.gargoylesoftware.htmlunit.html.*;
+import hudson.maven.MavenBuild;
+import hudson.maven.MavenModule;
+import hudson.maven.MavenModuleSetBuild;
 import hudson.slaves.ComputerListener;
 import java.util.concurrent.CountDownLatch;
 
@@ -386,7 +391,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
      * Returns the older default Maven, while still allowing specification of other bundled Mavens.
      */
     protected MavenInstallation configureDefaultMaven() throws Exception {
-	return configureDefaultMaven("maven-2.0.7", MavenInstallation.MAVEN_20);
+	return configureDefaultMaven("apache-maven-2.2.1", MavenInstallation.MAVEN_20);
     }
     
     /**
@@ -432,14 +437,14 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
             LOGGER.warning("Extracting a copy of Ant bundled in the test harness. " +
                     "To avoid a performance hit, set the environment variable ANT_HOME to point to an  Ant installation.");
             FilePath ant = hudson.getRootPath().createTempFile("ant", "zip");
-            ant.copyFrom(HudsonTestCase.class.getClassLoader().getResource("apache-ant-1.7.1-bin.zip"));
+            ant.copyFrom(HudsonTestCase.class.getClassLoader().getResource("apache-ant-1.8.1-bin.zip"));
             File antHome = createTmpDir();
             ant.unzip(new FilePath(antHome));
             // TODO: switch to tar that preserves file permissions more easily
             if(!Functions.isWindows())
-                GNUCLibrary.LIBC.chmod(new File(antHome,"apache-ant-1.7.1/bin/ant").getPath(),0755);
+                GNUCLibrary.LIBC.chmod(new File(antHome,"apache-ant-1.8.1/bin/ant").getPath(),0755);
 
-            antInstallation = new AntInstallation("default", new File(antHome,"apache-ant-1.7.1").getAbsolutePath(),NO_PROPERTIES);
+            antInstallation = new AntInstallation("default", new File(antHome,"apache-ant-1.8.1").getAbsolutePath(),NO_PROPERTIES);
         }
 		hudson.getDescriptorByType(Ant.DescriptorImpl.class).setInstallations(antInstallation);
 		return antInstallation;
@@ -502,7 +507,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     }
 
     public DumbSlave createSlave() throws Exception {
-        return createSlave(null);
+        return createSlave("",null);
     }
 
     /**
@@ -544,17 +549,25 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         return new URL("http://localhost:"+localPort+contextPath+"/");
     }
 
+    public DumbSlave createSlave(EnvVars env) throws Exception {
+        return createSlave("",env);
+    }
+
+    public DumbSlave createSlave(Label l, EnvVars env) throws Exception {
+        return createSlave(l==null ? null : l.getExpression(), env);
+    }
+
     /**
      * Creates a slave with certain additional environment variables
      */
-    public DumbSlave createSlave(Label l, EnvVars env) throws Exception {
+    public DumbSlave createSlave(String labels, EnvVars env) throws Exception {
         synchronized (hudson) {
             // this synchronization block is so that we don't end up adding the same slave name more than once.
 
             int sz = hudson.getNodes().size();
 
             DumbSlave slave = new DumbSlave("slave" + sz, "dummy",
-    				createTmpDir().getPath(), "1", Mode.NORMAL, l==null?"":l.getName(), createComputerLauncher(env), RetentionStrategy.NOOP, Collections.EMPTY_LIST);
+    				createTmpDir().getPath(), "1", Mode.NORMAL, labels==null?"":labels, createComputerLauncher(env), RetentionStrategy.NOOP, Collections.EMPTY_LIST);
     		hudson.addNode(slave);
     		return slave;
     	}
@@ -658,7 +671,8 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     /**
      * Loads a configuration page and submits it without any modifications, to
      * perform a round-trip configuration test.
-     * @see http://wiki.hudson-ci.org/display/HUDSON/Unit+Test#UnitTest-Configurationroundtriptesting
+     * <p>
+     * See http://wiki.hudson-ci.org/display/HUDSON/Unit+Test#UnitTest-Configurationroundtriptesting
      */
     protected <P extends Job> P configRoundtrip(P job) throws Exception {
         submit(createWebClient().getPage(job,"configure").getFormByName("config"));
@@ -731,6 +745,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     }
 
     public <R extends Run> R assertBuildStatusSuccess(Future<? extends R> r) throws Exception {
+        assertNotNull("build was actually scheduled", r);
         return assertBuildStatusSuccess(r.get());
     }
 
@@ -739,9 +754,15 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     }
 
     /**
-     * Should be unnecessary, but otherwise IntelliJ complains.
+     * Avoids need for cumbersome {@code this.<J,R>buildAndAssertSuccess(...)} type hints under JDK 7 javac (and supposedly also IntelliJ).
      */
     public FreeStyleBuild buildAndAssertSuccess(FreeStyleProject job) throws Exception {
+        return assertBuildStatusSuccess(job.scheduleBuild2(0));
+    }
+    public MavenModuleSetBuild buildAndAssertSuccess(MavenModuleSet job) throws Exception {
+        return assertBuildStatusSuccess(job.scheduleBuild2(0));
+    }
+    public MavenBuild buildAndAssertSuccess(MavenModule job) throws Exception {
         return assertBuildStatusSuccess(job.scheduleBuild2(0));
     }
 
@@ -990,6 +1011,65 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     }
 
     /**
+     * Works like {@link #assertEqualBeans(Object, Object, String)} but figure out the properties
+     * via {@link DataBoundConstructor}
+     */
+    public void assertEqualDataBoundBeans(Object lhs, Object rhs) throws Exception {
+        if (lhs==null && rhs==null)     return;
+        if (lhs==null)      fail("lhs is null while rhs="+rhs);
+        if (rhs==null)      fail("rhs is null while lhs="+rhs);
+        
+        Constructor<?> lc = findDataBoundConstructor(lhs.getClass());
+        Constructor<?> rc = findDataBoundConstructor(rhs.getClass());
+        assertEquals("Data bound constructor mismatch. Different type?",lc,rc);
+
+        List<String> primitiveProperties = new ArrayList<String>();
+
+        String[] names = ClassDescriptor.loadParameterNames(lc);
+        Class<?>[] types = lc.getParameterTypes();
+        assertEquals(names.length,types.length);
+        for (int i=0; i<types.length; i++) {
+            Object lv = ReflectionUtils.getPublicProperty(lhs, names[i]);
+            Object rv = ReflectionUtils.getPublicProperty(rhs, names[i]);
+
+            if (Iterable.class.isAssignableFrom(types[i])) {
+                Iterable lcol = (Iterable) lv;
+                Iterable rcol = (Iterable) rv;
+                Iterator ltr,rtr;
+                for (ltr=lcol.iterator(), rtr=rcol.iterator(); ltr.hasNext() && rtr.hasNext();) {
+                    Object litem = ltr.next();
+                    Object ritem = rtr.next();
+
+                    if (findDataBoundConstructor(litem.getClass())!=null) {
+                        assertEqualDataBoundBeans(litem,ritem);
+                    } else {
+                        assertEquals(litem,ritem);
+                    }
+                }
+                assertFalse("collection size mismatch between "+lhs+" and "+rhs, ltr.hasNext() ^ rtr.hasNext());
+            } else
+            if (findDataBoundConstructor(types[i])!=null) {
+                // recurse into nested databound objects
+                assertEqualDataBoundBeans(lv,rv);
+            } else {
+                primitiveProperties.add(names[i]);
+            }
+        }
+
+        // compare shallow primitive properties
+        if (!primitiveProperties.isEmpty())
+            assertEqualBeans(lhs,rhs,Util.join(primitiveProperties,","));
+    }
+
+    private Constructor<?> findDataBoundConstructor(Class<?> c) {
+        for (Constructor<?> m : c.getConstructors()) {
+            if (m.getAnnotation(DataBoundConstructor.class)!=null)
+                return m;
+        }
+        return null;
+    }
+
+    /**
      * Gets the descriptor instance of the current Hudson by its type.
      */
     protected <T extends Descriptor<?>> T get(Class<T> d) {
@@ -1027,7 +1107,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         int streak = 0;
 
         while (true) {
-            Thread.sleep(100);
+            Thread.sleep(10);
             if (isSomethingHappening())
                 streak=0;
             else
@@ -1551,5 +1631,9 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         // during the unit test, predictably releasing classloader is important to avoid
         // file descriptor leak.
         ClassicPluginStrategy.useAntClassLoader = true;
+
+        // DNS multicast support takes up a lot of time during tests, so just disable it altogether
+        // this also prevents tests from falsely advertising Hudson
+        DNSMultiCast.disabled = true;
     }
 }

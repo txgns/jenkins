@@ -20,6 +20,8 @@ public class DNSMultiCast implements Closeable {
     private JmDNS jmdns;
 
     public DNSMultiCast(Hudson hudson) {
+        if (disabled)   return; // escape hatch
+        
         try {
             this.jmdns = JmDNS.create();
 
@@ -27,7 +29,11 @@ public class DNSMultiCast implements Closeable {
             String rootURL = hudson.getRootUrl();
             if (rootURL!=null)
                 props.put("url", rootURL);
-            props.put("version",Hudson.getVersion().toString());
+            try {
+                props.put("version",String.valueOf(Hudson.getVersion()));
+            } catch (IllegalArgumentException e) {
+                // failed to parse the version number
+            }
 
             TcpSlaveAgentListener tal = hudson.getTcpSlaveAgentListener();
             if (tal!=null)
@@ -41,8 +47,13 @@ public class DNSMultiCast implements Closeable {
     }
 
     public void close() {
-        jmdns.close();
+        if (jmdns!=null) {
+            jmdns.close();
+            jmdns = null;
+        }
     }
 
     private static final Logger LOGGER = Logger.getLogger(DNSMultiCast.class.getName());
+
+    public static boolean disabled = Boolean.getBoolean(DNSMultiCast.class.getName()+".disabled");
 }

@@ -44,7 +44,6 @@ import java.io.OutputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.List;
-import java.util.logging.Logger;
 
 /**
  * Used to expose remote access API for ".../api/"
@@ -146,13 +145,13 @@ public class Api extends AbstractModelObject {
         OutputStream o = rsp.getCompressedOutputStream(req);
         try {
             if(result instanceof CharacterData) {
-                rsp.setContentType("text/plain");
+                rsp.setContentType("text/plain;charset=UTF-8");
                 o.write(((CharacterData)result).getText().getBytes("UTF-8"));
                 return;
             }
 
             if(result instanceof String || result instanceof Number || result instanceof Boolean) {
-                rsp.setContentType("text/plain");
+                rsp.setContentType("text/plain;charset=UTF-8");
                 o.write(result.toString().getBytes("UTF-8"));
                 return;
             }

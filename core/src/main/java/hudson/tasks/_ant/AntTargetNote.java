@@ -32,7 +32,7 @@ import hudson.console.ConsoleAnnotator;
 import java.util.regex.Pattern;
 
 /**
- * Marks the log line "TARGET:" that And uses to mark the beginning of the new target.
+ * Marks the log line "TARGET:" that Ant uses to mark the beginning of the new target.
  * @sine 1.349
  */
 public final class AntTargetNote extends ConsoleNote {
@@ -44,7 +44,7 @@ public final class AntTargetNote extends ConsoleNote {
         // still under development. too early to put into production
         if (!ENABLED)   return null;
 
-        MarkupText.SubText t = text.findToken(Pattern.compile("^[^:]+(?=:)"));
+        MarkupText.SubText t = text.findToken(Pattern.compile(".*(?=:)"));
         if (t!=null)
             t.addMarkup(0,t.length(),"<b class=ant-target>","</b>");
         return null;
@@ -57,5 +57,5 @@ public final class AntTargetNote extends ConsoleNote {
         }
     }
 
-    public static boolean ENABLED = Boolean.getBoolean(AntTargetNote.class.getName()+".enabled");
+    public static boolean ENABLED = !Boolean.getBoolean(AntTargetNote.class.getName()+".disabled");
 }

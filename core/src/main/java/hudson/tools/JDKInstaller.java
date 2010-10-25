@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 2009, Sun Microsystems, Inc.
+ * Copyright (c) 2009-2010, Sun Microsystems, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ import hudson.FilePath;
 import hudson.ProxyConfiguration;
 import hudson.Util;
 import hudson.Launcher;
+import hudson.model.Hudson;
 import hudson.util.FormValidation;
 import hudson.util.ArgumentListBuilder;
 import hudson.util.IOException2;
@@ -38,6 +39,7 @@ import hudson.model.DownloadService.Downloadable;
 import hudson.model.JDK;
 import static hudson.tools.JDKInstaller.Preference.*;
 import hudson.remoting.Callable;
+import org.jvnet.robust_http_client.RetryableHttpStream;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.apache.commons.io.IOUtils;
@@ -48,6 +50,8 @@ import org.dom4j.Document;
 import org.dom4j.Element;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.InputStreamReader;
@@ -107,8 +111,10 @@ public class JDKInstaller extends ToolInstaller {
             }
             // already installed?
             FilePath marker = expectedLocation.child(".installedByHudson");
-            if(marker.exists())
+            if (marker.exists() && marker.readToString().equals(id)) {
                 return expectedLocation;
+            }
+            expectedLocation.deleteRecursive();
             expectedLocation.mkdirs();
 
             Platform p = Platform.of(node);
@@ -123,7 +129,7 @@ public class JDKInstaller extends ToolInstaller {
 
             // successfully installed
             file.delete();
-            marker.touch(System.currentTimeMillis());
+            marker.write(id, null);
 
         } catch (DetectionFailedException e) {
             out.println("JDK installation skipped: "+e.getMessage());
@@ -156,9 +162,11 @@ public class JDKInstaller extends ToolInstaller {
         case LINUX:
         case SOLARIS:
             fs.chmod(jdkBundle,0755);
-            if(launcher.launch().cmds(jdkBundle,"-noregister")
-                .stdin(new ByteArrayInputStream("yes".getBytes())).stdout(out).pwd(expectedLocation).join()!=0)
-                throw new AbortException(Messages.JDKInstaller_FailedToInstallJDK());
+            int exit = launcher.launch().cmds(jdkBundle, "-noregister")
+                    .stdin(new ByteArrayInputStream("yes".getBytes())).stdout(out)
+                    .pwd(new FilePath(launcher.getChannel(), expectedLocation)).join();
+            if (exit != 0)
+                throw new AbortException(Messages.JDKInstaller_FailedToInstallJDK(exit));
 
             // JDK creates its own sub-directory, so pull them up
             List<String> paths = fs.listSubDirectories(expectedLocation);
@@ -203,8 +211,10 @@ public class JDKInstaller extends ToolInstaller {
             // Oh Windows, oh windows, why do you have to be so difficult?
             args.add("/v/qn REBOOT=Suppress INSTALLDIR=\\\""+ expectedLocation +"\\\" /L \\\""+logFile+"\\\"");
 
-            if(launcher.launch().cmds(args).stdout(out).pwd(expectedLocation).join()!=0) {
-                out.println(Messages.JDKInstaller_FailedToInstallJDK());
+            int r = launcher.launch().cmds(args).stdout(out)
+                    .pwd(new FilePath(launcher.getChannel(), expectedLocation)).join();
+            if (r != 0) {
+                out.println(Messages.JDKInstaller_FailedToInstallJDK(r));
                 // log file is in UTF-16
                 InputStreamReader in = new InputStreamReader(fs.read(logFile), "UTF-16");
                 try {
@@ -272,12 +282,39 @@ public class JDKInstaller extends ToolInstaller {
     }
 
     /**
+     * This is where we locally cache this JDK.
+     */
+    private File getLocalCacheFile(Platform platform, CPU cpu) {
+        return new File(Hudson.getInstance().getRootDir(),"cache/jdks/"+platform+"/"+cpu+"/"+id);
+    }
+
+    /**
      * Performs a license click through and obtains the one-time URL for downloading bits.
      */
     public URL locate(TaskListener log, Platform platform, CPU cpu) throws IOException {
+        File cache = getLocalCacheFile(platform, cpu);
+        if (cache.exists()) return cache.toURL();
+
         HttpURLConnection con = locateStage1(platform, cpu);
         String page = IOUtils.toString(con.getInputStream());
-        return locateStage2(log, page);
+        URL src = locateStage2(log, page);
+
+        // download to a temporary file and rename it in to handle concurrency and failure correctly,
+        File tmp = new File(cache.getPath()+".tmp");
+        tmp.getParentFile().mkdirs();
+        try {
+            FileOutputStream out = new FileOutputStream(tmp);
+            try {
+                IOUtils.copy(new RetryableHttpStream(src), out);
+            } finally {
+                out.close();
+            }
+
+            tmp.renameTo(cache);
+            return cache.toURL();
+        } finally {
+            tmp.delete();
+        }
     }
 
     @SuppressWarnings("unchecked") // dom4j doesn't do generics, apparently... should probably switch to XOM

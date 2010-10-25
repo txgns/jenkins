@@ -43,7 +43,6 @@ import org.kohsuke.stapler.StaplerRequest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -120,6 +119,9 @@ public class DescribableList<T extends Describable<T>, D extends Descriptor<T>> 
         }
     }
 
+    /**
+     * Creates a detached map from the current snapshot of the data, keyed from a descriptor to an instance.
+     */
     @SuppressWarnings("unchecked")
     public Map<D,T> toMap() {
         return (Map)Descriptor.toMap(data);
@@ -135,7 +137,7 @@ public class DescribableList<T extends Describable<T>, D extends Descriptor<T>> 
      * @param json
      *      Structured form data that includes the data for nested descriptor list.
      */
-    public void rebuild(StaplerRequest req, JSONObject json, List<? extends Descriptor<T>> descriptors) throws FormException {
+    public void rebuild(StaplerRequest req, JSONObject json, List<? extends Descriptor<T>> descriptors) throws FormException, IOException {
         List<T> newList = new ArrayList<T>();
 
         for (Descriptor<T> d : descriptors) {
@@ -146,14 +148,14 @@ public class DescribableList<T extends Describable<T>, D extends Descriptor<T>> 
             }
         }
 
-        data.replaceBy(newList);
+        replaceBy(newList);
     }
 
     /**
      * @deprecated as of 1.271
      *      Use {@link #rebuild(StaplerRequest, JSONObject, List)} instead.
      */
-    public void rebuild(StaplerRequest req, JSONObject json, List<? extends Descriptor<T>> descriptors, String prefix) throws FormException {
+    public void rebuild(StaplerRequest req, JSONObject json, List<? extends Descriptor<T>> descriptors, String prefix) throws FormException, IOException {
         rebuild(req,json,descriptors);
     }
 
@@ -165,8 +167,8 @@ public class DescribableList<T extends Describable<T>, D extends Descriptor<T>> 
      * is allowed to create multiple instances of the same descriptor. Order is also
      * significant.
      */
-    public void rebuildHetero(StaplerRequest req, JSONObject formData, Collection<? extends Descriptor<T>> descriptors, String key) throws FormException {
-        data.replaceBy(Descriptor.newInstancesFromHeteroList(req,formData,key,descriptors));
+    public void rebuildHetero(StaplerRequest req, JSONObject formData, Collection<? extends Descriptor<T>> descriptors, String key) throws FormException, IOException {
+        replaceBy(Descriptor.newInstancesFromHeteroList(req,formData,key,descriptors));
     }
 
     /**

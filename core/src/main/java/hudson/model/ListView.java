@@ -1,8 +1,9 @@
 /*
  * The MIT License
  * 
- * Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Erik Ramfelt, Seiji Sogabe, Martin Eigenbrodt
- * 
+ * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi,
+ * Erik Ramfelt, Seiji Sogabe, Martin Eigenbrodt, Alan Harder
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
@@ -34,6 +35,7 @@ import hudson.views.LastSuccessColumn;
 import hudson.views.ListViewColumn;
 import hudson.views.ListViewColumnDescriptor;
 import hudson.views.StatusColumn;
+import hudson.views.ViewJobFilter;
 import hudson.views.WeatherColumn;
 import hudson.model.Descriptor.FormException;
 import hudson.util.CaseInsensitiveComparator;
@@ -69,6 +71,8 @@ public class ListView extends View implements Saveable {
      * List of job names. This is what gets serialized.
      */
     /*package*/ final SortedSet<String> jobNames = new TreeSet<String>(CaseInsensitiveComparator.INSTANCE);
+    
+    private DescribableList<ViewJobFilter, Descriptor<ViewJobFilter>> jobFilters;
 
     private DescribableList<ListViewColumn, Descriptor<ListViewColumn>> columns;
 
@@ -82,10 +86,17 @@ public class ListView extends View implements Saveable {
      */
     private transient Pattern includePattern;
 
+    /**
+     * Filter by enabled/disabled status of jobs.
+     * Null for no filter, true for enabled-only, false for disabled-only.
+     */
+    private Boolean statusFilter;
+
     @DataBoundConstructor
     public ListView(String name) {
         super(name);
         initColumns();
+        initJobFilters();
     }
 
     public ListView(String name, ViewGroup owner) {
@@ -104,6 +115,7 @@ public class ListView extends View implements Saveable {
         if(includeRegex!=null)
             includePattern = Pattern.compile(includeRegex);
         initColumns();
+        initJobFilters();
         return this;
     }
 
@@ -146,6 +158,13 @@ public class ListView extends View implements Saveable {
 
         columns = new DescribableList<ListViewColumn, Descriptor<ListViewColumn>>(this,r);
     }
+    protected void initJobFilters() {
+        if (jobFilters != null) {
+            return;
+        }
+        ArrayList<ViewJobFilter> r = new ArrayList<ViewJobFilter>();
+        jobFilters = new DescribableList<ViewJobFilter, Descriptor<ViewJobFilter>>(this,r);
+    }
 
     /**
      * Returns the transient {@link Action}s associated with the top page.
@@ -156,7 +175,16 @@ public class ListView extends View implements Saveable {
     public List<Action> getActions() {
         return Hudson.getInstance().getActions();
     }
-
+    
+    /**
+     * Used to determine if we want to display the Add button.
+     */
+    public boolean hasJobFilterExtensions() {
+    	return !ViewJobFilter.all().isEmpty();
+    }
+    public Iterable<ViewJobFilter> getJobFilters() {
+    	return jobFilters;
+    }
     public Iterable<ListViewColumn> getColumns() {
         return columns;
     }
@@ -183,9 +211,19 @@ public class ListView extends View implements Saveable {
         List<TopLevelItem> items = new ArrayList<TopLevelItem>(names.size());
         for (String n : names) {
             TopLevelItem item = Hudson.getInstance().getItem(n);
-            if(item!=null)
+            // Add if no status filter or filter matches enabled/disabled status:
+            if(item!=null && (statusFilter == null || !(item instanceof AbstractProject)
+                              || ((AbstractProject)item).isDisabled() ^ statusFilter))
                 items.add(item);
         }
+
+        // check the filters
+        Iterable<ViewJobFilter> jobFilters = getJobFilters();
+        List<TopLevelItem> allItems = Hudson.getInstance().getItems();
+    	for (ViewJobFilter jobFilter: jobFilters) {
+    		items = jobFilter.filter(items, allItems, this);
+    	}
+        
         return items;
     }
 
@@ -195,6 +233,14 @@ public class ListView extends View implements Saveable {
 
     public String getIncludeRegex() {
         return includeRegex;
+    }
+
+    /**
+     * Filter by enabled/disabled status of jobs.
+     * Null for no filter, true for enabled-only, false for disabled-only.
+     */
+    public Boolean getStatusFilter() {
+        return statusFilter;
     }
 
     public Item doCreateItem(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
@@ -218,7 +264,7 @@ public class ListView extends View implements Saveable {
      * Load view-specific properties here.
      */
     @Override
-    protected void submit(StaplerRequest req) throws ServletException, FormException {
+    protected void submit(StaplerRequest req) throws ServletException, FormException, IOException {
         jobNames.clear();
         for (TopLevelItem item : Hudson.getInstance().getItems()) {
             if(req.getParameter(item.getName())!=null)
@@ -240,6 +286,14 @@ public class ListView extends View implements Saveable {
             columns = new DescribableList<ListViewColumn,Descriptor<ListViewColumn>>(Saveable.NOOP);
         }
         columns.rebuildHetero(req, req.getSubmittedForm(), ListViewColumn.all(), "columns");
+        
+        if (jobFilters == null) {
+        	jobFilters = new DescribableList<ViewJobFilter,Descriptor<ViewJobFilter>>(Saveable.NOOP);
+        }
+        jobFilters.rebuildHetero(req, req.getSubmittedForm(), ViewJobFilter.all(), "jobFilters");
+
+        String filter = Util.fixEmpty(req.getParameter("statusFilter"));
+        statusFilter = filter != null ? "1".equals(filter) : null;
     }
 
     @Extension

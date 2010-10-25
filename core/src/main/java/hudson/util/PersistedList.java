@@ -47,7 +47,7 @@ import java.util.List;
  */
 public class PersistedList<T> implements Iterable<T> {
     protected final CopyOnWriteList<T> data = new CopyOnWriteList<T>();
-    protected Saveable owner;
+    protected Saveable owner = Saveable.NOOP;
 
     protected PersistedList() {
     }
@@ -77,6 +77,10 @@ public class PersistedList<T> implements Iterable<T> {
     public void replaceBy(Collection<? extends T> col) throws IOException {
         data.replaceBy(col);
         onModified();
+    }
+
+    public T get(int index) {
+        return data.get(index);
     }
 
     public <U extends T> U get(Class<U> type) {

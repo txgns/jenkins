@@ -38,7 +38,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Arrays;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static java.util.logging.Level.WARNING;
@@ -149,6 +148,10 @@ public class CopyOnWriteList<E> implements Iterable<E> {
 
     public void addAllTo(Collection<? super E> dst) {
         dst.addAll(core);
+    }
+
+    public E get(int index) {
+        return core.get(index);
     }
 
     public boolean isEmpty() {
