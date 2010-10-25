@@ -22,4 +22,4 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -->
 
-<a style="color:inherit" href="${rootURL}/${app.securityRealm.loginUrl}?from=${if (request.session.attribute('from')!=null) request.session.getAttribute('from');  else if (request.getParameter('from')!=null) request.getParameter('from'); else if (request.requestURI=='/loginError' || request.requestURI=='/login') '/'; else request.requestURI;} "><b>${%login}</b></a>
+<a href="${app.securityRealm.loginUrl}"><b>${%login}</b></a>

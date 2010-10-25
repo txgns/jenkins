@@ -36,7 +36,7 @@ THE SOFTWARE.
     <j:otherwise>
       <!-- Offer anonymous users the chance to login, then they can create jobs. -->
       <j:if test="${h.isAnonymous()}">
-        ${%login(rootURL, app.securityRealm.loginUrl, request.requestURI)}
+        ${%login(app.securityRealm.loginUrl, request.requestURI)}
         <!-- Also offer them the opportunity to sign-up for an account, if this facility is available. -->
         <j:if test="${app.securityRealm.allowsSignup()}">
           ${%signup}
