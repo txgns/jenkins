@@ -73,6 +73,7 @@ import hudson.remoting.LocalChannel;
 import hudson.remoting.VirtualChannel;
 import hudson.scm.RepositoryBrowser;
 import hudson.scm.SCM;
+import hudson.scm.SCMDescriptor;
 import hudson.search.CollectionSearchIndex;
 import hudson.search.SearchIndexBuilder;
 import hudson.security.ACL;
@@ -101,6 +102,8 @@ import hudson.tasks.BuildWrapper;
 import hudson.tasks.Builder;
 import hudson.tasks.Mailer;
 import hudson.tasks.Publisher;
+import hudson.tools.ToolDescriptor;
+import hudson.tools.ToolInstallation;
 import hudson.triggers.Trigger;
 import hudson.triggers.TriggerDescriptor;
 import hudson.util.AdministrativeError;
@@ -2392,7 +2395,7 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
                 result &= configureDescriptor(req,json, d);
             }
 
-            for( ToolDescriptor d : ToolInstallation.all() ){
+            for( ToolDescriptor<?> d : ToolInstallation.all() ){
                 if(filter.canSkip(d.clazz.getName()))
                     continue;
 
