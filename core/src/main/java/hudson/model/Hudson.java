@@ -2341,27 +2341,6 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
 
             JSONObject json = req.getSubmittedForm();
 
-            // keep using 'useSecurity' field as the main configuration setting
-            // until we get the new security implementation working
-            // useSecurity = null;
-            if (json.has("use_security")) {
-                useSecurity = true;
-                JSONObject security = json.getJSONObject("use_security");
-                setSecurityRealm(SecurityRealm.all().newInstanceFromRadioList(security,"realm"));
-                setAuthorizationStrategy(AuthorizationStrategy.all().newInstanceFromRadioList(security, "authorization"));
-            } else {
-                useSecurity = null;
-                setSecurityRealm(SecurityRealm.NO_AUTHENTICATION);
-                authorizationStrategy = AuthorizationStrategy.UNSECURED;
-            }
-
-            if (json.has("csrf")) {
-            	JSONObject csrf = json.getJSONObject("csrf");
-                setCrumbIssuer(CrumbIssuer.all().newInstanceFromRadioList(csrf, "issuer"));
-            } else {
-            	setCrumbIssuer(null);
-            }
-
             if (json.has("viewsTabBar")) {
                 viewsTabBar = req.bindJSON(ViewsTabBar.class,json.getJSONObject("viewsTabBar"));
             } else {
@@ -2375,54 +2354,15 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
             }
 
             primaryView = json.has("primaryView") ? json.getString("primaryView") : getViews().iterator().next().getViewName();
-            
-            noUsageStatistics = json.has("usageStatisticsCollected") ? null : true;
 
-            {
-                String v = req.getParameter("slaveAgentPortType");
-                if(!isUseSecurity() || v==null || v.equals("random"))
-                    slaveAgentPort = 0;
-                else
-                if(v.equals("disable"))
-                    slaveAgentPort = -1;
-                else {
-                    try {
-                        slaveAgentPort = Integer.parseInt(req.getParameter("slaveAgentPort"));
-                    } catch (NumberFormatException e) {
-                        throw new FormException(Messages.Hudson_BadPortNumber(req.getParameter("slaveAgentPort")),"slaveAgentPort");
-                    }
-                }
-
-                // relaunch the agent
-                if(tcpSlaveAgentListener==null) {
-                    if(slaveAgentPort!=-1)
-                        tcpSlaveAgentListener = new TcpSlaveAgentListener(slaveAgentPort);
-                } else {
-                    if(tcpSlaveAgentListener.configuredPort!=slaveAgentPort) {
-                        tcpSlaveAgentListener.shutdown();
-                        tcpSlaveAgentListener = null;
-                        if(slaveAgentPort!=-1)
-                            tcpSlaveAgentListener = new TcpSlaveAgentListener(slaveAgentPort);
-                    }
-                }
-            }
-
-            numExecutors = json.getInt("numExecutors");
-            if(req.hasParameter("master.mode"))
-                mode = Mode.valueOf(req.getParameter("master.mode"));
-            else
-                mode = Mode.NORMAL;
-
-            label = json.optString("labelString","");
+            numExecutors = 0;
 
             quietPeriod = json.getInt("quiet_period");
             
             scmCheckoutRetryCount = json.getInt("retry_count");
 
-            systemMessage = Util.nullify(req.getParameter("system_message"));
-
-            jdks.clear();
-            jdks.addAll(req.bindJSONToList(JDK.class,json.get("jdks")));
+            //TODO: Move system message to cloudbees-configure.json
+            //systemMessage = Util.nullify(req.getParameter("system_message"));
 
             boolean result = true;
             for( Descriptor<?> d : Functions.getSortedDescriptorsForGlobalConfig() )
@@ -2430,8 +2370,6 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
 
             for( JSONObject o : StructuredForm.toList(json,"plugin"))
                 pluginManager.getPlugin(o.getString("name")).getPlugin().configure(req, o);
-
-            clouds.rebuildHetero(req,json, Cloud.all(), "cloud");
 
             JSONObject np = json.getJSONObject("globalNodeProperties");
             if (np != null) {

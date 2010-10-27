@@ -67,6 +67,7 @@ import hudson.util.Iterators;
 import hudson.scm.SCM;
 import hudson.scm.SCMDescriptor;
 import hudson.util.Secret;
+import hudson.util.cloudbees.DescriptorFilter;
 import hudson.views.MyViewsTabBar;
 import hudson.views.ViewsTabBar;
 import org.acegisecurity.providers.anonymous.AnonymousAuthenticationToken;
@@ -696,9 +697,10 @@ public class Functions {
      * so that descriptors of similar types come nearby.
      */
     public static Collection<Descriptor> getSortedDescriptorsForGlobalConfig() {
+        DescriptorFilter filter = new DescriptorFilter(Hudson.getInstance().root);
         Map<String,Descriptor> r = new TreeMap<String, Descriptor>();
         for (Descriptor<?> d : Hudson.getInstance().getExtensionList(Descriptor.class)) {
-            if (d.getGlobalConfigPage()==null)  continue;
+            if (d.getGlobalConfigPage()==null || filter.canSkip(d.clazz.getName()))  continue;
             r.put(buildSuperclassHierarchy(d.clazz, new StringBuilder()).toString(),d);
         }
         return r.values();
