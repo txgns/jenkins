@@ -22,9 +22,9 @@ public class DescriptorFilter extends ExtensionFilter{
 
     @Override
     public  boolean canSkip(String extension) {
-        logger.info("Checking "+ extension);
+        logger.fine("Checking "+ extension);
         if(configObject != null && configObject.contains(extension)){
-            logger.info("Skipping "+ extension);
+            logger.fine("Skipping "+ extension);
             return true;
         }
         return false;
