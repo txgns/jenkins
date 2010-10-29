@@ -25,13 +25,11 @@ package hudson;
 
 import hudson.model.TaskListener;
 import hudson.model.Hudson;
-import static hudson.model.Hudson.isWindows;
 import static hudson.util.jna.GNUCLibrary.LIBC;
 
 import hudson.util.IOException2;
 import hudson.util.QuotedStringTokenizer;
 import hudson.util.VariableResolver;
-import hudson.util.jna.GNUCLibrary;
 import hudson.Proc.LocalProc;
 import hudson.os.PosixAPI;
 import org.apache.tools.ant.BuildException;
@@ -82,6 +80,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 import java.util.SimpleTimeZone;
 import java.util.StringTokenizer;
@@ -398,8 +397,13 @@ public class Util {
      *      null if no such message is available.
      */
     public static String getWin32ErrorMessage(int n) {
-        ResourceBundle rb = ResourceBundle.getBundle("/hudson/win32errors");
-        return rb.getString("error"+n);
+        try {
+            ResourceBundle rb = ResourceBundle.getBundle("/hudson/win32errors");
+            return rb.getString("error"+n);
+        } catch (MissingResourceException e) {
+            LOGGER.log(Level.WARNING,"Failed to find resource bundle",e);
+            return null;
+        }
     }
 
     /**
@@ -574,7 +578,7 @@ public class Util {
     }
 
     /**
-     * Returns a human readable text of the time duration.
+     * Returns a human readable text of the time duration, for example "3 minutes 40 seconds".
      * This version should be used for representing a duration of some activity (like build)
      *
      * @param duration
@@ -888,6 +892,10 @@ public class Util {
         return l!=null ? l : Collections.<T>emptySet();
     }
 
+    public static <T> Iterable<T> fixNull(Iterable<T> l) {
+        return l!=null ? l : Collections.<T>emptySet();
+    }
+
     /**
      * Cuts all the leading path portion and get just the file name.
      */
@@ -1139,6 +1147,13 @@ public class Util {
         int pos = p.lastIndexOf('.');
         if (pos<0)  return new File(p+ext);
         else        return new File(p.substring(0,pos)+ext);
+    }
+
+    /**
+     * Null-safe String intern method.
+     */
+    public static String intern(String s) {
+        return s==null ? s : s.intern();
     }
 
     public static final FastDateFormat XS_DATETIME_FORMATTER = FastDateFormat.getInstance("yyyy-MM-dd'T'HH:mm:ss'Z'",new SimpleTimeZone(0,"GMT"));

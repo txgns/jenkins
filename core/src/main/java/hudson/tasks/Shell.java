@@ -30,6 +30,7 @@ import hudson.Extension;
 import hudson.model.AbstractProject;
 import hudson.util.FormValidation;
 import net.sf.json.JSONObject;
+import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.QueryParameter;
 
@@ -43,6 +44,7 @@ import java.util.Arrays;
  * @author Kohsuke Kawaguchi
  */
 public class Shell extends CommandInterpreter {
+    @DataBoundConstructor
     public Shell(String command) {
         super(fixCrLf(command));
     }
@@ -84,7 +86,7 @@ public class Shell extends CommandInterpreter {
         return s;
     }
 
-    protected String[] buildCommandLine(FilePath script) {
+    public String[] buildCommandLine(FilePath script) {
         if(command.startsWith("#!")) {
             // interpreter override
             int end = command.indexOf('\n');
@@ -141,18 +143,13 @@ public class Shell extends CommandInterpreter {
             save();
         }
 
-        @Override
-        public String getHelpFile() {
-            return "/help/project-config/shell.html";
-        }
-
         public String getDisplayName() {
             return Messages.Shell_DisplayName();
         }
 
         @Override
         public Builder newInstance(StaplerRequest req, JSONObject data) {
-            return new Shell(data.getString("shell"));
+            return new Shell(data.getString("command"));
         }
 
         @Override

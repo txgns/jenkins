@@ -23,9 +23,12 @@
  */
 package hudson.model;
 
+import hudson.model.Queue.Executable;
 import hudson.Util;
-import hudson.model.Queue.*;
 import hudson.FilePath;
+import hudson.model.queue.SubTask;
+import hudson.model.queue.Tasks;
+import hudson.model.queue.WorkUnit;
 import hudson.util.TimeUnit2;
 import hudson.util.InterceptingProxy;
 import hudson.security.ACL;
@@ -40,6 +43,8 @@ import java.io.IOException;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 import java.lang.reflect.Method;
+
+import static hudson.model.queue.Executables.*;
 
 
 /**
@@ -67,6 +72,8 @@ public class Executor extends Thread implements ModelObject {
      */
     private volatile Queue.Executable executable;
 
+    private volatile WorkUnit workUnit;
+
     private Throwable causeOfDeath;
 
     public Executor(Computer owner, int n) {
@@ -84,6 +91,9 @@ public class Executor extends Thread implements ModelObject {
         try {
             finishTime = System.currentTimeMillis();
             while(shouldRun()) {
+                executable = null;
+                workUnit = null;
+
                 synchronized(owner) {
                     if(owner.getNumExecutors()<owner.getExecutors().size()) {
                         // we've got too many executors.
@@ -95,52 +105,57 @@ public class Executor extends Thread implements ModelObject {
                 // clear the interrupt flag as a precaution.
                 // sometime an interrupt aborts a build but without clearing the flag.
                 // see issue #1583
-                Thread.interrupted();
+                if (Thread.interrupted())   continue;
 
-                Queue.Item queueItem;
+                SubTask task;
                 try {
-                	queueItem = grabJob();
+                    // transition from idle to building.
+                    // perform this state change as an atomic operation wrt other queue operations
+                    synchronized (queue) {
+                        workUnit = grabJob();
+                        workUnit.setExecutor(this);
+                        task = workUnit.work;
+                        startTime = System.currentTimeMillis();
+                        executable = task.createExecutable();
+                    }
+                } catch (IOException e) {
+                    LOGGER.log(Level.SEVERE, "Executor threw an exception", e);
+                    continue;
                 } catch (InterruptedException e) {
                     continue;
                 }
 
-                Queue.Task task = queueItem.task;
                 Throwable problems = null;
-                owner.taskAccepted(this, task);
-
                 final String threadName = getName();
                 try {
-                    try {
-                        startTime = System.currentTimeMillis();
-                        executable = task.createExecutable();
-                        queue.completePop(queueItem);
-                        
-                        if (executable instanceof Actionable) {
-                        	for (Action action: queueItem.getActions()) {
-                        		((Actionable) executable).addAction(action);
-                        	}
+                    workUnit.context.synchronizeStart();
+
+                    if (executable instanceof Actionable) {
+                        for (Action action: workUnit.context.actions) {
+                            ((Actionable) executable).addAction(action);
                         }
-                        setName(threadName+" : executing "+executable.toString());
-                        queue.execute(executable, task);
-                    } catch (Throwable e) {
-                        // for some reason the executor died. this is really
-                        // a bug in the code, but we don't want the executor to die,
-                        // so just leave some info and go on to build other things
-                        LOGGER.log(Level.SEVERE, "Executor throw an exception unexpectedly", e);
-                        problems = e;
                     }
+                    setName(threadName+" : executing "+executable.toString());
+                    queue.execute(executable, task);
+                } catch (Throwable e) {
+                    // for some reason the executor died. this is really
+                    // a bug in the code, but we don't want the executor to die,
+                    // so just leave some info and go on to build other things
+                    LOGGER.log(Level.SEVERE, "Executor threw an exception", e);
+                    workUnit.context.abort(e);
+                    problems = e;
                 } finally {
                     setName(threadName);
                     finishTime = System.currentTimeMillis();
-                    if (problems == null) {
-                        queueItem.future.set(executable);
-                        owner.taskCompleted(this, task, finishTime - startTime);
-                    } else {
-                        queueItem.future.set(problems);
-                        owner.taskCompletedWithProblems(this, task, finishTime - startTime, problems);
+                    try {
+                        workUnit.context.synchronizeEnd(executable,problems,finishTime - startTime);
+                    } catch (InterruptedException e) {
+                        workUnit.context.abort(e);
+                        continue;
+                    } finally {
+                        workUnit.setExecutor(null);
                     }
                 }
-                executable = null;
             }
         } catch(RuntimeException e) {
             causeOfDeath = e;
@@ -158,7 +173,7 @@ public class Executor extends Thread implements ModelObject {
         return Hudson.getInstance() != null && !Hudson.getInstance().isTerminating();
     }
 
-    protected Queue.Item grabJob() throws InterruptedException {
+    protected WorkUnit grabJob() throws InterruptedException {
         return queue.pop();
     }
 
@@ -171,6 +186,18 @@ public class Executor extends Thread implements ModelObject {
     @Exported
     public Queue.Executable getCurrentExecutable() {
         return executable;
+    }
+
+    /**
+     * Returns the current {@link WorkUnit} (of {@link #getCurrentExecutable() the current executable})
+     * that this executor is running.
+     *
+     * @return
+     *      null if the executor is idle.
+     */
+    @Exported
+    public WorkUnit getCurrentWorkUnit() {
+        return workUnit;
     }
 
     /**
@@ -242,7 +269,7 @@ public class Executor extends Thread implements ModelObject {
     public int getProgress() {
         Queue.Executable e = executable;
         if(e==null)     return -1;
-        long d = e.getParent().getEstimatedDuration();
+        long d = e.getEstimatedDuration();
         if(d<0)         return -1;
 
         int num = (int)(getElapsedTime()*100/d);
@@ -263,7 +290,7 @@ public class Executor extends Thread implements ModelObject {
         if(e==null)     return false;
 
         long elapsed = getElapsedTime();
-        long d = e.getParent().getEstimatedDuration();
+        long d = e.getEstimatedDuration();
         if(d>=0) {
             // if it's taking 10 times longer than ETA, consider it stuck
             return d*10 < elapsed;
@@ -295,7 +322,7 @@ public class Executor extends Thread implements ModelObject {
         Queue.Executable e = executable;
         if(e==null)     return Messages.Executor_NotAvailable();
 
-        long d = e.getParent().getEstimatedDuration();
+        long d = e.getEstimatedDuration();
         if(d<0)         return Messages.Executor_NotAvailable();
 
         long eta = d-getElapsedTime();
@@ -312,7 +339,7 @@ public class Executor extends Thread implements ModelObject {
         Queue.Executable e = executable;
         if(e==null)     return -1;
 
-        long d = e.getParent().getEstimatedDuration();
+        long d = e.getEstimatedDuration();
         if(d<0)         return -1;
 
         long eta = d-getElapsedTime();
@@ -327,7 +354,7 @@ public class Executor extends Thread implements ModelObject {
     public void doStop( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
         Queue.Executable e = executable;
         if(e!=null) {
-            e.getParent().checkAbortPermission();
+            Tasks.getOwnerTaskOf(getParentOf(e)).checkAbortPermission();
             interrupt();
         }
         rsp.forwardToPreviousPage(req);
@@ -338,7 +365,7 @@ public class Executor extends Thread implements ModelObject {
      */
     public boolean hasStopPermission() {
         Queue.Executable e = executable;
-        return e!=null && e.getParent().hasAbortPermission();
+        return e!=null && Tasks.getOwnerTaskOf(getParentOf(e)).hasAbortPermission();
     }
 
     public Computer getOwner() {
@@ -352,7 +379,7 @@ public class Executor extends Thread implements ModelObject {
         if (isIdle())
             return Math.max(finishTime, owner.getConnectTime());
         else {
-            return Math.max(startTime + Math.max(0, executable.getParent().getEstimatedDuration()),
+            return Math.max(startTime + Math.max(0, executable.getEstimatedDuration()),
                     System.currentTimeMillis() + 15000);
         }
     }

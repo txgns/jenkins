@@ -26,6 +26,7 @@ package hudson.model;
 import hudson.ExtensionPoint;
 import hudson.Launcher;
 import hudson.Plugin;
+import hudson.model.queue.SubTask;
 import hudson.tasks.BuildStep;
 import hudson.tasks.Builder;
 import hudson.tasks.Publisher;
@@ -162,5 +163,18 @@ public abstract class JobProperty<J extends Job<?,?>> implements Describable<Job
 
     public final Collection<? extends Action> getProjectActions(AbstractProject<?,?> project) {
         return getJobActions((J)project);
+    }
+
+    public Collection<?> getJobOverrides() {
+        return Collections.emptyList();
+    }
+
+    /**
+     * Contributes {@link SubTask}s to {@link AbstractProject#getSubTasks()}
+     *
+     * @since 1.FATTASK
+     */
+    public Collection<? extends SubTask> getSubTasks() {
+        return Collections.emptyList();
     }
 }

@@ -148,6 +148,9 @@ import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebRequestSettings;
 import com.gargoylesoftware.htmlunit.xml.XmlPage;
 import com.gargoylesoftware.htmlunit.html.*;
+import hudson.maven.MavenBuild;
+import hudson.maven.MavenModule;
+import hudson.maven.MavenModuleSetBuild;
 import hudson.slaves.ComputerListener;
 import java.util.concurrent.CountDownLatch;
 
@@ -419,7 +422,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
      * Returns the older default Maven, while still allowing specification of other bundled Mavens.
      */
     protected MavenInstallation configureDefaultMaven() throws Exception {
-	return configureDefaultMaven("maven-2.0.7", MavenInstallation.MAVEN_20);
+	return configureDefaultMaven("apache-maven-2.2.1", MavenInstallation.MAVEN_20);
     }
 
     /**
@@ -465,14 +468,14 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
             LOGGER.warning("Extracting a copy of Ant bundled in the test harness. " +
                     "To avoid a performance hit, set the environment variable ANT_HOME to point to an  Ant installation.");
             FilePath ant = hudson.getRootPath().createTempFile("ant", "zip");
-            ant.copyFrom(HudsonTestCase.class.getClassLoader().getResource("apache-ant-1.7.1-bin.zip"));
+            ant.copyFrom(HudsonTestCase.class.getClassLoader().getResource("apache-ant-1.8.1-bin.zip"));
             File antHome = createTmpDir();
             ant.unzip(new FilePath(antHome));
             // TODO: switch to tar that preserves file permissions more easily
             if(!Functions.isWindows())
-                GNUCLibrary.LIBC.chmod(new File(antHome,"apache-ant-1.7.1/bin/ant").getPath(),0755);
+                GNUCLibrary.LIBC.chmod(new File(antHome,"apache-ant-1.8.1/bin/ant").getPath(),0755);
 
-            antInstallation = new AntInstallation("default", new File(antHome,"apache-ant-1.7.1").getAbsolutePath(),NO_PROPERTIES);
+            antInstallation = new AntInstallation("default", new File(antHome,"apache-ant-1.8.1").getAbsolutePath(),NO_PROPERTIES);
         }
 		hudson.getDescriptorByType(Ant.DescriptorImpl.class).setInstallations(antInstallation);
 		return antInstallation;
@@ -535,7 +538,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     }
 
     public DumbSlave createSlave() throws Exception {
-        return createSlave(null);
+        return createSlave("",null);
     }
 
     /**
@@ -577,17 +580,25 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         return new URL("http://localhost:"+localPort+contextPath+"/");
     }
 
+    public DumbSlave createSlave(EnvVars env) throws Exception {
+        return createSlave("",env);
+    }
+
+    public DumbSlave createSlave(Label l, EnvVars env) throws Exception {
+        return createSlave(l==null ? null : l.getExpression(), env);
+    }
+
     /**
      * Creates a slave with certain additional environment variables
      */
-    public DumbSlave createSlave(Label l, EnvVars env) throws Exception {
+    public DumbSlave createSlave(String labels, EnvVars env) throws Exception {
         synchronized (hudson) {
             // this synchronization block is so that we don't end up adding the same slave name more than once.
 
             int sz = hudson.getNodes().size();
 
             DumbSlave slave = new DumbSlave("slave" + sz, "dummy",
-    				createTmpDir().getPath(), "1", Mode.NORMAL, l==null?"":l.getName(), createComputerLauncher(env), RetentionStrategy.NOOP, Collections.EMPTY_LIST);
+    				createTmpDir().getPath(), "1", Mode.NORMAL, labels==null?"":labels, createComputerLauncher(env), RetentionStrategy.NOOP, Collections.EMPTY_LIST);
     		hudson.addNode(slave);
     		return slave;
     	}
@@ -765,6 +776,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     }
 
     public <R extends Run> R assertBuildStatusSuccess(Future<? extends R> r) throws Exception {
+        assertNotNull("build was actually scheduled", r);
         return assertBuildStatusSuccess(r.get());
     }
 
@@ -773,9 +785,15 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     }
 
     /**
-     * Should be unnecessary, but otherwise IntelliJ complains.
+     * Avoids need for cumbersome {@code this.<J,R>buildAndAssertSuccess(...)} type hints under JDK 7 javac (and supposedly also IntelliJ).
      */
     public FreeStyleBuild buildAndAssertSuccess(FreeStyleProject job) throws Exception {
+        return assertBuildStatusSuccess(job.scheduleBuild2(0));
+    }
+    public MavenModuleSetBuild buildAndAssertSuccess(MavenModuleSet job) throws Exception {
+        return assertBuildStatusSuccess(job.scheduleBuild2(0));
+    }
+    public MavenBuild buildAndAssertSuccess(MavenModule job) throws Exception {
         return assertBuildStatusSuccess(job.scheduleBuild2(0));
     }
 
@@ -1028,6 +1046,10 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
      * via {@link DataBoundConstructor}
      */
     public void assertEqualDataBoundBeans(Object lhs, Object rhs) throws Exception {
+        if (lhs==null && rhs==null)     return;
+        if (lhs==null)      fail("lhs is null while rhs="+rhs);
+        if (rhs==null)      fail("rhs is null while lhs="+rhs);
+        
         Constructor<?> lc = findDataBoundConstructor(lhs.getClass());
         Constructor<?> rc = findDataBoundConstructor(rhs.getClass());
         assertEquals("Data bound constructor mismatch. Different type?",lc,rc);
@@ -1116,7 +1138,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         int streak = 0;
 
         while (true) {
-            Thread.sleep(100);
+            Thread.sleep(10);
             if (isSomethingHappening())
                 streak=0;
             else
@@ -1641,5 +1663,9 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         // during the unit test, predictably releasing classloader is important to avoid
         // file descriptor leak.
         ClassicPluginStrategy.useAntClassLoader = true;
+
+        // DNS multicast support takes up a lot of time during tests, so just disable it altogether
+        // this also prevents tests from falsely advertising Hudson
+        DNSMultiCast.disabled = true;
     }
 }

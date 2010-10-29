@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 2004-2009, Sun Microsystems, Inc.
+ * Copyright (c) 2004-2010, Sun Microsystems, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,21 +29,28 @@ import hudson.ExtensionList;
 import hudson.ExtensionPoint;
 import hudson.cli.declarative.CLIMethod;
 import hudson.ExtensionPoint.LegacyInstancesAreScopedToHudson;
+import hudson.cli.declarative.OptionHandlerExtension;
 import hudson.model.Hudson;
 import hudson.remoting.Callable;
 import hudson.remoting.Channel;
+import hudson.remoting.ChannelProperty;
 import hudson.security.CliAuthenticator;
+import hudson.security.SecurityRealm;
 import org.acegisecurity.Authentication;
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
+import org.jvnet.hudson.annotation_indexer.Index;
+import org.jvnet.tiger_types.Types;
 import org.kohsuke.args4j.ClassParser;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
+import org.kohsuke.args4j.spi.OptionHandler;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Locale;
 import java.util.logging.Logger;
@@ -156,6 +163,7 @@ public abstract class CLICommand implements ExtensionPoint, Cloneable {
         this.stderr = stderr;
         this.locale = locale;
         this.channel = Channel.current();
+        registerOptionHandlers();
         CmdLineParser p = new CmdLineParser(this);
 
         // add options from the authenticator
@@ -171,6 +179,8 @@ public abstract class CLICommand implements ExtensionPoint, Cloneable {
             if (auth==Hudson.ANONYMOUS)
                 auth = loadStoredAuthentication();
             sc.setAuthentication(auth); // run the CLI with the right credential
+            if (!(this instanceof LoginCommand || this instanceof HelpCommand))
+                Hudson.getInstance().checkPermission(Hudson.READ);
             return run();
         } catch (CmdLineException e) {
             stderr.println(e.getMessage());
@@ -219,6 +229,28 @@ public abstract class CLICommand implements ExtensionPoint, Cloneable {
      */
     protected boolean shouldPerformAuthentication(Authentication auth) {
         return auth==Hudson.ANONYMOUS;
+    }
+
+    /**
+     * Returns the identity of the client as determined at the CLI transport level.
+     *
+     * <p>
+     * When the CLI connection to the server is tunneled over HTTP, that HTTP connection
+     * can authenticate the client, just like any other HTTP connections to the server
+     * can authenticate the client. This method returns that information, if one is available.
+     * By generalizing it, this method returns the identity obtained at the transport-level authentication.
+     *
+     * <p>
+     * For example, imagine if the current {@link SecurityRealm} is doing Kerberos authentication,
+     * then this method can return a valid identity of the client.
+     *
+     * <p>
+     * If the transport doesn't do authentication, this method returns {@link Hudson#ANONYMOUS}.
+     */
+    public Authentication getTransportAuthentication() {
+        Authentication a = channel.getProperty(TRANSPORT_AUTHENTICATION);
+        if (a==null)    a = Hudson.ANONYMOUS;
+        return a;
     }
 
     /**
@@ -284,7 +316,19 @@ public abstract class CLICommand implements ExtensionPoint, Cloneable {
         }
     }
 
-    
+    /**
+     * Auto-discovers {@link OptionHandler}s and add them to the given command line parser.
+     */
+    protected void registerOptionHandlers() {
+        try {
+            for (Class c : Index.list(OptionHandlerExtension.class,Hudson.getInstance().pluginManager.uberClassLoader,Class.class)) {
+                Type t = Types.getBaseClass(c, OptionHandler.class);
+                CmdLineParser.registerHandler(Types.erasure(Types.getTypeArgument(t,0)), c);
+            }
+        } catch (IOException e) {
+            throw new Error(e);
+        }
+    }
 
     /**
      * Returns all the registered {@link CLICommand}s.
@@ -304,4 +348,25 @@ public abstract class CLICommand implements ExtensionPoint, Cloneable {
     }
 
     private static final Logger LOGGER = Logger.getLogger(CLICommand.class.getName());
+
+    /**
+     * Key for {@link Channel#getProperty(Object)} that links to the {@link Authentication} object
+     * which captures the identity of the client given by the transport layer.
+     */
+    public static final ChannelProperty<Authentication> TRANSPORT_AUTHENTICATION = new ChannelProperty<Authentication>(Authentication.class,"transportAuthentication");
+
+    private static final ThreadLocal<CLICommand> CURRENT_COMMAND = new ThreadLocal<CLICommand>();
+
+    /*package*/ static CLICommand setCurrent(CLICommand cmd) {
+        CLICommand old = getCurrent();
+        CURRENT_COMMAND.set(cmd);
+        return old;
+    }
+
+    /**
+     * If the calling thread is in the middle of executing a CLI command, return it. Otherwise null.
+     */
+    public static CLICommand getCurrent() {
+        return CURRENT_COMMAND.get();
+    }
 }

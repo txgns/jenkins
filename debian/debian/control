@@ -8,6 +8,6 @@ Homepage: http://infradna.com/
 
 Package: hudson
 Architecture: all
-Depends: ${shlibs:Depends}, ${misc:Depends}, daemon, adduser, java-virtual-machine, java2-runtime
+Depends: ${shlibs:Depends}, ${misc:Depends}, daemon, adduser, java-virtual-machine, java2-runtime, psmisc
 Description: InfraDNA's Certified Hudson
  Hudson is an extensible continuous engine written in Java.

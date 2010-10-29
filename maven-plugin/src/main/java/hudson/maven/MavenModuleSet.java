@@ -26,30 +26,30 @@ package hudson.maven;
 import hudson.*;
 import hudson.model.*;
 import hudson.model.Descriptor.FormException;
-import static hudson.model.ItemGroupMixIn.loadChildren;
 import hudson.model.Queue;
 import hudson.model.Queue.Task;
 import hudson.search.CollectionSearchIndex;
 import hudson.search.SearchIndexBuilder;
-import hudson.tasks.Maven.MavenInstallation;
 import hudson.tasks.*;
+import hudson.tasks.Maven.MavenInstallation;
 import hudson.tasks.junit.JUnitResultArchiver;
-import static hudson.Util.fixEmpty;
 import hudson.util.CopyOnWriteMap;
 import hudson.util.DescribableList;
-import hudson.util.Function1;
 import hudson.util.FormValidation;
+import hudson.util.Function1;
+import net.sf.json.JSONObject;
+import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
-import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.export.Exported;
 
 import javax.servlet.ServletException;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
-import net.sf.json.JSONObject;
-import org.kohsuke.stapler.export.Exported;
+import static hudson.Util.fixEmpty;
+import static hudson.model.ItemGroupMixIn.loadChildren;
 
 /**
  * Group of {@link MavenModule}s.
@@ -195,28 +195,37 @@ public final class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,Ma
         return getItem(name);
     }
 
+    @Override   // to make this accessible from MavenModuleSetBuild
     protected void updateTransientActions() {
         super.updateTransientActions();
+    }
+
+    protected List<Action> createTransientActions() {
+        List<Action> r = super.createTransientActions();
+
         // Fix for ISSUE-1149
         for (MavenModule module: modules.values()) {
             module.updateTransientActions();
         }
+        
         if(publishers!=null)    // this method can be loaded from within the onLoad method, where this might be null
             for (BuildStep step : publishers)
-                transientActions.addAll(step.getProjectActions(this));
+                r.addAll(step.getProjectActions(this));
 
         if (buildWrappers!=null)
 	        for (BuildWrapper step : buildWrappers)
-                transientActions.addAll(step.getProjectActions(this));
+                r.addAll(step.getProjectActions(this));
+
+        return r;
     }
 
-    protected void addTransientActionsFromBuild(MavenModuleSetBuild build, Set<Class> added) {
+    protected void addTransientActionsFromBuild(MavenModuleSetBuild build, List<Action> collection, Set<Class> added) {
         if(build==null)    return;
 
         for (Action a : build.getActions())
             if(a instanceof MavenAggregatedReport)
                 if(added.add(a.getClass()))
-                    transientActions.add(((MavenAggregatedReport)a).getProjectAction(this));
+                    collection.add(((MavenAggregatedReport)a).getProjectAction(this));
 
         List<MavenReporter> list = build.projectActionReporters;
         if(list==null)   return;
@@ -225,7 +234,7 @@ public final class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,Ma
             if(!added.add(step.getClass()))     continue;   // already added
             Action a = step.getAggregatedProjectAction(this);
             if(a!=null)
-                transientActions.add(a);
+                collection.add(a);
         }
     }
 
@@ -354,6 +363,10 @@ public final class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,Ma
 
     public File getRootDirFor(MavenModule child) {
         return new File(getModulesDir(),child.getModuleName().toFileSystemName());
+    }
+
+    public void onRenamed(MavenModule item, String oldName, String newName) throws IOException {
+        throw new UnsupportedOperationException();
     }
 
     public Collection<Job> getAllJobs() {

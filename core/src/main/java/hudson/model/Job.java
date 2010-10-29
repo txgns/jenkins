@@ -26,14 +26,13 @@ package hudson.model;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 import static javax.servlet.http.HttpServletResponse.SC_NO_CONTENT;
 
+import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 import hudson.ExtensionPoint;
-import hudson.Util;
 import hudson.XmlFile;
 import hudson.PermalinkList;
 import hudson.Extension;
 import hudson.cli.declarative.CLIResolver;
 import hudson.model.Descriptor.FormException;
-import hudson.model.listeners.ItemListener;
 import hudson.model.PermalinkProjectAction.Permalink;
 import hudson.model.Fingerprint.RangeSet;
 import hudson.model.Fingerprint.Range;
@@ -66,13 +65,9 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.io.PrintWriter;
 import java.net.URLEncoder;
-import java.text.ParseException;
-import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
@@ -88,8 +83,6 @@ import javax.xml.transform.stream.StreamSource;
 import net.sf.json.JSONObject;
 import net.sf.json.JSONException;
 
-import org.apache.tools.ant.taskdefs.Copy;
-import org.apache.tools.ant.types.FileSet;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.CategoryAxis;
@@ -101,15 +94,13 @@ import org.jfree.chart.renderer.category.StackedAreaRenderer;
 import org.jfree.data.category.CategoryDataset;
 import org.jfree.ui.RectangleInsets;
 import org.jvnet.localizer.Localizable;
-import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.StaplerOverridable;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.WebMethod;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.CmdLineException;
-import org.koshuke.stapler.simile.timeline.Event;
-import org.koshuke.stapler.simile.timeline.TimelineEventList;
 
 /**
  * A job is an runnable entity under the monitoring of Hudson.
@@ -123,7 +114,7 @@ import org.koshuke.stapler.simile.timeline.TimelineEventList;
  * @author Kohsuke Kawaguchi
  */
 public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, RunT>>
-        extends AbstractItem implements ExtensionPoint {
+        extends AbstractItem implements ExtensionPoint, StaplerOverridable {
 
     /**
      * Next build number. Kept in a separate file because this is the only
@@ -436,6 +427,16 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
         return null;
     }
 
+    /**
+     * Overrides from job properties.
+     */
+    public Collection<?> getOverrides() {
+        List<Object> r = new ArrayList<Object>();
+        for (JobProperty<? super JobT> p : properties)
+            r.addAll(p.getJobOverrides());
+        return r;
+    }
+
     public List<Widget> getWidgets() {
         ArrayList<Widget> r = new ArrayList<Widget>();
         r.add(createHistoryWidget());
@@ -476,107 +477,9 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
 
     /**
      * Renames a job.
-     * 
-     * <p>
-     * This method is defined on {@link Job} but really only applicable for
-     * {@link Job}s that are top-level items.
      */
     public void renameTo(String newName) throws IOException {
-        // always synchronize from bigger objects first
-        final Hudson parent = Hudson.getInstance();
-        assert this instanceof TopLevelItem;
-        synchronized (parent) {
-            synchronized (this) {
-                // sanity check
-                if (newName == null)
-                    throw new IllegalArgumentException("New name is not given");
-                TopLevelItem existing = parent.getItem(newName);
-                if (existing != null && existing!=this)
-                    // the look up is case insensitive, so we need "existing!=this"
-                    // to allow people to rename "Foo" to "foo", for example.
-                    // see http://www.nabble.com/error-on-renaming-project-tt18061629.html
-                    throw new IllegalArgumentException("Job " + newName
-                            + " already exists");
-
-                // noop?
-                if (this.name.equals(newName))
-                    return;
-
-                String oldName = this.name;
-                File oldRoot = this.getRootDir();
-
-                doSetName(newName);
-                File newRoot = this.getRootDir();
-
-                boolean success = false;
-
-                try {// rename data files
-                    boolean interrupted = false;
-                    boolean renamed = false;
-
-                    // try to rename the job directory.
-                    // this may fail on Windows due to some other processes
-                    // accessing a file.
-                    // so retry few times before we fall back to copy.
-                    for (int retry = 0; retry < 5; retry++) {
-                        if (oldRoot.renameTo(newRoot)) {
-                            renamed = true;
-                            break; // succeeded
-                        }
-                        try {
-                            Thread.sleep(500);
-                        } catch (InterruptedException e) {
-                            // process the interruption later
-                            interrupted = true;
-                        }
-                    }
-
-                    if (interrupted)
-                        Thread.currentThread().interrupt();
-
-                    if (!renamed) {
-                        // failed to rename. it must be that some lengthy
-                        // process is going on
-                        // to prevent a rename operation. So do a copy. Ideally
-                        // we'd like to
-                        // later delete the old copy, but we can't reliably do
-                        // so, as before the VM
-                        // shuts down there might be a new job created under the
-                        // old name.
-                        Copy cp = new Copy();
-                        cp.setProject(new org.apache.tools.ant.Project());
-                        cp.setTodir(newRoot);
-                        FileSet src = new FileSet();
-                        src.setDir(getRootDir());
-                        cp.addFileset(src);
-                        cp.setOverwrite(true);
-                        cp.setPreserveLastModified(true);
-                        cp.setFailOnError(false); // keep going even if
-                                                    // there's an error
-                        cp.execute();
-
-                        // try to delete as much as possible
-                        try {
-                            Util.deleteRecursive(oldRoot);
-                        } catch (IOException e) {
-                            // but ignore the error, since we expect that
-                            e.printStackTrace();
-                        }
-                    }
-
-                    success = true;
-                } finally {
-                    // if failed, back out the rename.
-                    if (!success)
-                        doSetName(oldName);
-                }
-
-                parent.onRenamed((TopLevelItem) this, oldName, newName);
-
-                for (ItemListener l : ItemListener.all())
-                    l.onRenamed(this, oldName, newName);
-            }
-        }
+        super.renameTo(newName);
     }
 
     /**
@@ -586,13 +489,14 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
     public abstract boolean isBuildable();
 
     /**
-     * Gets all the builds.
+     * Gets the read-only view of all the builds.
      * 
      * @return never null. The first entry is the latest build.
      */
     @Exported
-    public List<RunT> getBuilds() {
-        return new ArrayList<RunT>(_getRuns().values());
+    @WithBridgeMethods(List.class)
+    public RunList<RunT> getBuilds() {
+        return RunList.fromRuns(_getRuns().values());
     }
 
     /**
@@ -644,32 +548,12 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
      * Obtains a list of builds, in the descending order, that are within the specified time range [start,end).
      *
      * @return can be empty but never null.
+     * @deprecated
+     *      as of 1.372. Should just do {@code getBuilds().byTimestamp(s,e)} to avoid code bloat in {@link Job}.
      */
-    public List<RunT> getBuildsByTimestamp(long start, long end) {
-        final List<RunT> builds = getBuilds();
-        AbstractList<Long> TIMESTAMP_ADAPTER = new AbstractList<Long>() {
-            public Long get(int index) {
-                return builds.get(index).timestamp;
-            }
-
-            public int size() {
-                return builds.size();
-            }
-        };
-        Comparator<Long> DESCENDING_ORDER = new Comparator<Long>() {
-            public int compare(Long o1, Long o2) {
-                if (o1 > o2) return -1;
-                if (o1 < o2) return +1;
-                return 0;
-            }
-        };
-
-        int s = Collections.binarySearch(TIMESTAMP_ADAPTER, start, DESCENDING_ORDER);
-        if (s<0)    s=-(s+1);   // min is inclusive
-        int e = Collections.binarySearch(TIMESTAMP_ADAPTER, end,   DESCENDING_ORDER);
-        if (e<0)    e=-(e+1);   else e++;   // max is exclusive, so the exact match should be excluded
-
-        return builds.subList(e,s);
+    @WithBridgeMethods(List.class)
+    public RunList<RunT> getBuildsByTimestamp(long start, long end) {
+        return getBuilds().byTimestamp(start,end);
     }
 
     @CLIResolver
@@ -873,6 +757,42 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
             r = r.getPreviousBuild();
         return r;
     }
+    
+    /**
+     * Returns the last 'numberOfBuilds' builds with a build result >= 'threshold'
+     * 
+     * @return a list with the builds. May be smaller than 'numberOfBuilds' or even empty
+     *   if not enough builds satisfying the threshold have been found. Never null.
+     */
+    public List<RunT> getLastBuildsOverThreshold(int numberOfBuilds, Result threshold) {
+        
+        List<RunT> result = new ArrayList<RunT>(numberOfBuilds);
+        
+        RunT r = getLastBuild();
+        while (r != null && result.size() < numberOfBuilds) {
+            if (!r.isBuilding() && 
+                 (r.getResult() != null && r.getResult().isBetterOrEqualTo(threshold))) {
+                result.add(r);
+            }
+            r = r.getPreviousBuild();
+        }
+        
+        return result;
+    }
+    
+    public final long getEstimatedDuration() {
+        List<RunT> builds = getLastBuildsOverThreshold(3, Result.UNSTABLE);
+        
+        if(builds.isEmpty())     return -1;
+
+        long totalDuration = 0;
+        for (RunT b : builds) {
+            totalDuration += b.getDuration();
+        }
+        if(totalDuration==0) return -1;
+
+        return Math.round((double)totalDuration / builds.size());
+    }
 
     /**
      * Gets all the {@link Permalink}s defined for this job.
@@ -1055,12 +975,7 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
             String newName = req.getParameter("name");
             if (newName != null && !newName.equals(name)) {
                 // check this error early to avoid HTTP response splitting.
-                try {
-                    Hudson.checkGoodName(newName);
-                } catch (ParseException e) {
-                    sendError(e, req, rsp);
-                    return;
-                }
+                Hudson.checkGoodName(newName);
                 rsp.sendRedirect("rename?newName=" + URLEncoder.encode(newName, "UTF-8"));
             } else {
                 rsp.sendRedirect(".");
@@ -1316,12 +1231,7 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
         checkPermission(DELETE);
 
         String newName = req.getParameter("newName");
-        try {
-            Hudson.checkGoodName(newName);
-        } catch (ParseException e) {
-            sendError(e, req, rsp);
-            return;
-        }
+        Hudson.checkGoodName(newName);
 
         if (isBuilding()) {
             // redirect to page explaining that we can't rename now
@@ -1339,12 +1249,12 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
 
     public void doRssAll(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException {
-        rss(req, rsp, " all builds", new RunList(this));
+        rss(req, rsp, " all builds", getBuilds());
     }
 
     public void doRssFailed(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException {
-        rss(req, rsp, " failed builds", new RunList(this).failureOnly());
+        rss(req, rsp, " failed builds", getBuilds().failureOnly());
     }
 
     private void rss(StaplerRequest req, StaplerResponse rsp, String suffix,
@@ -1363,22 +1273,7 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
         return Hudson.getInstance().getAuthorizationStrategy().getACL(this);
     }
 
-    public TimelineEventList doTimelineData(StaplerRequest req, @QueryParameter long min, @QueryParameter long max) throws IOException {
-        TimelineEventList result = new TimelineEventList();
-        for (RunT r : getBuildsByTimestamp(min,max)) {
-            Event e = new Event();
-            e.start = r.getTime();
-            e.end   = new Date(r.timestamp+r.getDuration());
-            e.title = r.getFullDisplayName();
-            // what to put in the description?
-            // e.description = "Longish description of event "+r.getFullDisplayName();
-            // e.durationEvent = true;
-            e.link = req.getContextPath()+'/'+r.getUrl();
-            BallColor c = r.getIconColor();
-            e.color = String.format("#%06X",c.getBaseColor().darker().getRGB()&0xFFFFFF);
-            e.classname = "event-"+c.noAnime().toString()+" " + (c.isAnimated()?"animated":"");
-            result.add(e);
-        }
-        return result;
+    public BuildTimelineWidget getTimeline() {
+        return new BuildTimelineWidget(getBuilds());
     }
 }

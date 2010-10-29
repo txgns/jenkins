@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 2004-2009, Sun Microsystems, Inc.
+ * Copyright (c) 2004-2010, Sun Microsystems, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,6 +30,7 @@ import hudson.Util;
 import hudson.cli.CLICommand;
 import hudson.cli.CloneableCLICommand;
 import hudson.model.Hudson;
+import hudson.remoting.Channel;
 import hudson.security.CliAuthenticator;
 import org.acegisecurity.Authentication;
 import org.acegisecurity.context.SecurityContext;
@@ -107,6 +108,12 @@ public class CLIRegisterer extends ExtensionFinder {
 
                         @Override
                         public int main(List<String> args, Locale locale, InputStream stdin, PrintStream stdout, PrintStream stderr) {
+                            this.stdout = stdout;
+                            this.stderr = stderr;
+                            this.locale = locale;
+                            this.channel = Channel.current();
+
+                            registerOptionHandlers();
                             CmdLineParser parser = new CmdLineParser(null);
                             try {
                                 SecurityContext sc = SecurityContextHolder.getContext();
@@ -141,7 +148,11 @@ public class CLIRegisterer extends ExtensionFinder {
                                     // fill up all the binders
                                     parser.parseArgument(args);
 
-                                    sc.setAuthentication(authenticator.authenticate()); // run the CLI with the right credential
+                                    Authentication auth = authenticator.authenticate();
+                                    if (auth==Hudson.ANONYMOUS)
+                                        auth = loadStoredAuthentication();
+                                    sc.setAuthentication(auth); // run the CLI with the right credential
+                                    hudson.checkPermission(Hudson.READ);
 
                                     // resolve them
                                     Object instance = null;

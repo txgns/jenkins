@@ -1,7 +1,9 @@
 /*
  * The MIT License
  * 
- * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi, Brian Westrich, Erik Ramfelt, Ertan Deniz, Jean-Baptiste Quenot, Luca Domenico Milanesio, R. Tyler Ballance, Stephen Connolly, Tom Huybrechts, id:cactusman
+ * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi,
+ * Brian Westrich, Erik Ramfelt, Ertan Deniz, Jean-Baptiste Quenot,
+ * Luca Domenico Milanesio, R. Tyler Ballance, Stephen Connolly, Tom Huybrechts, id:cactusman
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +25,7 @@
  */
 package hudson.model;
 
+import antlr.ANTLRException;
 import hudson.AbortException;
 import hudson.CopyOnWrite;
 import hudson.FeedAdapter;
@@ -32,35 +35,36 @@ import hudson.Util;
 import hudson.cli.declarative.CLIMethod;
 import hudson.cli.declarative.CLIResolver;
 import hudson.diagnosis.OldDataMonitor;
-import hudson.slaves.WorkspaceList;
 import hudson.model.Cause.LegacyCodeCause;
-import hudson.model.Cause.UserCause;
 import hudson.model.Cause.RemoteCause;
+import hudson.model.Cause.UserCause;
 import hudson.model.Descriptor.FormException;
 import hudson.model.Fingerprint.RangeSet;
-import hudson.model.RunMap.Constructor;
-import hudson.model.Queue.WaitingItem;
 import hudson.model.Queue.Executable;
+import hudson.model.Queue.Task;
+import hudson.model.queue.SubTask;
+import hudson.model.Queue.WaitingItem;
+import hudson.model.RunMap.Constructor;
+import hudson.model.labels.LabelAtom;
+import hudson.model.labels.LabelExpression;
 import hudson.model.queue.CauseOfBlockage;
+import hudson.model.queue.SubTaskContributor;
 import hudson.scm.ChangeLogSet;
 import hudson.scm.ChangeLogSet.Entry;
 import hudson.scm.NullSCM;
-import hudson.scm.SCM;
-import hudson.scm.SCMS;
 import hudson.scm.PollingResult;
+import hudson.scm.SCM;
 import hudson.scm.SCMRevisionState;
-import static hudson.scm.PollingResult.NO_CHANGES;
-import static hudson.scm.PollingResult.BUILD_NOW;
-import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
-
+import hudson.scm.SCMS;
 import hudson.search.SearchIndexBuilder;
 import hudson.security.Permission;
+import hudson.slaves.WorkspaceList;
 import hudson.tasks.BuildStep;
+import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildTrigger;
+import hudson.tasks.BuildWrapperDescriptor;
 import hudson.tasks.Mailer;
 import hudson.tasks.Publisher;
-import hudson.tasks.BuildStepDescriptor;
-import hudson.tasks.BuildWrapperDescriptor;
 import hudson.triggers.SCMTrigger;
 import hudson.triggers.Trigger;
 import hudson.triggers.TriggerDescriptor;
@@ -72,17 +76,16 @@ import hudson.widgets.HistoryWidget;
 import net.sf.json.JSONObject;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.CmdLineException;
+import org.kohsuke.stapler.ForwardToView;
+import org.kohsuke.stapler.HttpRedirect;
+import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.HttpResponses;
+import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
-import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.HttpResponse;
-import org.kohsuke.stapler.HttpRedirect;
-import org.kohsuke.stapler.ForwardToView;
 
 import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -102,6 +105,9 @@ import java.util.Vector;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static hudson.scm.PollingResult.*;
+import static javax.servlet.http.HttpServletResponse.*;
 
 /**
  * Base implementation of {@link Job}s that build software.
@@ -219,6 +225,13 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
     }
 
     @Override
+    public void onCreatedFromScratch() {
+        super.onCreatedFromScratch();
+        // solicit initial contributions, especially from TransientProjectActionFactory
+        updateTransientActions();
+    }
+
+    @Override
     public void onLoad(ItemGroup<? extends Item> parent, String name) throws IOException {
         super.onLoad(parent, name);
 
@@ -288,6 +301,20 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
     }
 
     /**
+     * Gets the textual representation of the assigned label as it was entered by the user.
+     */
+    public String getAssignedLabelString() {
+        if (canRoam || assignedNode==null)    return null;
+        try {
+            LabelExpression.parseExpression(assignedNode);
+            return assignedNode;
+        } catch (ANTLRException e) {
+            // must be old label or host name that includes whitespace or other unsafe chars
+            return LabelAtom.escape(assignedNode);
+        }
+    }
+
+    /**
      * Sets the assigned label.
      */
     public void setAssignedLabel(Label l) throws IOException {
@@ -297,7 +324,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         } else {
             canRoam = false;
             if(l==Hudson.getInstance().getSelfLabel())  assignedNode = null;
-            else                                        assignedNode = l.getName();
+            else                                        assignedNode = l.getExpression();
         }
         save();
     }
@@ -347,17 +374,29 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      *      use {@link #getSomeWorkspace()}
      */
     public final FilePath getWorkspace() {
+        AbstractBuild b = getBuildForDeprecatedMethods();
+        return b != null ? b.getWorkspace() : null;
+
+    }
+    
+    /**
+     * Various deprecated methods in this class all need the 'current' build.  This method returns
+     * the build suitable for that purpose.
+     * 
+     * @return An AbstractBuild for deprecated methods to use.
+     */
+    private AbstractBuild getBuildForDeprecatedMethods() {
         Executor e = Executor.currentExecutor();
         if(e!=null) {
             Executable exe = e.getCurrentExecutable();
             if (exe instanceof AbstractBuild) {
                 AbstractBuild b = (AbstractBuild) exe;
                 if(b.getProject()==this)
-                    return b.getWorkspace();
+                    return b;
             }
         }
         R lb = getLastBuild();
-        if(lb!=null)    return lb.getWorkspace();
+        if(lb!=null)    return lb;
         return null;
     }
 
@@ -402,9 +441,8 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      *      See {@link #getWorkspace()} for a migration strategy.
      */
     public FilePath getModuleRoot() {
-        FilePath ws = getWorkspace();
-        if(ws==null)    return null;
-        return getScm().getModuleRoot(ws);
+        AbstractBuild b = getBuildForDeprecatedMethods();
+        return b != null ? b.getModuleRoot() : null;
     }
 
     /**
@@ -418,7 +456,8 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      *      See {@link #getWorkspace()} for a migration strategy.
      */
     public FilePath[] getModuleRoots() {
-        return getScm().getModuleRoots(getWorkspace());
+        AbstractBuild b = getBuildForDeprecatedMethods();
+        return b != null ? b.getModuleRoots() : null;
     }
 
     public int getQuietPeriod() {
@@ -446,6 +485,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         return scmCheckoutRetryCount != null;
     }
 
+    @Override
     public boolean isBuildable() {
         return !isDisabled() && !isHoldOffBuildUntilSave();
     }
@@ -495,12 +535,10 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         save();
     }
 
-    @CLIMethod(name="disable-job")
     public void disable() throws IOException {
         makeDisabled(true);
     }
 
-    @CLIMethod(name="enable-job")
     public void enable() throws IOException {
         makeDisabled(false);
     }
@@ -513,7 +551,18 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
             return super.getIconColor();
     }
 
+    /**
+     * effectively deprecated. Since using updateTransientActions correctly
+     * under concurrent environment requires a lock that can too easily cause deadlocks.
+     *
+     * <p>
+     * Override {@link #createTransientActions()} instead.
+     */
     protected void updateTransientActions() {
+        transientActions = createTransientActions();
+    }
+
+    protected List<Action> createTransientActions() {
         Vector<Action> ta = new Vector<Action>();
 
         for (JobProperty<? super P> p : properties)
@@ -521,8 +570,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
 
         for (TransientProjectActionFactory tpaf : TransientProjectActionFactory.all())
             ta.addAll(Util.fixNull(tpaf.createFor(this))); // be defensive against null
-
-        transientActions = ta;
+        return ta;
     }
 
     /**
@@ -681,10 +729,22 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      *      For the convenience of the caller, this array can contain null, and those will be silently ignored.
      */
     public Future<R> scheduleBuild2(int quietPeriod, Cause c, Action... actions) {
+        return scheduleBuild2(quietPeriod,c,Arrays.asList(actions));
+    }
+
+    /**
+     * Schedules a build of this project, and returns a {@link Future} object
+     * to wait for the completion of the build.
+     *
+     * @param actions
+     *      For the convenience of the caller, this collection can contain null, and those will be silently ignored.
+     * @since 1.383
+     */
+    public Future<R> scheduleBuild2(int quietPeriod, Cause c, Collection<? extends Action> actions) {
         if (!isBuildable())
             return null;
 
-        List<Action> queueActions = new ArrayList<Action>(Arrays.asList(actions));
+        List<Action> queueActions = new ArrayList<Action>(actions);
         if (isParameterized() && Util.filter(queueActions, ParametersAction.class).isEmpty()) {
             queueActions.add(new ParametersAction(getDefaultParametersValues()));
         }
@@ -784,10 +844,12 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         return authToken;
     }
 
+    @Override
     public SortedMap<Integer, ? extends R> _getRuns() {
         return builds.getView();
     }
 
+    @Override
     public void removeRun(R run) {
         this.builds.remove(run);
     }
@@ -889,6 +951,14 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
             return b.getBuiltOn();
     }
 
+    public Object getSameNodeConstraint() {
+        return this; // in this way, any member that wants to run with the main guy can nominate the project itself 
+    }
+
+    public final Task getOwnerTask() {
+        return this;
+    }
+
     /**
      * {@inheritDoc}
      *
@@ -916,6 +986,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
             this.build = build;
         }
 
+        @Override
         public String getShortDescription() {
             Executor e = build.getExecutor();
             String eta = "";
@@ -936,6 +1007,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
             this.up = up;
         }
 
+        @Override
         public String getShortDescription() {
             return Messages.AbstractProject_UpstreamBuildInProgress(up.getName());
         }
@@ -970,14 +1042,14 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         return null;
     }
 
-    public final long getEstimatedDuration() {
-        AbstractBuild b = getLastSuccessfulBuild();
-        if(b==null)     return -1;
-
-        long duration = b.getDuration();
-        if(duration==0) return -1;
-
-        return duration;
+    public List<SubTask> getSubTasks() {
+        List<SubTask> r = new ArrayList<SubTask>();
+        r.add(this);
+        for (SubTaskContributor euc : SubTaskContributor.all())
+            r.addAll(euc.forProject(this));
+        for (JobProperty<? super P> p : properties)
+            r.addAll(p.getSubTasks());
+        return r;
     }
 
     public R createExecutable() throws IOException {
@@ -1172,6 +1244,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
                 return r;
             }
         } catch (AbortException e) {
+            listener.getLogger().println(e.getMessage());
             listener.fatalError(Messages.AbstractProject_Aborted());
             LOGGER.log(Level.FINE, "Polling "+this+" aborted",e);
             return NO_CHANGES;
@@ -1399,6 +1472,17 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
             return;
         }
 
+        if (!isBuildable())
+            throw HttpResponses.error(SC_INTERNAL_SERVER_ERROR,new IOException(getFullName()+" is not buildable"));
+
+        Hudson.getInstance().getQueue().schedule(this, getDelay(req), getBuildCause(req));
+        rsp.forwardToPreviousPage(req);
+    }
+
+    /**
+     * Computes the build cause, using RemoteCause or UserCause as appropriate.
+     */
+    /*package*/ CauseAction getBuildCause(StaplerRequest req) {
         Cause cause;
         if (authToken != null && authToken.getToken() != null && req.getParameter("token") != null) {
             // Optional additional cause text when starting via token
@@ -1407,12 +1491,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         } else {
             cause = new UserCause();
         }
-
-        if (!isBuildable())
-            throw HttpResponses.error(SC_INTERNAL_SERVER_ERROR,new IOException(getFullName()+" is not buildable"));
-
-        Hudson.getInstance().getQueue().schedule(this, getDelay(req), new CauseAction(cause));
-        rsp.forwardToPreviousPage(req);
+        return new CauseAction(cause);
     }
 
     /**
@@ -1487,16 +1566,11 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         blockBuildWhenUpstreamBuilding = req.getParameter("blockBuildWhenUpstreamBuilding")!=null;
 
         if(req.getParameter("hasSlaveAffinity")!=null) {
-            canRoam = false;
-            assignedNode = req.getParameter("slave");
-            if(assignedNode !=null) {
-                if(Hudson.getInstance().getLabel(assignedNode).isEmpty())
-                    assignedNode = null;   // no such label
-            }
+            assignedNode = Util.fixEmptyAndTrim(req.getParameter("_.assignedLabelString"));
         } else {
-            canRoam = true;
             assignedNode = null;
         }
+        canRoam = assignedNode==null;
 
         concurrentBuild = req.getSubmittedForm().has("concurrentBuild");
 
@@ -1569,6 +1643,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         }
     }
 
+    @CLIMethod(name="disable-job")
     public HttpResponse doDisable() throws IOException, ServletException {
         requirePOST();
         checkPermission(CONFIGURE);
@@ -1576,6 +1651,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         return new HttpRedirect(".");
     }
 
+    @CLIMethod(name="enable-job")
     public HttpResponse doEnable() throws IOException, ServletException {
         requirePOST();
         checkPermission(CONFIGURE);
@@ -1672,6 +1748,20 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         @Override
         public boolean isApplicable(Descriptor descriptor) {
             return true;
+        }
+
+        public FormValidation doCheckAssignedLabelString(@QueryParameter String value) {
+            if (Util.fixEmpty(value)==null)
+                return FormValidation.ok(); // nothing typed yet
+            try {
+                Label.parseExpression(value);
+            } catch (ANTLRException e) {
+                return FormValidation.error(e,"Invalid boolean expression: "+e.getMessage());
+            }
+            // TODO: if there's an atom in the expression that is empty, report it
+            if (Hudson.getInstance().getLabel(value).isEmpty())
+                return FormValidation.warning("There's no slave/cloud that matches this assignment");
+            return FormValidation.ok();
         }
     }
 

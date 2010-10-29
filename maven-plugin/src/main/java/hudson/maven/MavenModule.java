@@ -28,6 +28,7 @@ import hudson.Util;
 import hudson.Functions;
 import hudson.maven.reporters.MavenMailer;
 import hudson.model.AbstractProject;
+import hudson.model.Action;
 import hudson.model.DependencyGraph;
 import hudson.model.Descriptor;
 import hudson.model.Descriptor.FormException;
@@ -171,7 +172,7 @@ public final class MavenModule extends AbstractMavenProject<MavenModule,MavenBui
      * This method is invoked on {@link MavenModule} that has the matching
      * {@link ModuleName}.
      */
-    /*package*/ final void reconfigure(PomInfo pom) {
+    /*package*/ void reconfigure(PomInfo pom) {
         this.displayName = pom.displayName;
         this.version = pom.version;
         this.relativePath = pom.relativePath;
@@ -370,6 +371,11 @@ public final class MavenModule extends AbstractMavenProject<MavenModule,MavenBui
         return true;
     }
 
+    @Override // to make this accessible to MavenModuleSet
+    protected void updateTransientActions() {
+        super.updateTransientActions();
+    }
+
     protected void buildDependencyGraph(DependencyGraph graph) {
         if(isDisabled() || getParent().ignoreUpstremChanges())        return;
 
@@ -401,24 +407,24 @@ public final class MavenModule extends AbstractMavenProject<MavenModule,MavenBui
         for (ModuleDependency d : dependencies) {
             MavenModule src = modules.get(d);
             if(src!=null) {
-                if(src.getParent().isAggregatorStyleBuild())
-                    graph.addDependency(new DependencyGraph.Dependency(src.getParent(),dest));
-                else
-                    graph.addDependency(new DependencyGraph.Dependency(src,dest));
+                DependencyGraph.Dependency dep = new DependencyGraph.Dependency(
+                        src.getParent().isAggregatorStyleBuild() ? src.getParent() : src,dest);
+                if (!dep.pointsItself())
+                    graph.addDependency(dep);
             }
         }
     }
 
     @Override
-    protected void addTransientActionsFromBuild(MavenBuild build, Set<Class> added) {
+    protected void addTransientActionsFromBuild(MavenBuild build, List<Action> collection, Set<Class> added) {
         if(build==null)    return;
-        List<MavenReporter> list = build.projectActionReporters;
+        List<MavenProjectActionBuilder> list = build.projectActionReporters;
         if(list==null)   return;
 
-        for (MavenReporter step : list) {
+        for (MavenProjectActionBuilder step : list) {
             if(!added.add(step.getClass()))     continue;   // already added
             try {
-                transientActions.addAll(step.getProjectActions(this));
+                collection.addAll(step.getProjectActions(this));
             } catch (Exception e) {
                 LOGGER.log(Level.WARNING, "Failed to getProjectAction from " + step
                            + ". Report issue to plugin developers.", e);
@@ -458,7 +464,7 @@ public final class MavenModule extends AbstractMavenProject<MavenModule,MavenBui
     /**
      * Creates a list of {@link MavenReporter}s to be used for a build of this project.
      */
-    protected final List<MavenReporter> createReporters() {
+    protected List<MavenReporter> createReporters() {
         List<MavenReporter> reporterList = new ArrayList<MavenReporter>();
 
         getReporters().addAllTo(reporterList);

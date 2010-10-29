@@ -30,6 +30,7 @@ import hudson.model.Hudson;
 import hudson.model.Run;
 import hudson.remoting.ObjectInputStreamEx;
 import hudson.util.FlushProofOutputStream;
+import hudson.util.IOUtils;
 import hudson.util.UnbufferedBase64InputStream;
 import org.apache.commons.codec.binary.Base64OutputStream;
 import org.apache.commons.io.output.ByteArrayOutputStream;
@@ -43,6 +44,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -103,6 +106,13 @@ import java.util.zip.GZIPOutputStream;
  * is also important, although {@link ConsoleNote}s that failed to deserialize will be simply ignored, so the
  * worst thing that can happen is that you just lose some notes.
  *
+ * <h2>Behaviour, JavaScript, and CSS</h2>
+ * <p>
+ * {@link ConsoleNote} can have associated <tt>script.js</tt> and <tt>style.css</tt> (put them
+ * in the same resource directory that you normally put Jelly scripts), which will be loaded into
+ * the HTML page whenever the console notes are used. This allows you to use minimal markup in
+ * code generation, and do the styling in CSS and perform the rest of the interesting work as a CSS behaviour/JavaScript.
+ *
  * @param <T>
  *      Contextual model object that this console is associated with, such as {@link Run}.
  *
@@ -158,6 +168,40 @@ public abstract class ConsoleNote<T> implements Serializable, Describable<Consol
     }
 
     /**
+     * Prints this note into a writer.
+     *
+     * <p>
+     * Technically, this method only works if the {@link Writer} to {@link OutputStream}
+     * encoding is ASCII compatible.
+     */
+    public void encodeTo(Writer out) throws IOException {
+        out.write(PREAMBLE_STR);
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(new GZIPOutputStream(buf));
+        oos.writeObject(this);
+        oos.close();
+
+        ByteArrayOutputStream encoded = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(new Base64OutputStream(encoded,true,-1,null));
+        dos.writeInt(buf.size());
+        buf.writeTo(dos);
+        dos.close();
+
+        out.write(encoded.toString());
+
+        out.write(POSTAMBLE_STR);
+    }
+
+    /**
+     * Works like {@link #encodeTo(Writer)} but obtain the result as a string.
+     */
+    public String encode() throws IOException {
+        StringWriter sw = new StringWriter();
+        encodeTo(sw);
+        return sw.toString();
+    }
+
+    /**
      * Reads a note back from {@linkplain #encodeTo(OutputStream) its encoded form}.
      *
      * @param in
@@ -184,6 +228,23 @@ public abstract class ConsoleNote<T> implements Serializable, Describable<Consol
         ObjectInputStream ois = new ObjectInputStreamEx(
                 new GZIPInputStream(new ByteArrayInputStream(buf)), Hudson.getInstance().pluginManager.uberClassLoader);
         return (ConsoleNote) ois.readObject();
+    }
+
+    /**
+     * Skips the encoded console note.
+     */
+    public static void skip(DataInputStream in) throws IOException {
+        byte[] preamble = new byte[PREAMBLE.length];
+        in.readFully(preamble);
+        if (!Arrays.equals(preamble,PREAMBLE))
+            return;    // not a valid preamble
+
+        DataInputStream decoded = new DataInputStream(new UnbufferedBase64InputStream(in));
+        int sz = decoded.readInt();
+        IOUtils.skip(decoded,sz);
+
+        byte[] postamble = new byte[POSTAMBLE.length];
+        in.readFully(postamble);
     }
 
     private static final long serialVersionUID = 1L;
@@ -222,7 +283,9 @@ public abstract class ConsoleNote<T> implements Serializable, Describable<Consol
     }
 
     /**
-     * Removes the embedded console notes in the given log lines
+     * Removes the embedded console notes in the given log lines.
+     *
+     * @since 1.350
      */
     public static List<String> removeNotes(Collection<String> logLines) {
         List<String> r = new ArrayList<String>(logLines.size());
@@ -233,6 +296,8 @@ public abstract class ConsoleNote<T> implements Serializable, Describable<Consol
 
     /**
      * Removes the embedded console notes in the given log line.
+     *
+     * @since 1.350
      */
     public static String removeNotes(String line) {
         while (true) {
