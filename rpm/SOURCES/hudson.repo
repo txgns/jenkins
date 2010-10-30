@@ -1,4 +1,4 @@
 [hudson]
-name=InfraDNA's Certified Hudson
-baseurl=http://download.infradna.com/ichci/rpm/
+name=Nectar from CloudBees
+baseurl=http://nectar.cloudbees.com/download/rpm/
 gpgcheck=1

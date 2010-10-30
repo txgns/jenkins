@@ -1,7 +1,7 @@
 [hudson]
-name=InfraDNA's Certified Hudson
+name=Nectar from CloudBees
 enabled=1
 autorefresh=0
-baseurl=http://download.infradna.com/ichci/opensuse/
+baseurl=http://nectar.cloudbees.com/download/opensuse/
 type=rpm-md
 keeppackages=0
