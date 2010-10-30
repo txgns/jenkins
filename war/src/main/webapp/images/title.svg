@@ -17,7 +17,7 @@
    inkscape:version="0.47 r22583"
    sodipodi:docname="title.svg"
    version="1.0"
-   inkscape:export-filename="/home/kohsuke/ws/hudson/ich/war/resources/images/title.png"
+   inkscape:export-filename="/home/kohsuke/ws/infradna/hudson/war/src/main/webapp/images/title.png"
    inkscape:export-xdpi="87.428574"
    inkscape:export-ydpi="87.428574">
   <defs
@@ -71,14 +71,14 @@
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
-     inkscape:window-width="1877"
-     inkscape:window-height="1126"
-     inkscape:window-x="2449"
-     inkscape:window-y="281"
+     inkscape:window-width="1600"
+     inkscape:window-height="848"
+     inkscape:window-x="0"
+     inkscape:window-y="25"
      inkscape:grid-points="true"
      inkscape:grid-bbox="true"
      inkscape:guide-points="true"
-     inkscape:window-maximized="0" />
+     inkscape:window-maximized="1" />
   <metadata
      id="metadata7">
     <rdf:RDF>
@@ -123,17 +123,17 @@
          sodipodi:role="line"
          id="tspan2186"
          x="7.1015625"
-         y="25">Hudson</tspan></text>
+         y="25">Nectar</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Georgia;-inkscape-font-specification:Georgia Bold"
-       x="127.67608"
+       x="115.67608"
        y="25"
        id="text2184-7"
        sodipodi:linespacing="100%"><tspan
          sodipodi:role="line"
          id="tspan2846"
-         x="127.67608"
-         y="25">| certified by InfraDNA</tspan></text>
+         x="115.67608"
+         y="25">from CloudBees</tspan></text>
   </g>
 </svg>
