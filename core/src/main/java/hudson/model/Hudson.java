@@ -3063,6 +3063,11 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
      * Run arbitrary Groovy script.
      */
     public void doScript(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
+        if(!Boolean.getBoolean("enable-groovy-console")){
+            LOGGER.info("Groovy console is disabled, unauthorized access!");
+            rsp.sendError(401, "Not Authorized");
+            return;
+        }
         doScript(req, rsp, req.getView(this, "_script.jelly"));
     }
 

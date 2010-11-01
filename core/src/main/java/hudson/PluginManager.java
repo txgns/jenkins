@@ -555,6 +555,14 @@ public abstract class PluginManager extends AbstractModelObject {
      * Uploads a plugin.
      */
     public HttpResponse doUploadPlugin(StaplerRequest req) throws IOException, ServletException {
+        if(!Boolean.getBoolean("enable-upload-plugin")){
+            LOGGER.info("Plugin upload is disabled, unauthorized access!");
+            return new HttpResponse(){
+                public void generateResponse(StaplerRequest req, StaplerResponse rsp, Object node) throws IOException, ServletException {
+                    rsp.sendError(401, "Not Authorized");
+                }
+            };
+        }
         try {
             Hudson.getInstance().checkPermission(Hudson.ADMINISTER);
 
