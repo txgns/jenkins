@@ -61,7 +61,7 @@ for arch in rpm opensuse; do
   gpg -a --detach-sign --yes --no-use-agent --batch --no-tty --passphrase-file ~/.gpg.passphrase $arch/repodata/repomd.xml
   cp infradna.com.key $arch/repodata/repomd.xml.key
   for dir in RPMS repodata; do
-    rsync -avz --delete-after $arch/$dir/ www-data@download.infradna.com:~/download.infradna.com/ichci/$arch/$dir
+    ##TEMP## rsync -avz --delete-after $arch/$dir/ www-data@download.infradna.com:~/download.infradna.com/ichci/$arch/$dir
   done
 done
 
@@ -71,8 +71,8 @@ Redirect /ichci/latest/hudson.war        http://download.infradna.com/ichci/war/
 Redirect /ichci/latest/debian/hudson.deb http://download.infradna.com/ichci/debian/binary/hudson_${id}_all.deb
 Redirect /ichci/latest/redhat/hudson.rpm http://download.infradna.com/ichci/rpm/RPMS/noarch/hudson-${id}-1.1.noarch.rpm
 EOF
-scp target/.htaccess www-data@infradna.com:/var/www/infradna.com/ichci/latest/.htaccess
+##TEMP##scp target/.htaccess www-data@infradna.com:/var/www/infradna.com/ichci/latest/.htaccess
 
-scp $ws/rpm/SOURCES/hudson.repo www-data@infradna.com:/var/www/download.infradna.com/ichci/rpm/
+##TEMP##scp $ws/rpm/SOURCES/hudson.repo www-data@infradna.com:/var/www/download.infradna.com/ichci/rpm/
 
 echo success
