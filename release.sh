@@ -62,6 +62,7 @@ for arch in rpm opensuse; do
   cp infradna.com.key $arch/repodata/repomd.xml.key
   for dir in RPMS repodata; do
     ##TEMP## rsync -avz --delete-after $arch/$dir/ www-data@download.infradna.com:~/download.infradna.com/ichci/$arch/$dir
+    true
   done
 done
 
