@@ -395,11 +395,11 @@ THE SOFTWARE.
 
   <distributionManagement>
     <repository>
-      <id>maven.infradna.com</id>
+      <id>repository.infradna.com</id>
       <url>scp://maven.infradna.com/home/maven/repository/releases</url>
     </repository>
     <snapshotRepository>
-      <id>maven.infradna.com</id>
+      <id>repository.infradna.com</id>
       <url>scp://maven.infradna.com/home/maven/repository/snapshots</url>
     </snapshotRepository>
     <site><!-- shall we put this anywhere? -->
