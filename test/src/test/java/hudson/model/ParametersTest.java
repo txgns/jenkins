@@ -96,9 +96,8 @@ public class ParametersTest extends HudsonTestCase {
         opt.setSelected(true);
 
         submit(form);
-        Queue.Item q = hudson.getQueue().getItem(project);
-        if (q != null) q.getFuture().get();
-        else Thread.sleep(1000);
+        while (project.getBuildByNumber(1)==null || project.getBuildByNumber(1).isBuilding())
+            Thread.sleep(100);
 
         assertNotNull(builder.getEnvVars());
         assertEquals("Choice <2>", builder.getEnvVars().get("CHOICE"));
