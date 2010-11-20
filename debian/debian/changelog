@@ -1,3 +1,9 @@
+hudson (1.383.2) unstable; urgency=low
+
+  * See http://hudson.dev.java.net/changelog.html for more details.
+
+ -- Kohsuke Kawaguchi <kohsuke@infradna.com>  Fri, 05 Nov 2010 22:08:21 -0700
+
 hudson (1.383.1) unstable; urgency=low
 
   * See http://hudson.dev.java.net/changelog.html for more details.
