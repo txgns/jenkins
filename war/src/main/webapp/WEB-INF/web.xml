@@ -108,7 +108,23 @@ THE SOFTWARE.
     as opposed to "all roles defined in the security realm", so we need to list some
     common names in the hope that users will have at least one of those roles.
   -->
+    <security-constraint>
+        <!-- Sample Security Constraint -->
+        <web-resource-collection>
 
+            <!-- This public resources will not require SSO, identity will not be available to them -->
+            <web-resource-name>public-resources</web-resource-name>
+
+            <url-pattern>/github-webhook/</url-pattern>
+
+            <http-method>HEAD</http-method>
+            <http-method>GET</http-method>
+            <http-method>POST</http-method>
+            <http-method>PUT</http-method>
+            <http-method>DELETE</http-method>
+
+        </web-resource-collection>
+      </security-constraint> 
     <security-constraint>
         <!-- Sample Security Constraint -->
         <web-resource-collection>
@@ -120,9 +136,6 @@ THE SOFTWARE.
 
             <http-method>HEAD</http-method>
             <http-method>GET</http-method>
-            <http-method>POST</http-method>
-            <http-method>PUT</http-method>
-            <http-method>DELETE</http-method>
 
         </web-resource-collection>
       </security-constraint>  
