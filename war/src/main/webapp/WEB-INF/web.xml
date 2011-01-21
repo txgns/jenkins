@@ -27,7 +27,7 @@ THE SOFTWARE.
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd"
          version="2.4">
-  <display-name>Hudson</display-name>
+  <display-name>Hudson v${project.version}</display-name>
   <description>Build management system</description>
 
   <servlet>
@@ -41,7 +41,7 @@ THE SOFTWARE.
 
   <servlet-mapping>
     <servlet-name>Stapler</servlet-name>
-    <url-pattern>/</url-pattern>
+    <url-pattern>/*</url-pattern>
   </servlet-mapping>
 
   <filter>
@@ -63,13 +63,13 @@ THE SOFTWARE.
 	Cache-Control: no-cache for any files behind the security-constraint
 	below.  So if Hudson is on a public server, and you want to only allow
 	authorized users to access it, you may want to pay attention to this.
-
+	
 	See: http://www.nabble.com/No-browser-caching-with-Hudson- -tf4601857.html
-
+  
   <filter>
     <filter-name>change-headers-filter</filter-name>
     <filter-class>hudson.ResponseHeaderFilter</filter-class>
-    <!- The value listed here is for 24 hours.  Increase or decrease as you see
+    <!- The value listed here is for 24 hours.  Increase or decrease as you see 
     fit.  Value is in seconds. Make sure to keep the public option ->
     <init-param>
       <param-name>Cache-Control</param-name>
@@ -84,8 +84,24 @@ THE SOFTWARE.
       <param-value>public</param-value>
     </init-param>
   </filter>
+  <filter-mapping>
+    <filter-name>change-headers-filter</filter-name>
+    <url-pattern>*.css</url-pattern>
+  </filter-mapping>
+  <filter-mapping>
+    <filter-name>change-headers-filter</filter-name>
+    <url-pattern>*.gif</url-pattern>
+  </filter-mapping>
+  <filter-mapping>
+    <filter-name>change-headers-filter</filter-name>
+    <url-pattern>*.js</url-pattern>
+  </filter-mapping>
+  <filter-mapping>
+    <filter-name>change-headers-filter</filter-name>
+    <url-pattern>*.png</url-pattern>
+  </filter-mapping>
   -->
-
+  
   <filter-mapping>
     <filter-name>authentication-filter</filter-name>
     <url-pattern>/*</url-pattern>
@@ -108,82 +124,35 @@ THE SOFTWARE.
     as opposed to "all roles defined in the security realm", so we need to list some
     common names in the hope that users will have at least one of those roles.
   -->
-    <security-constraint>
-        <!-- Sample Security Constraint -->
-        <web-resource-collection>
+  <security-role>
+    <role-name>admin</role-name>
+  </security-role>
+  <security-role>
+    <role-name>user</role-name>
+  </security-role>
+  <security-role>
+    <role-name>hudson</role-name>
+  </security-role>
 
-            <!-- This public resources will not require SSO, identity will not be available to them -->
-            <web-resource-name>public-resources</web-resource-name>
-
-            <url-pattern>/github-webhook/</url-pattern>
-
-            <http-method>HEAD</http-method>
-            <http-method>GET</http-method>
-            <http-method>POST</http-method>
-            <http-method>PUT</http-method>
-            <http-method>DELETE</http-method>
-
-        </web-resource-collection>
-      </security-constraint> 
-    <security-constraint>
-        <!-- Sample Security Constraint -->
-        <web-resource-collection>
-
-            <!-- This public resources will not require SSO, identity will not be available to them -->
-            <web-resource-name>public-resources</web-resource-name>
-
-            <url-pattern>/people/api/json</url-pattern>
-
-            <http-method>HEAD</http-method>
-            <http-method>GET</http-method>
-
-        </web-resource-collection>
-      </security-constraint>  
-        <security-constraint>
-        <web-resource-collection>
-
-            <!-- We're going to protect this resource and make it available only to users in "role1". -->
-            <web-resource-name>Hudson</web-resource-name>
-
-            <url-pattern>/*</url-pattern>
-
-            <http-method>HEAD</http-method>
-            <http-method>GET</http-method>
-            <http-method>POST</http-method>
-            <http-method>PUT</http-method>
-            <http-method>DELETE</http-method>
-
-        </web-resource-collection>
-
-        <!-- NOTE: This role names will be retrieved by Josso using the proper identity store. -->
-
-        <auth-constraint>
-            <role-name>*</role-name>
-        </auth-constraint>
-
-        <user-data-constraint>
-            <transport-guarantee>NONE</transport-guarantee>
-        </user-data-constraint>
-    </security-constraint>
-
-    <!-- We only need tomcat to redirect the user -->
-    <login-config>
-
-        <auth-method>FORM</auth-method>
-
-        <form-login-config>
-            <!--
-            NOTE: This will redirect the user to the proper login page provided by JOSSO.
-            -->
-            <form-login-page>/login-redirect.jsp</form-login-page>
-            <form-error-page>/login-redirect.jsp</form-error-page>
-        </form-login-config>
-
-    </login-config>
-
-    <security-role>
+  <security-constraint>
+    <web-resource-collection>
+      <web-resource-name>Hudson</web-resource-name>
+      <url-pattern>/loginEntry</url-pattern>
+      <!--http-method>GET</http-method-->
+    </web-resource-collection>
+    <auth-constraint>
       <role-name>*</role-name>
-	</security-role>
+    </auth-constraint>
+  </security-constraint>
+
+  <login-config>
+    <auth-method>FORM</auth-method>
+    <form-login-config>
+      <form-login-page>/login</form-login-page>
+      <form-error-page>/loginError</form-error-page>
+    </form-login-config>
+  </login-config>
+
 
   <!-- if specified, this value is used as the Hudson home directory -->
   <env-entry>
