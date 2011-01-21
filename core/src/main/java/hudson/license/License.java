@@ -142,5 +142,17 @@ public final class License {
         return executors;
     }
 
+    public PrivateKey getPrivateKey() {
+        return privateKey;
+    }
+
+    public PublicKey getPublicKey() {
+        return publicKey;
+    }
+
+    public X509Certificate getCert() {
+        return cert;
+    }
+
     private static final String HEADER = "Hudson Customer:";
 }
