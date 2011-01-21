@@ -23,6 +23,7 @@
  */
 package hudson;
 
+import hudson.license.License;
 import hudson.model.Hudson;
 import hudson.model.Saveable;
 import hudson.model.listeners.SaveableListener;
@@ -37,8 +38,21 @@ import java.net.PasswordAuthentication;
 import java.net.Proxy;
 import java.net.URL;
 import java.net.URLConnection;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.thoughtworks.xstream.XStream;
+
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 /**
  * HTTP proxy configuration.
@@ -127,6 +141,30 @@ public final class ProxyConfiguration implements Saveable {
                 }
             });
         }
+
+        // if we are making HTTPS connection, prepare to do HTTP client authentication for protected content access.
+        if (con instanceof HttpsURLConnection) {
+            HttpsURLConnection https = (HttpsURLConnection) con;
+            License lic = Hudson.getInstance().getLicense().getParsed();
+            if (lic!=null) {
+                try {
+                    KeyStore keystore = KeyStore.getInstance("JKS");
+                    keystore.load(null);
+                    keystore.setKeyEntry("doesn't matter", lic.getPrivateKey(), "unused".toCharArray(), new Certificate[]{lic.getCert()});
+
+                    KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance("SunX509");
+                    keyManagerFactory.init(keystore, "unused".toCharArray());
+
+                    SSLContext context = SSLContext.getInstance("TLS");
+                    context.init(keyManagerFactory.getKeyManagers(), null, null);
+
+                    https.setSSLSocketFactory(context.getSocketFactory());
+                } catch (GeneralSecurityException e) {
+                    LOGGER.log(Level.WARNING,"Failed to set up SSL client authentication",e);
+                }
+            }
+        }
+
         return con;
     }
 
@@ -135,4 +173,6 @@ public final class ProxyConfiguration implements Saveable {
     static {
         XSTREAM.alias("proxy", ProxyConfiguration.class);
     }
+
+    private static final Logger LOGGER = Logger.getLogger(ProxyConfiguration.class.getName());
 }
