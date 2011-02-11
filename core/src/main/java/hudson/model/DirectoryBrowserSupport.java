@@ -263,6 +263,10 @@ public final class DirectoryBrowserSupport implements HttpResponse {
             return;
         }
 
+        serveSingleFile(req, rsp, baseFile, view);
+    }
+
+    public static void serveSingleFile(StaplerRequest req, StaplerResponse rsp, FilePath baseFile, boolean view) throws IOException, InterruptedException, ServletException {
         ContentInfo ci = baseFile.act(new ContentInfo());
 
         if(LOGGER.isLoggable(Level.FINE))
