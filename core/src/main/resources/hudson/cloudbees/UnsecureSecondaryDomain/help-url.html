@@ -1,0 +1,12 @@
+<div>
+    Specify a different host name alias for this Nectar server, such as "http://untrusted.acme.org:8080/hudson".
+    This secondary host name
+    is used to serve user contents and files in the workspace that may have some security risk
+    to be served from within the primary Nectar server domain name (as HTTP requests to such
+    domain include sessions.)
+
+    <p>
+    When this secondary host name is specified, all the untrusted content download will be
+    redirected to this URL, thus eliminating this security issue. Leave it empty to disengage
+    this feature.
+</div>
