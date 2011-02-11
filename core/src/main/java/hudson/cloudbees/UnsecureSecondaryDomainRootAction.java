@@ -6,7 +6,7 @@ package hudson.cloudbees;
 
 import hudson.Extension;
 import hudson.model.DirectoryBrowserSupport.FileServiceClosure;
-import hudson.model.RootAction;
+import hudson.model.UnprotectedRootAction;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
@@ -19,7 +19,7 @@ import static javax.servlet.http.HttpServletResponse.*;
  * @author Kohsuke Kawaguchi
  */
 @Extension
-public class UnsecureSecondaryDomainRootAction implements RootAction {
+public class UnsecureSecondaryDomainRootAction implements UnprotectedRootAction {
     public String getIconFileName() {
         return null;
     }

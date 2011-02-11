@@ -37,6 +37,11 @@ public class UnsecureSecondaryDomain extends Descriptor<UnsecureSecondaryDomain>
         return url;
     }
 
+    public void setUrl(String url) {
+        this.url = url;
+        save();
+    }
+
     @Override
     public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
         url = Util.fixEmpty(json.optString("url"));
