@@ -3430,6 +3430,14 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
             || rest.startsWith("/whoAmI")
             || rest.startsWith("/securityRealm"))
                 return this;    // URLs that are always visible without READ permission
+
+            for (Action a : getActions()) {
+                if (a instanceof UnprotectedRootAction) {
+                    if (rest.startsWith("/"+a.getUrlName()+"/"))
+                        return this;
+                }
+            }
+
             throw e;
         }
         return this;
