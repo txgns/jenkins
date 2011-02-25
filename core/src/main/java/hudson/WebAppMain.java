@@ -40,6 +40,7 @@ import hudson.util.IncompatibleAntVersionDetected;
 import hudson.util.HudsonFailedToLoad;
 import hudson.util.ChartUtil;
 import hudson.util.AWTProblem;
+import org.jvnet.hudson.reactor.ReactorException;
 import org.jvnet.localizer.LocaleProvider;
 import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.StaplerRequest;
@@ -69,7 +70,7 @@ import java.security.Security;
  *
  * @author Kohsuke Kawaguchi
  */
-public final class WebAppMain implements ServletContextListener {
+public class WebAppMain implements ServletContextListener {
     private final RingBufferLogHandler handler = new RingBufferLogHandler();
     private static final String APP = "app";
 
@@ -218,7 +219,7 @@ public final class WebAppMain implements ServletContextListener {
                 @Override
                 public void run() {
                     try {
-                        context.setAttribute(APP,new Hudson(home,context));
+                        context.setAttribute(APP, createHudson(home, context));
 
                         // trigger the loading of changelogs in the background,
                         // but give the system 10 seconds so that the first page
@@ -245,6 +246,13 @@ public final class WebAppMain implements ServletContextListener {
             LOGGER.log(Level.SEVERE, "Failed to initialize Hudson",e);
             throw e;
         }
+    }
+
+    /**
+     * Creates a new application instance.
+     */
+    protected Hudson createHudson(File home, ServletContext context) throws IOException, InterruptedException, ReactorException {
+        return new Hudson(home,context);
     }
 
     public static void installExpressionFactory(ServletContextEvent event) {
