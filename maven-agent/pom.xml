@@ -25,7 +25,7 @@ THE SOFTWARE.
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.jenkins-ci.main</groupId>
+    <groupId>com.cloudbees.metanectar</groupId>
     <artifactId>pom</artifactId>
     <version>1.400.1-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
@@ -70,7 +70,7 @@ THE SOFTWARE.
 
   <dependencies>
     <dependency>
-      <groupId>org.jenkins-ci.main</groupId>
+      <groupId>com.cloudbees.metanectar</groupId>
       <artifactId>maven-interceptor</artifactId>
       <version>${project.version}</version>
       <exclusions>
@@ -112,7 +112,7 @@ THE SOFTWARE.
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.jenkins-ci.main</groupId>
+      <groupId>com.cloudbees.metanectar</groupId>
       <artifactId>remoting</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>

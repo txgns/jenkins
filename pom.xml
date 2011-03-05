@@ -30,7 +30,7 @@ THE SOFTWARE.
     <version>1.13</version>
   </parent>
   
-  <groupId>org.jenkins-ci.main</groupId>
+  <groupId>com.cloudbees.metanectar</groupId>
   <artifactId>pom</artifactId>
   <version>1.400.1-SNAPSHOT</version>
   <packaging>pom</packaging>

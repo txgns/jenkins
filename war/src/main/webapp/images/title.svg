@@ -17,9 +17,9 @@
    inkscape:version="0.47 r22583"
    sodipodi:docname="title.svg"
    version="1.0"
-   inkscape:export-filename="/home/kohsuke/ws/infradna/hudson/war/src/main/webapp/images/title.png"
-   inkscape:export-xdpi="87.428574"
-   inkscape:export-ydpi="87.428574">
+   inkscape:export-filename="/home/kohsuke/ws/cloudbees/nectar/war/src/main/webapp/images/title.png"
+   inkscape:export-xdpi="90"
+   inkscape:export-ydpi="90">
   <defs
      id="defs4">
     <inkscape:perspective
@@ -87,7 +87,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
