@@ -33,6 +33,24 @@ import hudson.ExtensionList;
 import hudson.FilePath;
 import hudson.Functions;
 import hudson.Launcher;
+import com.gargoylesoftware.htmlunit.DefaultCssErrorHandler;
+import com.gargoylesoftware.htmlunit.javascript.HtmlUnitContextFactory;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLHttpRequest;
+import hudson.*;
+import hudson.Util;
+import hudson.license.LicenseManager;
+import hudson.model.AbstractBuild;
+import hudson.model.Computer;
+import hudson.model.Executor;
+import hudson.model.*;
+import hudson.model.Queue.Executable;
+import hudson.security.AbstractPasswordBasedSecurityRealm;
+import hudson.security.GroupDetails;
+import hudson.security.SecurityRealm;
+import hudson.tasks.Builder;
+import hudson.tasks.Publisher;
+import hudson.tools.ToolProperty;
+import hudson.remoting.Which;
 import hudson.Launcher.LocalLauncher;
 import hudson.Main;
 import hudson.PluginManager;
@@ -97,6 +115,7 @@ import hudson.tools.ToolProperty;
 import hudson.util.PersistedList;
 import hudson.util.ReflectionUtils;
 import hudson.util.StreamTaskListener;
+import hudson.util.TextFile;
 import hudson.util.jna.GNUCLibrary;
 
 import java.beans.PropertyDescriptor;
@@ -148,6 +167,8 @@ import org.acegisecurity.userdetails.UsernameNotFoundException;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.resolver.AbstractArtifactResolutionException;
 import org.jvnet.hudson.test.HudsonHomeLoader.CopyExisting;
@@ -291,7 +312,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
             throw e;
         }
         hudson.setNoUsageStatistics(true); // collecting usage stats from tests are pointless.
-        
+
         hudson.setCrumbIssuer(new TestCrumbIssuer());
 
         hudson.servletContext.setAttribute("app",hudson);
@@ -387,9 +408,34 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
      */
     protected Hudson newHudson() throws Exception {
         File home = homeLoader.allocate();
+        createSecretKey(home);
+        createLicense(home);
         for (Runner r : recipes)
             r.decorateHome(this,home);
         return new Hudson(home, createWebServer(), useLocalPluginManager ? null : TestPluginManager.INSTANCE);
+    }
+
+    private static void createLicense(File home) throws Exception {
+        String cert = IOUtils.toString(HudsonTestCase.class.getClassLoader().getResourceAsStream("cert.10.year"));
+        String lk = IOUtils.toString(HudsonTestCase.class.getClassLoader().getResourceAsStream("license.key"));
+        TextFile f = new TextFile(new File(home, "license.xml"));
+        StringBuilder b = new StringBuilder("<?xml version='1.0' encoding='UTF-8'?>\n");
+        b.append("<hudson.license.LicenseManager>\n");
+        b.append("<key>\n");
+        b.append(lk);
+        b.append("\n</key>\n");
+        b.append("<certificate>\n");
+        b.append(cert);
+        b.append("\n</certificate>");
+        b.append("\n</hudson.license.LicenseManager>");
+        f.write(b.toString());
+    }
+
+    private static void createSecretKey(File home) throws IOException {
+        TextFile secretFile = new TextFile(new File(home,"secret.key"));
+        if(secretFile.exists())
+            secretFile.delete();
+        secretFile.write("cafebabe"); //"cafebabe" is the fixed secret key
     }
 
     /**
@@ -675,7 +721,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     public DumbSlave createOnlineSlave() throws Exception {
         return createOnlineSlave(null);
     }
-    
+
     /**
      * Create a new slave on the local host and wait for it to come onilne
      * before returning.
@@ -704,7 +750,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
 
         return s;
     }
-    
+
     /**
      * Blocks until the ENTER key is hit.
      * This is useful during debugging a test so that one can inspect the state of Hudson through the web browser.
@@ -819,7 +865,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     }
 
     /** Assert that the specifed page can be served with a "good" HTTP status,
-     * eg, the page is not missing and can be served without a server error 
+     * eg, the page is not missing and can be served without a server error
      * @param page
      */
     public void assertGoodStatus(Page page) {
@@ -910,7 +956,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
 
         org.w3c.dom.Node n = (org.w3c.dom.Node) node;
         String textString = n.getTextContent();
-        assertTrue("needle found in haystack", textString.contains(needle)); 
+        assertTrue("needle found in haystack", textString.contains(needle));
     }
 
     public void assertXPathResultsContainText(DomNode page, String xpath, String needle) {
@@ -927,7 +973,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
                 }
             }
         }
-        assertTrue("needle found in haystack", found); 
+        assertTrue("needle found in haystack", found);
     }
 
 
@@ -1188,7 +1234,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
 
     /**
      * Waits until Hudson finishes building everything, including those in the queue, or fail the test
-     * if the specified timeout milliseconds is 
+     * if the specified timeout milliseconds is
      */
     protected void waitUntilNoActivityUpTo(int timeout) throws Exception {
         long startTime = System.currentTimeMillis();
@@ -1389,7 +1435,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
 
     /**
      * Sometimes a part of a test case may ends up creeping into the serialization tree of {@link Saveable#save()},
-     * so detect that and flag that as an error. 
+     * so detect that and flag that as an error.
      */
     private Object writeReplace() {
         throw new AssertionError("HudsonTestCase "+getName()+" is not supposed to be serialized");
@@ -1401,7 +1447,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     public WebClient createWebClient() {
         return new WebClient();
     }
-    
+
     /**
      * Extends {@link com.gargoylesoftware.htmlunit.WebClient} and provide convenience methods
      * for accessing Hudson.
@@ -1626,7 +1672,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
             else
                 return null;
         }
-        
+
 
         /**
          * Returns the URL of the webapp top page.
@@ -1635,20 +1681,20 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         public String getContextPath() throws IOException {
             return getURL().toExternalForm();
         }
-        
+
         /**
          * Adds a security crumb to the quest
          */
         public WebRequestSettings addCrumb(WebRequestSettings req) {
             NameValuePair crumb[] = { new NameValuePair() };
-            
+
             crumb[0].setName(hudson.getCrumbIssuer().getDescriptor().getCrumbRequestField());
             crumb[0].setValue(hudson.getCrumbIssuer().getCrumb( null ));
-            
+
             req.setRequestParameters(Arrays.asList( crumb ));
             return req;
         }
-        
+
         /**
          * Creates a URL with crumb parameters relative to {{@link #getContextPath()}
          */
@@ -1656,7 +1702,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
             CrumbIssuer issuer = hudson.getCrumbIssuer();
             String crumbName = issuer.getDescriptor().getCrumbRequestField();
             String crumb = issuer.getCrumb(null);
-            
+
             return new URL(getContextPath()+relativePath+"?"+crumbName+"="+crumb);
         }
 
@@ -1702,7 +1748,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
 
     // needs to keep reference, or it gets GC-ed.
     private static final Logger XML_HTTP_REQUEST_LOGGER = Logger.getLogger(XMLHttpRequest.class.getName());
-    
+
     static {
         // screen scraping relies on locale being fixed.
         Locale.setDefault(Locale.ENGLISH);
@@ -1726,6 +1772,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
 
         // hudson-behavior.js relies on this to decide whether it's running unit tests.
         Main.isUnitTest = true;
+        DNSMultiCast.disabled = true;
 
         // prototype.js calls this method all the time, so ignore this warning.
         XML_HTTP_REQUEST_LOGGER.setFilter(new Filter() {

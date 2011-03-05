@@ -1,15 +1,15 @@
 Source: jenkins
 Section: devel
 Priority: extra
-Maintainer: Kohsuke Kawaguchi <kk@kohsuke.org>
+Maintainer: Kohsuke Kawaguchi <kohsuke.kawaguchi@cloudbees.com>
 Build-Depends: debhelper (>= 5)
 Standards-Version: 3.7.2
-Homepage: https://jenkins-ci.org/
+Homepage: http://nectar.cloudbees.com/
 
 Package: jenkins
 Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends}, daemon, adduser, psmisc, java2-runtime
 Conflicts: hudson
 Replaces: hudson
-Description: Continuous integration system written in Java
- Jenkins is an extensible continuous engine written in Java.
+Description: Nectar from CloudBees
+ Nectar is a commercial value-added distribution of Hudson Continuous Integration Server.

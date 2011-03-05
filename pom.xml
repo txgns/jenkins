@@ -32,7 +32,7 @@ THE SOFTWARE.
   
   <groupId>org.jenkins-ci.main</groupId>
   <artifactId>pom</artifactId>
-  <version>1.400-SNAPSHOT</version>
+  <version>1.400.1-SNAPSHOT</version>
   <packaging>pom</packaging>
   
   <name>Jenkins main module</name>
@@ -53,9 +53,8 @@ THE SOFTWARE.
   </modules>
   
   <scm>
-    <connection>scm:git:git://github.com/hudson/hudson.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com/hudson/hudson.git</developerConnection>
-    <url>https://github.com/hudson/hudson</url>
+    <connection>scm:git:git@github.com:cloudbees/hudson.git</connection>
+    <developerConnection>scm:git:git@github.com:cloudbees/hudson.git</developerConnection>
   </scm>
 
   <build>
@@ -464,7 +463,7 @@ THE SOFTWARE.
       <id>release</id>
       <build>
         <plugins>
-          <plugin>
+          <!--plugin>
             <artifactId>maven-assembly-plugin</artifactId>
             <inherited>false</inherited>
             <executions>
@@ -481,7 +480,7 @@ THE SOFTWARE.
                 </configuration>
               </execution>
             </executions>
-          </plugin>
+          </plugin-->
           <plugin>
             <artifactId>maven-gpg-plugin</artifactId>
             <executions>
@@ -541,6 +540,16 @@ THE SOFTWARE.
         <enabled>false</enabled>
       </snapshots>
     </repository>
+    <repository>
+      <id>maven.infradna.com</id>
+      <url>http://maven.infradna.com/releases</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
   </repositories>
 
   <pluginRepositories>
@@ -565,9 +574,17 @@ THE SOFTWARE.
   </licenses>
 
   <distributionManagement>
-    <site>
-      <id>hudson-www</id>
-      <url>scp://jenkins-ci.org/home/kohsuke/www/hudson-labs.org/maven-site/</url>
+    <repository>
+      <id>repository.infradna.com</id>
+      <url>scp://maven.infradna.com/home/maven/repository/releases</url>
+    </repository>
+    <snapshotRepository>
+      <id>repository.infradna.com</id>
+      <url>scp://maven.infradna.com/home/maven/repository/snapshots</url>
+    </snapshotRepository>
+    <site><!-- shall we put this anywhere? -->
+      <id>dummy</id>
+      <url>file:.</url>
     </site>
     <snapshotRepository>
       <id>maven.hudson-labs.org</id>

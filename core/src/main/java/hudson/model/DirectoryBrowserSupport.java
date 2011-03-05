@@ -25,6 +25,7 @@ package hudson.model;
 
 import hudson.FilePath;
 import hudson.Util;
+import hudson.cloudbees.UnsecureSecondaryDomain;
 import hudson.util.IOException2;
 import hudson.FilePath.FileCallable;
 import hudson.remoting.VirtualChannel;
@@ -183,15 +184,20 @@ public final class DirectoryBrowserSupport implements HttpResponse {
         }
         restSize = Math.max(restSize,0);
         String base = _base.toString();
-        String rest = _rest.toString();
+        final String rest = _rest.toString();
 
         // this is the base file/directory
         FilePath baseFile = new FilePath(root,base);
 
         if(baseFile.isDirectory()) {
             if(zip) {
-                rsp.setContentType("application/zip");
-                baseFile.zip(rsp.getOutputStream(),rest);
+                final FilePath dir = baseFile;
+                checkPrivilegeSeparation(req, rsp, baseFile, new FileServiceClosure() {
+                    public void sendFile(StaplerRequest req, StaplerResponse rsp) throws IOException, InterruptedException {
+                        rsp.setContentType("application/zip");
+                        dir.zip(rsp.getOutputStream(), rest);
+                    }
+                });
                 return;
             }
             if (plain) {
@@ -256,29 +262,56 @@ public final class DirectoryBrowserSupport implements HttpResponse {
             return;
         }
 
-        boolean view = rest.equals("*view*");
+        final boolean view = rest.equals("*view*");
 
         if(rest.equals("*fingerprint*")) {
             rsp.forward(Hudson.getInstance().getFingerprint(baseFile.digest()),"/",req);
             return;
         }
 
-        ContentInfo ci = baseFile.act(new ContentInfo());
+        final FilePath file = baseFile;
+        checkPrivilegeSeparation(req, rsp, baseFile, new FileServiceClosure() {
+            public void sendFile(StaplerRequest req, StaplerResponse rsp) throws IOException, InterruptedException, ServletException {
+                ContentInfo ci = file.act(new ContentInfo());
 
-        if(LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("Serving "+baseFile+" with lastModified="+ci.lastModified+", contentLength="+ci.contentLength);
+                if(LOGGER.isLoggable(Level.FINE))
+                    LOGGER.fine("Serving "+file+" with lastModified="+ci.lastModified+", contentLength="+ci.contentLength);
 
-        InputStream in = baseFile.read();
-        if (view) {
-            // for binary files, provide the file name for download
-            rsp.setHeader("Content-Disposition", "inline; filename=" + baseFile.getName());
+                InputStream in = file.read();
+                if (view) {
+                    // for binary files, provide the file name for download
+                    rsp.setHeader("Content-Disposition", "inline; filename=" + file.getName());
 
-            // pseudo file name to let the Stapler set text/plain
-            rsp.serveFile(req, in, ci.lastModified, -1, ci.contentLength, "plain.txt");
-        } else {
-            rsp.serveFile(req, in, ci.lastModified, -1, ci.contentLength, baseFile.getName() );
-        }
+                    // pseudo file name to let the Stapler set text/plain
+                    rsp.serveFile(req, in, ci.lastModified, -1, ci.contentLength, "plain.txt");
+                } else {
+                    rsp.serveFile(req, in, ci.lastModified, -1, ci.contentLength, file.getName() );
+                }
+            }
+        });
     }
+
+    public interface FileServiceClosure {
+        void sendFile(StaplerRequest req, StaplerResponse rsp) throws IOException, InterruptedException, ServletException;
+    }
+
+    /**
+     * If the privilege separation is enabled, redirect. See {@link UnsecureSecondaryDomain}
+     */
+    private void checkPrivilegeSeparation(StaplerRequest req, StaplerResponse rsp, FilePath baseFile, FileServiceClosure action) throws IOException, InterruptedException, ServletException {
+        UnsecureSecondaryDomain usd = UnsecureSecondaryDomain.get();
+        String d = usd.getUrl();
+        if (d ==null) {
+            // feature disabled
+            action.sendFile(req,rsp);
+            return;
+        }
+
+        // redirect
+        String id = usd.register(action);
+        rsp.sendRedirect2(d+"unsecureSecondaryDomain/"+id+'/'+baseFile.getName());
+    }
+
 
     private String getPath(StaplerRequest req) {
         String path = req.getRestOfPath();

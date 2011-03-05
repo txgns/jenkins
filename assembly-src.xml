@@ -40,6 +40,7 @@ THE SOFTWARE.
         <exclude>**/target/**/*</exclude>
         <exclude>**/work</exclude>
         <exclude>**/work/**/*</exclude>
+        <exclude>**/.git/**/*</exclude>
       </excludes>
     </fileSet>
   </fileSets>

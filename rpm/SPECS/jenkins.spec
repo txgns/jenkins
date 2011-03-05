@@ -13,9 +13,9 @@ Source1:	jenkins.init.in
 Source2:	jenkins.sysconfig.in
 Source3:	jenkins.logrotate
 Source4:    jenkins.repo
-URL:		http://jenkins-ci.org/
+URL:		http://nectar.cloudbees.com/
 Group:		Development/Tools/Building
-License:	MIT/X License, GPL/CDDL, ASL2
+License:	Commercial
 BuildRoot:	%{_tmppath}/build-%{name}-%{version}
 # see the comment below from java-1.6.0-openjdk.spec that explains this dependency
 # java-1.5.0-ibm from jpackage.org set Epoch to 1 for unknown reasons,
@@ -59,7 +59,7 @@ following two jobs:
 
 Authors:
 --------
-    Kohsuke Kawaguchi <Kohsuke.Kawaguchi@sun.com>
+    Kohsuke Kawaguchi <kohsuke@infradna.com>
 
 %prep
 %setup -q -T -c

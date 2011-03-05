@@ -28,7 +28,7 @@ THE SOFTWARE.
   <parent>
     <groupId>org.jenkins-ci.main</groupId>
     <artifactId>pom</artifactId>
-    <version>1.400-SNAPSHOT</version>
+    <version>1.400.1-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -203,7 +203,7 @@ THE SOFTWARE.
           <force>true</force><!-- disable staleness check -->
           <factory>org.jvnet.hudson.tools.ExtensionPointListerFactory</factory>
           <options>
-            <option>page=Extension points</option>
+            <!--option>page=Extension points</option> don't update the community page -->
             <option>target=${project.basedir}/target/extension-points.wiki</option>
           </options>
         </configuration>
@@ -382,7 +382,11 @@ THE SOFTWARE.
     <dependency>
       <groupId>org.kohsuke.stapler</groupId>
       <artifactId>stapler-jelly</artifactId>
+<<<<<<< HEAD
       <version>1.155</version>
+=======
+      <version>1.154</version>
+>>>>>>> nectar
       <exclusions>
         <exclusion>
           <groupId>commons-jelly</groupId>
@@ -745,7 +749,11 @@ THE SOFTWARE.
     <dependency>
       <groupId>com.sun.winsw</groupId>
       <artifactId>winsw</artifactId>
+<<<<<<< HEAD
       <version>1.10</version>
+=======
+      <version>1.9</version>
+>>>>>>> nectar
       <classifier>bin</classifier>
       <type>exe</type>
       <scope>provided</scope><!-- this isn't really a dependency that Maven should care about, so putting 'provided' -->

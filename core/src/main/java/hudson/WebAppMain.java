@@ -25,10 +25,13 @@ package hudson;
 
 import com.thoughtworks.xstream.converters.reflection.PureJavaReflectionProvider;
 import com.thoughtworks.xstream.core.JVM;
+import hudson.license.LicenseManager;
+import hudson.license.RegistrationHandler;
 import hudson.model.Hudson;
 import hudson.model.User;
 import hudson.triggers.SafeTimerTask;
 import hudson.triggers.Trigger;
+import hudson.util.*;
 import hudson.util.HudsonIsLoading;
 import hudson.util.IncompatibleServletVersionDetected;
 import hudson.util.IncompatibleVMDetected;
@@ -72,7 +75,7 @@ import java.security.Security;
  */
 public class WebAppMain implements ServletContextListener {
     private final RingBufferLogHandler handler = new RingBufferLogHandler();
-    private static final String APP = "app";
+    public static final String APP = "app";
 
     /**
      * Creates the sole instance of {@link Hudson} and register it to the {@link ServletContext}.
@@ -219,7 +222,13 @@ public class WebAppMain implements ServletContextListener {
                 @Override
                 public void run() {
                     try {
-                        context.setAttribute(APP, createHudson(home, context));
+                        Hudson theInstance = createHudson(home, context);
+                        RegistrationHandler rh = new RegistrationHandler(context);
+                        // is this licenseKey valid for this installation?
+                        if (!LicenseManager.getInstance().isExpired() || Main.isUnitTest)
+                            context.setAttribute(APP, theInstance);
+                        else
+                            context.setAttribute(APP, rh);
 
                         // trigger the loading of changelogs in the background,
                         // but give the system 10 seconds so that the first page

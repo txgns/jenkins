@@ -242,7 +242,11 @@ THE SOFTWARE.
           ${%Page generated}:
           <i:formatDate value="${h.getCurrentTime()}" type="both" dateStyle="medium" timeStyle="medium"/>
         </span>
-        <a href="http://jenkins-ci.org/">Jenkins ver. ${h.version}</a>
+        <a href="http://nectar.cloudbees.com/">Nectar from CloudBees ver. ${h.version}</a>
+        <j:set var="lic" value="${app.license}" />
+        <span style="padding-left:2em; ${lic.expired?'color:red':null}">
+          ${lic.footerString}
+        </span>
       </td></tr>
     </table>
     <j:forEach var="pd" items="${h.pageDecorators}">
