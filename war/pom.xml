@@ -40,7 +40,7 @@ THE SOFTWARE.
   </description>
   
   <build>
-    <finalName>jenkins</finalName>
+    <finalName>meta-nectar</finalName>
     <plugins>
       <plugin>
         <artifactId>maven-war-plugin</artifactId>
