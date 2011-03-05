@@ -10,7 +10,7 @@
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="273"
+   width="283"
    height="35"
    id="svg2"
    sodipodi:version="0.32"
@@ -71,9 +71,9 @@
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
-     inkscape:window-width="1600"
-     inkscape:window-height="848"
-     inkscape:window-x="0"
+     inkscape:window-width="2560"
+     inkscape:window-height="1548"
+     inkscape:window-x="1920"
      inkscape:window-y="25"
      inkscape:grid-points="true"
      inkscape:grid-bbox="true"
@@ -87,7 +87,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -98,7 +98,7 @@
     <rect
        style="fill:url(#linearGradient3060);fill-opacity:1;fill-rule:nonzero;stroke:none"
        id="rect1307"
-       width="273.88367"
+       width="283.63367"
        height="31"
        x="0"
        y="-2.2735736e-15"
@@ -107,7 +107,7 @@
     <rect
        style="fill:#fbad3e;fill-opacity:1;fill-rule:nonzero;stroke:none"
        id="rect2182"
-       width="273.61374"
+       width="283.86374"
        height="4"
        x="0"
        y="31"
@@ -123,17 +123,17 @@
          sodipodi:role="line"
          id="tspan2186"
          x="7.1015625"
-         y="25">Nectar</tspan></text>
+         y="25">MetaNectar</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Georgia;-inkscape-font-specification:Georgia Bold"
-       x="115.67608"
+       x="179.67609"
        y="25"
        id="text2184-7"
        sodipodi:linespacing="100%"><tspan
          sodipodi:role="line"
          id="tspan2846"
-         x="115.67608"
+         x="179.67609"
          y="25">from CloudBees</tspan></text>
   </g>
 </svg>
