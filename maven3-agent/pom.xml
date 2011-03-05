@@ -5,7 +5,7 @@
     <groupId>org.jenkins-ci.main</groupId>
     <artifactId>pom</artifactId>
     <version>1.400.1-SNAPSHOT</version>
-    <parentPath>../pom.xml</parentPath>
+    <relativePath>../pom.xml</relativePath>
   </parent>
   <artifactId>maven3-agent</artifactId>
   <name>Jenkins Maven3 CLI Agent</name>
