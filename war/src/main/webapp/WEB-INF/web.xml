@@ -124,7 +124,7 @@ THE SOFTWARE.
   </filter-mapping>
 
   <listener>
-    <listener-class>hudson.WebAppMain</listener-class>
+    <listener-class>metanectar.MetaNectarWebAppMain</listener-class>
   </listener>
 
   <!--

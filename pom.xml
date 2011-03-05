@@ -41,12 +41,6 @@ THE SOFTWARE.
   <modules>
     <module>remoting</module>
     <module>core</module>
-    <module>maven-plugin</module>
-    <module>ui-samples-plugin</module>
-    <module>maven-agent</module>
-    <module>maven-interceptor</module>
-    <module>maven3-agent</module>
-    <module>maven3-interceptor</module>
     <module>war</module>
     <module>test</module>
     <module>cli</module>
