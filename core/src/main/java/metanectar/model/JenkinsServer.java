@@ -2,9 +2,12 @@ package metanectar.model;
 
 import hudson.Extension;
 import hudson.model.AbstractItem;
+import hudson.model.BallColor;
 import hudson.model.Hudson;
 import hudson.model.ItemGroup;
 import hudson.model.Job;
+import hudson.model.StatusIcon;
+import hudson.model.StockStatusIcon;
 import hudson.model.TopLevelItem;
 import hudson.model.TopLevelItemDescriptor;
 
@@ -36,6 +39,11 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem {
     public TopLevelItemDescriptor getDescriptor() {
         return (TopLevelItemDescriptor) Hudson.getInstance().getDescriptorOrDie(getClass());
     }
+
+    public StatusIcon getIconColor() {
+        return new StockStatusIcon("computer.png",Messages._JenkinsServer_Status_Online());
+    }
+
 
     @Extension
     public static class DescriptorImpl extends TopLevelItemDescriptor {
