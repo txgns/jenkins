@@ -85,6 +85,9 @@ THE SOFTWARE.
         <version>1.63</version>
         <extensions>true</extensions>
         <configuration>
+          <!-- after 1.65 we can specify the jenkins-core artifact
+          <jenkinsCoreId>com.cloudbees.metanectar:jenkins-core</jenkinsCoreId>
+          -->
           <showDeprecation>true</showDeprecation>
         </configuration>
       </plugin>
