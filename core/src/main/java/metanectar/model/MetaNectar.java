@@ -36,11 +36,17 @@ public class MetaNectar extends Hudson {
      */
     @Override
     protected View createInitialView() {
-        ListView lv = new ListView("All");
-        lv.setColumns(Arrays.asList(
-                new StatusColumn(),
-                new JobColumn()
-        ));
-        return lv;
+        try {
+            ListView lv = new ListView("All");
+            lv.setColumns(Arrays.asList(
+                    new StatusColumn(),
+                    new JobColumn()
+            ));
+            return lv;
+        } catch (IOException e) {
+            // view doesn't save itself unless it's connected to the parent, which we don't do in this method.
+            // so this never happens
+            throw new AssertionError(e);
+        }
     }
 }

@@ -114,8 +114,8 @@ public class ListView extends View implements Saveable {
     /**
      * Updates the columns.
      */
-    public void setColumns(List<? extends ListViewColumn> columns) {
-        this.columns = new DescribableList<ListViewColumn, Descriptor<ListViewColumn>>(this,columns);
+    public void setColumns(List<? extends ListViewColumn> columns) throws IOException {
+        this.columns.replaceBy(columns);
     }
 
     protected void initJobFilters() {
