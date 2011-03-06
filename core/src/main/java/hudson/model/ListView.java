@@ -111,6 +111,13 @@ public class ListView extends View implements Saveable {
             columns = new DescribableList<ListViewColumn, Descriptor<ListViewColumn>>(this,ListViewColumn.createDefaultInitialColumnList());
     }
 
+    /**
+     * Updates the columns.
+     */
+    public void setColumns(List<? extends ListViewColumn> columns) {
+        this.columns = new DescribableList<ListViewColumn, Descriptor<ListViewColumn>>(this,columns);
+    }
+
     protected void initJobFilters() {
         if (jobFilters == null)
             jobFilters = new DescribableList<ViewJobFilter, Descriptor<ViewJobFilter>>(this);
