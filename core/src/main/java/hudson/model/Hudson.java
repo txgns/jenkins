@@ -2091,7 +2091,7 @@ public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProx
     }
 
     public Item getItemByFullName(String fullName) {
-        return getItemByFullName(fullName,Item.class);
+        return getItemByFullName(fullName, Item.class);
     }
 
     /**
@@ -2163,7 +2163,7 @@ public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProx
      */
     public void onRenamed(TopLevelItem job, String oldName, String newName) throws IOException {
         items.remove(oldName);
-        items.put(newName,job);
+        items.put(newName, job);
 
         for (View v : views)
             v.onJobRenamed(job, oldName, newName);
@@ -2288,7 +2288,7 @@ public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProx
                 // initialize views by inserting the default view if necessary
                 // this is both for clean Hudson and for backward compatibility.
                 if(views.size()==0 || primaryView==null) {
-                    View v = new AllView(Messages.Hudson_ViewName());
+                    View v = createInitialView();
                     v.owner = Hudson.this;
                     views.add(0,v);
                     primaryView = v.getViewName();
@@ -2328,6 +2328,13 @@ public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProx
         });
 
         return g;
+    }
+
+    /**
+     * Creates the very first view used when someone starts a fresh instance.
+     */
+    protected View createInitialView() {
+        return new AllView(Messages.Hudson_ViewName());
     }
 
     /**
