@@ -71,6 +71,7 @@ public final class MavenModule extends AbstractMavenProject<MavenModule,MavenBui
     private DescribableList<MavenReporter,Descriptor<MavenReporter>> reporters =
         new DescribableList<MavenReporter,Descriptor<MavenReporter>>(this);
 
+
     /**
      * Name taken from {@link MavenProject#getName()}.
      */
@@ -87,6 +88,9 @@ public final class MavenModule extends AbstractMavenProject<MavenModule,MavenBui
 
     private transient ModuleName moduleName;
 
+    /**
+     * @see documentation in {@link PomInfo#relativePath}
+     */
     private String relativePath;
 
     /**
@@ -407,7 +411,7 @@ public final class MavenModule extends AbstractMavenProject<MavenModule,MavenBui
         for (ModuleDependency d : dependencies) {
             MavenModule src = modules.get(d);
             if(src!=null) {
-                DependencyGraph.Dependency dep = new DependencyGraph.Dependency(
+                DependencyGraph.Dependency dep = new MavenModuleDependency(
                         src.getParent().isAggregatorStyleBuild() ? src.getParent() : src,dest);
                 if (!dep.pointsItself())
                     graph.addDependency(dep);
@@ -480,6 +484,14 @@ public final class MavenModule extends AbstractMavenProject<MavenModule,MavenBui
 
         return reporterList;
     }
+    
+    /**
+     * for debug purpose
+     */
+    public String toString() {
+        return super.toString()+'['+getFullName()+']'+"[relativePath:"+getRelativePath()+']';
+    }
 
     private static final Logger LOGGER = Logger.getLogger(MavenModule.class.getName());
+    
 }

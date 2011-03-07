@@ -37,6 +37,7 @@ import hudson.model.Project;
 import hudson.model.SCMedItem;
 import hudson.model.AdministrativeMonitor;
 import hudson.util.FlushProofOutputStream;
+import hudson.util.FormValidation;
 import hudson.util.StreamTaskListener;
 import hudson.util.TimeUnit2;
 import hudson.util.SequentialExecutionQueue;
@@ -61,6 +62,7 @@ import java.util.logging.Logger;
 import java.text.DateFormat;
 
 import net.sf.json.JSONObject;
+import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerResponse;
 
 import static java.util.logging.Level.*;
@@ -200,11 +202,6 @@ public class SCMTrigger extends Trigger<SCMedItem> {
             return Messages.SCMTrigger_DisplayName();
         }
 
-        @Override
-        public String getHelpFile() {
-            return "/help/project-config/poll-scm.html";
-        }
-
         /**
          * Gets the number of concurrent threads used for polling.
          *
@@ -239,7 +236,7 @@ public class SCMTrigger extends Trigger<SCMedItem> {
 
         @Override
         public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
-            String t = req.getParameter("poll_scm_threads");
+            String t = json.optString("pollingThreadCount",null);
             if(t==null || t.length()==0)
                 setPollingThreadCount(0);
             else
@@ -249,6 +246,12 @@ public class SCMTrigger extends Trigger<SCMedItem> {
             save();
 
             return true;
+        }
+
+        public FormValidation doCheckPollingThreadCount(@QueryParameter String value) {
+            if (value != null && "".equals(value.trim()))
+                return FormValidation.ok();
+            return FormValidation.validateNonNegativeInteger(value);
         }
     }
 

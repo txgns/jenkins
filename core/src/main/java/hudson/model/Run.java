@@ -2,7 +2,8 @@
  * The MIT License
  * 
  * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi,
- * Daniel Dyer, Red Hat, Inc., Tom Huybrechts, Romain Seguy, Yahoo! Inc.
+ * Daniel Dyer, Red Hat, Inc., Tom Huybrechts, Romain Seguy, Yahoo! Inc.,
+ * Darek Ostolski
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +40,7 @@ import hudson.console.AnnotatedLargeText;
 import hudson.console.ConsoleNote;
 import hudson.matrix.MatrixBuild;
 import hudson.matrix.MatrixRun;
+import hudson.model.Descriptor.FormException;
 import hudson.model.listeners.RunListener;
 import hudson.model.listeners.SaveableListener;
 import hudson.search.SearchIndexBuilder;
@@ -92,8 +94,12 @@ import java.util.zip.GZIPInputStream;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 
+import net.sf.json.JSONObject;
 import org.apache.commons.io.input.NullInputStream;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.jelly.XMLOutput;
+import org.kohsuke.stapler.HttpResponse;
+import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
@@ -165,6 +171,13 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
      * Human-readable description. Can be null.
      */
     protected volatile String description;
+
+    /**
+     * Human-readable name of this build. Can be null.
+     * If non-null, this text is displayed instead of "#NNN", which is the default.
+     * @since 1.390
+     */
+    private volatile String displayName;
 
     /**
      * The current build state.
@@ -592,11 +605,25 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
 
     @Exported
     public String getFullDisplayName() {
-        return project.getFullDisplayName()+" #"+number;
+        return project.getFullDisplayName()+' '+getDisplayName();
     }
 
     public String getDisplayName() {
-        return "#"+number;
+        return displayName!=null ? displayName : "#"+number;
+    }
+
+    public boolean hasCustomDisplayName() {
+        return displayName!=null;
+    }
+
+    /**
+     * @param value
+     *      Set to null to revert back to the default "#NNN".
+     */
+    public void setDisplayName(String value) throws IOException {
+        checkPermission(UPDATE);
+        this.displayName = value;
+        save();
     }
 
     @Exported(visibility=2)
@@ -1071,8 +1098,19 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
      * @since 1.349
      */
     public void writeLogTo(long offset, XMLOutput out) throws IOException {
-        // TODO: resurrect compressed log file support
-        getLogText().writeHtmlTo(offset,out.asWriter());
+        try {
+			getLogText().writeHtmlTo(offset,out.asWriter());
+		} catch (IOException e) {
+			// try to fall back to the old getLogInputStream()
+			// mainly to support .gz compressed files
+			// In this case, console annotation handling will be turned off.
+			InputStream input = getLogInputStream();
+			try {
+				IOUtils.copy(input, out.asWriter());
+			} finally {
+				IOUtils.closeQuietly(input);
+			}
+		}
     }
 
     /**
@@ -1549,7 +1587,8 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
                 return new Summary(false, Messages.Run_Summary_BrokenForALongTime());
             if(since==prev)
                 return new Summary(true, Messages.Run_Summary_BrokenSinceThisBuild());
-            return new Summary(false, Messages.Run_Summary_BrokenSince(since.getDisplayName()));
+            RunT failedBuild = since.getNextBuild();
+            return new Summary(false, Messages.Run_Summary_BrokenSince(failedBuild.getDisplayName()));
         }
 
         if(getResult()==Result.ABORTED)
@@ -1681,7 +1720,6 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
      * Accepts the new description.
      */
     public synchronized void doSubmitDescription( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
-        req.setCharacterEncoding("UTF-8");
         setDescription(req.getParameter("description"));
         rsp.sendRedirect(".");  // go to the top page
     }
@@ -1722,7 +1760,10 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
      * @since 1.305
      */
     public EnvVars getEnvironment(TaskListener log) throws IOException, InterruptedException {
-        EnvVars env = Computer.currentComputer().getEnvironment().overrideAll(getCharacteristicEnvVars());
+        EnvVars env = getCharacteristicEnvVars();
+        Computer c = Computer.currentComputer();
+        if (c!=null)
+            env = c.getEnvironment().overrideAll(env);
         String rootUrl = Hudson.getInstance().getRootUrl();
         if(rootUrl!=null) {
             env.put("HUDSON_URL", rootUrl);
@@ -1742,6 +1783,9 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
             if (n!=null)
                 env.put("NODE_LABELS",Util.join(n.getAssignedLabels()," "));
         }
+
+        for (EnvironmentContributor ec : EnvironmentContributor.all())
+            ec.buildEnvironmentFor(this,env,log);
 
         return env;
     }
@@ -1786,6 +1830,24 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
      */
     public long getEstimatedDuration() {
         return project.getEstimatedDuration();
+    }
+
+    public HttpResponse doConfigSubmit( StaplerRequest req ) throws IOException, ServletException, FormException {
+        checkPermission(UPDATE);
+        BulkChange bc = new BulkChange(this);
+        try {
+            JSONObject json = req.getSubmittedForm();
+            submit(json);
+            bc.commit();
+        } finally {
+            bc.abort();
+        }
+        return HttpResponses.redirectToDot();
+    }
+
+    protected void submit(JSONObject json) throws IOException {
+        setDisplayName(Util.fixEmptyAndTrim(json.getString("displayName")));
+        setDescription(json.getString("description"));
     }
 
     public static final XStream XSTREAM = new XStream2();

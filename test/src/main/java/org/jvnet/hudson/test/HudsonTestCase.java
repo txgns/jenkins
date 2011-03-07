@@ -34,9 +34,11 @@ import hudson.model.Computer;
 import hudson.model.Executor;
 import hudson.model.*;
 import hudson.model.Queue.Executable;
+import hudson.security.ACL;
 import hudson.security.AbstractPasswordBasedSecurityRealm;
 import hudson.security.GroupDetails;
 import hudson.security.SecurityRealm;
+import hudson.slaves.ComputerConnector;
 import hudson.tasks.Builder;
 import hudson.tasks.Publisher;
 import hudson.tools.ToolProperty;
@@ -104,6 +106,7 @@ import net.sourceforge.htmlunit.corejs.javascript.ContextFactory.Listener;
 import org.acegisecurity.AuthenticationException;
 import org.acegisecurity.BadCredentialsException;
 import org.acegisecurity.GrantedAuthority;
+import org.acegisecurity.context.SecurityContextHolder;
 import org.acegisecurity.userdetails.UserDetails;
 import org.acegisecurity.userdetails.UsernameNotFoundException;
 import org.apache.commons.httpclient.NameValuePair;
@@ -208,6 +211,8 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
      * which runs faster.
      */
     public boolean useLocalPluginManager;
+
+    public ComputerConnectorTester computerConnectorTester = new ComputerConnectorTester(this);
 
 
     protected HudsonTestCase(String name) {
@@ -319,6 +324,8 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     @Override
     protected void runTest() throws Throwable {
         System.out.println("=== Starting "+ getClass().getSimpleName() + "." + getName());
+        // so that test code has all the access to the system
+        SecurityContextHolder.getContext().setAuthentication(ACL.SYSTEM);
         super.runTest();
     }
 
@@ -422,14 +429,31 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
      * Returns the older default Maven, while still allowing specification of other bundled Mavens.
      */
     protected MavenInstallation configureDefaultMaven() throws Exception {
-	return configureDefaultMaven("apache-maven-2.2.1", MavenInstallation.MAVEN_20);
+        return configureDefaultMaven("apache-maven-2.2.1", MavenInstallation.MAVEN_20);
     }
-
+    
+    protected MavenInstallation configureMaven3() throws Exception {
+        MavenInstallation mvn = configureDefaultMaven("apache-maven-3.0.1", MavenInstallation.MAVEN_30);
+        
+        MavenInstallation m3 = new MavenInstallation("apache-maven-3.0.1",mvn.getHome(), NO_PROPERTIES);
+        hudson.getDescriptorByType(Maven.DescriptorImpl.class).setInstallations(m3);
+        return m3;
+    }    
+    
     /**
      * Locates Maven2 and configure that as the only Maven in the system.
      */
     protected MavenInstallation configureDefaultMaven(String mavenVersion, int mavenReqVersion) throws Exception {
         // first if we are running inside Maven, pick that Maven, if it meets the criteria we require..
+        // does it exists in the buildDirectory see maven-junit-plugin systemProperties 
+        // buildDirectory -> ${project.build.directory} (so no reason to be null ;-) )
+        String buildDirectory = System.getProperty( "buildDirectory", "./target/classes/" );
+        File mavenAlreadyInstalled = new File(buildDirectory, mavenVersion);
+        if (mavenAlreadyInstalled.exists()) {
+            MavenInstallation mavenInstallation = new MavenInstallation("default",mavenAlreadyInstalled.getAbsolutePath(), NO_PROPERTIES);
+            hudson.getDescriptorByType(Maven.DescriptorImpl.class).setInstallations(mavenInstallation);
+            return mavenInstallation;
+        }
         String home = System.getProperty("maven.home");
         if(home!=null) {
             MavenInstallation mavenInstallation = new MavenInstallation("default",home, NO_PROPERTIES);
@@ -445,7 +469,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
                 "To avoid a performance hit, set the system property 'maven.home' to point to a Maven2 installation.");
         FilePath mvn = hudson.getRootPath().createTempFile("maven", "zip");
         mvn.copyFrom(HudsonTestCase.class.getClassLoader().getResource(mavenVersion + "-bin.zip"));
-        File mvnHome = createTmpDir();
+        File mvnHome =  new File(buildDirectory);//createTmpDir();
         mvn.unzip(new FilePath(mvnHome));
         // TODO: switch to tar that preserves file permissions more easily
         if(!Functions.isWindows())
@@ -700,12 +724,24 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     }
 
     /**
+     * Hits the Hudson system configuration and submits without any modification.
+     */
+    protected void configRoundtrip() throws Exception {
+        submit(createWebClient().goTo("configure").getFormByName("config"));
+    }
+
+    /**
      * Loads a configuration page and submits it without any modifications, to
      * perform a round-trip configuration test.
      * <p>
      * See http://wiki.hudson-ci.org/display/HUDSON/Unit+Test#UnitTest-Configurationroundtriptesting
      */
     protected <P extends Job> P configRoundtrip(P job) throws Exception {
+        submit(createWebClient().getPage(job,"configure").getFormByName("config"));
+        return job;
+    }
+
+    protected <P extends Item> P configRoundtrip(P job) throws Exception {
         submit(createWebClient().getPage(job,"configure").getFormByName("config"));
         return job;
     }
@@ -728,6 +764,12 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         p.getPublishersList().add(before);
         configRoundtrip(p);
         return (P)p.getPublishersList().get(before.getClass());
+    }
+
+    protected <C extends ComputerConnector> C configRoundtrip(C before) throws Exception {
+        computerConnectorTester.connector = before;
+        submit(createWebClient().goTo("self/computerConnectorTester/configure").getFormByName("config"));
+        return (C)computerConnectorTester.connector;
     }
 
 
@@ -1234,9 +1276,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
 
                     String dependencies = m.getMainAttributes().getValue("Plugin-Dependencies");
                     if(dependencies!=null) {
-                        MavenEmbedder embedder = new MavenEmbedder(null);
-                        embedder.setClassLoader(getClass().getClassLoader());
-                        embedder.start();
+                        MavenEmbedder embedder = new MavenEmbedder(getClass().getClassLoader(), null);
                         for( String dep : dependencies.split(",")) {
                             String[] tokens = dep.split(":");
                             String artifactId = tokens[0];
@@ -1274,7 +1314,6 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
                                 FileUtils.copyFile(dependencyJar, dst);
                             }
                         }
-                        embedder.stop();
                     }
                 }
             }
@@ -1309,11 +1348,25 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
 
 
     /**
-     * Executes the given closure on the server, in the context of an HTTP request.
-     * This is useful for testing some methods that require {@link StaplerRequest} and {@link StaplerResponse}.
+     * Executes the given closure on the server, by the servlet request handling thread,
+     * in the context of an HTTP request.
      *
      * <p>
-     * The closure will get the request and response as parameters.
+     * In {@link HudsonTestCase}, a thread that's executing the test code is different from the thread
+     * that carries out HTTP requests made through {@link WebClient}. But sometimes you want to
+     * make assertions and other calls with side-effect from within the request handling thread.
+     *
+     * <p>
+     * This method allows you to do just that. It is useful for testing some methods that
+     * require {@link StaplerRequest} and {@link StaplerResponse}, or getting the credential
+     * of the current user (via {@link Hudson#getAuthentication()}, and so on.
+     *
+     * @param c
+     *      The closure to be executed on the server.
+     * @return
+     *      The return value from the closure.
+     * @throws Exception
+     *      If a closure throws any exception, that exception will be carried forward.
      */
     public <V> V executeOnServer(final Callable<V> c) throws Exception {
         final Exception[] t = new Exception[1];

@@ -26,12 +26,15 @@ package hudson.model;
 import hudson.model.Queue.Executable;
 import hudson.Util;
 import hudson.FilePath;
+import hudson.model.queue.Executables;
 import hudson.model.queue.SubTask;
 import hudson.model.queue.Tasks;
 import hudson.model.queue.WorkUnit;
 import hudson.util.TimeUnit2;
 import hudson.util.InterceptingProxy;
 import hudson.security.ACL;
+import org.kohsuke.stapler.HttpResponse;
+import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.ExportedBean;
@@ -76,6 +79,8 @@ public class Executor extends Thread implements ModelObject {
 
     private Throwable causeOfDeath;
 
+    private boolean induceDeath;
+
     public Executor(Computer owner, int n) {
         super("Executor #"+n+" for "+owner.getDisplayName());
         this.owner = owner;
@@ -106,6 +111,7 @@ public class Executor extends Thread implements ModelObject {
                 // sometime an interrupt aborts a build but without clearing the flag.
                 // see issue #1583
                 if (Thread.interrupted())   continue;
+                if (induceDeath)        throw new ThreadDeath();
 
                 SubTask task;
                 try {
@@ -164,6 +170,14 @@ public class Executor extends Thread implements ModelObject {
             causeOfDeath = e;
             throw e;
         }
+    }
+
+    /**
+     * For testing only. Simulate a fatal unexpected failure.
+     */
+    public void killHard() {
+        induceDeath = true;
+        interrupt();
     }
 
     /**
@@ -269,7 +283,7 @@ public class Executor extends Thread implements ModelObject {
     public int getProgress() {
         Queue.Executable e = executable;
         if(e==null)     return -1;
-        long d = e.getEstimatedDuration();
+        long d = Executables.getEstimatedDurationFor(e);
         if(d<0)         return -1;
 
         int num = (int)(getElapsedTime()*100/d);
@@ -290,7 +304,7 @@ public class Executor extends Thread implements ModelObject {
         if(e==null)     return false;
 
         long elapsed = getElapsedTime();
-        long d = e.getEstimatedDuration();
+        long d = Executables.getEstimatedDurationFor(e);
         if(d>=0) {
             // if it's taking 10 times longer than ETA, consider it stuck
             return d*10 < elapsed;
@@ -322,7 +336,7 @@ public class Executor extends Thread implements ModelObject {
         Queue.Executable e = executable;
         if(e==null)     return Messages.Executor_NotAvailable();
 
-        long d = e.getEstimatedDuration();
+        long d = Executables.getEstimatedDurationFor(e);
         if(d<0)         return Messages.Executor_NotAvailable();
 
         long eta = d-getElapsedTime();
@@ -339,7 +353,7 @@ public class Executor extends Thread implements ModelObject {
         Queue.Executable e = executable;
         if(e==null)     return -1;
 
-        long d = e.getEstimatedDuration();
+        long d = Executables.getEstimatedDurationFor(e);
         if(d<0)         return -1;
 
         long eta = d-getElapsedTime();
@@ -361,6 +375,17 @@ public class Executor extends Thread implements ModelObject {
     }
 
     /**
+     * Throws away this executor and get a new one.
+     */
+    public HttpResponse doYank() {
+        Hudson.getInstance().checkPermission(Hudson.ADMINISTER);
+        if (isAlive())
+            throw new Failure("Can't yank a live executor");
+        owner.removeExecutor(this);
+        return HttpResponses.redirectViaContextPath("/");
+    }
+
+    /**
      * Checks if the current user has a permission to stop this build.
      */
     public boolean hasStopPermission() {
@@ -379,7 +404,7 @@ public class Executor extends Thread implements ModelObject {
         if (isIdle())
             return Math.max(finishTime, owner.getConnectTime());
         else {
-            return Math.max(startTime + Math.max(0, executable.getEstimatedDuration()),
+            return Math.max(startTime + Math.max(0, Executables.getEstimatedDurationFor(executable)),
                     System.currentTimeMillis() + 15000);
         }
     }
@@ -416,6 +441,18 @@ public class Executor extends Thread implements ModelObject {
         Thread t = Thread.currentThread();
         if (t instanceof Executor) return (Executor) t;
         return IMPERSONATION.get();
+    }
+    
+    /**
+     * Returns the estimated duration for the executable.
+     * Protects against {@link AbstractMethodError}s if the {@link Executable} implementation
+     * was compiled against Hudson < 1.383
+     *
+     * @deprecated as of 1.388
+     *      Use {@link Executables#getEstimatedDurationFor(Executable)}
+     */
+    public static long getEstimatedDurationFor(Executable e) {
+        return Executables.getEstimatedDurationFor(e);
     }
 
     /**

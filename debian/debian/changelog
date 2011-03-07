@@ -1,3 +1,63 @@
+hudson (1.394) unstable; urgency=low
+
+  * See http://hudson.dev.java.net/changelog.html for more details.
+
+ -- Kohsuke Kawaguchi <kk@kohsuke.org>  Sat, 15 Jan 2011 10:44:01 -0800
+
+hudson (1.393) unstable; urgency=low
+
+  * See http://hudson.dev.java.net/changelog.html for more details.
+
+ -- Kohsuke Kawaguchi <kk@kohsuke.org>  Sun, 09 Jan 2011 18:06:56 -0800
+
+hudson (1.392) unstable; urgency=low
+
+  * See http://hudson.dev.java.net/changelog.html for more details.
+
+ -- Kohsuke Kawaguchi <kk@kohsuke.org>  Fri, 31 Dec 2010 21:41:33 -0800
+
+hudson (1.391) unstable; urgency=low
+
+  * See http://hudson.dev.java.net/changelog.html for more details.
+
+ -- Kohsuke Kawaguchi <kk@kohsuke.org>  Sun, 26 Dec 2010 10:24:25 -0800
+
+hudson (1.390) unstable; urgency=low
+
+  * See http://hudson.dev.java.net/changelog.html for more details.
+
+ -- Kohsuke Kawaguchi <kk@kohsuke.org>  Sat, 18 Dec 2010 01:25:30 -0800
+
+hudson (1.389) unstable; urgency=low
+
+  * See http://hudson.dev.java.net/changelog.html for more details.
+
+ -- Kohsuke Kawaguchi <kk@kohsuke.org>  Sat, 11 Dec 2010 22:05:31 -0800
+
+hudson (1.388) unstable; urgency=low
+
+  * See http://hudson.dev.java.net/changelog.html for more details.
+
+ -- Kohsuke Kawaguchi <kk@kohsuke.org>  Sun, 05 Dec 2010 06:58:08 -0800
+
+hudson (1.387) unstable; urgency=low
+
+  * See http://hudson.dev.java.net/changelog.html for more details.
+
+ -- Kohsuke Kawaguchi <kk@kohsuke.org>  Sat, 27 Nov 2010 08:24:52 -0800
+
+hudson (1.385) unstable; urgency=low
+
+  * See http://hudson.dev.java.net/changelog.html for more details.
+
+ -- Kohsuke Kawaguchi <kk@kohsuke.org>  Mon, 15 Nov 2010 12:39:35 -0800
+
+hudson (1.384) unstable; urgency=low
+
+  * See http://hudson.dev.java.net/changelog.html for more details.
+
+ -- Kohsuke Kawaguchi <kk@kohsuke.org>  Fri, 05 Nov 2010 19:25:06 -0700
+
 hudson (1.383.2) unstable; urgency=low
 
   * See http://hudson.dev.java.net/changelog.html for more details.
@@ -9,6 +69,12 @@ hudson (1.383.1) unstable; urgency=low
   * See http://hudson.dev.java.net/changelog.html for more details.
 
  -- Kohsuke Kawaguchi <kohsuke@infradna.com>  Wed, 03 Nov 2010 09:32:11 -0700
+
+hudson (1.383) unstable; urgency=low
+
+  * See http://hudson.dev.java.net/changelog.html for more details.
+
+ -- Kohsuke Kawaguchi <kk@kohsuke.org>  Fri, 29 Oct 2010 18:43:47 -0700
 
 hudson (1.382) unstable; urgency=low
 

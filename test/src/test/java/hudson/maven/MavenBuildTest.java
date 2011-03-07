@@ -1,17 +1,22 @@
 package hudson.maven;
 
-import org.jvnet.hudson.test.HudsonTestCase;
-import org.jvnet.hudson.test.Bug;
-import org.jvnet.hudson.test.ExtractResourceSCM;
 import hudson.Launcher;
-import hudson.scm.SubversionSCM;
 import hudson.model.BuildListener;
+import hudson.model.ParametersDefinitionProperty;
 import hudson.model.Result;
+import hudson.model.StringParameterDefinition;
+import hudson.scm.SubversionSCM;
+import hudson.tasks.Maven.MavenInstallation;
 import hudson.util.NullStream;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 
+import org.jvnet.hudson.test.Bug;
+import org.jvnet.hudson.test.Email;
+import org.jvnet.hudson.test.ExtractResourceSCM;
+import org.jvnet.hudson.test.HudsonTestCase;
 import org.tmatesoft.svn.core.SVNException;
 
 /**
@@ -62,15 +67,6 @@ public class MavenBuildTest extends HudsonTestCase {
         assertBuildStatus(Result.FAILURE, m.scheduleBuild2(0).get());
     }
     
-    private static class TestReporter extends MavenReporter {
-        @Override
-        public boolean end(MavenBuild build, Launcher launcher, BuildListener listener) throws InterruptedException, IOException {
-            assertNotNull(build.getProject().getWorkspace());
-            assertNotNull(build.getWorkspace());
-            return true;
-        }
-    }
-    
     /**
      * Workspace determination problem on non-aggregator style build.
      */
@@ -78,7 +74,7 @@ public class MavenBuildTest extends HudsonTestCase {
     public void testParallelModuleBuild() throws Exception {
         configureDefaultMaven();
         MavenModuleSet m = createMavenProject();
-        SubversionSCM scm = new SubversionSCM("https://www.dev.java.net/svn/hudson/trunk/hudson/test-projects/multimodule-maven");
+        SubversionSCM scm = new SubversionSCM("https://svn.java.net/svn/hudson~svn/trunk/hudson/test-projects/multimodule-maven");
         setJavaNetCredential(scm);
         m.setScm(scm);
         
@@ -90,4 +86,71 @@ public class MavenBuildTest extends HudsonTestCase {
         buildAndAssertSuccess(m.getModule("test$module1"));
         buildAndAssertSuccess(m.getModule("test$module1"));
     }
+    
+    @Bug(value=8395)
+    public void testMaven2BuildWrongScope() throws Exception {
+        
+        File pom = new File(this.getClass().getResource("test-pom-8395.xml").toURI());
+        MavenModuleSet m = createMavenProject();
+        MavenInstallation mavenInstallation = configureDefaultMaven();
+        m.setMaven( mavenInstallation.getName() );
+        m.getReporters().add(new TestReporter());
+        m.setRootPOM(pom.getAbsolutePath());
+        m.setGoals( "clean validate" );
+        MavenModuleSetBuild mmsb =  buildAndAssertSuccess(m);
+        assertFalse( mmsb.getProject().getModules().isEmpty());
+    }    
+    
+    @Bug(value=8390)
+    public void testMaven2BuildWrongInheritence() throws Exception {
+        
+        MavenModuleSet m = createMavenProject();
+        MavenInstallation mavenInstallation = configureDefaultMaven();
+        m.setMaven( mavenInstallation.getName() );
+        m.getReporters().add(new TestReporter());
+        m.setScm(new ExtractResourceSCM(getClass().getResource("incorrect-inheritence-testcase.zip")));
+        m.setGoals( "clean validate" );
+        MavenModuleSetBuild mmsb =  buildAndAssertSuccess(m);
+        assertFalse( mmsb.getProject().getModules().isEmpty());
+    }   
+
+    @Bug(value=8445)
+    public void testMaven2SeveralModulesInDirectory() throws Exception {
+        
+        MavenModuleSet m = createMavenProject();
+        MavenInstallation mavenInstallation = configureDefaultMaven();
+        m.setMaven( mavenInstallation.getName() );
+        m.getReporters().add(new TestReporter());
+        m.setScm(new ExtractResourceSCM(getClass().getResource("several-modules-in-directory.zip")));
+        m.setGoals( "clean validate" );
+        MavenModuleSetBuild mmsb =  buildAndAssertSuccess(m);
+        assertFalse( mmsb.getProject().getModules().isEmpty());
+    }    
+
+    @Email("https://groups.google.com/d/msg/hudson-users/Xhw00UopVN0/FA9YqDAIsSYJ")
+    public void testMavenWithDependencyVersionInEnvVar() throws Exception {
+        
+        MavenModuleSet m = createMavenProject();
+        MavenInstallation mavenInstallation = configureDefaultMaven();
+        ParametersDefinitionProperty parametersDefinitionProperty = 
+            new ParametersDefinitionProperty(new StringParameterDefinition( "JUNITVERSION", "3.8.2" ));
+        
+        m.addProperty( parametersDefinitionProperty );
+        m.setMaven( mavenInstallation.getName() );
+        m.getReporters().add(new TestReporter());
+        m.setScm(new ExtractResourceSCM(getClass().getResource("envars-maven-project.zip")));
+        m.setGoals( "clean test-compile" );
+        MavenModuleSetBuild mmsb =  buildAndAssertSuccess(m);
+        assertFalse( mmsb.getProject().getModules().isEmpty());
+    }     
+    
+    private static class TestReporter extends MavenReporter {
+        @Override
+        public boolean end(MavenBuild build, Launcher launcher, BuildListener listener) throws InterruptedException, IOException {
+            assertNotNull(build.getProject().getWorkspace());
+            assertNotNull(build.getWorkspace());
+            return true;
+        }
+    }    
+    
 }

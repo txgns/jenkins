@@ -42,6 +42,7 @@ import hudson.util.RunList;
 import hudson.widgets.Widget;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -108,6 +109,8 @@ public abstract class View extends AbstractModelObject implements AccessControll
      * If true, only show relevant queue items
      */
     protected boolean filterQueue;
+    
+    protected transient List<Action> transientActions;
 
     protected View(String name) {
         this.name = name;
@@ -313,7 +316,22 @@ public abstract class View extends AbstractModelObject implements AccessControll
      * @see Hudson#getActions()
      */
     public List<Action> getActions() {
-        return Hudson.getInstance().getActions();
+    	List<Action> result = new ArrayList<Action>();
+    	result.addAll(Hudson.getInstance().getActions());
+    	synchronized (this) {
+    		if (transientActions == null) {
+    			transientActions = TransientViewActionFactory.createAllFor(this); 
+    		}
+    		result.addAll(transientActions);
+    	}
+    	return result;
+    }
+    
+    public Object getDynamic(String token) {
+        for (Action a : getActions())
+            if(a.getUrlName().equals(token))
+                return a;
+        return null;
     }
 
     /**
@@ -541,7 +559,6 @@ public abstract class View extends AbstractModelObject implements AccessControll
     public synchronized void doSubmitDescription( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
         checkPermission(CONFIGURE);
 
-        req.setCharacterEncoding("UTF-8");
         description = req.getParameter("description");
         owner.save();
         rsp.sendRedirect(".");  // go to the top page
@@ -554,8 +571,6 @@ public abstract class View extends AbstractModelObject implements AccessControll
      */
     public final synchronized void doConfigSubmit( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, FormException {
         checkPermission(CONFIGURE);
-
-        req.setCharacterEncoding("UTF-8");
 
         submit(req);
 
@@ -671,8 +686,6 @@ public abstract class View extends AbstractModelObject implements AccessControll
     
     public static View create(StaplerRequest req, StaplerResponse rsp, ViewGroup owner)
             throws FormException, IOException, ServletException {
-        req.setCharacterEncoding("UTF-8");
-
         String name = req.getParameter("name");
         checkGoodName(name);
         if(owner.getView(name)!=null)

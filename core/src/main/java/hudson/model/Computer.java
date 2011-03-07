@@ -2,7 +2,7 @@
  * The MIT License
  * 
  * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi,
- * Red Hat, Inc., Seiji Sogabe, Stephen Connolly, Thomas J. Black, Tom Huybrechts
+ * Red Hat, Inc., Seiji Sogabe, Stephen Connolly, Thomas J. Black, Tom Huybrechts, CloudBees, Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,10 +25,12 @@
 package hudson.model;
 
 import hudson.EnvVars;
+import hudson.FilePath;
 import hudson.Util;
 import hudson.cli.declarative.CLIMethod;
 import hudson.console.AnnotatedLargeText;
 import hudson.model.Descriptor.FormException;
+import hudson.model.Hudson.MasterComputer;
 import hudson.model.queue.WorkUnit;
 import hudson.node_monitors.NodeMonitor;
 import hudson.remoting.Channel;
@@ -48,6 +50,7 @@ import hudson.tasks.Publisher;
 import hudson.util.DaemonThreadFactory;
 import hudson.util.ExceptionCatchingThreadFactory;
 import hudson.util.RemotingDiagnostics;
+import hudson.util.RemotingDiagnostics.HeapDump;
 import hudson.util.RunList;
 import hudson.util.Futures;
 import org.kohsuke.stapler.StaplerRequest;
@@ -56,6 +59,7 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.HttpRedirect;
+import org.kohsuke.stapler.WebMethod;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 import org.kohsuke.args4j.Option;
@@ -511,9 +515,9 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
     @Exported
     public String getIcon() {
         if(isOffline())
-            return "computer-x.gif";
+            return "computer-x.png";
         else
-            return "computer.gif";
+            return "computer.png";
     }
 
     public String getIconAltText() {
@@ -685,8 +689,21 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
      */
     /*package*/ synchronized void removeExecutor(Executor e) {
         executors.remove(e);
-        if(executors.isEmpty())
+        if(!isAlive())
             Hudson.getInstance().removeComputer(this);
+    }
+
+    /**
+     * Returns true if any of the executors are functioning.
+     *
+     * Note that if an executor dies, we'll leave it in {@link #executors} until
+     * the administrator yanks it out, so that we can see why it died.
+     */
+    private boolean isAlive() {
+        for (Executor e : executors)
+            if (e.isAlive())
+                return true;
+        return false;
     }
 
     /**
@@ -753,6 +770,13 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
      */
     public Map<String,String> getThreadDump() throws IOException, InterruptedException {
         return RemotingDiagnostics.getThreadDump(getChannel());
+    }
+
+    /**
+     * Obtains the heap dump.
+     */
+    public HeapDump getHeapDump() throws IOException {
+        return new HeapDump(this,getChannel());
     }
 
     /**
@@ -906,7 +930,6 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
         checkPermission(Hudson.ADMINISTER);
 
         rsp.setContentType("text/plain");
-        rsp.setCharacterEncoding("UTF-8");
         PrintWriter w = new PrintWriter(rsp.getCompressedWriter(req));
         VirtualChannel vc = getChannel();
         if (vc instanceof Channel) {
@@ -970,7 +993,7 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
      */
     public void doConfigSubmit( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, FormException {
         checkPermission(CONFIGURE);
-
+        
         final Hudson app = Hudson.getInstance();
 
         Node result = getNode().getDescriptor().newInstance(req, req.getSubmittedForm());
