@@ -1,4 +1,4 @@
-Source: hudson
+Source: jenkins
 Section: devel
 Priority: extra
 Maintainer: Kohsuke Kawaguchi <kohsuke.kawaguchi@cloudbees.com>
@@ -8,6 +8,8 @@ Homepage: http://nectar.cloudbees.com/
 
 Package: hudson
 Architecture: all
-Depends: ${shlibs:Depends}, ${misc:Depends}, daemon, adduser, java-virtual-machine, java2-runtime, psmisc
+Depends: ${shlibs:Depends}, ${misc:Depends}, daemon, adduser, psmisc, java2-runtime
+Conflicts: hudson
+Replaces: hudson
 Description: Nectar from CloudBees
- Nectar is a commercial value-added distribution of Hudson Continuous Integration Server.
+ Nectar is a commercial value-added distribution of Jenkins Continuous Integration Server.

@@ -27,6 +27,8 @@ import hudson.remoting.ChannelRunner.InProcessCompatibilityMode;
 import junit.framework.Test;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.NullOutputStream;
+import org.jvnet.hudson.test.Bug;
+import org.jvnet.hudson.test.For;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -35,6 +37,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Test {@link Pipe}.
@@ -54,6 +57,49 @@ public class PipeTest extends RmiTestBase implements Serializable {
         int r = f.get();
         System.out.println("result=" + r);
         assertEquals(5,r);
+    }
+    
+    /**
+     * Have the reader close the read end of the pipe while the writer is still writing.
+     * The writer should pick up a failure.
+     */
+    @Bug(8592)
+    @For(Pipe.class)
+    public void testReaderCloseWhileWriterIsStillWriting() throws Exception {
+        final Pipe p = Pipe.createRemoteToLocal();
+        final Future<Void> f = channel.callAsync(new InfiniteWriter(p));
+        final InputStream in = p.getIn();
+        assertEquals(in.read(), 0);
+        in.close();
+
+        try {
+            f.get();
+            fail();
+        } catch (ExecutionException e) {
+            // should have resulted in an IOException
+            if (!(e.getCause() instanceof IOException)) {
+                e.printStackTrace();
+                fail();
+            }
+        }
+    }
+
+    /**
+     * Just writes forever to the pipe
+     */
+    private static class InfiniteWriter implements Callable<Void, Exception> {
+        private final Pipe pipe;
+
+        public InfiniteWriter(Pipe pipe) {
+            this.pipe = pipe;
+        }
+
+        public Void call() throws Exception {
+            while (true) {
+                pipe.getOut().write(0);
+                Thread.sleep(10);
+            }
+        }
     }
 
     private static class WritingCallable implements Callable<Integer, IOException> {

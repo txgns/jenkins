@@ -168,7 +168,6 @@ import org.kohsuke.stapler.StaplerProxy;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.WebApp;
-import org.kohsuke.stapler.WebMethod;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 import org.kohsuke.stapler.framework.adjunct.AdjunctManager;
@@ -1732,7 +1731,10 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
     }
 
     public void onViewRenamed(View view, String oldName, String newName) {
-        // implementation of Hudson is immune to view name change.
+        // If this view was the default view, change reference
+        if (oldName.equals(primaryView)) {
+            primaryView = newName;
+        }
     }
 
     @Override
@@ -2364,7 +2366,7 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
             pluginManager.stop();
 
         if(getRootDir().exists())
-            // if we are aborting because we failed to create HUDSON_HOME,
+            // if we are aborting because we failed to create JENKINS_HOME,
             // don't try to save. Issue #536
             getQueue().save();
 
@@ -2918,7 +2920,7 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
     }
 
     /**
-     * Binds /userContent/... to $HUDSON_HOME/userContent.
+     * Binds /userContent/... to $JENKINS_HOME/userContent.
      */
     public DirectoryBrowserSupport doUserContent() {
         return new DirectoryBrowserSupport(this,getRootPath().child("userContent"),"User content","folder.gif",true);
@@ -3337,7 +3339,7 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
 
     /**
      * Checks if container uses UTF-8 to decode URLs. See
-     * http://hudson.gotdns.com/wiki/display/HUDSON/Tomcat#Tomcat-i18n
+     * http://wiki.jenkins-ci.org/display/JENKINS/Tomcat#Tomcat-i18n
      */
     public FormValidation doCheckURIEncoding(StaplerRequest request) throws IOException {
         // expected is non-ASCII String
@@ -3421,6 +3423,14 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
             || rest.startsWith("/federatedLoginService/")
             || rest.startsWith("/securityRealm"))
                 return this;    // URLs that are always visible without READ permission
+
+            for (Action a : getActions()) {
+                if (a instanceof UnprotectedRootAction) {
+                    if (rest.startsWith("/"+a.getUrlName()+"/"))
+                        return this;
+                }
+            }
+
             throw e;
         }
         return this;

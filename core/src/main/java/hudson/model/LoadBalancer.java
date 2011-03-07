@@ -29,11 +29,9 @@ import hudson.model.queue.MappingWorksheet.ExecutorChunk;
 import hudson.model.queue.MappingWorksheet.Mapping;
 import hudson.util.ConsistentHash;
 import hudson.util.ConsistentHash.Hash;
-import hudson.matrix.MatrixConfiguration;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
 
 /**
  * Strategy that decides which {@link Task} gets run on which {@link Executor}.
@@ -150,8 +148,6 @@ public abstract class LoadBalancer /*implements ExtensionPoint*/ {
             protected LoadBalancer sanitize() {
                 return this;
             }
-
-            private final Logger LOGGER = Logger.getLogger(LoadBalancer.class.getName());
         };
     }
 

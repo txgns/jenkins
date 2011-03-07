@@ -599,9 +599,6 @@ public class Channel implements VirtualChannel, IChannel {
     }
 
     /*package*/ PipeWindow getPipeWindow(int oid) {
-        if (!remoteCapability.supportsPipeThrottling())
-            return PipeWindow.FAKE;
-
         synchronized (pipeWindows) {
             Key k = new Key(oid);
             WeakReference<PipeWindow> v = pipeWindows.get(k);
@@ -611,7 +608,11 @@ public class Channel implements VirtualChannel, IChannel {
                     return w;
             }
 
-            Real w = new Real(k, PIPE_WINDOW_SIZE);
+            PipeWindow w;
+            if (remoteCapability.supportsPipeThrottling())
+                w = new Real(k, PIPE_WINDOW_SIZE);
+            else
+                w = new PipeWindow.Fake();
             pipeWindows.put(k,new WeakReference<PipeWindow>(w));
             return w;
         }
@@ -906,6 +907,32 @@ public class Channel implements VirtualChannel, IChannel {
     public ListeningPort createRemoteToLocalPortForwarding(int recvPort, String forwardHost, int forwardPort) throws IOException, InterruptedException {
         return PortForwarder.create(this,recvPort,
                 ForwarderFactory.create(forwardHost, forwardPort));
+    }
+
+    /**
+     * Blocks until all the I/O packets sent before this gets fully executed by the remote side, then return.
+     *
+     * @throws IOException
+     *      If the remote doesn't support this operation, or if sync fails for other reasons.
+     */
+    public void syncIO() throws IOException, InterruptedException {
+        call(new IOSyncer());
+    }
+
+    private static final class IOSyncer implements Callable<Object, InterruptedException> {
+        public Object call() throws InterruptedException {
+            try {
+                return Channel.current().pipeWriter.submit(new Runnable() {
+                    public void run() {
+                        // noop
+                    }
+                }).get();
+            } catch (ExecutionException e) {
+                throw new AssertionError(e); // impossible
+            }
+        }
+
+        private static final long serialVersionUID = 1L;
     }
 
     @Override

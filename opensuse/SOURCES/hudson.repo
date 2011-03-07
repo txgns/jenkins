@@ -1,7 +1,0 @@
-[hudson]
-name=Nectar from CloudBees
-enabled=1
-autorefresh=0
-baseurl=http://nectar.cloudbees.com/download/opensuse/
-type=rpm-md
-keeppackages=0

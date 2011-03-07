@@ -455,16 +455,15 @@ public class Mailer extends Notifier {
                 
                 MimeMessage msg = new MimeMessage(createSession(smtpServer,smtpPort,useSsl,smtpAuthUserName,Secret.fromString(smtpAuthPassword)));
                 msg.setSubject("Test email #" + ++testEmailCount);
-                msg.setContent("This is test email #" + testEmailCount + " sent from Hudson Continuous Integration server.", "text/plain");
+                msg.setContent("This is test email #" + testEmailCount + " sent from " + Hudson.getInstance().getDisplayName(), "text/plain");
                 msg.setFrom(new InternetAddress(adminAddress));
                 msg.setSentDate(new Date());
                 msg.setRecipient(Message.RecipientType.TO, new InternetAddress(adminAddress));
 
-                Transport.send(msg);
-                
-                return FormValidation.ok("Email was successfully sent");
+                Transport.send(msg);                
+                return FormValidation.ok(Messages.Mailer_EmailSentSuccessfully());
             } catch (MessagingException e) {
-                return FormValidation.errorWithMarkup("<p>Failed to send out e-mail</p><pre>"+Util.escape(Functions.printThrowable(e))+"</pre>");
+                return FormValidation.errorWithMarkup("<p>"+Messages.Mailer_FailedToSendEmail()+"</p><pre>"+Util.escape(Functions.printThrowable(e))+"</pre>");
             }
         }
 

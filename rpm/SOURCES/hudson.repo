@@ -1,4 +1,0 @@
-[hudson]
-name=Nectar from CloudBees
-baseurl=http://nectar.cloudbees.com/download/rpm/
-gpgcheck=1

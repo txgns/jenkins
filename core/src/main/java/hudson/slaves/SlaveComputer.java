@@ -42,8 +42,6 @@ import hudson.slaves.OfflineCause.ChannelTermination;
 
 import java.io.File;
 import java.io.OutputStream;
-import java.io.FileOutputStream;
-import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -59,7 +57,6 @@ import java.util.concurrent.Future;
 import java.security.Security;
 
 import hudson.util.io.ReopenableFileOutputStream;
-import org.apache.commons.io.IOUtils;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.QueryParameter;
@@ -370,7 +367,7 @@ public class SlaveComputer extends Computer {
     }
 
     @Override
-    public VirtualChannel getChannel() {
+    public Channel getChannel() {
         return channel;
     }
 
@@ -554,7 +551,7 @@ public class SlaveComputer extends Computer {
             }
             logger.addHandler(SLAVE_LOG_HANDLER);
 
-            // remove Sun PKCS11 provider if present. See http://hudson.gotdns.com/wiki/display/HUDSON/Solaris+Issue+6276483
+            // remove Sun PKCS11 provider if present. See http://wiki.jenkins-ci.org/display/JENKINS/Solaris+Issue+6276483
             try {
                 Security.removeProvider("SunPKCS11-Solaris");
             } catch (SecurityException e) {
@@ -583,7 +580,7 @@ public class SlaveComputer extends Computer {
 
         // if this method is called from within the slave computation thread, this should work
         Channel c = Channel.current();
-        if (c!=null && c.getProperty("slave")==Boolean.TRUE)
+        if (c!=null && Boolean.TRUE.equals(c.getProperty("slave")))
             return c;
 
         return null;

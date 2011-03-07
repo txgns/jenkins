@@ -2,7 +2,7 @@
 <!--
 The MIT License
 
-Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, id:sorokh
+Copyright (c) 2004-2011, Sun Microsystems, Inc., Kohsuke Kawaguchi, id:sorokh
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,18 +25,18 @@ THE SOFTWARE.
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.jvnet.hudson</groupId>
-    <artifactId>hudson</artifactId>
-    <version>1.8</version>
+    <groupId>org.jenkins-ci</groupId>
+    <artifactId>jenkins</artifactId>
+    <version>1.16</version>
   </parent>
   
-  <groupId>org.jvnet.hudson.main</groupId>
+  <groupId>org.jenkins-ci.main</groupId>
   <artifactId>pom</artifactId>
   <version>1.400</version>
   <packaging>pom</packaging>
   
-  <name>Hudson main module</name>
-  <description>The module that constitutes the main hudson.war</description>
+  <name>Jenkins main module</name>
+  <description>The module that constitutes the main jenkins.war</description>
   
   <modules>
     <module>remoting</module>
@@ -52,10 +52,6 @@ THE SOFTWARE.
     <module>cli</module>
   </modules>
   
-  <ciManagement>
-      <system>Hudson</system>
-      <url>http://hudson.glassfish.org/job/hudson-trunk</url>
-  </ciManagement>
   <scm>
     <connection>scm:git:git@infradna.com:hudson.git</connection>
     <developerConnection>scm:git:git@infradna.com:hudson.git</developerConnection>
@@ -572,9 +568,5 @@ THE SOFTWARE.
       <id>repository.infradna.com</id>
       <url>scp://maven.infradna.com/home/maven/repository/snapshots</url>
     </snapshotRepository>
-    <site><!-- shall we put this anywhere? -->
-      <id>dummy</id>
-      <url>file:.</url>
-    </site>
   </distributionManagement>
 </project>

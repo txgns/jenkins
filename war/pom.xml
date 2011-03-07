@@ -25,22 +25,22 @@ THE SOFTWARE.
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.jvnet.hudson.main</groupId>
+    <groupId>org.jenkins-ci.main</groupId>
     <artifactId>pom</artifactId>
     <version>1.400</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   
-  <artifactId>hudson-war</artifactId>
+  <artifactId>jenkins-war</artifactId>
   <packaging>war</packaging>
-  <name>Hudson war</name>
+  <name>Jenkins war</name>
   <description>
     Creates a war file. Also includes additional static web resources, such as images, CSS, JavaScript, and
     some HTML files.
   </description>
   
   <build>
-    <finalName>hudson</finalName>
+    <finalName>jenkins</finalName>
     <plugins>
       <plugin>
         <artifactId>maven-war-plugin</artifactId>
@@ -60,6 +60,7 @@ THE SOFTWARE.
             <manifestEntries>
               <Implementation-Version>${project.version}</Implementation-Version>
               <Hudson-Version>${project.version}</Hudson-Version>
+              <Jenkins-Version>${project.version}</Jenkins-Version>
             </manifestEntries>
           </archive>
           <!--outputFileNameMapping>@{artifactId}@.@{extension}@</outputFileNameMapping-->
@@ -92,7 +93,7 @@ THE SOFTWARE.
             <configuration>
               <tasks>
                 <!-- deploy the war as a jar, so that the tests can pull this into the classpath -->
-                <attachArtifact file="target/hudson.war" classifier="war-for-test" type="jar" />
+                <attachArtifact file="target/jenkins.war" classifier="war-for-test" type="jar" />
               </tasks>
             </configuration>
           </execution>
@@ -108,7 +109,7 @@ THE SOFTWARE.
                 <mkdir dir="target/generated-resources" />
 
                 <!-- put executable war header -->
-                <resolveArtifact groupId="org.jvnet.hudson" artifactId="executable-war" version="1.17" type="jar" property="executable-war.jar" />
+                <resolveArtifact groupId="org.jenkins-ci" artifactId="executable-war" version="1.18" type="jar" property="executable-war.jar" />
                 <unjar src="${executable-war.jar}" dest="target/generated-resources">
                   <patternset>
                     <include name="**/*.class" />
@@ -118,7 +119,7 @@ THE SOFTWARE.
                 <!-- dependencies that goes to unusual locations -->
                 <resolveArtifact artifactId="remoting" tofile="${basedir}/target/generated-resources/WEB-INF/remoting.jar" />
                 <resolveArtifact artifactId="remoting" tofile="${basedir}/target/generated-resources/WEB-INF/slave.jar" />
-                <resolveArtifact groupId="${project.groupId}" artifactId="cli" classifier="jar-with-dependencies" version="${project.version}" type="jar" tofile="${basedir}/target/generated-resources/WEB-INF/hudson-cli.jar" />
+                <resolveArtifact groupId="${project.groupId}" artifactId="cli" classifier="jar-with-dependencies" version="${project.version}" type="jar" tofile="${basedir}/target/generated-resources/WEB-INF/jenkins-cli.jar" />
                 <resolveArtifact groupId="org.jvnet.hudson.winstone" artifactId="winstone" version="0.9.10-hudson-24" type="jar" tofile="${basedir}/target/generated-resources/winstone.jar" />
                 
                 <!-- bundled plugins -->
@@ -189,8 +190,8 @@ THE SOFTWARE.
           </userRealms>
           <systemProperties>
             <systemProperty>
-              <name>HUDSON_HOME</name>
-              <value>${HUDSON_HOME}</value>
+              <name>JENKINS_HOME</name>
+              <value>${JENKINS_HOME}</value>
             </systemProperty>
             <systemProperty>
               <!-- always reload views during debugging -->
@@ -246,8 +247,8 @@ THE SOFTWARE.
 
   <dependencies>
     <dependency>
-      <groupId>org.jvnet.hudson.main</groupId>
-      <artifactId>hudson-core</artifactId>
+      <groupId>org.jenkins-ci.main</groupId>
+      <artifactId>jenkins-core</artifactId>
       <version>${project.version}</version>
       <exclusions>
         <!--
@@ -294,14 +295,14 @@ THE SOFTWARE.
   </dependencies>
   
   <properties>
-    <HUDSON_HOME>${basedir}/work</HUDSON_HOME>
+    <JENKINS_HOME>${basedir}/work</JENKINS_HOME>
     <contextPath>/</contextPath><!-- context path during test -->
     <port>8080</port><!-- HTTP listener port -->
   </properties>
 
   <profiles>
     <profile>
-      <!-- profile for creating Hudson IPS package -->
+      <!-- profile for creating Jenkins IPS package -->
       <id>ips</id>
       <build>
         <plugins>
@@ -349,7 +350,7 @@ THE SOFTWARE.
 
                       For release, you should define the real values in ~/.m2/settings.xml
                     -->
-                    <signjar jar="target/hudson.war" alias="${hudson.sign.alias}" keystore="${hudson.sign.keystore}" storepass="${hudson.sign.storepass}" />
+                    <signjar jar="target/jenkins.war" alias="${hudson.sign.alias}" keystore="${hudson.sign.keystore}" storepass="${hudson.sign.storepass}" />
                   </tasks>
                 </configuration>
               </execution>

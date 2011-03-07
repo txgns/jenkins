@@ -35,8 +35,8 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.List;
-import java.util.logging.Logger;
 
+import static hudson.model.Result.ABORTED;
 import static hudson.model.Result.FAILURE;
 
 /**
@@ -136,6 +136,9 @@ public abstract class Build <P extends Project<P,B>,B extends Build<P,B>>
 
                 if(!build(listener,project.getBuilders()))
                     r = FAILURE;
+            } catch (InterruptedException e) {
+                r = ABORTED;
+                throw e;
             } finally {
                 if (r != null) setResult(r);
                 // tear down in reverse order
@@ -174,6 +177,4 @@ public abstract class Build <P extends Project<P,B>,B extends Build<P,B>>
             return true;
         }
     }
-
-    private static final Logger LOGGER = Logger.getLogger(Build.class.getName());
 }

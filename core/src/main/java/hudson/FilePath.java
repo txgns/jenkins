@@ -39,6 +39,7 @@ import hudson.remoting.Pipe;
 import hudson.remoting.RemoteOutputStream;
 import hudson.remoting.VirtualChannel;
 import hudson.remoting.RemoteInputStream;
+import hudson.security.AccessControlled;
 import hudson.util.DirScanner;
 import hudson.util.IOException2;
 import hudson.util.HeadBufferingStream;
@@ -1777,12 +1778,12 @@ public final class FilePath implements Serializable {
 
     /**
      * Checks the GLOB-style file mask. See {@link #validateAntFileMask(String)}.
-     * Requires configure permission on ancestor AbstractProject object in request.
+     * Requires configure permission on ancestor AbstractProject object in request,
+     * or admin permission if no such ancestor is found.
      * @since 1.294
      */
     public FormValidation validateFileMask(String value, boolean errorIfNotExist) throws IOException {
-        AbstractProject subject = Stapler.getCurrentRequest().findAncestorObject(AbstractProject.class);
-        subject.checkPermission(Item.CONFIGURE);
+        checkPermissionForValidate();
 
         value = fixEmpty(value);
         if(value==null)
@@ -1802,7 +1803,8 @@ public final class FilePath implements Serializable {
 
     /**
      * Validates a relative file path from this {@link FilePath}.
-     * Requires configure permission on ancestor AbstractProject object in request.
+     * Requires configure permission on ancestor AbstractProject object in request,
+     * or admin permission if no such ancestor is found.
      *
      * @param value
      *      The relative path being validated.
@@ -1813,13 +1815,12 @@ public final class FilePath implements Serializable {
      *      Otherwise, the relative path is expected to be pointing to a directory.
      */
     public FormValidation validateRelativePath(String value, boolean errorIfNotExist, boolean expectingFile) throws IOException {
-        AbstractProject subject = Stapler.getCurrentRequest().findAncestorObject(AbstractProject.class);
-        subject.checkPermission(Item.CONFIGURE);
+        checkPermissionForValidate();
 
         value = fixEmpty(value);
 
         // none entered yet, or something is seriously wrong
-        if(value==null || (AbstractProject<?,?>)subject ==null) return FormValidation.ok();
+        if(value==null) return FormValidation.ok();
 
         // a common mistake is to use wildcard
         if(value.contains("*")) return FormValidation.error(Messages.FilePath_validateRelativePath_wildcardNotAllowed());
@@ -1850,6 +1851,14 @@ public final class FilePath implements Serializable {
         } catch (InterruptedException e) {
             return FormValidation.ok();
         }
+    }
+
+    private static void checkPermissionForValidate() {
+        AccessControlled subject = Stapler.getCurrentRequest().findAncestorObject(AbstractProject.class);
+        if (subject == null)
+            Hudson.getInstance().checkPermission(Hudson.ADMINISTER);
+        else
+            subject.checkPermission(Item.CONFIGURE);
     }
 
     /**
