@@ -6,6 +6,7 @@ import hudson.model.ListView;
 import hudson.model.View;
 import hudson.views.JobColumn;
 import hudson.views.StatusColumn;
+import metanectar.model.views.JenkinsServerColumn;
 import org.jvnet.hudson.reactor.ReactorException;
 
 import javax.print.attribute.standard.JobName;
@@ -37,9 +38,10 @@ public class MetaNectar extends Hudson {
     @Override
     protected View createInitialView() {
         try {
-            ListView lv = new ListView("All");
+            JenkinsServerListView lv = new JenkinsServerListView("All");
             lv.setColumns(Arrays.asList(
                     new StatusColumn(),
+                    new JenkinsServerColumn(),
                     new JobColumn()
             ));
             return lv;

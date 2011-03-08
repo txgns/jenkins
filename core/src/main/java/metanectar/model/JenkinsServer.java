@@ -1,15 +1,7 @@
 package metanectar.model;
 
 import hudson.Extension;
-import hudson.model.AbstractItem;
-import hudson.model.BallColor;
-import hudson.model.Hudson;
-import hudson.model.ItemGroup;
-import hudson.model.Job;
-import hudson.model.StatusIcon;
-import hudson.model.StockStatusIcon;
-import hudson.model.TopLevelItem;
-import hudson.model.TopLevelItemDescriptor;
+import hudson.model.*;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -25,6 +17,10 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem {
         super(parent, name);
     }
 
+    protected View createInitialView() {
+        return new JenkinsServerAllView(hudson.model.Messages.Hudson_ViewName());
+    }
+
     /**
      * No nested job under Jenkins server
      *
@@ -32,7 +28,7 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem {
      *      No one shouldn't be calling this directly.
      */
     @Override
-    public Collection<? extends Job> getAllJobs() {
+    public final Collection<? extends Job> getAllJobs() {
         return Collections.emptyList();
     }
 
