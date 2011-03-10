@@ -6,7 +6,7 @@ Build-Depends: debhelper (>= 5)
 Standards-Version: 3.7.2
 Homepage: http://nectar.cloudbees.com/
 
-Package: hudson
+Package: jenkins
 Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends}, daemon, adduser, psmisc, java2-runtime
 Conflicts: hudson
