@@ -26,8 +26,28 @@ THE SOFTWARE.
   <l:layout title="${it.displayName}">
     <st:include page="sidepanel.jelly" />
     <l:main-panel>
-      <h1>Hello world!</h1>
-      <t:editableDescription permission="${it.CONFIGURE}"/>
+    <h1>
+      <img src="${imagesURL}/48x48/${it.icon}" width="48" height="48" alt=""/>
+      ${it.caption}
+      <j:if test="${!empty(it.displayName)}">
+        <span style="font-size:smaller">${it.displayName} <a href="${it.serverUrl}">${it.serverUrl}</a></span>
+      </j:if>
+    </h1>
+    <t:editableDescription permission="${it.CONFIGURE}"/>
+
+    <j:choose>
+      <j:when test="${it.offline}">
+        <form method="post" action="attach">
+          <f:submit value="${%Attach to Server}"  />
+        </form>
+      </j:when>
+      <j:otherwise>
+        <form method="post" action="detach">
+          <f:submit value="${%Detach from Server}"  />
+        </form>
+      </j:otherwise>
+    </j:choose>
+
     </l:main-panel>
   </l:layout>
 </j:jelly>

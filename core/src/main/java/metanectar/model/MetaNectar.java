@@ -29,7 +29,7 @@ public class MetaNectar extends Hudson {
 
     @Override
     public String getDisplayName() {
-        return "MetaNectar";
+        return Messages.MetaNectar_DisplayName();
     }
 
     /**
@@ -41,10 +41,9 @@ public class MetaNectar extends Hudson {
             JenkinsServerListView lv = new JenkinsServerListView("All");
             lv.setColumns(Arrays.asList(
                     new StatusColumn(),
-                    new JenkinsServerColumn(),
-                    new JobColumn()
-            ));
+                    new JenkinsServerColumn()));
             return lv;
+
         } catch (IOException e) {
             // view doesn't save itself unless it's connected to the parent, which we don't do in this method.
             // so this never happens

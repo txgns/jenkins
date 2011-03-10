@@ -31,6 +31,10 @@ THE SOFTWARE.
       <j:set var="url" value="${h.getNearestAncestorUrl(request,it)}"/>
       <l:task icon="images/24x24/up.gif" href="${rootURL}/" title="${%Back to Dashboard}" />
       <l:task icon="images/24x24/search.gif"  href="${url}/" title="${%Status}" />
+	  <l:isAdmin>
+	    <l:task icon="images/24x24/edit-delete.gif" href="delete" title="${%Delete Server}" />
+	    <l:task icon="images/24x24/setting.gif" href="configure" title="${%Configure}" />
+	  </l:isAdmin>
     </l:tasks>
   </l:side-panel>
 </j:jelly>
