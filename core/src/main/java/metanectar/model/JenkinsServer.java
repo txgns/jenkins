@@ -53,14 +53,12 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem {
             throws IOException {
         super.onLoad(parent, name);
         offlineCause = getOfflineCause(serverUrl);
-        System.out.println("----------------- onLoad");
     }
 
     @Override
     public void onCreatedFromScratch() {
         super.onCreatedFromScratch();
         offlineCause = getOfflineCause(serverUrl);
-        System.out.println("----------------- onCreatedFromScratch");
     }
 
     protected View createInitialView() {
