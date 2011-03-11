@@ -35,6 +35,10 @@ THE SOFTWARE.
     </h1>
     <t:editableDescription permission="${it.CONFIGURE}"/>
 
+    <j:if test="${it.offlineCause!=null and it.offline}">
+      <st:include it="${it.offlineCause}" page="cause.jelly" />
+    </j:if>
+        <!--
     <j:choose>
       <j:when test="${it.offline}">
         <form method="post" action="attach">
@@ -47,6 +51,7 @@ THE SOFTWARE.
         </form>
       </j:otherwise>
     </j:choose>
+    -->
 
     </l:main-panel>
   </l:layout>
