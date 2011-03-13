@@ -23,11 +23,13 @@
  */
 package hudson.console;
 
+import hudson.CloseProofOutputStream;
 import hudson.MarkupText;
 import hudson.model.Describable;
 import hudson.model.Hudson;
 import hudson.model.Run;
 import hudson.remoting.ObjectInputStreamEx;
+import hudson.util.FlushProofOutputStream;
 import hudson.util.IOException2;
 import hudson.util.IOUtils;
 import hudson.util.UnbufferedBase64InputStream;
