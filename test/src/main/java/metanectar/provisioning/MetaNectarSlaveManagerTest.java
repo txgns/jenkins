@@ -20,7 +20,6 @@ import metanectar.test.MetaNectarTestCase;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.io.StringWriter;
 import java.net.URISyntaxException;
 import java.util.Collections;
 import java.util.concurrent.Callable;
@@ -83,10 +82,10 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
 
         // this dummy manager can allocate 'foo', so it can provision "foo||bar"
         final Label fooOrBar = Label.parseExpression("foo||bar");
-        assertTrue(proxy.canProviosion(fooOrBar, 1));
+        assertTrue(proxy.canProviosion(fooOrBar));
 
         StreamTaskListener stl = new StreamTaskListener(new OutputStreamWriter(System.out));
-        final ProvisioningInProgress pip = proxy.provision(fooOrBar, stl, 1);
+        final ProvisioningActivity pip = proxy.provision(fooOrBar, stl, 1);
         System.out.println("J: Waiting for the provisioning of " + pip.displayName);
         final ProvisioningResult r = pip.future.get();
         System.out.println("J: Result obtained");
@@ -105,7 +104,7 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
     public static class DummyMetaNectarSlaveManagerImpl implements MetaNectarSlaveManager {
         private int n;
 
-        public boolean canProviosion(Label label, int numOfExecutors) throws IOException, InterruptedException {
+        public boolean canProviosion(Label label) throws IOException, InterruptedException {
             return label.matches(new VariableResolver<Boolean>() {
                 public Boolean resolve(String name) {
                     return name.equals("foo");
@@ -113,7 +112,7 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
             });
         }
 
-        public ProvisioningInProgress provision(Label label, final TaskListener listener, int numOfExecutors) throws IOException, InterruptedException {
+        public ProvisioningActivity provision(Label label, final TaskListener listener, int numOfExecutors) throws IOException, InterruptedException {
             listener.getLogger().println("MN: Started provisioning");
             final Future<ProvisioningResult> task = MasterComputer.threadPoolForRemoting.submit(new Callable<ProvisioningResult>() {
                 public ProvisioningResult call() throws Exception {
@@ -125,7 +124,7 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
                 }
             });
 
-            return new ProvisioningInProgress("slave"+(n++), 1, new RemoteFuture<ProvisioningResult>(task));
+            return new ProvisioningActivity("slave"+(n++), 1, new RemoteFuture<ProvisioningResult>(task));
         }
 
         private static class ResultImpl extends ProvisioningResult {

@@ -19,6 +19,10 @@ import java.net.MalformedURLException;
  * @author Kohsuke Kawaguchi
  */
 public abstract class ProvisioningResult implements Serializable {
+    /**
+     * Obtains the {@link ComputerLauncher} that encapsulates the logic of how to connect
+     * to the slave.
+     */
     public abstract ComputerLauncher getLauncher() throws IOException, InterruptedException;
 
     private static final long serialVersionUID = 1L;
