@@ -71,13 +71,13 @@ final class WarExploder {
         File d = new File(".").getAbsoluteFile();
 
         // just in case we were started from hudson instead of from hudson/main/...
-        if (new File(d, "main/war/target/jenkins").exists()) {
-            return new File(d, "main/war/target/jenkins");
+        if (new File(d, "main/war/target/meta-nectar").exists()) {
+            return new File(d, "main/war/target/meta-nectar");
         }
 
         for( ; d!=null; d=d.getParentFile()) {
             if(new File(d,".jenkins").exists()) {
-                File dir = new File(d,"war/target/jenkins");
+                File dir = new File(d,"war/target/meta-nectar");
                 if(dir.exists()) {
                     System.out.println("Using jenkins.war resources from "+dir);
                     return dir;
