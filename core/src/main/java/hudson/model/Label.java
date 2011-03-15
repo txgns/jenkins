@@ -39,6 +39,8 @@ import hudson.util.VariableResolver;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 
+import java.io.ObjectStreamException;
+import java.io.Serializable;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -62,7 +64,7 @@ import com.thoughtworks.xstream.io.HierarchicalStreamReader;
  * @see Hudson#getLabel(String) 
  */
 @ExportedBean
-public abstract class Label extends Actionable implements Comparable<Label>, ModelObject {
+public abstract class Label extends Actionable implements Comparable<Label>, ModelObject, Serializable {
     /**
      * Display name of this label.
      */
@@ -428,6 +430,24 @@ public abstract class Label extends Actionable implements Comparable<Label>, Mod
     @Override
     public String toString() {
         return name;
+    }
+
+    public Object writeReplace() throws ObjectStreamException {
+        return new SerializedLabel(name);
+    }
+
+    protected static class SerializedLabel implements Serializable {
+        private final String name;
+
+        public SerializedLabel(String name) {
+            this.name = name;
+        }
+
+        private Object readResolve() throws ANTLRException {
+            return Label.parseExpression(name);
+        }
+
+        private static final long serialVersionUID = 1L;
     }
 
     public static final class ConverterImpl implements Converter {
