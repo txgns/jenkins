@@ -4,6 +4,7 @@ work
 # IntelliJ project files 
 *.iml
 *.ipr
+*.iws
 .idea
 
 # eclipse project file
