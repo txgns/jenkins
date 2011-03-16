@@ -5,6 +5,7 @@ import hudson.model.Hudson.MasterComputer;
 import hudson.model.Label;
 import hudson.model.Node.Mode;
 import hudson.model.TaskListener;
+import hudson.model.labels.LabelAtom;
 import hudson.remoting.Channel;
 import hudson.remoting.FastPipedInputStream;
 import hudson.remoting.FastPipedOutputStream;
@@ -21,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.net.URISyntaxException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -110,6 +112,10 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
                     return name.equals("foo");
                 }
             });
+        }
+
+        public Collection<LabelAtom> getLabels() {
+            return Collections.singleton(new LabelAtom("foo"));
         }
 
         public ProvisioningActivity provision(Label label, final TaskListener listener, int numOfExecutors) throws IOException, InterruptedException {

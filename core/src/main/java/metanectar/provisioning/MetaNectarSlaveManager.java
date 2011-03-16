@@ -2,8 +2,10 @@ package metanectar.provisioning;
 
 import hudson.model.Label;
 import hudson.model.TaskListener;
+import hudson.model.labels.LabelAtom;
 
 import java.io.IOException;
+import java.util.Collection;
 
 /**
  * @author Kohsuke Kawaguchi
@@ -14,6 +16,13 @@ public interface MetaNectarSlaveManager {
      * return true.
      */
     boolean canProviosion(Label label) throws IOException, InterruptedException;
+
+    /**
+     * List all the label atoms that this manager understands.
+     *
+     * This is informational and used for auto-completion etc.
+     */
+    Collection<LabelAtom> getLabels();
 
     /**
      * Allocate one slave.
