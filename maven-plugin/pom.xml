@@ -36,6 +36,15 @@ THE SOFTWARE.
   <description>This plug-in provides deep integration of Jenkins and Maven. This functionality used to be part of the Jenkins core.
   Now it is a plug-in that is installed by default, but can be disabled.</description>
   <url>http://wiki.jenkins-ci.org/display/JENKINS/Maven+2+Project+Plugin</url>
+  
+  <properties>
+    <mavenInterceptorsVersion>1.1</mavenInterceptorsVersion>
+    <mavenVersion>3.0.3</mavenVersion>
+    <maven.version>${mavenVersion}</maven.version>
+    <aetherVersion>1.11</aetherVersion>
+    <sisuInjectVersion>1.4.3.1</sisuInjectVersion>
+    <wagonVersion>1.0-beta-7</wagonVersion>    
+  </properties>
     
   <dependencies>
     <dependency>
