@@ -93,6 +93,11 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem {
         return serverUrl;
     }
 
+    public void setServerUrl(URL url) throws IOException {
+        this.serverUrl = url;
+        save();
+    }
+
     public String getIcon() {
         if(isOffline())
             return "computer-x.png";
