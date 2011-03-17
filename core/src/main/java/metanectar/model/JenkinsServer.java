@@ -63,10 +63,6 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
         offlineCause = getOfflineCause(serverUrl);
     }
 
-    protected View createInitialView() {
-        return new JenkinsServerAllView(hudson.model.Messages.Hudson_ViewName());
-    }
-
     /**
      * No nested job under Jenkins server
      *
@@ -118,6 +114,12 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
 
     // Copied from SlaveComputer
     // TODO consider refactoring this functionality into separate utility class
+
+    @Override
+    public String getDisplayName() {
+        return serverUrl.toExternalForm();
+    }
+
     /**
      * Creates a {@link Channel} from the given stream and sets that to this server.
      *

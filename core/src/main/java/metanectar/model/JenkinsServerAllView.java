@@ -3,6 +3,9 @@ package metanectar.model;
 import hudson.Extension;
 import hudson.model.*;
 import hudson.model.Messages;
+import hudson.views.ListViewColumn;
+import hudson.views.StatusColumn;
+import metanectar.model.views.JenkinsServerColumn;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.StaplerRequest;
@@ -10,6 +13,7 @@ import org.kohsuke.stapler.StaplerResponse;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 
 /**
@@ -27,6 +31,12 @@ public class JenkinsServerAllView extends JenkinsServerView {
     public JenkinsServerAllView(String name, ViewGroup owner) {
         this(name);
         this.owner = owner;
+    }
+
+    public Iterable<ListViewColumn> getColumns() {
+        return Arrays.asList(
+                new StatusColumn(),
+                new JenkinsServerColumn());
     }
 
     @Override

@@ -38,7 +38,7 @@ THE SOFTWARE.
 
   <f:entry title="${%Servers}">
     <j:forEach var="job" items="${app.items}">
-      <f:checkbox name="${job.name}" checked="${it.contains(job)}" title="${job.name}" />
+      <f:checkbox name="${job.name}" checked="${it.contains(job)}" title="${job.displayName}" />
       <br/>
     </j:forEach>
   </f:entry>

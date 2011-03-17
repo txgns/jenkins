@@ -37,12 +37,14 @@ import hudson.views.StatusColumn;
 import hudson.views.ViewJobFilter;
 import metanectar.model.views.JenkinsServerColumn;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.HttpResponses.HttpResponseException;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
+import java.net.URL;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -265,6 +267,14 @@ public class JenkinsServerListView extends JenkinsServerView implements Saveable
         String filter = Util.fixEmpty(req.getParameter("statusFilter"));
         statusFilter = filter != null ? "1".equals(filter) : null;
     }
+
+
+    public JenkinsServer doAddNectar(@QueryParameter URL url) throws IOException, HttpResponseException {
+        final JenkinsServer s = MetaNectar.getInstance().doAddNectar(url);
+        add(s);
+        return s;
+    }
+
 
     @Extension
     public static final class DescriptorImpl extends ViewDescriptor {
