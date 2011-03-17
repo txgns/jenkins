@@ -8,6 +8,8 @@ import hudson.util.FormValidation;
 import hudson.util.StreamTaskListener;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
+import org.kohsuke.stapler.HttpResponse;
+import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
@@ -34,7 +36,7 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
  *
  * @author Kohsuke Kawaguchi, Paul Sandoz
  */
-public class JenkinsServer extends AbstractItem implements TopLevelItem {
+public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpResponse {
 
     protected URL serverUrl;
 
@@ -225,6 +227,13 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem {
             rsp.setStatus(SC_BAD_REQUEST);
             sendError(sw.toString(), req, rsp, true);
         }
+    }
+
+    /**
+     * When used as an HTTP response, issue a redirect to this server.
+     */
+    public void generateResponse(StaplerRequest req, StaplerResponse rsp, Object node) throws IOException, ServletException {
+        HttpResponses.redirectViaContextPath(getUrl()).generateResponse(req,rsp,node);
     }
 
     private static OfflineCause getOfflineCause(URL url) {
