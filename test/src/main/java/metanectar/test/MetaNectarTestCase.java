@@ -45,11 +45,12 @@ public class MetaNectarTestCase extends HudsonTestCase {
     protected MetaNectarTestCase() {
     }
 
+    protected MetaNectar metaNectar;
+
     protected Hudson newHudson() throws Exception {
         File home = homeLoader.allocate();
         for (Recipe.Runner r : recipes)
             r.decorateHome(this,home);
-        return new MetaNectar(home, createWebServer(), useLocalPluginManager ? null : TestPluginManager.INSTANCE);
+        return metaNectar = new MetaNectar(home, createWebServer(), useLocalPluginManager ? null : TestPluginManager.INSTANCE);
     }
-
 }
