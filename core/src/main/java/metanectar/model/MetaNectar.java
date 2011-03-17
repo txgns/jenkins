@@ -4,19 +4,14 @@ import hudson.PluginManager;
 import hudson.Util;
 import hudson.model.Failure;
 import hudson.model.Hudson;
-import hudson.model.ListView;
 import hudson.model.View;
 import hudson.util.IOUtils;
-import hudson.views.JobColumn;
 import hudson.views.StatusColumn;
 import metanectar.model.views.JenkinsServerColumn;
 import org.jvnet.hudson.reactor.ReactorException;
-import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.HttpResponses.HttpResponseException;
 import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.StaplerResponse;
 
-import javax.print.attribute.standard.JobName;
 import javax.servlet.ServletContext;
 import java.io.File;
 import java.io.IOException;
@@ -26,8 +21,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Arrays;
-
-import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 
 /**
  * The root object of MetaNectar.
@@ -101,5 +94,9 @@ public class MetaNectar extends Hudson {
         server.setServerUrl(url);
 
         return server;
+    }
+
+    public static MetaNectar getInstance() {
+        return (MetaNectar)Hudson.getInstance();
     }
 }
