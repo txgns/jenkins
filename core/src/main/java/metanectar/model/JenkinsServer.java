@@ -1,7 +1,18 @@
 package metanectar.model;
 
 import hudson.Extension;
-import hudson.model.*;
+import hudson.model.AbstractItem;
+import hudson.model.Computer;
+import hudson.model.Descriptor;
+import hudson.model.Hudson;
+import hudson.model.Item;
+import hudson.model.ItemGroup;
+import hudson.model.Job;
+import hudson.model.StatusIcon;
+import hudson.model.StockStatusIcon;
+import hudson.model.TaskListener;
+import hudson.model.TopLevelItem;
+import hudson.model.TopLevelItemDescriptor;
 import hudson.remoting.Channel;
 import hudson.slaves.OfflineCause;
 import hudson.util.FormValidation;
@@ -24,10 +35,17 @@ import java.io.StringWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.security.GeneralSecurityException;
+import java.security.KeyFactory;
+import java.security.cert.X509Certificate;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
+import static javax.servlet.http.HttpServletResponse.*;
 
 /**
  * Representation of remote Jenkins server inside Meta Nectar.
@@ -37,8 +55,21 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
  * @author Kohsuke Kawaguchi, Paul Sandoz
  */
 public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpResponse {
-
+    /**
+     * Points to the top page of the Jenkins.
+     */
     protected URL serverUrl;
+
+    /**
+     * Last certificate we received from this client, or null if we have never gone even to the hand-shaking phase.
+     */
+    private X509Certificate certificate;
+
+    /**
+     * If the connection to this Jenkins is acknowledged by the administrator,
+     * capture the encoded image of the public key. Otherwise null.
+     */
+    private volatile byte[] acknowledgedKey;
 
     protected transient volatile OfflineCause offlineCause;
 
@@ -61,6 +92,31 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
     public void onCreatedFromScratch() {
         super.onCreatedFromScratch();
         offlineCause = getOfflineCause(serverUrl);
+    }
+
+    /**
+     * If the connection to this Jenkins has already been acknowledged, return the public key of that server.
+     * Otherwise null.
+     */
+    public RSAPublicKey getAcknowledgedKey() {
+        try {
+            if (acknowledgedKey==null)  return null;
+            return (RSAPublicKey)KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(acknowledgedKey));
+        } catch (GeneralSecurityException e) {
+            LOGGER.log(Level.WARNING,"Failed to load the key",acknowledgedKey);
+            acknowledgedKey = null;
+            return null;
+        }
+    }
+
+    /**
+     * Acknowledge the given public key as a valid identity of this server
+     * (thereby granting future connections from this Jenkins.)
+     */
+    public void setAcknowledgedKey(RSAPublicKey pk) throws IOException {
+        checkPermission(CONFIGURE);
+        acknowledgedKey = pk.getEncoded();
+        save();
     }
 
     /**
@@ -282,4 +338,6 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
             return new JenkinsServer(parent,name);
         }
     }
+
+    private static final Logger LOGGER = Logger.getLogger(JenkinsServer.class.getName());
 }
