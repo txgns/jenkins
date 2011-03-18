@@ -5,6 +5,7 @@ import hudson.model.Hudson.MasterComputer;
 import hudson.model.UsageStatistics.CombinedCipherInputStream;
 import hudson.model.UsageStatistics.CombinedCipherOutputStream;
 import hudson.remoting.Channel;
+import hudson.util.IOException2;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -67,9 +68,41 @@ public class MetaNectarAgentProtocol implements AgentProtocol.Inbound, AgentProt
      */
     private final URL address;
 
+    /**
+     * Receives the progress updates of the protocol and makes key decisions.
+     */
     public interface Listener {
-        void onConnectingTo(URL address, X509Certificate serverIdentity) throws GeneralSecurityException;
-        void onConnectedTo(Channel channel);
+        /**
+         * When the hand-shake was completed and we authenticated the identity of the peer,
+         * this method is called to determine if we are willing to establish a communication channel.
+         *
+         * <p>
+         * Return normally from this method to proceed.
+         *
+         * @param address
+         *      The HTTP URL of the peer. Useful for showing diagnostic messages.
+         * @param identity
+         *      Verified identity of the peer.
+         *
+         * @throws GracefulConnectionRefusalException
+         *      To refuse a connection gracefully in such a way that the other side will learn the reason.
+         */
+        void onConnectingTo(URL address, X509Certificate identity) throws GeneralSecurityException, IOException;
+
+        /**
+         * When a communication channel is fully established.
+         */
+        void onConnectedTo(Channel channel, X509Certificate identity);
+    }
+
+    /**
+     * Indicates that we are refusing to proceed with this connection.
+     * The message provided will be passed to the other end so that they can see why the connection is aborted.
+     */
+    public static class GracefulConnectionRefusalException extends IOException {
+        public GracefulConnectionRefusalException(String message) {
+            super(message);
+        }
     }
 
     public MetaNectarAgentProtocol(X509Certificate identity, RSAPrivateKey privateKey, URL address, Listener listener) {
@@ -102,7 +135,7 @@ public class MetaNectarAgentProtocol implements AgentProtocol.Inbound, AgentProt
         requestHeaders.put("Address", address.toExternalForm());
         requestHeaders.put("Signature",sig.sign());
 
-        connection.sendObject(requestHeaders);
+        connection.writeObject(requestHeaders);
     }
 
     private X509Certificate receiveHandshake(Connection connection, byte[] sessionId) throws IOException, GeneralSecurityException, ClassNotFoundException {
@@ -120,7 +153,16 @@ public class MetaNectarAgentProtocol implements AgentProtocol.Inbound, AgentProt
         if (!sig.verify(signature))
             throw new IOException("Signature mismatch. Someone is trying to masquerade?");
 
-        listener.onConnectingTo(serverAddress, server);
+        try {
+            listener.onConnectingTo(serverAddress, server);
+            connection.writeObject(null);   // indicating we accepted the other
+        } catch (GracefulConnectionRefusalException e) {
+            connection.writeObject(e);
+        }
+
+        GracefulConnectionRefusalException refused = connection.readObject();
+        if (refused!=null)  throw new IOException2("Connection was refused",refused);
+
         return server;
     }
 
@@ -130,6 +172,6 @@ public class MetaNectarAgentProtocol implements AgentProtocol.Inbound, AgentProt
             new BufferedInputStream(new CombinedCipherInputStream(connection.in, (RSAPublicKey)other.getPublicKey(), "AES")),
             new BufferedOutputStream(new CombinedCipherOutputStream(connection.out, privateKey, "AES")));
 
-        listener.onConnectedTo(channel);
+        listener.onConnectedTo(channel,other);
     }
 }

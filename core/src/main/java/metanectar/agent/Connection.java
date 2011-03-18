@@ -79,7 +79,7 @@ public class Connection {
     /**
      * Sends a serializable object.
      */
-    public void sendObject(Object o) throws IOException {
+    public void writeObject(Object o) throws IOException {
         ObjectOutputStream oos = new ObjectOutputStream(out);
         oos.writeObject(o);
         // don't close oss, which will close the underlying stream
@@ -87,7 +87,7 @@ public class Connection {
     }
 
     /**
-     * Receives an object sent by {@link #sendObject(Object)}
+     * Receives an object sent by {@link #writeObject(Object)}
      */
     public <T> T readObject() throws IOException, ClassNotFoundException {
         ObjectInputStream ois = new ObjectInputStream(in);
