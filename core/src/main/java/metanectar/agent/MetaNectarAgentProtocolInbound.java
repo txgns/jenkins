@@ -34,11 +34,8 @@ public class MetaNectarAgentProtocolInbound implements AgentProtocol.Inbound {
         try {
             al.onApprove(null);
         } catch (GeneralSecurityException ex) {
-            connection.getListener().status("Not approved", ex);
-
             // TODO can we distinguish between a legitimate but unapproved request, to return some useful information
             //      and a bad request where no information should be given as to why approval failed
-
             // Handshake fails
             throw new AgentException(ex);
         }

@@ -18,11 +18,23 @@ public interface AgentProtocol {
     public static interface Outbound extends AgentProtocol {}
 
     /**
-     * Get the name of the protocol.
+     * Name that uniquely identifies this protocol among all the other protocol implementations.
+     * <p>
+     * This is used in the early protocol selection step so that the receiver understands how to interprect
+     * the inbound connection.
      *
-     * @return the name of the protocol.
+     * @return
+     *      The name of the protocol. Need not be human readable.
      */
     String getName();
 
+    /**
+     * After the initial protocol selection, the connection is handed over to this method
+     * of the right {@link AgentProtocol}.
+     *
+     * @throws Exception
+     *      If the protocol terminates abnormally, throw some exception. The caller
+     *      will report that exception to {@link AgentStatusListener#error(Throwable)}
+     */
     void process(Connection connection) throws IOException, InterruptedException;
 }
