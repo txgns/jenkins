@@ -1,6 +1,9 @@
 package metanectar.agent;
 
-import java.io.ByteArrayOutputStream;
+import com.trilead.ssh2.crypto.Base64;
+
+import javax.crypto.KeyAgreement;
+import javax.crypto.spec.DHParameterSpec;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -9,6 +12,14 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.security.AlgorithmParameterGenerator;
+import java.security.GeneralSecurityException;
+import java.security.Key;
+import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.PublicKey;
+import java.security.spec.X509EncodedKeySpec;
 
 /**
  * Represents a TCP/IP-like connection with the other side.
@@ -81,5 +92,40 @@ public class Connection {
     public <T> T readObject() throws IOException, ClassNotFoundException {
         ObjectInputStream ois = new ObjectInputStream(in);
         return (T)ois.readObject();
+    }
+
+    public void writeKey(Key key) throws IOException {
+        writeUTF(new String(Base64.encode(key.getEncoded())));
+    }
+
+    public X509EncodedKeySpec readKey() throws IOException {
+        byte[] otherHalf = Base64.decode(readUTF().toCharArray());
+        return new X509EncodedKeySpec(otherHalf);
+    }
+
+    /**
+     * Performs a Diffie-Hellman key exchange and produce a common secret between two ends of the connection.
+     *
+     * <p>
+     * DH is also useful as a coin-toss algorithm. Two parties get the same random number without trusting
+     * each other.
+     */
+    public KeyAgreement diffieHellman() throws IOException, GeneralSecurityException {
+        AlgorithmParameterGenerator paramGen = AlgorithmParameterGenerator.getInstance("DH");
+        paramGen.init(512);
+
+        KeyPairGenerator dh = KeyPairGenerator.getInstance("DH");
+        dh.initialize(paramGen.generateParameters().getParameterSpec(DHParameterSpec.class));
+        KeyPair keyPair = dh.generateKeyPair();
+
+        // send a half and get a half
+        writeKey(keyPair.getPublic());
+        PublicKey otherHalf = KeyFactory.getInstance("DH").generatePublic(readKey());
+
+        KeyAgreement ka = KeyAgreement.getInstance("DH");
+        ka.init(keyPair.getPrivate());
+        ka.doPhase(otherHalf, true);
+
+        return ka;
     }
 }
