@@ -6,9 +6,13 @@ import hudson.Util;
 import hudson.model.Failure;
 import hudson.model.Hudson;
 import hudson.model.View;
+import hudson.util.AdministrativeError;
 import hudson.util.IOException2;
 import hudson.util.IOUtils;
 import hudson.views.StatusColumn;
+import metanectar.agent.AgentListener;
+import metanectar.agent.AgentStatusListener;
+import metanectar.agent.MetaNectarAgentProtocolInbound;
 import metanectar.model.views.JenkinsServerColumn;
 import org.jvnet.hudson.reactor.ReactorException;
 import org.kohsuke.stapler.HttpResponses.HttpResponseException;
@@ -19,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.StringWriter;
+import java.net.BindException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
@@ -27,6 +32,7 @@ import java.security.KeyFactory;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
+import java.util.Collections;
 
 /**
  * The root object of MetaNectar.
@@ -37,12 +43,57 @@ import java.util.Arrays;
  * @author Kohsuke Kawaguchi
  */
 public class MetaNectar extends Hudson {
+
+    protected transient AgentListener jenkinsAgentListener;
+
     public MetaNectar(File root, ServletContext context) throws IOException, InterruptedException, ReactorException {
-        super(root, context);
+        this(root, context, null);
     }
 
     public MetaNectar(File root, ServletContext context, PluginManager pluginManager) throws IOException, InterruptedException, ReactorException {
         super(root, context, pluginManager);
+
+        {
+            AgentStatusListener asl = new AgentStatusListener() {
+                public void status(String msg) {
+                }
+
+                public void status(String msg, Throwable t) {
+                }
+
+                public void error(Throwable t) {
+                }
+            };
+
+            MetaNectarAgentProtocolInbound p = new MetaNectarAgentProtocolInbound(
+                    new MetaNectarAgentProtocolInbound.ApprovalListener() {
+                        public void onApprove(Object cert) throws GeneralSecurityException {
+                            // TODO ignore if requests arrive before MetaNectar has finished configuration
+                            // or find a more appropriate place to instantiate AgentListener
+                        }
+                    }
+            );
+
+
+            // TODO choose port
+            try {
+                jenkinsAgentListener = new AgentListener(asl, 0, Collections.singletonList(p));
+                new Thread(jenkinsAgentListener, "TCP slave agent listener port=" + 0).start();
+            } catch (BindException e) {
+                new AdministrativeError(getClass().getName()+".tcpBind",
+                        "Failed to listen to incoming agent connection",
+                        "Failed to listen to incoming agent connection. <a href='configure'>Change the port number</a> to solve the problem.",e);
+            }
+        }
+    }
+
+
+    @Override
+    public void cleanUp() {
+        super.cleanUp();
+
+        if(jenkinsAgentListener != null)
+            jenkinsAgentListener.shutdown();
     }
 
     @Override

@@ -15,7 +15,7 @@ public interface MetaNectarSlaveManager {
      * If the slave manager is capable of provisioning a slave that matches the given label expression,
      * return true.
      */
-    boolean canProviosion(Label label) throws IOException, InterruptedException;
+    boolean canProvision(Label label) throws IOException, InterruptedException;
 
     /**
      * List all the label atoms that this manager understands.

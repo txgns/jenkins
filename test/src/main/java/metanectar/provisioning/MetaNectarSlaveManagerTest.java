@@ -84,7 +84,7 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
 
         // this dummy manager can allocate 'foo', so it can provision "foo||bar"
         final Label fooOrBar = Label.parseExpression("foo||bar");
-        assertTrue(proxy.canProviosion(fooOrBar));
+        assertTrue(proxy.canProvision(fooOrBar));
 
         StreamTaskListener stl = new StreamTaskListener(new OutputStreamWriter(System.out));
         final ProvisioningActivity pip = proxy.provision(fooOrBar, stl, 1);
@@ -106,7 +106,7 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
     public static class DummyMetaNectarSlaveManagerImpl implements MetaNectarSlaveManager {
         private int n;
 
-        public boolean canProviosion(Label label) throws IOException, InterruptedException {
+        public boolean canProvision(Label label) throws IOException, InterruptedException {
             return label.matches(new VariableResolver<Boolean>() {
                 public Boolean resolve(String name) {
                     return name.equals("foo");
