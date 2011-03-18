@@ -1,15 +1,13 @@
 package metanectar.agent;
 
 import hudson.remoting.Channel;
-import hudson.remoting.Channel.Listener;
 import hudson.remoting.FastPipedInputStream;
 import hudson.remoting.FastPipedOutputStream;
 import hudson.util.IOException2;
 import junit.framework.TestCase;
+import metanectar.agent.MetaNectarAgentProtocol.GracefulConnectionRefusalException;
 import sun.security.x509.AlgorithmId;
-import sun.security.x509.BasicConstraintsExtension;
 import sun.security.x509.CertificateAlgorithmId;
-import sun.security.x509.CertificateExtensions;
 import sun.security.x509.CertificateIssuerName;
 import sun.security.x509.CertificateSerialNumber;
 import sun.security.x509.CertificateSubjectName;
@@ -21,21 +19,19 @@ import sun.security.x509.X509CertImpl;
 import sun.security.x509.X509CertInfo;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.security.PrivateKey;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPrivateKey;
 import java.util.Date;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -44,6 +40,9 @@ import java.util.concurrent.TimeUnit;
 public class MetaNectarAgentProtocolTest extends TestCase {
     private Entity server;
     private Entity client;
+    private ExecutorService es;
+    private Future<?> serverOutcome;
+    private Future<?> clientOutcome;
 
     /**
      * Entity in the RSA sense.
@@ -90,6 +89,18 @@ public class MetaNectarAgentProtocolTest extends TestCase {
         super.setUp();
         server = new Entity("server");
         client = new Entity("client");
+        es = Executors.newCachedThreadPool();
+    }
+
+    @Override
+    protected void tearDown() throws Exception {
+        super.tearDown();
+        es.shutdown();
+
+        if (serverOutcome!=null)
+            serverOutcome.get();
+        if (clientOutcome!=null)
+            clientOutcome.get();
     }
 
     /**
@@ -99,8 +110,7 @@ public class MetaNectarAgentProtocolTest extends TestCase {
         final FastPipedInputStream i1 = new FastPipedInputStream();
         final FastPipedInputStream i2 = new FastPipedInputStream();
 
-        ExecutorService es = Executors.newCachedThreadPool();
-        Future<?> f1 = es.submit(new Callable<Object>() {
+        serverOutcome = es.submit(new Callable<Object>() {
             public Object call() throws Exception {
                 MetaNectarAgentProtocol s = new MetaNectarAgentProtocol.Inbound(server.cert, server.privateKey, new URL("http://server/"), sl);
                 s.process(new Connection(i1, new FastPipedOutputStream(i2)));
@@ -108,20 +118,39 @@ public class MetaNectarAgentProtocolTest extends TestCase {
             }
         });
 
-        Future<?> f2 = es.submit(new Callable<Object>() {
+        clientOutcome = es.submit(new Callable<Object>() {
             public Object call() throws Exception {
                 MetaNectarAgentProtocol s = new MetaNectarAgentProtocol.Outbound(client.cert, client.privateKey, new URL("http://client/"), cl);
                 s.process(new Connection(i2, new FastPipedOutputStream(i1)));
                 return null;
             }
         });
-
-        f1.get();
-        f2.get();
-        es.shutdown();
     }
 
-    public void testBasics() throws Exception {
+    public void evalClient() throws Exception {
+        try {
+            clientOutcome.get();
+        } catch (ExecutionException e) {
+            throw (Exception)e.getCause();
+        } finally {
+            clientOutcome = null;
+        }
+    }
+
+    public void evalServer() throws Exception {
+        try {
+            serverOutcome.get();
+        } catch (ExecutionException e) {
+            throw (Exception)e.getCause();
+        } finally {
+            serverOutcome = null;
+        }
+    }
+
+    /**
+     * Success scenario.
+     */
+    public void testSuccess() throws Exception {
         runProtocol(new metanectar.agent.MetaNectarAgentProtocol.Listener() {
             public void onConnectingTo(URL address, X509Certificate identity) {
                 assertEquals(identity, client.cert);
@@ -151,5 +180,42 @@ public class MetaNectarAgentProtocolTest extends TestCase {
                 }
             }
         });
+    }
+
+    /**
+     * Tests a rejection.
+     */
+    public void testRejection() throws Exception {
+        runProtocol(new metanectar.agent.MetaNectarAgentProtocol.Listener() {
+            public void onConnectingTo(URL address, X509Certificate identity) throws GracefulConnectionRefusalException {
+                throw new GracefulConnectionRefusalException("I don't like you");
+            }
+
+            public void onConnectedTo(Channel channel, X509Certificate identity) throws IOException {
+                fail();
+            }
+        }, new metanectar.agent.MetaNectarAgentProtocol.Listener() {
+            public void onConnectingTo(URL address, X509Certificate identity) {
+                // accept the server
+            }
+
+            public void onConnectedTo(Channel channel, X509Certificate identity) throws IOException {
+                fail();
+            }
+        });
+
+        try {
+            evalClient();
+            fail();
+        } catch (GracefulConnectionRefusalException e) {
+            assertEquals("I don't like you",e.getMessage());
+        }
+
+        try {
+            evalServer();
+            fail();
+        } catch (GracefulConnectionRefusalException e) {
+            assertEquals("I don't like you",e.getMessage());
+        }
     }
 }

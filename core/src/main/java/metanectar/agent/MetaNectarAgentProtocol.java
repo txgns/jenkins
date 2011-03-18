@@ -125,6 +125,10 @@ public abstract class MetaNectarAgentProtocol implements AgentProtocol {
         public GracefulConnectionRefusalException(String message) {
             super(message);
         }
+
+        public GracefulConnectionRefusalException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 
     public MetaNectarAgentProtocol(X509Certificate identity, RSAPrivateKey privateKey, URL address, Listener listener) {
@@ -185,10 +189,11 @@ public abstract class MetaNectarAgentProtocol implements AgentProtocol {
             connection.writeObject(null);   // indicating we accepted the other
         } catch (GracefulConnectionRefusalException e) {
             connection.writeObject(e);
+            throw e;
         }
 
         GracefulConnectionRefusalException refused = connection.readObject();
-        if (refused!=null)  throw new IOException2("Connection was refused",refused);
+        if (refused!=null)  throw new GracefulConnectionRefusalException(refused.getMessage(),refused);
 
         return server;
     }
