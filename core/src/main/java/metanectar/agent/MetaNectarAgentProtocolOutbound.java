@@ -1,9 +1,6 @@
 package metanectar.agent;
 
-import java.io.*;
-import java.util.Collections;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
+import java.io.IOException;
 
 /**
  * The Jenkins/Nectar protocol that establishes the channel with MetaNectar.
@@ -18,16 +15,12 @@ public class MetaNectarAgentProtocolOutbound implements AgentProtocol.Outbound {
         return "Protocol:MetaNectar";
     }
 
-    public Map<String, Object> handshake(AgentStatusListener l, DataInputStream din, DataOutputStream dos) throws IOException {
+    public void process(Connection connection) throws IOException, InterruptedException {
 
         // Send the certificate
 
         // check the response, if approved handshake succeeds, otherwise fails.
 
-        return Collections.emptyMap();
-    }
-
-    public void process(AgentStatusListener l, Map<String, Object> ps, InputStream in, OutputStream out) throws IOException, InterruptedException {
         // Get the meta nectar root action instance
         // set the channel on that instance
     }

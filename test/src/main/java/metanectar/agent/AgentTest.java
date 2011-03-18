@@ -3,6 +3,7 @@ package metanectar.agent;
 import hudson.remoting.Callable;
 import hudson.remoting.Channel;
 import junit.framework.TestCase;
+import metanectar.agent.Agent.AgentException;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -89,15 +90,11 @@ public class AgentTest extends TestCase {
                 return "TEST PROTOCOL";
             }
 
-            public Map<String, Object> handshake(AgentStatusListener l, DataInputStream din, DataOutputStream dos) throws IOException {
-                String s = din.readUTF();
+            public void process(Connection con) throws IOException, InterruptedException {
+                String s = con.readUTF();
                 assertEquals("TEST", s);
 
-                dos.writeUTF("OK");
-                return Collections.emptyMap();
-            }
-
-            public void process(AgentStatusListener l, Map<String, Object> ps, InputStream in, OutputStream out) throws IOException, InterruptedException {
+                con.writeUTF("OK");
             }
         };
 
@@ -108,15 +105,11 @@ public class AgentTest extends TestCase {
                 return "TEST PROTOCOL";
             }
 
-            public Map<String, Object> handshake(AgentStatusListener l, DataInputStream din, DataOutputStream dos) throws IOException {
-                dos.writeUTF("TEST");
+            public void process(Connection con) throws IOException, InterruptedException {
+                con.writeUTF("TEST");
 
-                String s = din.readUTF();
+                String s = con.readUTF();
                 assertEquals("OK", s);
-                return Collections.emptyMap();
-            }
-
-            public void process(AgentStatusListener l, Map<String, Object> ps, InputStream in, OutputStream out) throws IOException, InterruptedException {
             }
         };
 
@@ -143,13 +136,8 @@ public class AgentTest extends TestCase {
                 return "TEST PROTOCOL1";
             }
 
-            public Map<String, Object> handshake(AgentStatusListener l, DataInputStream din, DataOutputStream dos) throws IOException {
-                assertTrue(false);
-                return null;
-            }
-
-            public void process(AgentStatusListener l, Map<String, Object> ps, InputStream in, OutputStream out) throws IOException, InterruptedException {
-                assertTrue(false);
+            public void process(Connection connection) throws IOException, InterruptedException {
+                fail();
             }
         };
 
@@ -160,13 +148,8 @@ public class AgentTest extends TestCase {
                 return "TEST PROTOCOL2";
             }
 
-            public Map<String, Object> handshake(AgentStatusListener l, DataInputStream din, DataOutputStream dos) throws IOException {
-                assertTrue(false);
-                return null;
-            }
-
-            public void process(AgentStatusListener l, Map<String, Object> ps, InputStream in, OutputStream out) throws IOException, InterruptedException {
-                assertTrue(false);
+            public void process(Connection connection) throws IOException, InterruptedException {
+                fail();
             }
         };
 
@@ -191,13 +174,8 @@ public class AgentTest extends TestCase {
                 return "TEST PROTOCOL1";
             }
 
-            public Map<String, Object> handshake(AgentStatusListener l, DataInputStream din, DataOutputStream dos) throws IOException {
-                assertTrue(false);
-                return null;
-            }
-
-            public void process(AgentStatusListener l, Map<String, Object> ps, InputStream in, OutputStream out) throws IOException, InterruptedException {
-                assertTrue(false);
+            public void process(Connection connection) throws IOException, InterruptedException {
+                fail();
             }
         };
 
@@ -208,17 +186,15 @@ public class AgentTest extends TestCase {
                 return "TEST PROTOCOL2";
             }
 
-            public Map<String, Object> handshake(AgentStatusListener l, DataInputStream din, DataOutputStream dos) throws IOException {
-                String response = din.readUTF();
+            public void process(Connection con) throws IOException, InterruptedException {
+                String response = con.readUTF();
                 assertEquals(response, "Unknown Protocol");
                 if (!response.equals("Welcome")) {
-                    l.error(new Agent.AgentException("The server rejected the connection:: " + response));
-                    return null;
+                    AgentException e = new AgentException("The server rejected the connection:: " + response);
+                    con.getListener().error(e);
+                    throw e;
                 }
-                return Collections.emptyMap();
-            }
 
-            public void process(AgentStatusListener l, Map<String, Object> ps, InputStream in, OutputStream out) throws IOException, InterruptedException {
                 assertTrue(false);
             }
         };
@@ -247,14 +223,10 @@ public class AgentTest extends TestCase {
                 return "TEST PROTOCOL";
             }
 
-            public Map<String, Object> handshake(AgentStatusListener l, DataInputStream din, DataOutputStream dos) throws IOException {
-                return Collections.emptyMap();
-            }
-
-            public void process(AgentStatusListener l, Map<String, Object> ps, InputStream in, OutputStream out) throws IOException, InterruptedException {
+            public void process(Connection con) throws IOException, InterruptedException {
                 final Channel channel = new Channel("inbound-channel", executor,
-                        new BufferedInputStream(in),
-                        new BufferedOutputStream(out));
+                        new BufferedInputStream(con.in),
+                        new BufferedOutputStream(con.out));
                 channel.join();
             }
         };
@@ -266,14 +238,10 @@ public class AgentTest extends TestCase {
                 return "TEST PROTOCOL";
             }
 
-            public Map<String, Object> handshake(AgentStatusListener l, DataInputStream din, DataOutputStream dos) throws IOException {
-                return Collections.emptyMap();
-            }
-
-            public void process(AgentStatusListener l, Map<String, Object> ps, InputStream in, OutputStream out) throws IOException, InterruptedException {
+            public void process(Connection con) throws IOException, InterruptedException {
                 final Channel channel = new Channel("outbound-channel", executor,
-                        new BufferedInputStream(in),
-                        new BufferedOutputStream(out));
+                        new BufferedInputStream(con.in),
+                        new BufferedOutputStream(con.out));
 
                 String channelName = channel.call(new CurrentChannelCallable());
 

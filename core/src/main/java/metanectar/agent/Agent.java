@@ -2,10 +2,9 @@ package metanectar.agent;
 
 //import hudson.remoting.Channel;
 
-import java.io.*;
+import java.io.IOException;
 import java.net.Socket;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -23,9 +22,17 @@ public class Agent implements Runnable {
     /**
      *
      */
-    public static class AgentException extends Exception {
+    public static class AgentException extends IOException {
         public AgentException(String message) {
             super(message);
+        }
+
+        public AgentException(String message, Throwable cause) {
+            super(message, cause);
+        }
+
+        public AgentException(Throwable cause) {
+            super(cause);
         }
     }
 
@@ -171,15 +178,15 @@ public class Agent implements Runnable {
             listener.status("Handshaking protocol: " + p.getName());
 
             final Socket s = connect(cr);
-            final DataOutputStream dos = new DataOutputStream(s.getOutputStream());
-            final DataInputStream din = new DataInputStream(s.getInputStream());
+            final Connection con = new Connection(s);
+            con.setListener(listener);
 
             // Write the protocol name
-            dos.writeUTF(p.getName());
+            con.writeUTF(p.getName());
 
             // Check the response
             if (!(p instanceof LegacyAgentProtocol)) {
-                String response = din.readUTF();
+                String response = con.readUTF();
                 if (!response.equals("ACK")) {
                     listener.error(new AgentException("Unsupported protocol " + p.getName()));
                     s.close();
@@ -187,16 +194,21 @@ public class Agent implements Runnable {
                 }
             }
 
-            // Handshake
-            Map<String, Object> props = p.handshake(listener, din, dos);
-            if (props != null) {
-                p.process(listener, props, s.getInputStream(), s.getOutputStream());
+            try {
+                p.process(con);
                 return true;
-            } else {
-                listener.error(new AgentException("The handshake could not be agreed for the protocol " + p.getName()));
+            } finally {
                 s.close();
-                return false;
             }
+//            Map<String, Object> props = p.handshake(listener);
+//            if (props != null) {
+//                p.process(listener, props, s.getInputStream(), s.getOutputStream());
+//                return true;
+//            } else {
+//                listener.error(new AgentException("The handshake could not be agreed for the protocol " + p.getName()));
+//                s.close();
+//                return false;
+//            }
         }
         return false;
     }

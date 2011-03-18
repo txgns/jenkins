@@ -1,6 +1,7 @@
 package metanectar.agent;
 
-import java.io.*;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -123,28 +124,23 @@ public class AgentListener implements Runnable {
             try {
                 LOGGER.info("Accepted connection #" + id + " from " + s.getRemoteSocketAddress());
 
-                final DataInputStream din = new DataInputStream(s.getInputStream());
-                final DataOutputStream dos = new DataOutputStream(s.getOutputStream());
+                final Connection con = new Connection(s);
+                con.setListener(listener);
 
                 // Read the protocol identifier
-                final String protocolIdentifier = din.readUTF();
+                final String protocolIdentifier = con.readUTF();
 
                 // Look up the protocol
                 AgentProtocol p = protocols.get(protocolIdentifier);
                 if (p != null) {
                     LOGGER.info("Handshaking on connection #" + id + " for protocol " + p.getName());
                     if (!(p instanceof LegacyAgentProtocol)) {
-                        dos.writeUTF("ACK");
+                        con.writeUTF("ACK");
                     }
 
-                    Map<String, Object> props = p.handshake(listener, din, dos);
-                    if (props != null) {
-                        p.process(listener, props, s.getInputStream(), s.getOutputStream());
-                    } else {
-                        s.close();
-                    }
+                    p.process(con);
                 } else {
-                    error(dos, "Unknown protocol");
+                    error(con.dout, "Unknown protocol");
                 }
             } catch (InterruptedException e) {
                 LOGGER.log(Level.WARNING,"Connection #"+ id +" aborted", e);
@@ -161,8 +157,7 @@ public class AgentListener implements Runnable {
 
         private void error(DataOutputStream dos, String msg) throws IOException {
             dos.writeUTF(msg);
-            LOGGER.log(Level.WARNING,"Connection #" + id + " is aborted: " + msg);
-            s.close();
+            LOGGER.log(Level.WARNING, "Connection #" + id + " is aborted: " + msg);
         }
     }
 }
