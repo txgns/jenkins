@@ -1,7 +1,5 @@
 package metanectar.agent;
 
-import java.io.IOException;
-
 /**
  * A protocol that may be agreed between an {@link Agent} and an {@link AgentListener}.
  * <p>
@@ -36,5 +34,5 @@ public interface AgentProtocol {
      *      If the protocol terminates abnormally, throw some exception. The caller
      *      will report that exception to {@link AgentStatusListener#error(Throwable)}
      */
-    void process(Connection connection) throws IOException, InterruptedException;
+    void process(Connection connection) throws Exception;
 }

@@ -1,9 +1,12 @@
 package metanectar.agent;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 
@@ -57,7 +60,26 @@ public class Connection {
     public void writeUTF(String msg) throws IOException {
         dout.writeUTF(msg);
     }
+
     public String readUTF() throws IOException {
         return din.readUTF();
+    }
+
+    /**
+     * Sends a serializable object.
+     */
+    public void sendObject(Object o) throws IOException {
+        ObjectOutputStream oos = new ObjectOutputStream(out);
+        oos.writeObject(o);
+        // don't close oss, which will close the underlying stream
+        // no need to flush either, given the way oos is implemented
+    }
+
+    /**
+     * Receives an object sent by {@link #sendObject(Object)}
+     */
+    public <T> T readObject() throws IOException, ClassNotFoundException {
+        ObjectInputStream ois = new ObjectInputStream(in);
+        return (T)ois.readObject();
     }
 }

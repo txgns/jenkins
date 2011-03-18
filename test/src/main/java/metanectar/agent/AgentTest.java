@@ -5,12 +5,10 @@ import hudson.remoting.Channel;
 import junit.framework.TestCase;
 import metanectar.agent.Agent.AgentException;
 
-import java.io.*;
-import java.util.ArrayList;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.IOException;
 import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -258,5 +256,4 @@ public class AgentTest extends TestCase {
 
         assertEquals(0, errors.get());
     }
-
 }

@@ -142,10 +142,8 @@ public class AgentListener implements Runnable {
                 } else {
                     error(con.dout, "Unknown protocol");
                 }
-            } catch (InterruptedException e) {
-                LOGGER.log(Level.WARNING,"Connection #"+ id +" aborted", e);
-            } catch (IOException e) {
-                LOGGER.log(Level.WARNING,"Connection #" + id +" failed", e);
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING,"Connection #"+ id +" failed", e);
             } finally {
                 try {
                     s.close();
