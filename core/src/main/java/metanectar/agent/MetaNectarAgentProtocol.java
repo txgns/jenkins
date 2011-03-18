@@ -175,6 +175,8 @@ public abstract class MetaNectarAgentProtocol implements AgentProtocol {
         X509Certificate server = (X509Certificate)responseHeaders.get("Identity");
         if (server==null)
             throw new IOException("The other end failed to give us its identity");
+        // TODO: should we validate certificate? On one hand, we are only using its public key, but on the other hand, that's what you do with certificates...
+
         URL serverAddress = new URL((String)responseHeaders.get("Address"));
 
         byte[] signature = (byte[])responseHeaders.get("Signature");
@@ -203,7 +205,7 @@ public abstract class MetaNectarAgentProtocol implements AgentProtocol {
         CombinedCipherInputStream in = new CombinedCipherInputStream(connection.in, (RSAPublicKey) other.getPublicKey(), "AES/CBC/PKCS5Padding");
 
         final Channel channel = new Channel("outbound-channel", MasterComputer.threadPoolForRemoting,
-            new BufferedInputStream(connection.in), new BufferedOutputStream(connection.out));
+            new BufferedInputStream(in), new BufferedOutputStream(out));
 
         listener.onConnectedTo(channel,other);
     }
