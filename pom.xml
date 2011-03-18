@@ -2,7 +2,7 @@
 <!--
 The MIT License
 
-Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, id:sorokh
+Copyright (c) 2004-2011, Sun Microsystems, Inc., Kohsuke Kawaguchi, id:sorokh
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@ THE SOFTWARE.
   <parent>
     <groupId>org.jenkins-ci</groupId>
     <artifactId>jenkins</artifactId>
-    <version>1.13</version>
+    <version>1.16</version>
   </parent>
   
   <groupId>com.cloudbees.metanectar</groupId>
@@ -36,7 +36,7 @@ THE SOFTWARE.
   <packaging>pom</packaging>
   
   <name>Jenkins main module</name>
-  <description>The module that constitutes the main hudson.war</description>
+  <description>The module that constitutes the main jenkins.war</description>
   
   <modules>
     <module>remoting</module>
@@ -106,10 +106,11 @@ THE SOFTWARE.
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>2.7.1</version>
+          <version>2.7.2</version>
           <configuration>
             <systemPropertyVariables>
               <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
+              <forkedProcessTimeoutInSeconds>3600</forkedProcessTimeoutInSeconds>
             </systemPropertyVariables>
           </configuration>
         </plugin>

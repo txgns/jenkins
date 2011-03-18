@@ -58,20 +58,34 @@ Upcoming changes</a>
 <!-- Record your changes in the trunk here. -->
 <div id="trunk" style="display:none"><!--=TRUNK-BEGIN=-->
 <ul class=image>
+  <li class=>
+</ul>
+</div><!--=TRUNK-END=-->
+
+<!-- these changes are controlled by the release process. DO NOT MODIFY -->
+<div id="rc" style="display:none;"><!--=BEGIN=-->
+<h3><a name=v1.400>What's new in 1.400</a> <!--=DATE=--></h3>
+<ul class=image>
   <li class=bug>
     NPE during in parsing POMs for Multi Module Build
     (<a href="http://issues.jenkins-ci.org/browse/JENKINS-8525">issue 8525</a>)
   <li class=bug>
     Post build action deploy to maven repository can fail when using "use private maven repository option"
     (<a href="http://issues.jenkins-ci.org/browse/JENKINS-8711">issue 8711</a>)    
+  <li class=bug>
+    Groovy CLI command was failing to resolve plugin classes
+    (<a href="http://issues.jenkins-ci.org/browse/JENKINS-8892">issue 8892</a>)    
   <li class=rfe>
     Exposing more key variables to the Groovy CLI command.
+  <li class=rfe>
+    Allow classworlds.conf to be externally configured for M3 builds
+    (<a href="http://issues.jenkins-ci.org/browse/JENKINS-8905">issue 8905</a>)    
+  <li class=bug>
+    Configure the environment for Maven job type builds
+    (<a href="http://issues.jenkins-ci.org/browse/JENKINS-8092">issue 8902</a>)
 </ul>
-</div><!--=TRUNK-END=-->
-
-<!-- these changes are controlled by the release process. DO NOT MODIFY -->
-<div id="rc" style="display:none;"><!--=BEGIN=-->
-<h3><a name=v1.399>What's new in 1.399</a> <!--=DATE=--></h3>
+</div><!--=END=-->
+<h3><a name=v1.399>What's new in 1.399</a> (2011/02/27)</h3>
 <ul class=image>
   <li class='major bug'>
     On IBM JDKs, Jenkins incorrectly ended up closing stdout to read from forked processes.
@@ -111,7 +125,6 @@ Upcoming changes</a>
     Improved the process forking abstractions so that plugins can more easily read from child processes.
     (<a href="http://issues.jenkins-ci.org/browse/JENKINS-7809">issue 7809</a>)
 </ul>
-</div><!--=END=-->
 <h3><a name=v1.398>What's new in 1.398</a> (2011/02/20)</h3>
 <ul class=image>
   <li class=bug>
