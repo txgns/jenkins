@@ -6,13 +6,15 @@ import hudson.Util;
 import hudson.model.Failure;
 import hudson.model.Hudson;
 import hudson.model.View;
+import hudson.remoting.Channel;
 import hudson.util.AdministrativeError;
 import hudson.util.IOException2;
 import hudson.util.IOUtils;
 import hudson.views.StatusColumn;
 import metanectar.agent.AgentListener;
 import metanectar.agent.AgentStatusListener;
-import metanectar.agent.MetaNectarAgentProtocolInbound;
+import metanectar.agent.MetaNectarAgentProtocol;
+import metanectar.agent.MetaNectarAgentProtocol.Listener;
 import metanectar.model.views.JenkinsServerColumn;
 import org.jvnet.hudson.reactor.ReactorException;
 import org.kohsuke.stapler.HttpResponses.HttpResponseException;
@@ -29,6 +31,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
+import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
@@ -65,13 +68,14 @@ public class MetaNectar extends Hudson {
                 }
             };
 
-            MetaNectarAgentProtocolInbound p = new MetaNectarAgentProtocolInbound(
-                    new MetaNectarAgentProtocolInbound.ApprovalListener() {
-                        public void onApprove(Object cert) throws GeneralSecurityException {
-                            // TODO ignore if requests arrive before MetaNectar has finished configuration
-                            // or find a more appropriate place to instantiate AgentListener
-                        }
-                    }
+            MetaNectarAgentProtocol.Inbound p = new MetaNectarAgentProtocol.Inbound(null,null,null,new Listener() {
+                public void onConnectingTo(URL address, X509Certificate identity) throws GeneralSecurityException, IOException {
+                }
+
+                public void onConnectedTo(Channel channel, X509Certificate identity) throws IOException {
+                }
+            }
+
             );
 
 

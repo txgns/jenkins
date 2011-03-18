@@ -7,6 +7,7 @@ import hudson.model.UsageStatistics.CombinedCipherOutputStream;
 import hudson.remoting.Channel;
 import hudson.util.IOException2;
 
+import javax.crypto.KeyAgreement;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -18,6 +19,7 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * The Jenkins/Nectar protocol that establishes the channel with MetaNectar.
@@ -51,7 +53,7 @@ import java.util.Map;
  * @author Paul Sandoz
  * @author Kohsuke Kawaguchi
  */
-public class MetaNectarAgentProtocol implements AgentProtocol.Inbound, AgentProtocol.Outbound {
+public abstract class MetaNectarAgentProtocol implements AgentProtocol {
     /**
      * Certificate that shows the identity of this client.
      */
@@ -92,7 +94,27 @@ public class MetaNectarAgentProtocol implements AgentProtocol.Inbound, AgentProt
         /**
          * When a communication channel is fully established.
          */
-        void onConnectedTo(Channel channel, X509Certificate identity);
+        void onConnectedTo(Channel channel, X509Certificate identity) throws IOException;
+    }
+
+    public static class Inbound extends MetaNectarAgentProtocol implements AgentProtocol.Inbound {
+        public Inbound(X509Certificate identity, RSAPrivateKey privateKey, URL address, Listener listener) {
+            super(identity, privateKey, address, listener);
+        }
+
+        protected KeyAgreement diffieHellman(Connection connection) throws IOException, GeneralSecurityException {
+            return connection.diffieHellman(false);
+        }
+    }
+
+    public static class Outbound extends MetaNectarAgentProtocol implements AgentProtocol.Outbound {
+        public Outbound(X509Certificate identity, RSAPrivateKey privateKey, URL address, Listener listener) {
+            super(identity, privateKey, address, listener);
+        }
+
+        protected KeyAgreement diffieHellman(Connection connection) throws IOException, GeneralSecurityException {
+            return connection.diffieHellman(true);
+        }
     }
 
     /**
@@ -117,12 +139,14 @@ public class MetaNectarAgentProtocol implements AgentProtocol.Inbound, AgentProt
     }
 
     public void process(Connection connection) throws Exception {
-        byte[] sessionId = connection.diffieHellman().generateSecret();
+        byte[] sessionId = diffieHellman(connection).generateSecret();
 
         sendHandshake(connection, sessionId);
         X509Certificate other = receiveHandshake(connection, sessionId);
         connect(connection, other);
     }
+
+    protected abstract KeyAgreement diffieHellman(Connection connection) throws IOException, GeneralSecurityException;
 
     private void sendHandshake(Connection connection, byte[] sessionId) throws IOException, GeneralSecurityException {
         Signature sig = Signature.getInstance("SHA1withRSA");
@@ -135,11 +159,14 @@ public class MetaNectarAgentProtocol implements AgentProtocol.Inbound, AgentProt
         requestHeaders.put("Address", address.toExternalForm());
         requestHeaders.put("Signature",sig.sign());
 
+        LOGGER.fine("Sending "+requestHeaders+" as handshaking headers");
+
         connection.writeObject(requestHeaders);
     }
 
     private X509Certificate receiveHandshake(Connection connection, byte[] sessionId) throws IOException, GeneralSecurityException, ClassNotFoundException {
         Map<String, Object> responseHeaders = connection.readObject();
+        LOGGER.fine("Got "+responseHeaders+" as handshaking headers");
 
         X509Certificate server = (X509Certificate)responseHeaders.get("Identity");
         if (server==null)
@@ -167,11 +194,14 @@ public class MetaNectarAgentProtocol implements AgentProtocol.Inbound, AgentProt
     }
 
     protected void connect(Connection connection, X509Certificate other) throws IOException, GeneralSecurityException {
+        CombinedCipherOutputStream out = new CombinedCipherOutputStream(connection.out, privateKey, "AES/CBC/PKCS5Padding");
+        CombinedCipherInputStream in = new CombinedCipherInputStream(connection.in, (RSAPublicKey) other.getPublicKey(), "AES/CBC/PKCS5Padding");
 
         final Channel channel = new Channel("outbound-channel", MasterComputer.threadPoolForRemoting,
-            new BufferedInputStream(new CombinedCipherInputStream(connection.in, (RSAPublicKey)other.getPublicKey(), "AES")),
-            new BufferedOutputStream(new CombinedCipherOutputStream(connection.out, privateKey, "AES")));
+            new BufferedInputStream(connection.in), new BufferedOutputStream(connection.out));
 
         listener.onConnectedTo(channel,other);
     }
+
+    private static final Logger LOGGER = Logger.getLogger(MetaNectarAgentProtocol.class.getName());
 }
