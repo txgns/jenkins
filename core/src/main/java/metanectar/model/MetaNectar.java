@@ -1,10 +1,12 @@
 package metanectar.model;
 
+import com.thoughtworks.xstream.core.util.Base64Encoder;
 import hudson.PluginManager;
 import hudson.Util;
 import hudson.model.Failure;
 import hudson.model.Hudson;
 import hudson.model.View;
+import hudson.util.IOException2;
 import hudson.util.IOUtils;
 import hudson.views.StatusColumn;
 import metanectar.model.views.JenkinsServerColumn;
@@ -20,6 +22,10 @@ import java.io.StringWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
+import java.security.GeneralSecurityException;
+import java.security.KeyFactory;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 
 /**
@@ -86,12 +92,25 @@ public class MetaNectar extends Hudson {
         if (hcon.getHeaderField("X-Jenkins")==null)
             throw new Failure(url+ " is neither Jenkins nor Nectar --- there's no X-Jenkins header");
 
-        // TODO: use headers to retrieve the public key, instance ID, etc.
-        final String mnc = hcon.getHeaderField("X-MetaNectar-Client");
+        RSAPublicKey key=null;
+        if (!BYPASS_INSTANCE_AUTHENTICATION) {
+            final String id = hcon.getHeaderField("X-Instance-Identity");
+            if (id==null)
+                throw new Failure(url+ " doesn't appear to have the MetaNectar connector plugin installed.");
 
-        // add a new server
+            try {
+                key = (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(new Base64Encoder().decode(id)));
+            } catch (GeneralSecurityException e) {
+                throw new IOException2("Failed to parse the identity: "+id,e);
+            }
+        }
+
+        // Add a new server. Since this instance was manually added, it's fair to say
+        // that act constitutes an acknowledgement
         final JenkinsServer server = createProject(JenkinsServer.class, Util.getDigestOf(url.toExternalForm()));
         server.setServerUrl(url);
+        if (key!=null)
+            server.setAcknowledgedKey(key);
 
         return server;
     }
@@ -99,4 +118,10 @@ public class MetaNectar extends Hudson {
     public static MetaNectar getInstance() {
         return (MetaNectar)Hudson.getInstance();
     }
+
+    /**
+     * If true, bypass the RSA-based instance ID authentication altogether.
+     * Convenient for debugging.
+     */
+    public static boolean BYPASS_INSTANCE_AUTHENTICATION = Boolean.getBoolean(MetaNectar.class.getName()+".bypassInstanceAuthentication");
 }
