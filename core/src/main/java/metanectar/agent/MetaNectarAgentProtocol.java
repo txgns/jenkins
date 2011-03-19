@@ -1,5 +1,6 @@
 package metanectar.agent;
 
+import hudson.Util;
 import hudson.model.Hudson;
 import hudson.model.Hudson.MasterComputer;
 import hudson.model.UsageStatistics.CombinedCipherInputStream;
@@ -22,6 +23,7 @@ import sun.security.x509.X509CertInfo;
 import javax.crypto.KeyAgreement;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
@@ -236,7 +238,10 @@ public abstract class MetaNectarAgentProtocol implements AgentProtocol {
 
             CertificateValidity interval = new CertificateValidity(firstDate, lastDate);
 
-            X500Name subject = new X500Name(instance.getRootUrl(), "", "", "US");
+            String subjectName = instance.getRootUrl();
+            if (subjectName == null)
+                subjectName = Util.getDigestOf(instance.getSecretKey());
+            X500Name subject = new X500Name(subjectName, "", "", "US");
             X509CertInfo info = new X509CertInfo();
             info.set(X509CertInfo.VERSION,new CertificateVersion(CertificateVersion.V3));
             info.set(X509CertInfo.SERIAL_NUMBER,new CertificateSerialNumber(1));
