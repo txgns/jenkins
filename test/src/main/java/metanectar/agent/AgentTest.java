@@ -8,6 +8,7 @@ import metanectar.agent.Agent.AgentException;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -28,12 +29,8 @@ public class AgentTest extends TestCase {
 
     private Agent.ConnectionResolver getResolver(final int port) {
         return new Agent.ConnectionResolver() {
-            public Agent.ConnectionReference resolve() throws IOException {
-                return new Agent.ConnectionReference("localhost", port) {
-                    public void ping() throws IOException {
-
-                    }
-                };
+            public InetSocketAddress resolve() throws IOException {
+                return new InetSocketAddress("localhost", port);
             }
         };
     }

@@ -30,6 +30,12 @@ public interface AgentProtocol {
      * After the initial protocol selection, the connection is handed over to this method
      * of the right {@link AgentProtocol}.
      *
+     * <p>
+     * This method may return before the connection is fully executed and shut down.
+     *
+     * @param connection
+     *      It is the callee's responsibility to shut down the connection, unless an exception is thrown.
+     *
      * @throws Exception
      *      If the protocol terminates abnormally, throw some exception. The caller
      *      will report that exception to {@link AgentStatusListener#error(Throwable)}

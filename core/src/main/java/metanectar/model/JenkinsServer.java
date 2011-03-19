@@ -17,6 +17,7 @@ import hudson.remoting.Channel;
 import hudson.slaves.OfflineCause;
 import hudson.util.FormValidation;
 import hudson.util.StreamTaskListener;
+import hudson.util.io.ReopenableFileOutputStream;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.HttpResponse;
@@ -26,10 +27,10 @@ import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
 import javax.servlet.ServletException;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.HttpURLConnection;
@@ -37,7 +38,6 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
-import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Collection;
@@ -61,21 +61,30 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
     protected URL serverUrl;
 
     /**
-     * Last certificate we received from this client, or null if we have never gone even to the hand-shaking phase.
+     * The encoded image of the public key that indicates the identitiy of this server.
      */
-    private X509Certificate certificate;
+    private volatile byte[] identity;
 
     /**
-     * If the connection to this Jenkins is acknowledged by the administrator,
-     * capture the encoded image of the public key. Otherwise null.
+     * If the connection to this Jenkins is approved, set to true.
      */
-    private volatile byte[] acknowledgedKey;
+    private boolean approved;
 
     protected transient volatile OfflineCause offlineCause;
 
     protected transient final Object channelLock = new Object();
 
     protected transient volatile Channel channel;
+
+    /**
+     * Perpetually writable log file.
+     */
+    private transient ReopenableFileOutputStream log;
+
+    /**
+     * {@link TaskListener} that wraps {@link #log}, hence perpetually writable.
+     */
+    private transient TaskListener taskListener;
 
     protected JenkinsServer(ItemGroup parent, String name) {
         super(parent, name);
@@ -85,26 +94,35 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
     public void onLoad(ItemGroup<? extends Item> parent, String name)
             throws IOException {
         super.onLoad(parent, name);
-        offlineCause = getOfflineCause(serverUrl);
+        init();
     }
 
     @Override
     public void onCreatedFromScratch() {
         super.onCreatedFromScratch();
+        init();
+    }
+
+    private void init() {
         offlineCause = getOfflineCause(serverUrl);
+        log = new ReopenableFileOutputStream(getLogFile());
+        taskListener = new StreamTaskListener(log);
+    }
+
+    public File getLogFile() {
+        return new File(getRootDir(),"log.txt");
     }
 
     /**
      * If the connection to this Jenkins has already been acknowledged, return the public key of that server.
      * Otherwise null.
      */
-    public RSAPublicKey getAcknowledgedKey() {
+    public RSAPublicKey getIdentity() {
         try {
-            if (acknowledgedKey==null)  return null;
-            return (RSAPublicKey)KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(acknowledgedKey));
+            return (RSAPublicKey)KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(identity));
         } catch (GeneralSecurityException e) {
-            LOGGER.log(Level.WARNING,"Failed to load the key",acknowledgedKey);
-            acknowledgedKey = null;
+            LOGGER.log(Level.WARNING,"Failed to load the key", identity);
+            identity = null;
             return null;
         }
     }
@@ -113,9 +131,19 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
      * Acknowledge the given public key as a valid identity of this server
      * (thereby granting future connections from this Jenkins.)
      */
-    public void setAcknowledgedKey(RSAPublicKey pk) throws IOException {
+    public void setIdentity(RSAPublicKey pk) throws IOException {
         checkPermission(CONFIGURE);
-        acknowledgedKey = pk.getEncoded();
+        identity = pk.getEncoded();
+        approved = false;
+        save();
+    }
+
+    public boolean isApproved() {
+        return approved;
+    }
+
+    public void setApproved(boolean approved) throws IOException {
+        this.approved = approved;
         save();
     }
 
@@ -153,6 +181,8 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
     }
 
     public String getIcon() {
+        if (!isApproved())
+            return "computer-gray.png";
         if(isOffline())
             return "computer-x.png";
         else
@@ -163,47 +193,26 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
         return channel;
     }
 
-    // Copied from SlaveComputer
-    public void setChannel(InputStream in, OutputStream out, TaskListener taskListener, Channel.Listener listener) throws IOException, InterruptedException {
-        setChannel(in,out,taskListener.getLogger(),listener);
-    }
-
-    // Copied from SlaveComputer
-    // TODO consider refactoring this functionality into separate utility class
-
     @Override
     public String getDisplayName() {
         return serverUrl.toExternalForm();
     }
 
-    /**
-     * Creates a {@link Channel} from the given stream and sets that to this server.
-     *
-     * @param in
-     *      Stream connected to the remote server. It's the caller's responsibility to do
-     *      buffering on this stream, if that's necessary.
-     * @param out
-     *      Stream connected to the remote server. It's the caller's responsibility to do
-     *      buffering on this stream, if that's necessary.
-     * @param launchLog
-     *      If non-null, receive the portion of data in <tt>is</tt> before
-     *      the data goes into the "binary mode". This is useful
-     *      when the established communication channel might include some data that might
-     *      be useful for debugging/trouble-shooting.
-     * @param listener
-     *      Gets a notification when the channel closes, to perform clean up. Can be null.
-     *      By the time this method is called, the cause of the termination is reported to the user,
-     *      so the implementation of the listener doesn't need to do that again.
-     */
-    public void setChannel(InputStream in, OutputStream out, OutputStream launchLog, Channel.Listener listener) throws IOException, InterruptedException {
+    public void setChannel(InputStream in, OutputStream out, Channel.Listener listener) throws IOException, InterruptedException {
         if(this.channel!=null)
             throw new IllegalStateException("Already connected");
 
-        final TaskListener taskListener = new StreamTaskListener(launchLog);
-        PrintStream log = taskListener.getLogger();
-
         Channel channel = new Channel(name, Computer.threadPoolForRemoting, Channel.Mode.NEGOTIATE,
-            in,out, launchLog);
+            in,out, taskListener.getLogger());
+        if(listener!=null)
+            channel.addListener(listener);
+        setChannel(channel);
+    }
+
+    /**
+     * Call this method when a connection is established with this server.
+     */
+    public void setChannel(Channel channel) throws IOException {
         channel.addListener(new Channel.Listener() {
             @Override
             public void onClosed(Channel c, IOException cause) {
@@ -217,8 +226,6 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
                 }
             }
         });
-        if(listener!=null)
-            channel.addListener(listener);
 
         // TODO call some stuff on channel for initializing, logging etc
 
@@ -238,11 +245,6 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
             }
             this.channel = channel;
         }
-
-        // TODO notifications
-//        for (ComputerListener cl : ComputerListener.all())
-//            cl.onOnline(this,taskListener);
-        log.println("Server successfully connected and online");
     }
 
     public OfflineCause getOfflineCause() {

@@ -124,6 +124,7 @@ public class AgentListener implements Runnable {
 
         @Override
         public void run() {
+            boolean success=false;
             try {
                 LOGGER.info("Accepted connection #" + id + " from " + s.getRemoteSocketAddress());
 
@@ -142,20 +143,22 @@ public class AgentListener implements Runnable {
                     }
 
                     p.process(con);
+                    success = true;
                 } else {
                     error(con.dout, "Unknown protocol");
                 }
             } catch (Exception e) {
                 LOGGER.log(Level.WARNING,"Connection #"+ id +" failed", e);
             } finally {
-                try {
-                    // let the input side open so that the other side will have time to read whatever we sent
-                    s.shutdownOutput();
-                    IOUtils.copy(s.getInputStream(), new NullStream());
-                    s.close();
-                } catch (IOException e) {
-                    // ignore
-                }
+                if (!success)
+                    try {
+                        // let the input side open so that the other side will have time to read whatever we sent
+                        s.shutdownOutput();
+                        IOUtils.copy(s.getInputStream(), new NullStream());
+                        s.close();
+                    } catch (IOException e) {
+                        // ignore
+                    }
             }
         }
 

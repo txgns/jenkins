@@ -14,6 +14,7 @@ import hudson.views.StatusColumn;
 import metanectar.agent.AgentListener;
 import metanectar.agent.AgentStatusListener;
 import metanectar.agent.MetaNectarAgentProtocol;
+import metanectar.agent.MetaNectarAgentProtocol.GracefulConnectionRefusalException;
 import metanectar.agent.MetaNectarAgentProtocol.Listener;
 import metanectar.model.views.JenkinsServerColumn;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
@@ -22,6 +23,7 @@ import org.kohsuke.stapler.HttpResponses.HttpResponseException;
 import org.kohsuke.stapler.QueryParameter;
 
 import javax.servlet.ServletContext;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -32,6 +34,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
+import java.security.PublicKey;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
@@ -78,9 +81,33 @@ public class MetaNectar extends Hudson {
                         }
 
                         public void onConnectingTo(URL address, X509Certificate identity) throws GeneralSecurityException, IOException {
+                            // locate matching jenkins server
+                            JenkinsServer js = getServerByIdentity(identity.getPublicKey());
+                            if (js!=null) {
+                                if (js.isApproved())
+                                    return;
+                                else
+                                    throw new GracefulConnectionRefusalException("This master is not yet approved by the MetaNectar administrator");
+                            }
+
+                            // none found. add an unapproved server, and reject it for now
+                            // TODO: define a mode where MetaNectar admin can disable such new registration
+                            final JenkinsServer server = createProject(JenkinsServer.class, Util.getDigestOf(new ByteArrayInputStream(identity.getPublicKey().getEncoded())));
+                            server.setServerUrl(address);
+                            server.setIdentity((RSAPublicKey)identity.getPublicKey());
+
+                            throw new GracefulConnectionRefusalException("This master is not yet approved by the MetaNectar administrator");
                         }
 
                         public void onConnectedTo(Channel channel, X509Certificate identity) throws IOException {
+                            JenkinsServer js = getServerByIdentity(identity.getPublicKey());
+                            if (js!=null) {
+                                js.setChannel(channel);
+                                return;
+                            }
+                            
+                            channel.close();
+                            throw new IOException("Unable to route the connection. No server found");
                         }
                     });
 
@@ -97,6 +124,10 @@ public class MetaNectar extends Hudson {
         }
     }
 
+    public AgentListener getJenkinsAgentListener() {
+        return jenkinsAgentListener;
+    }
+
     @Override
     public void cleanUp() {
         super.cleanUp();
@@ -108,6 +139,13 @@ public class MetaNectar extends Hudson {
     @Override
     public String getDisplayName() {
         return Messages.MetaNectar_DisplayName();
+    }
+
+    public JenkinsServer getServerByIdentity(PublicKey identity) {
+        for (JenkinsServer js : getItems(JenkinsServer.class))
+            if (js.getIdentity().equals(identity))
+                return js;
+        return null;
     }
 
     /**
@@ -166,11 +204,13 @@ public class MetaNectar extends Hudson {
         }
 
         // Add a new server. Since this instance was manually added, it's fair to say
-        // that act constitutes an acknowledgement
+        // that act constitutes an approval
         final JenkinsServer server = createProject(JenkinsServer.class, Util.getDigestOf(url.toExternalForm()));
         server.setServerUrl(url);
-        if (key!=null)
-            server.setAcknowledgedKey(key);
+        if (key!=null) {
+            server.setIdentity(key);
+            server.setApproved(true);
+        }
 
         return server;
     }

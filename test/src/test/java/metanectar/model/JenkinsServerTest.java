@@ -14,7 +14,7 @@ import java.util.Arrays;
  */
 public class JenkinsServerTest extends MetaNectarTestCase {
     /**
-     * Makes sure that the key round-trips in {@link JenkinsServer#getAcknowledgedKey()}.
+     * Makes sure that the key round-trips in {@link JenkinsServer#getIdentity()}.
      */
     public void testAcknowledgement() throws Exception {
         final boolean old = MetaNectar.BYPASS_INSTANCE_AUTHENTICATION;
@@ -28,8 +28,8 @@ public class JenkinsServerTest extends MetaNectarTestCase {
             KeyPair userKey = gen.generateKeyPair();
             PublicKey original = userKey.getPublic();
 
-            s.setAcknowledgedKey((RSAPublicKey) original);
-            final RSAPublicKey current = s.getAcknowledgedKey();
+            s.setIdentity((RSAPublicKey) original);
+            final RSAPublicKey current = s.getIdentity();
 
             assertTrue(Arrays.equals(original.getEncoded(), current.getEncoded()));
         } finally {

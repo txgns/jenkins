@@ -173,19 +173,22 @@ public class Agent implements Runnable {
                 }
             }
 
+            boolean success =false;
             try {
                 p.process(con);
+                success = true;
                 return true;
             } finally {
-                try {
-                    // let the input side open so that the other side will have time to read whatever we sent
-                    s.shutdownOutput();
-                    IOUtils.copy(s.getInputStream(), new NullStream());
-                    s.close();
-                } catch (IOException e) {
-                    // ignore
-                    e.printStackTrace();
-                }
+                if (!success)
+                    try {
+                        // let the input side open so that the other side will have time to read whatever we sent
+                        s.shutdownOutput();
+                        IOUtils.copy(s.getInputStream(), new NullStream());
+                        s.close();
+                    } catch (IOException e) {
+                        // ignore
+                        e.printStackTrace();
+                    }
             }
 //            Map<String, Object> props = p.handshake(listener);
 //            if (props != null) {
