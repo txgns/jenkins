@@ -9,7 +9,6 @@ import metanectar.agent.MetaNectarAgentProtocol.GracefulConnectionRefusalExcepti
 import metanectar.agent.MetaNectarAgentProtocol.Listener;
 
 import java.io.IOException;
-import java.net.Socket;
 import java.net.URL;
 import java.security.cert.X509Certificate;
 import java.util.concurrent.Callable;
@@ -53,11 +52,13 @@ public class MetaNectarAgentProtocolTest extends TestCase {
     public void runProtocol(final MetaNectarAgentProtocol.Listener sl, final MetaNectarAgentProtocol.Listener cl) throws Exception {
         final FastPipedInputStream i1 = new FastPipedInputStream();
         final FastPipedInputStream i2 = new FastPipedInputStream();
+        final FastPipedOutputStream o1 = new FastPipedOutputStream(i2);
+        final FastPipedOutputStream o2 = new FastPipedOutputStream(i1);
 
         serverOutcome = es.submit(new Callable<Object>() {
             public Object call() throws Exception {
                 MetaNectarAgentProtocol s = new MetaNectarAgentProtocol.Inbound(server.cert, server.privateKey, sl);
-                s.process(new Connection(i1, new FastPipedOutputStream(i2)));
+                s.process(new Connection(i1, o1));
                 return null;
             }
         });
@@ -65,7 +66,7 @@ public class MetaNectarAgentProtocolTest extends TestCase {
         clientOutcome = es.submit(new Callable<Object>() {
             public Object call() throws Exception {
                 MetaNectarAgentProtocol s = new MetaNectarAgentProtocol.Outbound(client.cert, client.privateKey, cl);
-                s.process(new Connection(i2, new FastPipedOutputStream(i1)));
+                s.process(new Connection(i2, o2));
                 return null;
             }
         });
