@@ -2,8 +2,13 @@ package metanectar.agent;
 
 //import hudson.remoting.Channel;
 
+import hudson.util.IOUtils;
+import hudson.util.NullStream;
+
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -48,27 +53,7 @@ public class Agent implements Runnable {
          *
          * @throws IOException if an error occurs while resolving.
          */
-        ConnectionReference resolve() throws IOException;
-    }
-
-    /**
-     * A connection reference containing host and port information that can be used to open a socket.
-     */
-    public static abstract class ConnectionReference {
-        final String host;
-        final int port;
-
-        public ConnectionReference(String host, int port) {
-            this.host = host;
-            this.port = port;
-        }
-
-        /**
-         * Ping the connection to ascertain if it is reachable.
-         *
-         * @throws IOException if there is an error connecting and the connection is not reachable.
-         */
-        public abstract void ping() throws IOException;
+        InetSocketAddress resolve() throws IOException;
     }
 
     private final AgentStatusListener listener;
@@ -97,6 +82,12 @@ public class Agent implements Runnable {
         this.listener = listener;
         this.connectionResolver = connectionResolver;
         this.protocols = protocols;
+    }
+
+    public Agent(AgentStatusListener listener,
+                 ConnectionResolver connectionResolver,
+                 AgentProtocol.Outbound... protocols) {
+        this(listener,connectionResolver, Arrays.asList(protocols));
     }
 
     /**
@@ -140,44 +131,32 @@ public class Agent implements Runnable {
 
     public void run() {
         try {
-            final ConnectionReference cr = connectionResolver.resolve();
-            if (cr == null) {
-                listener.error(new AgentException("Cannot resolve host and point to establish connection with server"));
-
-                // Do not retry if connection cannot be resolved
-                return;
-            }
-
             while(true) {
-                final boolean finished = process(cr);
+                final InetSocketAddress adrs = connectionResolver.resolve();
+                if (adrs == null) {
+                    listener.error(new AgentException("Cannot resolve host and point to establish connection with server"));
+
+                    // Do not retry if connection cannot be resolved
+                    return;
+                }
+
+                connectOnce(adrs);
 
                 if(noReconnect)
                     return;
 
-                if (finished) {
-                    // Keeping pinging the connection until it comes back up
-                    while(true) {
-                        Thread.sleep(retryInterval);
-
-                        try {
-                            cr.ping();
-                        } catch (IOException e) {
-                        }
-                    }
-                } else {
-                    Thread.sleep(retryInterval);
-                }
+                Thread.sleep(retryInterval);
             }
         } catch (Throwable t) {
             listener.error(t);
         }
     }
 
-    private boolean process(ConnectionReference cr) throws Exception {
+    public boolean connectOnce(InetSocketAddress adrs) throws Exception {
         for (final AgentProtocol p : protocols) {
             listener.status("Handshaking protocol: " + p.getName());
 
-            final Socket s = connect(cr);
+            final Socket s = connect(adrs);
             final Connection con = new Connection(s);
             con.setListener(listener);
 
@@ -198,7 +177,15 @@ public class Agent implements Runnable {
                 p.process(con);
                 return true;
             } finally {
-                s.close();
+                try {
+                    // let the input side open so that the other side will have time to read whatever we sent
+                    s.shutdownOutput();
+                    IOUtils.copy(s.getInputStream(), new NullStream());
+                    s.close();
+                } catch (IOException e) {
+                    // ignore
+                    e.printStackTrace();
+                }
             }
 //            Map<String, Object> props = p.handshake(listener);
 //            if (props != null) {
@@ -213,13 +200,13 @@ public class Agent implements Runnable {
         return false;
     }
 
-    private Socket connect(ConnectionReference hp) throws IOException, InterruptedException {
-        final String msg = "Connecting to " + hp.host + ':' + hp.port;
+    private Socket connect(InetSocketAddress adrs) throws IOException, InterruptedException {
+        final String msg = "Connecting to " + adrs;
         listener.status(msg);
         int retry = 1;
         while (true) {
             try {
-                final Socket s = new Socket(hp.host, hp.port);
+                final Socket s = new Socket(adrs.getAddress(), adrs.getPort());
                 s.setTcpNoDelay(true); // we'll do buffering by ourselves
 
                 // set read time out to avoid infinite hang. the time out should be long enough so as not
@@ -230,7 +217,7 @@ public class Agent implements Runnable {
                 return s;
             } catch (IOException e) {
                 if(retry++ > 10)
-                    throw (IOException)new IOException("Failed to connect to " + hp.host + ':' + hp.port).initCause(e);
+                    throw (IOException)new IOException("Failed to connect to " + adrs).initCause(e);
                 Thread.sleep(retryInterval);
                 listener.status(msg+" (retrying:" + retry + ")", e);
             }
