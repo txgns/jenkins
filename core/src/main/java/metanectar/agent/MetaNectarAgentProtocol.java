@@ -23,7 +23,6 @@ import sun.security.x509.X509CertInfo;
 import javax.crypto.KeyAgreement;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
@@ -218,8 +217,8 @@ public abstract class MetaNectarAgentProtocol implements AgentProtocol {
     }
 
     protected void connect(Connection connection, X509Certificate other) throws IOException, GeneralSecurityException {
-        CombinedCipherOutputStream out = new CombinedCipherOutputStream(connection.out, privateKey, "AES/CBC/PKCS5Padding");
-        CombinedCipherInputStream in = new CombinedCipherInputStream(connection.in, (RSAPublicKey) other.getPublicKey(), "AES/CBC/PKCS5Padding");
+        CombinedCipherOutputStream out = new CombinedCipherOutputStream(connection.out, privateKey, "AES/CFB8/NoPadding");
+        CombinedCipherInputStream in = new CombinedCipherInputStream(connection.in, (RSAPublicKey) other.getPublicKey(), "AES/CFB8/NoPadding");
 
         final Channel channel = new Channel("outbound-channel", MasterComputer.threadPoolForRemoting,
             new BufferedInputStream(in), new BufferedOutputStream(out));
