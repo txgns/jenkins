@@ -1,5 +1,8 @@
 package metanectar.agent;
 
+import hudson.util.IOUtils;
+import hudson.util.NullStream;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.BindException;
@@ -146,9 +149,12 @@ public class AgentListener implements Runnable {
                 LOGGER.log(Level.WARNING,"Connection #"+ id +" failed", e);
             } finally {
                 try {
+                    // let the input side open so that the other side will have time to read whatever we sent
+                    s.shutdownOutput();
+                    IOUtils.copy(s.getInputStream(), new NullStream());
                     s.close();
-                } catch (IOException _) {
-                    // try to clean up the socket
+                } catch (IOException e) {
+                    // ignore
                 }
             }
         }
