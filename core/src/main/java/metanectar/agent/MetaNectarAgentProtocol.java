@@ -6,6 +6,18 @@ import hudson.model.UsageStatistics.CombinedCipherInputStream;
 import hudson.model.UsageStatistics.CombinedCipherOutputStream;
 import hudson.remoting.Channel;
 import hudson.util.IOException2;
+import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
+import sun.security.x509.AlgorithmId;
+import sun.security.x509.CertificateAlgorithmId;
+import sun.security.x509.CertificateIssuerName;
+import sun.security.x509.CertificateSerialNumber;
+import sun.security.x509.CertificateSubjectName;
+import sun.security.x509.CertificateValidity;
+import sun.security.x509.CertificateVersion;
+import sun.security.x509.CertificateX509Key;
+import sun.security.x509.X500Name;
+import sun.security.x509.X509CertImpl;
+import sun.security.x509.X509CertInfo;
 
 import javax.crypto.KeyAgreement;
 import java.io.BufferedInputStream;
@@ -17,8 +29,10 @@ import java.security.Signature;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
@@ -66,14 +80,16 @@ public abstract class MetaNectarAgentProtocol implements AgentProtocol {
     private final Listener listener;
 
     /**
-     * The HTTP URL of ours. {@link Hudson#getRootUrl()}.
-     */
-    private final URL address;
-
-    /**
      * Receives the progress updates of the protocol and makes key decisions.
      */
-    public interface Listener {
+    public abstract static class Listener {
+        /**
+         * Returns our HTTP URL.
+         *
+         * @see Hudson#getRootUrl()
+         */
+        public abstract URL getOurURL() throws IOException;
+
         /**
          * When the hand-shake was completed and we authenticated the identity of the peer,
          * this method is called to determine if we are willing to establish a communication channel.
@@ -89,17 +105,17 @@ public abstract class MetaNectarAgentProtocol implements AgentProtocol {
          * @throws GracefulConnectionRefusalException
          *      To refuse a connection gracefully in such a way that the other side will learn the reason.
          */
-        void onConnectingTo(URL address, X509Certificate identity) throws GeneralSecurityException, IOException;
+        public abstract void onConnectingTo(URL address, X509Certificate identity) throws GeneralSecurityException, IOException;
 
         /**
          * When a communication channel is fully established.
          */
-        void onConnectedTo(Channel channel, X509Certificate identity) throws IOException;
+        public abstract void onConnectedTo(Channel channel, X509Certificate identity) throws IOException;
     }
 
     public static class Inbound extends MetaNectarAgentProtocol implements AgentProtocol.Inbound {
-        public Inbound(X509Certificate identity, RSAPrivateKey privateKey, URL address, Listener listener) {
-            super(identity, privateKey, address, listener);
+        public Inbound(X509Certificate identity, RSAPrivateKey privateKey, Listener listener) {
+            super(identity, privateKey, listener);
         }
 
         protected KeyAgreement diffieHellman(Connection connection) throws IOException, GeneralSecurityException {
@@ -108,8 +124,8 @@ public abstract class MetaNectarAgentProtocol implements AgentProtocol {
     }
 
     public static class Outbound extends MetaNectarAgentProtocol implements AgentProtocol.Outbound {
-        public Outbound(X509Certificate identity, RSAPrivateKey privateKey, URL address, Listener listener) {
-            super(identity, privateKey, address, listener);
+        public Outbound(X509Certificate identity, RSAPrivateKey privateKey, Listener listener) {
+            super(identity, privateKey, listener);
         }
 
         protected KeyAgreement diffieHellman(Connection connection) throws IOException, GeneralSecurityException {
@@ -131,11 +147,10 @@ public abstract class MetaNectarAgentProtocol implements AgentProtocol {
         }
     }
 
-    public MetaNectarAgentProtocol(X509Certificate identity, RSAPrivateKey privateKey, URL address, Listener listener) {
+    public MetaNectarAgentProtocol(X509Certificate identity, RSAPrivateKey privateKey, Listener listener) {
         this.identity = identity;
         this.privateKey = privateKey;
         this.listener = listener;
-        this.address = address;
     }
 
     public String getName() {
@@ -160,10 +175,10 @@ public abstract class MetaNectarAgentProtocol implements AgentProtocol {
         // use a map in preparation for possible future extension
         Map<String,Object> requestHeaders = new HashMap<String,Object>();
         requestHeaders.put("Identity", identity);
-        requestHeaders.put("Address", address.toExternalForm());
+        requestHeaders.put("Address", listener.getOurURL().toExternalForm());
         requestHeaders.put("Signature",sig.sign());
 
-        LOGGER.fine("Sending "+requestHeaders+" as handshaking headers");
+        LOGGER.fine("Sending " + requestHeaders + " as handshaking headers");
 
         connection.writeObject(requestHeaders);
     }
@@ -208,6 +223,37 @@ public abstract class MetaNectarAgentProtocol implements AgentProtocol {
             new BufferedInputStream(in), new BufferedOutputStream(out));
 
         listener.onConnectedTo(channel,other);
+    }
+
+    /**
+     * TODO: this isn't the right place for this method, but I don't know where to put it.
+     */
+    public static X509Certificate getInstanceIdentityCertificate(InstanceIdentity id, Hudson instance) throws IOException {
+
+        try {
+            Date firstDate = new Date();
+            Date lastDate = new Date(firstDate.getTime()+ TimeUnit.DAYS.toMillis(365));
+
+            CertificateValidity interval = new CertificateValidity(firstDate, lastDate);
+
+            X500Name subject = new X500Name(instance.getRootUrl(), "", "", "US");
+            X509CertInfo info = new X509CertInfo();
+            info.set(X509CertInfo.VERSION,new CertificateVersion(CertificateVersion.V3));
+            info.set(X509CertInfo.SERIAL_NUMBER,new CertificateSerialNumber(1));
+            info.set(X509CertInfo.ALGORITHM_ID,new CertificateAlgorithmId(AlgorithmId.get("SHA1WithRSA")));
+            info.set(X509CertInfo.SUBJECT, new CertificateSubjectName(subject));
+            info.set(X509CertInfo.KEY, new CertificateX509Key(id.getPublic()));
+            info.set(X509CertInfo.VALIDITY, interval);
+            info.set(X509CertInfo.ISSUER,   new CertificateIssuerName(subject));
+
+            // sign it
+            X509CertImpl cert = new X509CertImpl(info);
+            cert.sign(id.getPrivate(), "SHA1withRSA");
+
+            return cert;
+        } catch (GeneralSecurityException e) {
+            throw new IOException2("Failed to generate a certificate",e);
+        }
     }
 
     private static final Logger LOGGER = Logger.getLogger(MetaNectarAgentProtocol.class.getName());

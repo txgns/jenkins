@@ -6,6 +6,7 @@ import hudson.remoting.FastPipedOutputStream;
 import hudson.util.IOException2;
 import junit.framework.TestCase;
 import metanectar.agent.MetaNectarAgentProtocol.GracefulConnectionRefusalException;
+import metanectar.agent.MetaNectarAgentProtocol.Listener;
 import sun.security.x509.AlgorithmId;
 import sun.security.x509.CertificateAlgorithmId;
 import sun.security.x509.CertificateIssuerName;
@@ -112,7 +113,7 @@ public class MetaNectarAgentProtocolTest extends TestCase {
 
         serverOutcome = es.submit(new Callable<Object>() {
             public Object call() throws Exception {
-                MetaNectarAgentProtocol s = new MetaNectarAgentProtocol.Inbound(server.cert, server.privateKey, new URL("http://server/"), sl);
+                MetaNectarAgentProtocol s = new MetaNectarAgentProtocol.Inbound(server.cert, server.privateKey, sl);
                 s.process(new Connection(i1, new FastPipedOutputStream(i2)));
                 return null;
             }
@@ -120,7 +121,7 @@ public class MetaNectarAgentProtocolTest extends TestCase {
 
         clientOutcome = es.submit(new Callable<Object>() {
             public Object call() throws Exception {
-                MetaNectarAgentProtocol s = new MetaNectarAgentProtocol.Outbound(client.cert, client.privateKey, new URL("http://client/"), cl);
+                MetaNectarAgentProtocol s = new MetaNectarAgentProtocol.Outbound(client.cert, client.privateKey, cl);
                 s.process(new Connection(i2, new FastPipedOutputStream(i1)));
                 return null;
             }
@@ -151,7 +152,7 @@ public class MetaNectarAgentProtocolTest extends TestCase {
      * Success scenario.
      */
     public void testSuccess() throws Exception {
-        runProtocol(new metanectar.agent.MetaNectarAgentProtocol.Listener() {
+        runProtocol(new AbstractListenerImpl() {
             public void onConnectingTo(URL address, X509Certificate identity) {
                 assertEquals(identity, client.cert);
             }
@@ -165,7 +166,7 @@ public class MetaNectarAgentProtocolTest extends TestCase {
                     throw new IOException2(e);
                 }
             }
-        }, new metanectar.agent.MetaNectarAgentProtocol.Listener() {
+        }, new AbstractListenerImpl() {
             public void onConnectingTo(URL address, X509Certificate identity) {
                 assertEquals(identity, server.cert);
             }
@@ -186,7 +187,7 @@ public class MetaNectarAgentProtocolTest extends TestCase {
      * Tests a rejection.
      */
     public void testRejection() throws Exception {
-        runProtocol(new metanectar.agent.MetaNectarAgentProtocol.Listener() {
+        runProtocol(new AbstractListenerImpl() {
             public void onConnectingTo(URL address, X509Certificate identity) throws GracefulConnectionRefusalException {
                 throw new GracefulConnectionRefusalException("I don't like you");
             }
@@ -194,7 +195,7 @@ public class MetaNectarAgentProtocolTest extends TestCase {
             public void onConnectedTo(Channel channel, X509Certificate identity) throws IOException {
                 fail();
             }
-        }, new metanectar.agent.MetaNectarAgentProtocol.Listener() {
+        }, new AbstractListenerImpl() {
             public void onConnectingTo(URL address, X509Certificate identity) {
                 // accept the server
             }
@@ -216,6 +217,12 @@ public class MetaNectarAgentProtocolTest extends TestCase {
             fail();
         } catch (GracefulConnectionRefusalException e) {
             assertEquals("I don't like you",e.getMessage());
+        }
+    }
+
+    protected abstract class AbstractListenerImpl extends Listener {
+        public URL getOurURL() throws IOException {
+            return new URL("http://somewhere/");
         }
     }
 }

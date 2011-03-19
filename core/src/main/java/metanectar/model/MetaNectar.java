@@ -16,6 +16,7 @@ import metanectar.agent.AgentStatusListener;
 import metanectar.agent.MetaNectarAgentProtocol;
 import metanectar.agent.MetaNectarAgentProtocol.Listener;
 import metanectar.model.views.JenkinsServerColumn;
+import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 import org.jvnet.hudson.reactor.ReactorException;
 import org.kohsuke.stapler.HttpResponses.HttpResponseException;
 import org.kohsuke.stapler.QueryParameter;
@@ -68,15 +69,20 @@ public class MetaNectar extends Hudson {
                 }
             };
 
-            MetaNectarAgentProtocol.Inbound p = new MetaNectarAgentProtocol.Inbound(null,null,null,new Listener() {
-                public void onConnectingTo(URL address, X509Certificate identity) throws GeneralSecurityException, IOException {
-                }
+            InstanceIdentity id = InstanceIdentity.get();
+            MetaNectarAgentProtocol.Inbound p = new MetaNectarAgentProtocol.Inbound(
+                    MetaNectarAgentProtocol.getInstanceIdentityCertificate(id, this),
+                    id.getPrivate(), new Listener() {
+                        public URL getOurURL() throws IOException {
+                            return new URL(MetaNectar.this.getRootUrl());
+                        }
 
-                public void onConnectedTo(Channel channel, X509Certificate identity) throws IOException {
-                }
-            }
+                        public void onConnectingTo(URL address, X509Certificate identity) throws GeneralSecurityException, IOException {
+                        }
 
-            );
+                        public void onConnectedTo(Channel channel, X509Certificate identity) throws IOException {
+                        }
+                    });
 
 
             // TODO choose port
@@ -90,7 +96,6 @@ public class MetaNectar extends Hudson {
             }
         }
     }
-
 
     @Override
     public void cleanUp() {
