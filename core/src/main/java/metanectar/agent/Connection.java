@@ -1,6 +1,8 @@
 package metanectar.agent;
 
 import com.trilead.ssh2.crypto.Base64;
+import hudson.remoting.SocketInputStream;
+import hudson.remoting.SocketOutputStream;
 
 import javax.crypto.KeyAgreement;
 import javax.crypto.interfaces.DHPublicKey;
@@ -46,7 +48,7 @@ public class Connection {
     private AgentStatusListener listener;
 
     public Connection(Socket socket) throws IOException {
-        this(socket.getInputStream(),socket.getOutputStream());
+        this(new SocketInputStream(socket),new SocketOutputStream(socket));
     }
 
     public Connection(InputStream in, OutputStream out) {
