@@ -105,7 +105,7 @@ public class MetaNectar extends Hudson {
                                 js.setChannel(channel);
                                 return;
                             }
-                            
+
                             channel.close();
                             throw new IOException("Unable to route the connection. No server found");
                         }

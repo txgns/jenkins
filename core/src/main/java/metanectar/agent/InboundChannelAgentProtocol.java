@@ -59,10 +59,10 @@ public abstract class InboundChannelAgentProtocol implements AgentProtocol.Inbou
 
     protected Channel channel;
 
-    public void process(AgentStatusListener l, InputStream in, OutputStream out) throws IOException, InterruptedException {
-        this.channel = new Channel("channel", executor,
-                new BufferedInputStream(in),
-                new BufferedOutputStream(out));
+    public void process(Connection con) throws Exception {
+        this.channel = new Channel("ichannel", executor,
+                new BufferedInputStream(con.in),
+                new BufferedOutputStream(con.out));
 
         final PingThread t = new PingThread(channel, pingInterval) {
             protected void onDead() {
@@ -78,12 +78,12 @@ public abstract class InboundChannelAgentProtocol implements AgentProtocol.Inbou
         };
         t.start();
 
-        l.status("Connected");
+        con.getListener().status("Connected");
         cl.onConnect(channel);
         try {
             channel.join();
         } finally {
-            l.status("Terminated");
+            con.getListener().status("Terminated");
             t.interrupt();  // make sure the ping thread is terminated
             cl.onDisconnect();
         }

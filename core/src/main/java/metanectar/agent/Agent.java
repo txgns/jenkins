@@ -190,15 +190,6 @@ public class Agent implements Runnable {
                         e.printStackTrace();
                     }
             }
-//            Map<String, Object> props = p.handshake(listener);
-//            if (props != null) {
-//                p.process(listener, props, s.getInputStream(), s.getOutputStream());
-//                return true;
-//            } else {
-//                listener.error(new AgentException("The handshake could not be agreed for the protocol " + p.getName()));
-//                s.close();
-//                return false;
-//            }
         }
         return false;
     }
