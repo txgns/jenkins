@@ -188,21 +188,26 @@ public abstract class MetaNectarAgentProtocol implements AgentProtocol {
         Map<String, Object> responseHeaders = connection.readObject();
         LOGGER.fine("Got "+responseHeaders+" as handshaking headers");
 
-        X509Certificate server = (X509Certificate)responseHeaders.get("Identity");
-        if (server==null)
-            throw new IOException("The other end failed to give us its identity");
-        // TODO: should we validate certificate? On one hand, we are only using its public key, but on the other hand, that's what you do with certificates...
-
-        URL serverAddress = new URL((String)responseHeaders.get("Address"));
-
-        byte[] signature = (byte[])responseHeaders.get("Signature");
-        Signature sig = Signature.getInstance("SHA1withRSA");
-        sig.initVerify(server);
-        sig.update(sessionId);
-        if (!sig.verify(signature))
-            throw new IOException("Signature mismatch. Someone is trying to masquerade?");
+        X509Certificate server;
 
         try {
+            server = (X509Certificate)responseHeaders.get("Identity");
+            if (server==null)
+                throw new GracefulConnectionRefusalException("The other end failed to give us its identity");
+            // TODO: should we validate certificate? On one hand, we are only using its public key, but on the other hand, that's what you do with certificates...
+
+            String address = (String) responseHeaders.get("Address");
+            if (address==null)
+                throw new GracefulConnectionRefusalException("The server URL is not configured.");
+
+            URL serverAddress = new URL(address);
+            byte[] signature = (byte[])responseHeaders.get("Signature");
+            Signature sig = Signature.getInstance("SHA1withRSA");
+            sig.initVerify(server);
+            sig.update(sessionId);
+            if (!sig.verify(signature))
+                throw new GracefulConnectionRefusalException("Signature mismatch. Are you trying to trick us?");
+
             listener.onConnectingTo(serverAddress, server);
             connection.writeObject(null);   // indicating we accepted the other
         } catch (GracefulConnectionRefusalException e) {
