@@ -51,7 +51,7 @@ import java.util.Collections;
  */
 public class MetaNectar extends Hudson {
 
-    protected transient AgentListener jenkinsAgentListener;
+    protected transient AgentListener nectarAgentListener;
 
     public MetaNectar(File root, ServletContext context) throws IOException, InterruptedException, ReactorException {
         this(root, context, null);
@@ -73,11 +73,15 @@ public class MetaNectar extends Hudson {
             };
 
             InstanceIdentity id = InstanceIdentity.get();
+
             MetaNectarAgentProtocol.Inbound p = new MetaNectarAgentProtocol.Inbound(
                     MetaNectarAgentProtocol.getInstanceIdentityCertificate(id, this),
-                    id.getPrivate(), new Listener() {
+                    id.getPrivate(),
+                    new Listener() {
                         public URL getOurURL() throws IOException {
+                            // TODO MetaNectar.this.getRootUrl() is returning null
                             return new URL(MetaNectar.this.getRootUrl());
+//                            return new URL("http://localhost:8081/");
                         }
 
                         public void onConnectingTo(URL address, X509Certificate identity) throws GeneralSecurityException, IOException {
@@ -114,8 +118,8 @@ public class MetaNectar extends Hudson {
 
             // TODO choose port
             try {
-                jenkinsAgentListener = new AgentListener(asl, 0, Collections.singletonList(p));
-                new Thread(jenkinsAgentListener, "TCP slave agent listener port=" + 0).start();
+                nectarAgentListener = new AgentListener(asl, 0, Collections.singletonList(p));
+                new Thread(nectarAgentListener, "MetaNectar agent listener port=" + nectarAgentListener.getPort()).start();
             } catch (BindException e) {
                 new AdministrativeError(getClass().getName()+".tcpBind",
                         "Failed to listen to incoming agent connection",
@@ -124,16 +128,16 @@ public class MetaNectar extends Hudson {
         }
     }
 
-    public AgentListener getJenkinsAgentListener() {
-        return jenkinsAgentListener;
+    public AgentListener getNectarAgentListener() {
+        return nectarAgentListener;
     }
 
     @Override
     public void cleanUp() {
         super.cleanUp();
 
-        if(jenkinsAgentListener != null)
-            jenkinsAgentListener.shutdown();
+        if(nectarAgentListener != null)
+            nectarAgentListener.shutdown();
     }
 
     @Override

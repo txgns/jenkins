@@ -33,23 +33,23 @@ THE SOFTWARE.
     </h1>
     <t:editableDescription permission="${it.CONFIGURE}"/>
 
-    <j:if test="${it.offlineCause!=null and it.offline}">
+    <j:if test="${it.offline and it.offlineCause!=null}">
+        <form method="post" action="pollOffline">
+          <f:submit value="Check"  />
+        </form>
       <st:include it="${it.offlineCause}" page="cause.jelly" />
     </j:if>
-        <!--
-    <j:choose>
-      <j:when test="${it.offline}">
-        <form method="post" action="attach">
-          <f:submit value="${%Attach to Server}"  />
+
+    <j:if test="${it.online}">
+        <form method="post" action="disconnect">
+          <f:submit value="Disconnect"  />
         </form>
-      </j:when>
-      <j:otherwise>
-        <form method="post" action="detach">
-          <f:submit value="${%Detach from Server}"  />
-        </form>
-      </j:otherwise>
-    </j:choose>
-    -->
+        <h1>${%Thread Dump}</h1>
+        <j:forEach var="t" items="${it.getThreadDump().entrySet()}">
+          <h2>${t.key}</h2>
+          <pre>${t.value}</pre>
+        </j:forEach>
+    </j:if>
 
     </l:main-panel>
   </l:layout>

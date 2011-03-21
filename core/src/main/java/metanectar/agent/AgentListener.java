@@ -25,6 +25,9 @@ import java.util.logging.Logger;
  * At some point this will need to change to using something like Grizzly or Netty and
  * non-blocking IO.
  * hudson.remoting.Channel will also require changes to support non-blocking.
+ * TODO plus should change to use HTTPS and HTTP upgrade (again using Netty or Grizzly),
+ * to use existing standards and out-of-the-box components (easier to support a separate HTTP server rather than
+ * attempt to require/use the HTTP server for Jenkins itself, which can vary depending on deployment).
  *
  * @author Kohsuke Kawaguchi, Paul Sandoz
  */

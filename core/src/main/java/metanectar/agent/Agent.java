@@ -1,7 +1,5 @@
 package metanectar.agent;
 
-//import hudson.remoting.Channel;
-
 import hudson.util.IOUtils;
 import hudson.util.NullStream;
 
@@ -18,6 +16,8 @@ import java.util.logging.Logger;
  * <p>
  * This class is based on {@link hudson.remoting.Engine} and is designed to be backwards
  * compatible.
+ * <p>
+ * TODO change to using HTTPS and HTTP upgrade
  *
  * @author Kohsuke Kawaguchi, Paul Sandoz
  */

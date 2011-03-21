@@ -16,6 +16,7 @@ import hudson.model.TopLevelItemDescriptor;
 import hudson.remoting.Channel;
 import hudson.slaves.OfflineCause;
 import hudson.util.FormValidation;
+import hudson.util.RemotingDiagnostics;
 import hudson.util.StreamTaskListener;
 import hudson.util.io.ReopenableFileOutputStream;
 import net.sf.json.JSONException;
@@ -42,6 +43,7 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -72,7 +74,7 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
 
     protected transient volatile OfflineCause offlineCause;
 
-    protected transient final Object channelLock = new Object();
+    protected transient /* final */ Object channelLock = new Object();
 
     protected transient volatile Channel channel;
 
@@ -104,9 +106,10 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
     }
 
     private void init() {
-        offlineCause = getOfflineCause(serverUrl);
+        updateOfflineCause();
         log = new ReopenableFileOutputStream(getLogFile());
         taskListener = new StreamTaskListener(log);
+        channelLock = new Object();
     }
 
     public File getLogFile() {
@@ -247,12 +250,61 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
         }
     }
 
-    public OfflineCause getOfflineCause() {
-        return offlineCause;
+    public boolean isOnline() {
+        return getChannel() != null;
     }
 
     public boolean isOffline() {
-        return getChannel()==null;
+        return getChannel() == null;
+    }
+
+    public OfflineCause getOfflineCause() {
+        if (offlineCause == null) {
+            updateOfflineCause();
+        }
+        return offlineCause;
+    }
+
+    public void updateOfflineCause() {
+        offlineCause = pollOfflineCause();
+    }
+
+    public OfflineCause pollOfflineCause() {
+        if (isOnline())
+            return null;
+
+        // TODO this should not occur
+        if (serverUrl == null)
+            return null;
+
+        // TODO this should probably be made in another thread so as not to block
+
+        // Ping the URL to determine if server is online
+        try {
+            HttpURLConnection c = (HttpURLConnection)serverUrl.openConnection();
+            c.setRequestMethod("HEAD");
+            c.getResponseCode();
+        } catch (IOException ex) {
+            return OfflineCause.create(Messages._JenkinsServer_ServerOffline());
+        }
+
+        // If server is online wait for connection from server
+        return OfflineCause.create(Messages._JenkinsServer_EstablishConnection());
+    }
+
+    public HttpResponse doPollOffline() {
+        updateOfflineCause();
+        return HttpResponses.redirectToDot();
+    }
+
+    public HttpResponse doDisconnect() throws IOException {
+        channel.close();
+        updateOfflineCause();
+        return HttpResponses.redirectToDot();
+    }
+
+    public Map<String,String> getThreadDump() throws IOException, InterruptedException {
+        return RemotingDiagnostics.getThreadDump(getChannel());
     }
 
     public synchronized void doConfigSubmit(StaplerRequest req,
@@ -294,25 +346,6 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
      */
     public void generateResponse(StaplerRequest req, StaplerResponse rsp, Object node) throws IOException, ServletException {
         HttpResponses.redirectViaContextPath(getUrl()).generateResponse(req,rsp,node);
-    }
-
-    private static OfflineCause getOfflineCause(URL url) {
-        if (url == null)
-            return null;
-
-        // TODO this should probably be made in another thread so as not to block
-
-        // Ping the URL to determine if server is online
-        try {
-            HttpURLConnection c = (HttpURLConnection)url.openConnection();
-            c.setRequestMethod("HEAD");
-            c.getResponseCode();
-        } catch (IOException ex) {
-            return OfflineCause.create(Messages._JenkinsServer_ServerOffline());
-        }
-
-        // If server is online wait for connection from server
-        return OfflineCause.create(Messages._JenkinsServer_EstablishConnection());
     }
 
     @Extension

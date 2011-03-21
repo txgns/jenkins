@@ -55,7 +55,7 @@ public class MetaNectarTest extends MetaNectarTestCase {
         Outbound p = new Outbound(MetaNectarAgentProtocol.getInstanceIdentityCertificate(id,metaNectar), id.getPrivate(), client);
 
         Agent agent = new Agent(new LoggerListener(LOGGER), null, p);
-        InetSocketAddress serverAddress = new InetSocketAddress("localhost", metaNectar.getJenkinsAgentListener().getPort());
+        InetSocketAddress serverAddress = new InetSocketAddress("localhost", metaNectar.getNectarAgentListener().getPort());
 
         JenkinsServer js = metaNectar.getServerByIdentity(id.getPublic());
         assertNull(js);

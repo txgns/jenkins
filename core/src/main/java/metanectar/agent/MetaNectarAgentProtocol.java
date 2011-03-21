@@ -217,11 +217,11 @@ public abstract class MetaNectarAgentProtocol implements AgentProtocol {
     }
 
     protected void connect(Connection connection, X509Certificate other) throws IOException, GeneralSecurityException {
-        CombinedCipherOutputStream out = new CombinedCipherOutputStream(connection.out, privateKey, "AES/CFB8/NoPadding");
-        CombinedCipherInputStream in = new CombinedCipherInputStream(connection.in, (RSAPublicKey) other.getPublicKey(), "AES/CFB8/NoPadding");
+//        CombinedCipherOutputStream out = new CombinedCipherOutputStream(connection.out, privateKey, "AES/CFB8/NoPadding");
+//        CombinedCipherInputStream in = new CombinedCipherInputStream(connection.in, (RSAPublicKey) other.getPublicKey(), "AES/CFB8/NoPadding");
 
         final Channel channel = new Channel("outbound-channel", MasterComputer.threadPoolForRemoting,
-            new BufferedInputStream(in), new BufferedOutputStream(out));
+            new BufferedInputStream(connection.in), new BufferedOutputStream(connection.out));
 
         listener.onConnectedTo(channel,other);
     }
