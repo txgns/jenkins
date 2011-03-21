@@ -78,6 +78,9 @@ public class MetaNectarTest extends MetaNectarTestCase {
 
         // this should succeed, and the channel should be established
         assertNotNull(client.channel);
+//        // Sleep a little to wait for channel to be set on the remote side
+//        // TODO we should change this to use some sort of co-ordination
+        Thread.currentThread().sleep(100);
         assertNotNull(js.getChannel());
 
         // verify that we can talk to each other
