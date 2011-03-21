@@ -1,5 +1,6 @@
 package metanectar;
 
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import hudson.remoting.Channel;
 import hudson.tasks.Mailer;
 import metanectar.agent.Agent;
@@ -11,12 +12,14 @@ import metanectar.agent.MetaNectarAgentProtocol.Outbound;
 import metanectar.model.JenkinsServer;
 import metanectar.test.MetaNectarTestCase;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
+import org.xml.sax.SAXException;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URL;
 import java.security.GeneralSecurityException;
 import java.security.cert.X509Certificate;
+import java.util.List;
 import java.util.logging.Logger;
 
 /**
@@ -78,14 +81,26 @@ public class MetaNectarTest extends MetaNectarTestCase {
 
         // this should succeed, and the channel should be established
         assertNotNull(client.channel);
-//        // Sleep a little to wait for channel to be set on the remote side
-//        // TODO we should change this to use some sort of co-ordination
+        // Sleep a little to wait for channel to be set on the remote side
+        // TODO we should change this to use some sort of co-ordination
         Thread.currentThread().sleep(100);
         assertNotNull(js.getChannel());
 
         // verify that we can talk to each other
         client.channel.setProperty("client","hello");
         assertEquals("hello",js.getChannel().waitForRemoteProperty("client"));
+    }
+
+
+    public void testAgentListenerPort() throws IOException, SAXException {
+        HtmlPage wc = new WebClient().goTo("/");
+
+        List l = wc.getWebResponse().getResponseHeaders();
+
+        String s = wc.getWebResponse().getResponseHeaderValue("X-MetaNectar-Port");
+        assertNotNull(s);
+        Integer port = metaNectar.getNectarAgentListener().getPort();
+        assertEquals(port, Integer.valueOf(s));
     }
 
     private static final Logger LOGGER = Logger.getLogger(MetaNectarTest.class.getName());
