@@ -1,5 +1,9 @@
 package metanectar.model;
 
+import com.cloudbees.commons.metanectar.agent.AgentListener;
+import com.cloudbees.commons.metanectar.agent.AgentStatusListener;
+import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
+import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol.GracefulConnectionRefusalException;
 import com.thoughtworks.xstream.core.util.Base64Encoder;
 import hudson.PluginManager;
 import hudson.Util;
@@ -11,11 +15,6 @@ import hudson.util.AdministrativeError;
 import hudson.util.IOException2;
 import hudson.util.IOUtils;
 import hudson.views.StatusColumn;
-import metanectar.agent.AgentListener;
-import metanectar.agent.AgentStatusListener;
-import metanectar.agent.MetaNectarAgentProtocol;
-import metanectar.agent.MetaNectarAgentProtocol.GracefulConnectionRefusalException;
-import metanectar.agent.MetaNectarAgentProtocol.Listener;
 import metanectar.model.views.JenkinsServerColumn;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 import org.jvnet.hudson.reactor.ReactorException;
@@ -77,7 +76,7 @@ public class MetaNectar extends Hudson {
             MetaNectarAgentProtocol.Inbound p = new MetaNectarAgentProtocol.Inbound(
                     MetaNectarAgentProtocol.getInstanceIdentityCertificate(id, this),
                     id.getPrivate(),
-                    new Listener() {
+                    new MetaNectarAgentProtocol.Listener() {
                         public URL getOurURL() throws IOException {
                             // TODO MetaNectar.this.getRootUrl() is returning null
                             return new URL(MetaNectar.this.getRootUrl());

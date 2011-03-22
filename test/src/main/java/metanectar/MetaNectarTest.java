@@ -1,14 +1,11 @@
 package metanectar;
 
+import com.cloudbees.commons.metanectar.agent.Agent;
+import com.cloudbees.commons.metanectar.agent.AgentStatusListener;
+import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import hudson.remoting.Channel;
 import hudson.tasks.Mailer;
-import metanectar.agent.Agent;
-import metanectar.agent.AgentStatusListener.LoggerListener;
-import metanectar.agent.MetaNectarAgentProtocol;
-import metanectar.agent.MetaNectarAgentProtocol.GracefulConnectionRefusalException;
-import metanectar.agent.MetaNectarAgentProtocol.Listener;
-import metanectar.agent.MetaNectarAgentProtocol.Outbound;
 import metanectar.model.JenkinsServer;
 import metanectar.test.MetaNectarTestCase;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
@@ -36,7 +33,7 @@ public class MetaNectarTest extends MetaNectarTestCase {
     }
 
     public void testConnection() throws Exception {
-        class Client extends Listener {
+        class Client extends MetaNectarAgentProtocol.Listener {
             Channel channel;
             @Override
             public URL getOurURL() throws IOException {
@@ -55,9 +52,9 @@ public class MetaNectarTest extends MetaNectarTestCase {
 
 
         Client client = new Client();
-        Outbound p = new Outbound(MetaNectarAgentProtocol.getInstanceIdentityCertificate(id,metaNectar), id.getPrivate(), client);
+        MetaNectarAgentProtocol.Outbound p = new MetaNectarAgentProtocol.Outbound(MetaNectarAgentProtocol.getInstanceIdentityCertificate(id,metaNectar), id.getPrivate(), client);
 
-        Agent agent = new Agent(new LoggerListener(LOGGER), null, p);
+        Agent agent = new Agent(new AgentStatusListener.LoggerListener(LOGGER), null, p);
         InetSocketAddress serverAddress = new InetSocketAddress("localhost", metaNectar.getNectarAgentListener().getPort());
 
         JenkinsServer js = metaNectar.getServerByIdentity(id.getPublic());
@@ -66,7 +63,7 @@ public class MetaNectarTest extends MetaNectarTestCase {
         try {
             agent.connectOnce(serverAddress);
             fail();
-        } catch (GracefulConnectionRefusalException e) {
+        } catch (MetaNectarAgentProtocol.GracefulConnectionRefusalException e) {
             // we aren't approved yet
         }
 
