@@ -31,16 +31,16 @@ THE SOFTWARE.
     <relativePath>../pom.xml</relativePath>
   </parent>
   
-  <artifactId>jenkins-war</artifactId>
+  <artifactId>nectar-war</artifactId>
   <packaging>war</packaging>
-  <name>Jenkins war</name>
+  <name>Nectar war</name>
   <description>
     Creates a war file. Also includes additional static web resources, such as images, CSS, JavaScript, and
     some HTML files.
   </description>
   
   <build>
-    <finalName>jenkins</finalName>
+    <finalName>nectar</finalName>
     <plugins>
       <plugin>
         <artifactId>maven-war-plugin</artifactId>
@@ -93,7 +93,7 @@ THE SOFTWARE.
             <configuration>
               <tasks>
                 <!-- deploy the war as a jar, so that the tests can pull this into the classpath -->
-                <attachArtifact file="target/jenkins.war" classifier="war-for-test" type="jar" />
+                <attachArtifact file="target/nectar.war" classifier="war-for-test" type="jar" />
               </tasks>
             </configuration>
           </execution>
@@ -108,25 +108,33 @@ THE SOFTWARE.
               <tasks>
                 <mkdir dir="target/generated-resources" />
 
-                <!-- put executable war header -->
-                <resolveArtifact groupId="org.jenkins-ci" artifactId="executable-war" version="1.18" type="jar" property="executable-war.jar" />
-                <unjar src="${executable-war.jar}" dest="target/generated-resources">
-                  <patternset>
-                    <include name="**/*.class" />
-                  </patternset>
-                </unjar>
+                <!-- nectar integrated plugins -->
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="active-directory" version="1.16" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/active-directory.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="analysis-core" version="1.8" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/analysis-core.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="build-timeout" version="1.6" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/build-timeout.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="copyartifact" version="1.5" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/copyartifact.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="dashboard-view" version="1.5" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/dashboard-view.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="findbugs" version="4.8" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/findbugs.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="git" version="0.8.3" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/git.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="mercurial" version="1.28" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/mercurial.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="monitoring" version="1.26.0" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/monitoring.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="parameterized-trigger" version="2.3" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/parameterized-trigger.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="promoted-builds" version="1.7" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/promoted-builds.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="translation" version="1.4" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/translation.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="warnings" version="3.5" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/warnings.hpi" />
 
-                <!-- dependencies that goes to unusual locations -->
-                <resolveArtifact artifactId="remoting" tofile="${basedir}/target/generated-resources/WEB-INF/remoting.jar" />
-                <resolveArtifact artifactId="remoting" tofile="${basedir}/target/generated-resources/WEB-INF/slave.jar" />
-                <resolveArtifact groupId="${project.groupId}" artifactId="cli" classifier="jar-with-dependencies" version="${project.version}" type="jar" tofile="${basedir}/target/generated-resources/WEB-INF/jenkins-cli.jar" />
-                <resolveArtifact groupId="org.jvnet.hudson.winstone" artifactId="winstone" version="0.9.10-hudson-24" type="jar" tofile="${basedir}/target/generated-resources/winstone.jar" />
-                
-                <!-- bundled plugins -->
-                <resolveArtifact type="hpi" groupId="${project.groupId}" artifactId="maven-plugin" version="${project.version}" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/maven-plugin.hpi" />
-                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="ssh-slaves" version="0.14" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/ssh-slaves.hpi" />
-                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="subversion" version="1.20" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/subversion.hpi" />
-                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="cvs" version="1.2" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/cvs.hpi" />
+                <!-- proprietary plugins -->
+                <macrodef name="resolvePlugin">
+                  <attribute name="groupId" />
+                  <attribute name="artifactId" />
+                  <attribute name="version" />
+                  <sequential>
+                    <resolveArtifact type="hpi" groupId="@{groupId}" artifactId="@{artifactId}" version="@{version}" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/@{artifactId}.hpi" />
+                  </sequential>
+                </macrodef>
+
+                <resolvePlugin groupId="com.infradna.hudson.plugins" artifactId="infradna-backup" version="1.2" />
+                <resolvePlugin groupId="com.cloudbees.nectar" artifactId="nectar-vmware" version="1.0" />
               </tasks>
             </configuration>
           </execution>
@@ -214,6 +222,7 @@ THE SOFTWARE.
               <value>true</value>
             </systemProperty>
           </systemProperties>
+          <!--<overrideWebXml>../war/src/main/webapp/WEB-INF/web.xml</overrideWebXml>-->
         </configuration>
       </plugin>
     </plugins>
@@ -222,21 +231,9 @@ THE SOFTWARE.
   <dependencies>
     <dependency>
       <groupId>org.jenkins-ci.main</groupId>
-      <artifactId>jenkins-core</artifactId>
+      <artifactId>jenkins-war</artifactId>
       <version>${project.version}</version>
-      <exclusions>
-        <!--
-          jars that are not needed in war. most of the exclusions should happen in the core, to make IDEs happy, not here.
-        -->
-        <exclusion>
-          <groupId>javax.servlet</groupId>
-          <artifactId>servlet-api</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>javax.servlet</groupId>
-          <artifactId>jsp-api</artifactId>
-        </exclusion>
-      </exclusions>
+      <type>war</type>
     </dependency>
     <!-- declare this in reactors, so i can use now directly : mvn install -pl war -am to get the war  -->
     <!-- TO REMOVE when maven-plugin won't be anymore a bundle plugin -->

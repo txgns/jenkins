@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="273"
+   height="35"
+   id="svg2"
+   sodipodi:version="0.32"
+   inkscape:version="0.47 r22583"
+   sodipodi:docname="title.svg"
+   version="1.0"
+   inkscape:export-filename="/home/kohsuke/ws/infradna/hudson/war/src/main/webapp/images/title.png"
+   inkscape:export-xdpi="87.428574"
+   inkscape:export-ydpi="87.428574">
+  <defs
+     id="defs4">
+    <inkscape:perspective
+       sodipodi:type="inkscape:persp3d"
+       inkscape:vp_x="0 : 17.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_z="110 : 17.5 : 1"
+       inkscape:persp3d-origin="55 : 11.666667 : 1"
+       id="perspective15" />
+    <linearGradient
+       id="linearGradient3054">
+      <stop
+         style="stop-color:#729fcf;stop-opacity:1;"
+         offset="0"
+         id="stop3056" />
+      <stop
+         id="stop3062"
+         offset="1"
+         style="stop-color:#3465a4;stop-opacity:1;" />
+    </linearGradient>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3054"
+       id="linearGradient3060"
+       x1="156.411"
+       y1="96.022438"
+       x2="156.411"
+       y2="2.9507828e-07"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="scale(0.85057065,0.322916)" />
+    <inkscape:perspective
+       id="perspective2829"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="4"
+     inkscape:cx="130.3626"
+     inkscape:cy="7.2246685"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="true"
+     inkscape:window-width="1600"
+     inkscape:window-height="848"
+     inkscape:window-x="0"
+     inkscape:window-y="25"
+     inkscape:grid-points="true"
+     inkscape:grid-bbox="true"
+     inkscape:guide-points="true"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="fill:url(#linearGradient3060);fill-opacity:1;fill-rule:nonzero;stroke:none"
+       id="rect1307"
+       width="273.88367"
+       height="31"
+       x="0"
+       y="-2.2735736e-15"
+       rx="0"
+       ry="11.898433" />
+    <rect
+       style="fill:#fbad3e;fill-opacity:1;fill-rule:nonzero;stroke:none"
+       id="rect2182"
+       width="273.61374"
+       height="4"
+       x="0"
+       y="31"
+       rx="0"
+       ry="1.5352814" />
+    <text
+       xml:space="preserve"
+       style="font-size:28px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Georgia;-inkscape-font-specification:Georgia Bold"
+       x="7.1015625"
+       y="25"
+       id="text2184"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan2186"
+         x="7.1015625"
+         y="25">Nectar</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Georgia;-inkscape-font-specification:Georgia Bold"
+       x="115.67608"
+       y="25"
+       id="text2184-7"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan2846"
+         x="115.67608"
+         y="25">from CloudBees</tspan></text>
+  </g>
+</svg>

@@ -50,6 +50,7 @@ THE SOFTWARE.
     <module>war</module>
     <module>test</module>
     <module>cli</module>
+    <module>nectar-war</module>
   </modules>
   
   <scm>
