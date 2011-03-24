@@ -1,5 +1,8 @@
 package metanectar.provisioning;
 
+import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
+import com.cloudbees.commons.metanectar.provisioning.ProvisioningActivity;
+import com.cloudbees.commons.metanectar.provisioning.ProvisioningResult;
 import hudson.model.Hudson;
 import hudson.model.Hudson.MasterComputer;
 import hudson.model.Label;
@@ -75,11 +78,11 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
 
     public void testScenario() throws Exception {
         // MetaNectar would expose the manager to the channel
-        metaNectar.setProperty(MetaNectarSlaveManager.class.getName(),
-                metaNectar.export(MetaNectarSlaveManager.class,new DummyMetaNectarSlaveManagerImpl()));
+        metaNectar.setProperty(SlaveManager.class.getName(),
+                metaNectar.export(SlaveManager.class,new DummyMetaNectarSlaveManagerImpl()));
 
         // Jenkins would obtain a proxy
-        MetaNectarSlaveManager proxy = (MetaNectarSlaveManager)jenkins.waitForRemoteProperty(MetaNectarSlaveManager.class.getName());
+        SlaveManager proxy = (SlaveManager)jenkins.waitForRemoteProperty(SlaveManager.class.getName());
         assertFalse("we are accesing it via a proxy, and not directly", proxy instanceof DummyMetaNectarSlaveManagerImpl);
 
         // this dummy manager can allocate 'foo', so it can provision "foo||bar"
@@ -103,7 +106,7 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
         slave.toComputer().disconnect();
     }
 
-    public static class DummyMetaNectarSlaveManagerImpl implements MetaNectarSlaveManager {
+    public static class DummyMetaNectarSlaveManagerImpl implements SlaveManager {
         private int n;
 
         public boolean canProvision(Label label) throws IOException, InterruptedException {
