@@ -52,6 +52,8 @@ public class MetaNectar extends Hudson {
 
     protected transient AgentListener nectarAgentListener;
 
+    protected static String rootURL = System.getProperty("METANECTAR_ROOT_URL");
+
     public MetaNectar(File root, ServletContext context) throws IOException, InterruptedException, ReactorException {
         this(root, context, null);
     }
@@ -79,8 +81,9 @@ public class MetaNectar extends Hudson {
                     new MetaNectarAgentProtocol.Listener() {
                         public URL getOurURL() throws IOException {
                             // TODO MetaNectar.this.getRootUrl() is returning null
-                            return new URL(MetaNectar.this.getRootUrl());
-//                            return new URL("http://localhost:8081/");
+                            String url = MetaNectar.this.getRootUrl();
+                            if (url == null) url = rootURL;
+                            return new URL(url);
                         }
 
                         public void onConnectingTo(URL address, X509Certificate identity) throws GeneralSecurityException, IOException {

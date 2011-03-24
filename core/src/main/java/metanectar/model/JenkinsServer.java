@@ -1,5 +1,6 @@
 package metanectar.model;
 
+import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import hudson.Extension;
 import hudson.model.AbstractItem;
 import hudson.model.Computer;
@@ -19,6 +20,7 @@ import hudson.util.FormValidation;
 import hudson.util.RemotingDiagnostics;
 import hudson.util.StreamTaskListener;
 import hudson.util.io.ReopenableFileOutputStream;
+import metanectar.provisioning.MetaNectarSlaveManager;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.HttpResponse;
@@ -248,6 +250,12 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
             }
             this.channel = channel;
         }
+        onSetChannel();
+    }
+
+    private void onSetChannel() {
+        channel.setProperty(SlaveManager.class.getName(),
+                channel.export(SlaveManager.class, new MetaNectarSlaveManager()));
     }
 
     public boolean isOnline() {
