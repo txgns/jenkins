@@ -577,12 +577,12 @@ THE SOFTWARE.
 
   <distributionManagement>
     <repository>
-      <id>repository.infradna.com</id>
-      <url>scp://maven.infradna.com/home/maven/repository/releases</url>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>dav:https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
     </repository>
     <snapshotRepository>
-      <id>repository.infradna.com</id>
-      <url>scp://maven.infradna.com/home/maven/repository/snapshots</url>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>dav:https://repository-cloudbees.forge.cloudbees.com/private-snapshot/</url>
     </snapshotRepository>
   </distributionManagement>
 </project>
