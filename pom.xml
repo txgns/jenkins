@@ -54,8 +54,8 @@ THE SOFTWARE.
   </modules>
   
   <scm>
-    <connection>scm:git:git@infradna.com:hudson.git</connection>
-    <developerConnection>scm:git:git@infradna.com:hudson.git</developerConnection>
+    <connection>scm:git:ssh://git@git.cloudbees.com/cloudbees/hudson.git</connection>
+    <developerConnection>scm:git:ssh://git@git.cloudbees.com/cloudbees/hudson.git</developerConnection>
   </scm>
 
   <build>
