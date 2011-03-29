@@ -16,6 +16,7 @@ import hudson.util.IOException2;
 import hudson.util.IOUtils;
 import hudson.views.StatusColumn;
 import metanectar.model.views.JenkinsServerColumn;
+import metanectar.provisioning.MasterProvisioner;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 import org.jvnet.hudson.reactor.ReactorException;
 import org.kohsuke.stapler.HttpResponses.HttpResponseException;
@@ -51,6 +52,8 @@ import java.util.Collections;
 public class MetaNectar extends Hudson {
 
     protected transient AgentListener nectarAgentListener;
+
+    public transient final MasterProvisioner masterProvisioner = new MasterProvisioner();
 
     protected static String rootURL = System.getProperty("METANECTAR_ROOT_URL");
 
