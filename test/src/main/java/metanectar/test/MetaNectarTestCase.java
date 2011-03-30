@@ -45,7 +45,7 @@ public class MetaNectarTestCase extends HudsonTestCase {
     protected MetaNectarTestCase() {
     }
 
-    protected MetaNectar metaNectar;
+    public MetaNectar metaNectar;
 
     protected Hudson newHudson() throws Exception {
         File home = homeLoader.allocate();

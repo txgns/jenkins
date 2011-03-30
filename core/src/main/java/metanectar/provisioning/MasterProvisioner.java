@@ -2,12 +2,8 @@ package metanectar.provisioning;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
-import com.google.common.collect.Multimaps;
 import hudson.Extension;
 import hudson.model.*;
-import hudson.model.labels.LabelAtom;
-import hudson.remoting.Future;
-import hudson.remoting.VirtualChannel;
 import hudson.slaves.Cloud;
 import metanectar.model.MetaNectar;
 
@@ -18,6 +14,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -37,18 +34,18 @@ public class MasterProvisioner {
 
     private static final Logger LOGGER = Logger.getLogger(MasterProvisioner.class.getName());
 
-    public static interface MastersNodeService {
-        Future<Master> launch(VirtualChannel channel, PlannedMasterRequest pmr) throws IOException, InterruptedException;
-
-        Map<String, Master> getLaunched(VirtualChannel channel);
-    }
-
     public static interface MasterListener {
-        void onProvisioningMaster(Node n, String organization);
+        void onProvisioningMaster(String organization, Node n);
 
-        void onProvisionedMaster(Node n, Master m);
+        void onErrorProvisioningMaster(String organization, Node n, Throwable error);
 
-        void onUnprovisionedMaster(Node n, Master m);
+
+        void onProvisionedMaster(Master m, Node n);
+
+        void onErrorProvisionedMaster(String organization, Node n, Throwable error);
+
+
+        void onUnprovisionedMaster(Master m, Node n);
     }
 
     public static abstract class Master {
@@ -64,12 +61,13 @@ public class MasterProvisioner {
     }
 
     private static final class PlannedMaster {
+        public final MasterListener ml;
         public final String organization;
         public final Node node;
         public final java.util.concurrent.Future<Master> future;
 
-        public PlannedMaster(String organization, Node node, Future<Master> future) {
-            if(organization ==null || node==null || future==null)  throw new IllegalArgumentException();
+        public PlannedMaster(MasterListener ml, String organization, Node node, Future<Master> future) {
+            this.ml = ml;
             this.organization = organization;
             this.node=node;
             this.future = future;
@@ -78,12 +76,12 @@ public class MasterProvisioner {
 
     private static final class PlannedMasterRequest {
         public final MasterListener ml;
-        public final MastersNodeService mns;
+        public final MasterProvisioningService mns;
         public final String organization; 
         public final URL metaNectarEndpoint; 
         public final String key;
         
-        public PlannedMasterRequest(MasterListener ml, MastersNodeService mns, String organization, URL metaNectarEndpoint, String key) {
+        public PlannedMasterRequest(MasterListener ml, MasterProvisioningService mns, String organization, URL metaNectarEndpoint, String key) {
             this.ml = ml;
             this.mns = mns;
             this.organization = organization;
@@ -92,12 +90,12 @@ public class MasterProvisioner {
         }
 
         public PlannedMaster toPlannedMaster(Node node, Future<Master> future) {
-            return new PlannedMaster(this.organization, node, future);
+            return new PlannedMaster(ml, organization, node, future);
         }
     }
 
     // TODO make configurable
-    public final Label masterLabel = new LabelAtom("_masters_");
+    public final Label masterLabel = MetaNectar.getInstance().getLabel("_masters_");
 
     private Multimap<Node, Master> masters = ArrayListMultimap.create();
 
@@ -118,10 +116,12 @@ public class MasterProvisioner {
             final PlannedMaster pm = itr.next();
             if (pm.future.isDone()) {
                 try {
-                    masters.put(pm.node, pm.future.get());
+                    Master m = pm.future.get();
+                    masters.put(pm.node, m);
 
-                    // TODO listener for provisioning master
-                    LOGGER.info(pm.organization +" provisioning successfully completed.");
+                    LOGGER.info(pm.organization +" master provisioned");
+
+                    pm.ml.onProvisionedMaster(m, pm.node);
                 } catch (InterruptedException e) {
                     throw new AssertionError(e); // since we confirmed that the future is already done
                 } catch (ExecutionException e) {
@@ -139,7 +139,7 @@ public class MasterProvisioner {
                 try {
                     hudson.addNode(pn.future.get());
 
-                    // TODO listener for provisioning nodes
+                    // TODO listener for provisioned node? or reuse existing listener?
                     LOGGER.info(pn.displayName+" provisioning successfully completed. We have now "+hudson.getComputers().length+" computer(s)");
                 } catch (InterruptedException e) {
                     throw new AssertionError(e); // since we confirmed that the future is already done
@@ -157,15 +157,19 @@ public class MasterProvisioner {
         // Check masters nodes to see if a new master can be provisioned on an existing masters node
         for (Node n : masterLabel.getNodes()) {
             if (n.toComputer().isOnline()) {
+
+                // TODO work out free slots
+
                 for (Iterator<PlannedMasterRequest> itr = pendingPlannedMasterRequests.iterator(); itr.hasNext();) {
-                    if ((masters.get(n).size() + pendingPlannedMasters.get(n).size()) <= MAX_MASTERS) {
+                    if ((masters.get(n).size() + pendingPlannedMasters.get(n).size()) < MAX_MASTERS) {
                         final PlannedMasterRequest pmr = itr.next();
                         try {
-                            Future<Master> f = pmr.mns.launch(n.toComputer().getChannel(), pmr);
+                            Future<Master> f = pmr.mns.provision(n.toComputer().getChannel(), pmr.organization, pmr.metaNectarEndpoint, pmr.key);
                             pendingPlannedMasters.put(n, pmr.toPlannedMaster(n, f));
 
-                            // TODO listener
-                            LOGGER.info(pmr.organization +" master launch successfully started.");
+                            LOGGER.info(pmr.organization +" master provisioning started");
+
+                            pmr.ml.onProvisioningMaster(pmr.organization, n);
                         } catch (InterruptedException e) {
                             LOGGER.log(Level.WARNING, "Provisioned masters node "+pmr.organization+" failed to launch",e);
                         } catch (IOException e) {
@@ -173,14 +177,19 @@ public class MasterProvisioner {
                         } finally {
                             itr.remove();
                         }
+                    } else {
+                        break;
                     }
 
                 }
             }
         }
 
-        // If there are still pending requests
-        if (pendingPlannedMasterRequests.size() > 0) {
+        // TODO capable nodes could be offline, meaning there are still pending planned master requests
+        // Need to be careful provisioning more nodes in such cases.
+
+        // If there are still pending requests and no pending nodes
+        if (pendingPlannedMasterRequests.size() > 0 && pendingPlannedNodes.size() == 0) {
             // Check clouds to see if a new masters node can be provisioned
             Collection<PlannedNode> pns = null;
             for (Cloud c : masterLabel.getClouds()) {
@@ -190,6 +199,8 @@ public class MasterProvisioner {
                     for (PlannedNode pn : pns) {
                         LOGGER.info("Started provisioning "+pn.displayName+" from "+c.name);
                     }
+
+                    /// TODO listener for provisioning nodes, or is there an existing listener that can be reused?
                     break;
                 }
             }
@@ -219,12 +230,17 @@ public class MasterProvisioner {
 
         @Override
         protected void doRun() {
+            Hudson h = Hudson.getInstance();
             MetaNectar mn = MetaNectar.getInstance();
             mn.masterProvisioner.update();
         }
     }
 
-    public void provision(MasterListener ml, MastersNodeService mns, String organization, URL metaNectarEndpoint, String key) {
+    public Multimap<Node, Master> getProvisionedMasters() {
+        return masters;
+    }
+
+    public void provision(MasterListener ml, MasterProvisioningService mns, String organization, URL metaNectarEndpoint, String key) {
         pendingPlannedMasterRequests.add(new PlannedMasterRequest(ml, mns, organization, metaNectarEndpoint, key));
     }
 
