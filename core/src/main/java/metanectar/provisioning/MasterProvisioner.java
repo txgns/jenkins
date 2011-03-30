@@ -1,6 +1,7 @@
 package metanectar.provisioning;
 
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Iterators;
 import com.google.common.collect.Multimap;
 import hudson.Extension;
 import hudson.model.*;
@@ -158,29 +159,23 @@ public class MasterProvisioner {
         for (Node n : masterLabel.getNodes()) {
             if (n.toComputer().isOnline()) {
 
-                // TODO work out free slots
+                int freeSlots = MAX_MASTERS - (masters.get(n).size() + pendingPlannedMasters.get(n).size());
+                for (Iterator<PlannedMasterRequest> itr = Iterators.limit(pendingPlannedMasterRequests.iterator(), freeSlots); itr.hasNext();) {
+                    final PlannedMasterRequest pmr = itr.next();
+                    try {
+                        Future<Master> f = pmr.mns.provision(n.toComputer().getChannel(), pmr.organization, pmr.metaNectarEndpoint, pmr.key);
+                        pendingPlannedMasters.put(n, pmr.toPlannedMaster(n, f));
 
-                for (Iterator<PlannedMasterRequest> itr = pendingPlannedMasterRequests.iterator(); itr.hasNext();) {
-                    if ((masters.get(n).size() + pendingPlannedMasters.get(n).size()) < MAX_MASTERS) {
-                        final PlannedMasterRequest pmr = itr.next();
-                        try {
-                            Future<Master> f = pmr.mns.provision(n.toComputer().getChannel(), pmr.organization, pmr.metaNectarEndpoint, pmr.key);
-                            pendingPlannedMasters.put(n, pmr.toPlannedMaster(n, f));
+                        LOGGER.info(pmr.organization +" master provisioning started");
 
-                            LOGGER.info(pmr.organization +" master provisioning started");
-
-                            pmr.ml.onProvisioningMaster(pmr.organization, n);
-                        } catch (InterruptedException e) {
-                            LOGGER.log(Level.WARNING, "Provisioned masters node "+pmr.organization+" failed to launch",e);
-                        } catch (IOException e) {
-                            LOGGER.log(Level.WARNING, "Provisioned masters node "+pmr.organization+" failed to launch",e);
-                        } finally {
-                            itr.remove();
-                        }
-                    } else {
-                        break;
+                        pmr.ml.onProvisioningMaster(pmr.organization, n);
+                    } catch (InterruptedException e) {
+                        LOGGER.log(Level.WARNING, "Provisioned masters node "+pmr.organization+" failed to launch",e);
+                    } catch (IOException e) {
+                        LOGGER.log(Level.WARNING, "Provisioned masters node "+pmr.organization+" failed to launch",e);
+                    } finally {
+                        itr.remove();
                     }
-
                 }
             }
         }
@@ -237,6 +232,7 @@ public class MasterProvisioner {
     }
 
     public Multimap<Node, Master> getProvisionedMasters() {
+        // TODO this should be synchronized and read only
         return masters;
     }
 
