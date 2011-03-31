@@ -2396,9 +2396,12 @@ public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProx
     }
 
     public Object getDynamic(String token) {
-        for (Action a : getActions())
-            if(a.getUrlName().equals(token) || a.getUrlName().equals('/'+token))
+        for (Action a : getActions()) {
+            String url = a.getUrlName();
+            if (url==null)  continue;
+            if (url.equals(token) || url.equals('/' + token))
                 return a;
+        }
         for (Action a : getManagementLinks())
             if(a.getUrlName().equals(token))
                 return a;
