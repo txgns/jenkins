@@ -73,6 +73,8 @@ import hudson.model.TaskListener;
 import hudson.model.UpdateSite;
 import hudson.model.User;
 import hudson.model.View;
+import hudson.remoting.Channel;
+import hudson.remoting.VirtualChannel;
 import hudson.remoting.Which;
 import hudson.security.ACL;
 import hudson.security.AbstractPasswordBasedSecurityRealm;
@@ -238,6 +240,11 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     private List<WebClient> clients = new ArrayList<WebClient>();
 
     /**
+     * Remember channels that are created, to release them at the end.
+     */
+    private List<Channel> channels = new ArrayList<Channel>();
+
+    /**
      * JavaScript "debugger" that provides you information about the JavaScript call stack
      * and the current values of the local variables in those stack frame.
      *
@@ -348,6 +355,13 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
                 client.closeAllWindows();
             }
             clients.clear();
+
+            for (Channel c : channels)
+                c.close();
+            for (Channel c : channels)
+                c.join();
+            channels.clear();
+
         } finally {
             server.stop();
             for (LenientRunnable r : tearDowns)
@@ -461,6 +475,17 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
 
         return realm;
     }
+
+    @TestExtension
+    public static class ComputerListenerImpl extends ComputerListener {
+        @Override
+        public void onOnline(Computer c, TaskListener listener) throws IOException, InterruptedException {
+            VirtualChannel ch = c.getChannel();
+            if (ch instanceof Channel)
+            TestEnvironment.get().testCase.channels.add((Channel)ch);
+        }
+    }
+
 
 //    /**
 //     * Sets guest credentials to access java.net Subversion repo.
@@ -1486,6 +1511,10 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
                 public void contextReleased(Context cx) {
                 }
             });
+
+            // avoid a hang by setting a time out. It should be long enough to prevent
+            // false-positive timeout on slow systems
+            setTimeout(60*1000);
         }
 
         /**
