@@ -28,6 +28,13 @@ import java.util.logging.Logger;
  * to provision the master on that Node's channel.
  * If no Nodes can provision (because they have reached capacity) then a node with the specific label will be
  * provisioned from the Cloud.
+ * <p>
+ * TODO
+ * - store state on a NodeProperty
+ *   - max number of masters that can be provisioned
+ *   - list of masters that are provisioned
+ *   - master provisioning service class for factory?
+ * -
  *
  * @author Paul Sandoz
  */
@@ -49,18 +56,6 @@ public class MasterProvisioner {
         void onUnprovisionedMaster(Master m, Node n);
     }
 
-    public static abstract class Master {
-        public final String organization;
-        public final URL endpoint;
-
-        public Master(String organization, URL endpoint) {
-            this.organization = organization;
-            this.endpoint = endpoint;
-        }
-
-        public abstract Future<?> stop();
-    }
-
     private static final class PlannedMaster {
         public final MasterListener ml;
         public final String organization;
@@ -80,14 +75,14 @@ public class MasterProvisioner {
         public final MasterProvisioningService mns;
         public final String organization; 
         public final URL metaNectarEndpoint; 
-        public final String key;
+        public final Map<String, String> properties;
         
-        public PlannedMasterRequest(MasterListener ml, MasterProvisioningService mns, String organization, URL metaNectarEndpoint, String key) {
+        public PlannedMasterRequest(MasterListener ml, MasterProvisioningService mns, String organization, URL metaNectarEndpoint, Map<String, String> properties) {
             this.ml = ml;
             this.mns = mns;
             this.organization = organization;
             this.metaNectarEndpoint = metaNectarEndpoint;
-            this.key = key;
+            this.properties = properties;
         }
 
         public PlannedMaster toPlannedMaster(Node node, Future<Master> future) {
@@ -163,7 +158,7 @@ public class MasterProvisioner {
                 for (Iterator<PlannedMasterRequest> itr = Iterators.limit(pendingPlannedMasterRequests.iterator(), freeSlots); itr.hasNext();) {
                     final PlannedMasterRequest pmr = itr.next();
                     try {
-                        Future<Master> f = pmr.mns.provision(n.toComputer().getChannel(), pmr.organization, pmr.metaNectarEndpoint, pmr.key);
+                        Future<Master> f = pmr.mns.provision(n.toComputer().getChannel(), pmr.organization, pmr.metaNectarEndpoint, pmr.properties);
                         pendingPlannedMasters.put(n, pmr.toPlannedMaster(n, f));
 
                         LOGGER.info(pmr.organization +" master provisioning started");
@@ -236,11 +231,12 @@ public class MasterProvisioner {
         return masters;
     }
 
-    public void provision(MasterListener ml, MasterProvisioningService mns, String organization, URL metaNectarEndpoint, String key) {
-        pendingPlannedMasterRequests.add(new PlannedMasterRequest(ml, mns, organization, metaNectarEndpoint, key));
+    public void provision(MasterListener ml, MasterProvisioningService mns, String organization, URL metaNectarEndpoint,
+                          Map<String, String> properties) {
+        pendingPlannedMasterRequests.add(new PlannedMasterRequest(ml, mns, organization, metaNectarEndpoint, properties));
     }
 
-    void delete(String organization) {
+    void delete(MasterListener ml, MasterProvisioningService mns, String organization) {
         // TODO
     }
 }

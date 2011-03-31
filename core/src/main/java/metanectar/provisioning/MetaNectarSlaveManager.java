@@ -21,6 +21,8 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
 /**
+ * TODO this is currently a dummy class.
+ *
  * @author Paul Sandoz
  */
 public class MetaNectarSlaveManager implements SlaveManager {

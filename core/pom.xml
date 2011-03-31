@@ -824,7 +824,7 @@ THE SOFTWARE.
     <dependency>
       <groupId>com.cloudbees.commons.metanectar</groupId>
       <artifactId>cloudbees-commons-metanectar-agent</artifactId>
-      <version>1.1</version>
+      <version>1.2</version>
     </dependency>
 
     <dependency>

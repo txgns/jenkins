@@ -1,11 +1,16 @@
 package metanectar.provisioning;
 
+import com.google.common.collect.Maps;
 import hudson.Extension;
 import hudson.model.*;
+import hudson.model.listeners.ItemListener;
 import hudson.remoting.VirtualChannel;
-import hudson.slaves.*;
+import hudson.slaves.ComputerListener;
+import hudson.tasks.Mailer;
+import metanectar.model.JenkinsServer;
 import metanectar.model.MetaNectar;
 import metanectar.test.MetaNectarTestCase;
+import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 
 import java.io.IOException;
 import java.net.URL;
@@ -18,8 +23,10 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author Paul Sandoz
  */
-public class MasterProvisioningTest extends MetaNectarTestCase {
+public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
     private int original;
+
+    //private InstanceIdentity id;
 
     @Override
     protected void setUp() throws Exception {
@@ -28,6 +35,9 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
         MasterProvisioner.MasterProvisionerInvoker.INITIALDELAY = 100;
         MasterProvisioner.MasterProvisionerInvoker.RECURRENCEPERIOD = 10;
         super.setUp();
+
+        Mailer.descriptor().setHudsonUrl(getURL().toExternalForm());
+//        id = InstanceIdentity.get();
     }
 
     @Override
@@ -71,14 +81,19 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
             this.delay = delay;
         }
 
-        public Future<Master> provision(VirtualChannel channel, final String organization, final URL metaNectarEndpoint, Map<String, String> properties) throws IOException, InterruptedException {
+        public Future<Master> provision(final VirtualChannel channel, final String organization, final URL metaNectarEndpoint, Map<String, String> properties) throws IOException, InterruptedException {
             return Computer.threadPoolForRemoting.submit(new Callable<Master>() {
                 public Master call() throws Exception {
                     Thread.sleep(delay);
 
                     System.out.println("launching master");
 
-                    return new Master(organization, metaNectarEndpoint);
+                    // TODO in process or external process
+                    final URL endpoint = channel.call(new TestMasterServerCallable(metaNectarEndpoint, organization));
+//                    final URL endpoint = new TestMasterServerCallable(metaNectarEndpoint, organization).call();
+
+                    System.out.println("Master: " + endpoint);
+                    return new Master(organization, endpoint);
                 }
             });
         }
@@ -92,47 +107,39 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
         }
     }
 
-    @Extension
-    public static class MyComputerListener extends ComputerListener {
+    public static class TestMasterServerCallable implements hudson.remoting.Callable<URL, Exception> {
+        private final String organization;
+        private final URL metaNectarEndpoint;
 
-        Set<Node> online = new HashSet<Node>();
-
-        public void onOnline(Computer c, TaskListener listener) throws IOException, InterruptedException {
-            System.out.println("ONLINE: " + c.getNode().getDisplayName());
-            if (MetaNectar.getInstance().masterProvisioner != null && MetaNectar.getInstance().masterProvisioner.masterLabel.matches(c.getNode()))
-                online.add(c.getNode());
+        public TestMasterServerCallable(URL metaNectarEndpoint, String organization) {
+            this.organization = organization;
+            this.metaNectarEndpoint = metaNectarEndpoint;
         }
 
-        public void onOffline(Computer c) {
-            System.out.println("OFFLINE: " + c.getNode().getDisplayName());
-            if (MetaNectar.getInstance().masterProvisioner.masterLabel.matches(c.getNode()))
-                online.remove(c.getNode());
-        }
-
-        static MyComputerListener get() {
-            return ComputerListener.all().get(MyComputerListener.class);
+        public URL call() throws Exception {
+            TestMasterServer masterServer = new TestMasterServer(metaNectarEndpoint, organization);
+            masterServer.setRetryInterval(500);
+            return masterServer.start();
         }
     }
 
     public void testProvisionOneMaster() throws Exception {
-        _testProvision(1, 4);
+        _testProvision(1);
     }
 
     public void testProvisionTwoMaster() throws Exception {
-        _testProvision(2, 4);
+        _testProvision(2);
     }
 
     public void testProvisionFourMaster() throws Exception {
-        _testProvision(4, 4);
+        _testProvision(4);
     }
 
     public void testProvisionEightMaster() throws Exception {
-        _testProvision(8, 4);
+        _testProvision(8);
     }
 
-    private void _testProvision(int masters, int nodesPerMaster) throws Exception {
-        int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
-
+    public void _testProvision(int masters) throws Exception {
         TestSlaveCloud cloud = new TestSlaveCloud(this, 100);
         metaNectar.clouds.add(cloud);
 
@@ -143,14 +150,37 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
         Map<String, String> properties = new HashMap<String, String>();
         properties.put("key", "value");
         for (int i = 0; i < masters; i++) {
-            metaNectar.masterProvisioner.provision(l, s, "org" + i, new URL("http://test/"), properties);
+            metaNectar.masterProvisioner.provision(l, s, "org" + i, new URL(metaNectar.getRootUrl()), properties);
         }
 
+        // Wait for master to be provisioned
         cdl.await(1, TimeUnit.MINUTES);
 
-        assertEquals(nodes, MyComputerListener.get().online.size());
-        assertEquals(nodes, metaNectar.masterProvisioner.masterLabel.getNodes().size());
-        assertEquals(masters, metaNectar.masterProvisioner.getProvisionedMasters().size());
+        Thread.sleep(1000);
+        int retry = 0;
+        Set<JenkinsServer> connected = new HashSet<JenkinsServer>();
+        while (true) {
+            List<JenkinsServer> items = metaNectar.getItems(JenkinsServer.class);
+
+            for (JenkinsServer js : items) {
+                if (!js.isApproved()) {
+                    assertNull(js.getChannel());
+                    js.setApproved(true);
+                } else if (js.getChannel() != null) {
+                    connected.add(js);
+                }
+            }
+
+            if (connected.size() == masters)
+                break;
+
+            if (retry > 1000) {
+                fail(connected.size() + " out of " + masters + " connected");
+            }
+
+            retry++;
+            Thread.sleep(10);
+        }
     }
 
 }

@@ -40,6 +40,7 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.logging.Logger;
 
 /**
  * The root object of MetaNectar.
@@ -50,6 +51,7 @@ import java.util.Collections;
  * @author Kohsuke Kawaguchi
  */
 public class MetaNectar extends Hudson {
+    private static final Logger LOGGER = Logger.getLogger(MetaNectar.class.getName());
 
     protected transient AgentListener nectarAgentListener;
 
@@ -65,16 +67,7 @@ public class MetaNectar extends Hudson {
         super(root, context, pluginManager);
 
         {
-            AgentStatusListener asl = new AgentStatusListener() {
-                public void status(String msg) {
-                }
-
-                public void status(String msg, Throwable t) {
-                }
-
-                public void error(Throwable t) {
-                }
-            };
+            AgentStatusListener asl = new AgentStatusListener.LoggerListener(LOGGER);
 
             InstanceIdentity id = InstanceIdentity.get();
 
@@ -118,7 +111,17 @@ public class MetaNectar extends Hudson {
                             channel.close();
                             throw new IOException("Unable to route the connection. No server found");
                         }
-                    });
+
+                        @Override
+                        public void onRefusal(GracefulConnectionRefusalException e) throws Exception {
+                            throw e;
+                        }
+
+                        @Override
+                        public void onError(Exception e) throws Exception {
+                            throw e;
+                        }
+                    }, null);
 
 
             // TODO choose port

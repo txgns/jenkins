@@ -48,11 +48,22 @@ public class MetaNectarTest extends MetaNectarTestCase {
             public void onConnectedTo(Channel channel, X509Certificate identity) throws IOException {
                 this.channel = channel;
             }
+
+
+            @Override
+            public void onRefusal(MetaNectarAgentProtocol.GracefulConnectionRefusalException e) throws Exception {
+                throw e;
+            }
+
+            @Override
+            public void onError(Exception e) throws Exception {
+                throw e;
+            }
         }
 
 
         Client client = new Client();
-        MetaNectarAgentProtocol.Outbound p = new MetaNectarAgentProtocol.Outbound(MetaNectarAgentProtocol.getInstanceIdentityCertificate(id,metaNectar), id.getPrivate(), client);
+        MetaNectarAgentProtocol.Outbound p = new MetaNectarAgentProtocol.Outbound(MetaNectarAgentProtocol.getInstanceIdentityCertificate(id,metaNectar), id.getPrivate(), client, null);
 
         Agent agent = new Agent(new AgentStatusListener.LoggerListener(LOGGER), null, p);
         InetSocketAddress serverAddress = new InetSocketAddress("localhost", metaNectar.getNectarAgentListener().getPort());

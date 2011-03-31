@@ -72,7 +72,7 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
     /**
      * If the connection to this Jenkins is approved, set to true.
      */
-    private boolean approved;
+    private volatile boolean approved;
 
     protected transient volatile OfflineCause offlineCause;
 
