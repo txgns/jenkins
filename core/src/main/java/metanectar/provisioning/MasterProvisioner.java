@@ -42,27 +42,31 @@ public class MasterProvisioner {
 
     private static final Logger LOGGER = Logger.getLogger(MasterProvisioner.class.getName());
 
-    public static interface MasterListener {
-        void onProvisioningMaster(String organization, Node n);
+    public static interface MasterProvisionListener {
+        void onProvisionStarted(String organization, Node n);
 
-        void onErrorProvisioningMaster(String organization, Node n, Throwable error);
+        void onProvisionStartedError(String organization, Node n, Throwable error);
 
+        void onProvisionCompleted(Master m, Node n);
 
-        void onProvisionedMaster(Master m, Node n);
+        void onProvisionCompletedError(String organization, Node n, Throwable error);
+    }
 
-        void onErrorProvisionedMaster(String organization, Node n, Throwable error);
+    public static interface MasterTerminateListener {
+        public void onTerminateStarted(Master m, Node n);
 
+        public void onTerminateCompleted(Master m, Node n);
 
-        void onUnprovisionedMaster(Master m, Node n);
+        public void onTerminateError(Master m, Node n, Throwable e);
     }
 
     private static final class PlannedMaster {
-        public final MasterListener ml;
+        public final MasterProvisionListener ml;
         public final String organization;
         public final Node node;
         public final java.util.concurrent.Future<Master> future;
 
-        public PlannedMaster(MasterListener ml, String organization, Node node, Future<Master> future) {
+        public PlannedMaster(MasterProvisionListener ml, String organization, Node node, Future<Master> future) {
             this.ml = ml;
             this.organization = organization;
             this.node=node;
@@ -71,13 +75,13 @@ public class MasterProvisioner {
     }
 
     private static final class PlannedMasterRequest {
-        public final MasterListener ml;
+        public final MasterProvisionListener ml;
         public final MasterProvisioningService mns;
         public final String organization; 
         public final URL metaNectarEndpoint; 
         public final Map<String, String> properties;
         
-        public PlannedMasterRequest(MasterListener ml, MasterProvisioningService mns, String organization, URL metaNectarEndpoint, Map<String, String> properties) {
+        public PlannedMasterRequest(MasterProvisionListener ml, MasterProvisioningService mns, String organization, URL metaNectarEndpoint, Map<String, String> properties) {
             this.ml = ml;
             this.mns = mns;
             this.organization = organization;
@@ -93,8 +97,10 @@ public class MasterProvisioner {
     // TODO make configurable
     public final Label masterLabel = MetaNectar.getInstance().getLabel("_masters_");
 
+    // TODO should this be a weak hash map?
     private Multimap<Node, Master> masters = ArrayListMultimap.create();
 
+    // TODO should this be a weak hash map?
     private Multimap<Node, PlannedMaster> pendingPlannedMasters = ArrayListMultimap.create();
 
     private List<PlannedMasterRequest> pendingPlannedMasterRequests = Collections.synchronizedList(new ArrayList<PlannedMasterRequest>());
@@ -104,7 +110,7 @@ public class MasterProvisioner {
     // TODO this should be configurable per node.
     private static final int MAX_MASTERS = 4;
 
-    private void update() {
+    private void provision() {
         Hudson hudson = Hudson.getInstance();
 
         // Process pending planned masters
@@ -117,7 +123,7 @@ public class MasterProvisioner {
 
                     LOGGER.info(pm.organization +" master provisioned");
 
-                    pm.ml.onProvisionedMaster(m, pm.node);
+                    pm.ml.onProvisionCompleted(m, pm.node);
                 } catch (InterruptedException e) {
                     throw new AssertionError(e); // since we confirmed that the future is already done
                 } catch (ExecutionException e) {
@@ -149,7 +155,6 @@ public class MasterProvisioner {
             }
         }
 
-
         // Check masters nodes to see if a new master can be provisioned on an existing masters node
         for (Node n : masterLabel.getNodes()) {
             if (n.toComputer().isOnline()) {
@@ -163,7 +168,7 @@ public class MasterProvisioner {
 
                         LOGGER.info(pmr.organization +" master provisioning started");
 
-                        pmr.ml.onProvisioningMaster(pmr.organization, n);
+                        pmr.ml.onProvisionStarted(pmr.organization, n);
                     } catch (InterruptedException e) {
                         LOGGER.log(Level.WARNING, "Provisioned masters node "+pmr.organization+" failed to launch",e);
                     } catch (IOException e) {
@@ -203,6 +208,109 @@ public class MasterProvisioner {
         }
     }
 
+
+    private static final class TerminateMasterRequest {
+        public final MasterTerminateListener ml;
+        public final MasterProvisioningService mns;
+        public final String organization;
+        public final boolean clean;
+
+        public TerminateMasterRequest(MasterTerminateListener ml, MasterProvisioningService mns, String organization, boolean clean) {
+            this.ml = ml;
+            this.mns = mns;
+            this.organization = organization;
+            this.clean = clean;
+        }
+
+        public TerminateMaster toDeleteMaster(Map.Entry<Node, Master> node, Future<?> future) {
+            return new TerminateMaster(ml, organization, node, future);
+        }
+    }
+
+    private static final class TerminateMaster {
+        public final MasterTerminateListener ml;
+        public final String organization;
+        Map.Entry<Node, Master> nodeMaster;
+        public final java.util.concurrent.Future<?> future;
+
+        public TerminateMaster(MasterTerminateListener ml, String organization, Map.Entry<Node, Master> nodeMaster, Future<?> future) {
+            this.ml = ml;
+            this.organization = organization;
+            this.nodeMaster = nodeMaster;
+            this.future = future;
+        }
+    }
+
+    private List<TerminateMasterRequest> pendingTerminateMasterRequests = Collections.synchronizedList(new ArrayList<TerminateMasterRequest>());
+
+    private List<TerminateMaster> pendingTerminateMasters = Collections.synchronizedList(new ArrayList<TerminateMaster>());
+
+    void delete() {
+        // Process pending delete masters
+        for (Iterator<TerminateMaster> itr = pendingTerminateMasters.iterator(); itr.hasNext();) {
+            final TerminateMaster dm = itr.next();
+            if (dm.future.isDone()) {
+                try {
+                    dm.future.get();
+                    masters.remove(dm.nodeMaster.getKey(), dm.nodeMaster.getValue());
+
+                    dm.ml.onTerminateCompleted(dm.nodeMaster.getValue(), dm.nodeMaster.getKey());
+
+                    LOGGER.info(dm.organization +" master deleted");
+                } catch (InterruptedException e) {
+                    throw new AssertionError(e); // since we confirmed that the future is already done
+                } catch (ExecutionException e) {
+                    LOGGER.log(Level.WARNING, "Deletion of master "+dm.organization +" failed",e);
+                } finally {
+                    // TODO should we remote the master from the node on failure?
+                    itr.remove();
+                }
+            }
+        }
+
+        // Process pending delete master requests
+        for (Iterator<TerminateMasterRequest> itr = pendingTerminateMasterRequests.iterator(); itr.hasNext();) {
+            final TerminateMasterRequest dmr = itr.next();
+            try {
+                Map.Entry<Node, Master> nodeMaster = getNodeAndMasterFromOrg(dmr.organization);
+                Future<?> f = dmr.mns.terminate(nodeMaster.getKey().toComputer().getChannel(), dmr.organization, dmr.clean);
+                pendingTerminateMasters.add(dmr.toDeleteMaster(nodeMaster, f));
+
+                dmr.ml.onTerminateStarted(nodeMaster.getValue(), nodeMaster.getKey());
+
+                LOGGER.info(dmr.organization +" master deletion started");
+            } catch (InterruptedException e) {
+                throw new AssertionError(e); // since we confirmed that the future is already done
+            } catch (IOException e) {
+                LOGGER.log(Level.WARNING, "Deletion of master "+dmr.organization+" failed",e);
+            } finally {
+                // TODO should we remote the master from the node on failure?
+                itr.remove();
+            }
+        }
+
+
+        // If there are no pending requests to provision masters or provision masters nodes
+        // then check if nodes with no provisioned masters can be terminated
+        if (pendingPlannedMasterRequests.size() == 0 && pendingPlannedNodes.size() == 0) {
+            // Reap nodes with no provisioned masters
+            for (Node n : masterLabel.getNodes()) {
+                if (masters.get(n).size() == 0) {
+                    // TODO how do we determine if this node can be terminated, e.g. was provisioned from the Cloud
+                }
+            }
+        }
+    }
+
+    Map.Entry<Node, Master> getNodeAndMasterFromOrg(String organization) {
+        for (Map.Entry<Node, Master> e : masters.entries()) {
+            if (e.getValue().organization.equals(organization))
+                return e;
+        }
+        return null;
+    }
+
+
     @Extension
     public static class MasterProvisionerInvoker extends PeriodicWork {
         public static int INITIALDELAY = Integer.getInteger(MasterProvisioner.class.getName()+".initialDelay", LoadStatistics.CLOCK*10);
@@ -220,9 +328,10 @@ public class MasterProvisioner {
 
         @Override
         protected void doRun() {
-            Hudson h = Hudson.getInstance();
             MetaNectar mn = MetaNectar.getInstance();
-            mn.masterProvisioner.update();
+
+            mn.masterProvisioner.provision();
+            mn.masterProvisioner.delete();
         }
     }
 
@@ -231,12 +340,12 @@ public class MasterProvisioner {
         return masters;
     }
 
-    public void provision(MasterListener ml, MasterProvisioningService mns, String organization, URL metaNectarEndpoint,
+    public void provision(MasterProvisionListener ml, MasterProvisioningService mns, String organization, URL metaNectarEndpoint,
                           Map<String, String> properties) {
         pendingPlannedMasterRequests.add(new PlannedMasterRequest(ml, mns, organization, metaNectarEndpoint, properties));
     }
 
-    void delete(MasterListener ml, MasterProvisioningService mns, String organization) {
-        // TODO
+    void terminate(MasterTerminateListener ml, MasterProvisioningService mns, String organization, boolean clean) {
+        pendingTerminateMasterRequests.add(new TerminateMasterRequest(ml, mns, organization, clean));
     }
 }

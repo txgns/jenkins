@@ -38,28 +38,44 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
         MasterProvisioner.MasterProvisionerInvoker.RECURRENCEPERIOD = original;
     }
 
-    public static class Listener implements MasterProvisioner.MasterListener {
+    public static class ProvisionListener implements MasterProvisioner.MasterProvisionListener {
         CountDownLatch cdl;
 
-        Listener(CountDownLatch cdl) {
+        ProvisionListener(CountDownLatch cdl) {
             this.cdl = cdl;
         }
 
-        public void onProvisioningMaster(String organization, Node n) {
+        public void onProvisionStarted(String organization, Node n) {
             cdl.countDown();
         }
 
-        public void onErrorProvisioningMaster(String organization, Node n, Throwable error) {
+        public void onProvisionStartedError(String organization, Node n, Throwable error) {
         }
 
-        public void onProvisionedMaster(Master m, Node n) {
+        public void onProvisionCompleted(Master m, Node n) {
             cdl.countDown();
         }
 
-        public void onErrorProvisionedMaster(String organization, Node n, Throwable error) {
+        public void onProvisionCompletedError(String organization, Node n, Throwable error) {
+        }
+    }
+
+    public static class TerminateListener implements MasterProvisioner.MasterTerminateListener {
+        CountDownLatch cdl;
+
+        TerminateListener(CountDownLatch cdl) {
+            this.cdl = cdl;
         }
 
-        public void onUnprovisionedMaster(Master m, Node n) {
+        public void onTerminateStarted(Master m, Node n) {
+            cdl.countDown();
+        }
+
+        public void onTerminateCompleted(Master m, Node n) {
+            cdl.countDown();
+        }
+
+        public void onTerminateError(Master m, Node n, Throwable e) {
         }
     }
 
@@ -83,8 +99,16 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
             });
         }
 
-        public Future<?> delete(VirtualChannel channel, String organization, boolean clean) throws IOException, InterruptedException {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
+        public Future<?> terminate(VirtualChannel channel, String organization, boolean clean) throws IOException, InterruptedException {
+            return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
+                public Void call() throws Exception {
+                    Thread.sleep(delay);
+
+                    System.out.println("deleting master");
+
+                    return null;
+                }
+            });
         }
 
         public Map<String, Master> getProvisioned(VirtualChannel channel) {
@@ -126,6 +150,10 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
         _testProvision(4, 4);
     }
 
+    public void testProvisionSixMaster() throws Exception {
+        _testProvision(6, 4);
+    }
+
     public void testProvisionEightMaster() throws Exception {
         _testProvision(8, 4);
     }
@@ -137,7 +165,7 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
         metaNectar.clouds.add(cloud);
 
         CountDownLatch cdl = new CountDownLatch(2 * masters);
-        Listener l = new Listener(cdl);
+        ProvisionListener l = new ProvisionListener(cdl);
         Service s = new Service(100);
 
         Map<String, String> properties = new HashMap<String, String>();
@@ -152,5 +180,53 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
         assertEquals(nodes, metaNectar.masterProvisioner.masterLabel.getNodes().size());
         assertEquals(masters, metaNectar.masterProvisioner.getProvisionedMasters().size());
     }
+
+
+    public void testDeleteOneMaster() throws Exception {
+        _testDelete(1);
+    }
+
+    public void testDeleteTwoMaster() throws Exception {
+        _testDelete(2);
+    }
+
+    public void testDeleteFourMaster() throws Exception {
+        _testDelete(4);
+    }
+
+    public void testDeleteSixMaster() throws Exception {
+        _testDelete(6);
+    }
+
+    public void testDeleteEightMaster() throws Exception {
+        _testDelete(8);
+    }
+
+    private void _testDelete(int masters) throws Exception {
+        _testProvision(masters, 4);
+        _testDelete(masters, 4);
+    }
+
+    private void _testDelete(int masters, int nodesPerMaster) throws Exception {
+        int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
+
+        CountDownLatch cdl = new CountDownLatch(2 * masters);
+        TerminateListener l = new TerminateListener(cdl);
+        Service s = new Service(100);
+
+        for (int i = 0; i < masters; i++) {
+            metaNectar.masterProvisioner.terminate(l, s, "org" + i, true);
+        }
+
+        cdl.await(1, TimeUnit.MINUTES);
+
+        // TODO when node terminate is implemented need to assert that there are no nodes
+//        assertEquals(nodes, MyComputerListener.get().online.size());
+//        assertEquals(nodes, metaNectar.masterProvisioner.masterLabel.getNodes().size());
+
+        assertEquals(0, metaNectar.masterProvisioner.getProvisionedMasters().size());
+    }
+
+
 
 }

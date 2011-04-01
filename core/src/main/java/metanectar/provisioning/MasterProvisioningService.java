@@ -30,16 +30,16 @@ public interface MasterProvisioningService {
                                                Map<String, String> properties) throws IOException, InterruptedException;
 
     /**
-     * Delete a provisioned master.
+     * Terminate a provisioned master.
      *
-     * @param channel the channel on which remote execution can be performed to delete a provisioned masters.
+     * @param channel the channel on which remote execution can be performed to terminate a provisioned masters.
      * @param organization the organization associated with the master.
      * @param clean if true then any local resources, such as home and workspace directories, will be cleaned up.
-     * @return a future, when done the provisioned master is considered deleted.
+     * @return a future, when done the provisioned master is considered terminated.
      * @throws IOException
      * @throws InterruptedException
      */
-    Future<?> delete(VirtualChannel channel, String organization, boolean clean) throws IOException, InterruptedException;
+    Future<?> terminate(VirtualChannel channel, String organization, boolean clean) throws IOException, InterruptedException;
 
     /**
      * Get the provisioned masters.

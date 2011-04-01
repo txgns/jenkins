@@ -1,16 +1,11 @@
 package metanectar.provisioning;
 
-import com.google.common.collect.Maps;
-import hudson.Extension;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import hudson.model.*;
-import hudson.model.listeners.ItemListener;
 import hudson.remoting.VirtualChannel;
-import hudson.slaves.ComputerListener;
 import hudson.tasks.Mailer;
 import metanectar.model.JenkinsServer;
-import metanectar.model.MetaNectar;
 import metanectar.test.MetaNectarTestCase;
-import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 
 import java.io.IOException;
 import java.net.URL;
@@ -48,28 +43,25 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
         MasterProvisioner.MasterProvisionerInvoker.RECURRENCEPERIOD = original;
     }
 
-    public static class Listener implements MasterProvisioner.MasterListener {
+    public static class Listener implements MasterProvisioner.MasterProvisionListener {
         CountDownLatch cdl;
 
         Listener(CountDownLatch cdl) {
             this.cdl = cdl;
         }
 
-        public void onProvisioningMaster(String organization, Node n) {
+        public void onProvisionStarted(String organization, Node n) {
             cdl.countDown();
         }
 
-        public void onErrorProvisioningMaster(String organization, Node n, Throwable error) {
+        public void onProvisionStartedError(String organization, Node n, Throwable error) {
         }
 
-        public void onProvisionedMaster(Master m, Node n) {
+        public void onProvisionCompleted(Master m, Node n) {
             cdl.countDown();
         }
 
-        public void onErrorProvisionedMaster(String organization, Node n, Throwable error) {
-        }
-
-        public void onUnprovisionedMaster(Master m, Node n) {
+        public void onProvisionCompletedError(String organization, Node n, Throwable error) {
         }
     }
 
@@ -98,7 +90,7 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
             });
         }
 
-        public Future<?> delete(VirtualChannel channel, String organization, boolean clean) throws IOException, InterruptedException {
+        public Future<?> terminate(VirtualChannel channel, String organization, boolean clean) throws IOException, InterruptedException {
             return null;  //To change body of implemented methods use File | Settings | File Templates.
         }
 
@@ -140,6 +132,8 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
     }
 
     public void _testProvision(int masters) throws Exception {
+        HtmlPage wc = new WebClient().goTo("/");
+
         TestSlaveCloud cloud = new TestSlaveCloud(this, 100);
         metaNectar.clouds.add(cloud);
 
@@ -156,7 +150,6 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
         // Wait for master to be provisioned
         cdl.await(1, TimeUnit.MINUTES);
 
-        Thread.sleep(1000);
         int retry = 0;
         Set<JenkinsServer> connected = new HashSet<JenkinsServer>();
         while (true) {
