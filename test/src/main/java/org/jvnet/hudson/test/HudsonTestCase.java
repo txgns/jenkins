@@ -32,6 +32,7 @@ import hudson.Extension;
 import hudson.ExtensionList;
 import hudson.FilePath;
 import hudson.Functions;
+import hudson.Functions.ThreadGroupMap;
 import hudson.Launcher;
 import hudson.Launcher.LocalLauncher;
 import hudson.Main;
@@ -109,6 +110,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
+import java.lang.management.ThreadInfo;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -130,7 +132,12 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.jar.Manifest;
 import java.util.logging.Filter;
 import java.util.logging.Level;
@@ -385,8 +392,27 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         System.out.println("=== Starting "+ getClass().getSimpleName() + "." + getName());
         // so that test code has all the access to the system
         SecurityContextHolder.getContext().setAuthentication(ACL.SYSTEM);
-        super.runTest();
+
+        try {
+            super.runTest();
+        } catch (Throwable t) {
+            // allow the late attachment of a debugger in case of a failure. Useful
+            // for diagnosing a rare failure
+            try {
+                throw new BreakException();
+            } catch (BreakException e) {}
+
+            // dump threads
+            ThreadInfo[] threadInfos = Functions.getThreadInfos();
+            ThreadGroupMap m = Functions.sortThreadsAndGetGroupMap(threadInfos);
+            for (ThreadInfo ti : threadInfos) {
+                System.err.println(Functions.dumpThreadInfo(ti, m));
+            }
+            throw t;
+        }
     }
+
+    public static class BreakException extends Exception {}
 
     public String getIconFileName() {
         return null;
@@ -450,6 +476,13 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         context.setMimeTypes(MIME_TYPES);
 
         SocketConnector connector = new SocketConnector();
+        server.setThreadPool(new ThreadPoolImpl(new ThreadPoolExecutor(1, 10, 10L, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),new ThreadFactory() {
+            public Thread newThread(Runnable r) {
+                Thread t = new Thread(r);
+                t.setName("Jetty Thread Pool");
+                return t;
+            }
+        })));
         server.addConnector(connector);
         server.addUserRealm(configureUserRealm());
         server.start();
@@ -765,7 +798,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
      * This is useful during debugging a test so that one can inspect the state of Hudson through the web browser.
      */
     public void interactiveBreak() throws Exception {
-        System.out.println("Hudson is running at http://localhost:"+localPort+"/");
+        System.out.println("Jenkins is running at http://localhost:"+localPort+"/");
         new BufferedReader(new InputStreamReader(System.in)).readLine();
     }
 
@@ -840,6 +873,21 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         computerConnectorTester.connector = before;
         submit(createWebClient().goTo("self/computerConnectorTester/configure").getFormByName("config"));
         return (C)computerConnectorTester.connector;
+    }
+
+    protected User configRoundtrip(User u) throws Exception {
+        submit(createWebClient().goTo(u.getUrl()+"/configure").getFormByName("config"));
+        return u;
+    }
+        
+    protected <N extends Node> N configRoundtrip(N node) throws Exception {
+        submit(createWebClient().goTo("/computer/"+node.getNodeName()+"/configure").getFormByName("config"));
+        return (N)hudson.getNode(node.getNodeName());
+    }
+
+    protected <V extends View> V configRoundtrip(V view) throws Exception {
+        submit(createWebClient().getPage(view, "configure").getFormByName("viewConfig"));
+        return view;
     }
 
 
