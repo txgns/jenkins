@@ -283,20 +283,18 @@ public class MetaNectar extends Hudson {
      * Provision a new master and issue a grant for automatic approval.
      *
      */
-    public void provisionMaster(MasterProvisioner.MasterProvisionListener ml, MasterProvisioningService mns,
-                                String organization) {
-        provisionMaster(ml, mns, organization, true);
+    public void provisionMaster(MasterProvisioner.MasterProvisionListener ml, String organization) {
+        provisionMaster(ml, organization, true);
     }
 
     /**
      * Provision a new masters.
      */
-    public void provisionMaster(MasterProvisioner.MasterProvisionListener ml, MasterProvisioningService mns,
-                                String organization, boolean grant) {
+    public void provisionMaster(MasterProvisioner.MasterProvisionListener ml, String organization, boolean grant) {
         Map<String, String> properties = new HashMap<String, String>();
         if (grant)
             properties.put(GRANT_PROPERTY, createGrantForMaster(organization));
-        masterProvisioner.provision(ml, mns, organization, getRootUrlAsURL(), properties);
+        masterProvisioner.provision(ml, organization, getRootUrlAsURL(), properties);
     }
 
     /**

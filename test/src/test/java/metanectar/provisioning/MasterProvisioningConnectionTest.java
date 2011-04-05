@@ -71,7 +71,7 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
         }
     }
 
-    public class Service implements MasterProvisioningService {
+    public static class Service implements MasterProvisioningService {
 
         private final int delay;
 
@@ -185,15 +185,15 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
         CountDownLatch onEventCdl = new CountDownLatch(masters);
         metaNectar.configureNectarAgentListener(new TestAgentProtocolListener(new MetaNectar.AgentProtocolListener(metaNectar), onEventCdl, onEventCdl));
 
-        TestSlaveCloud cloud = new TestSlaveCloud(this, 100);
+        Service s = new Service(100);
+        TestSlaveCloud cloud = new TestSlaveCloud(this, 4, s, 100);
         metaNectar.clouds.add(cloud);
 
         CountDownLatch masterProvisionCdl = new CountDownLatch(2 * masters);
         Listener l = new Listener(masterProvisionCdl);
-        Service s = new Service(100);
 
         for (int i = 0; i < masters; i++) {
-            metaNectar.provisionMaster(l, s, "org" + i);
+            metaNectar.provisionMaster(l, "org" + i);
         }
 
         // Wait for masters to be provisioned
@@ -247,15 +247,15 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
         CountDownLatch onEventCdl = new CountDownLatch(2 * masters);
         metaNectar.configureNectarAgentListener(new TestApprovingAgentProtocolListener(new MetaNectar.AgentProtocolListener(metaNectar), onEventCdl, onEventCdl));
 
-        TestSlaveCloud cloud = new TestSlaveCloud(this, 100);
+        Service s = new Service(100);
+        TestSlaveCloud cloud = new TestSlaveCloud(this, 4, s, 100);
         metaNectar.clouds.add(cloud);
 
         CountDownLatch masterProvisionCdl = new CountDownLatch(2 * masters);
         Listener l = new Listener(masterProvisionCdl);
-        Service s = new Service(100);
 
         for (int i = 0; i < masters; i++) {
-            metaNectar.provisionMaster(l, s, "org" + i, false);
+            metaNectar.provisionMaster(l, "org" + i, false);
         }
 
         // Wait for masters to be provisioned

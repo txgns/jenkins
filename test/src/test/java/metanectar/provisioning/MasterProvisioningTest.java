@@ -79,7 +79,7 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
         }
     }
 
-    public class Service implements MasterProvisioningService {
+    public static class Service implements MasterProvisioningService {
 
         private final int delay;
 
@@ -161,17 +161,17 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
     private void _testProvision(int masters, int nodesPerMaster) throws Exception {
         int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
 
-        TestSlaveCloud cloud = new TestSlaveCloud(this, 100);
+        Service s = new Service(100);
+        TestSlaveCloud cloud = new TestSlaveCloud(this, nodesPerMaster, s, 100);
         metaNectar.clouds.add(cloud);
 
         CountDownLatch cdl = new CountDownLatch(2 * masters);
         ProvisionListener l = new ProvisionListener(cdl);
-        Service s = new Service(100);
 
         Map<String, String> properties = new HashMap<String, String>();
         properties.put("key", "value");
         for (int i = 0; i < masters; i++) {
-            metaNectar.masterProvisioner.provision(l, s, "org" + i, new URL("http://test/"), properties);
+            metaNectar.masterProvisioner.provision(l, "org" + i, new URL("http://test/"), properties);
         }
 
         cdl.await(1, TimeUnit.MINUTES);
@@ -212,10 +212,9 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
 
         CountDownLatch cdl = new CountDownLatch(2 * masters);
         TerminateListener l = new TerminateListener(cdl);
-        Service s = new Service(100);
 
         for (int i = 0; i < masters; i++) {
-            metaNectar.masterProvisioner.terminate(l, s, "org" + i, true);
+            metaNectar.masterProvisioner.terminate(l, "org" + i, true);
         }
 
         cdl.await(1, TimeUnit.MINUTES);

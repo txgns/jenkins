@@ -15,4 +15,19 @@ public class Master {
         this.organization = organization;
         this.endpoint = endpoint;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (getClass() != o.getClass()) return false;
+
+        Master master = (Master) o;
+
+        return organization.equals(master.organization);
+    }
+
+    @Override
+    public int hashCode() {
+        return organization.hashCode();
+    }
 }
