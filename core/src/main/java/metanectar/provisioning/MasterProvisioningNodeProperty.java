@@ -1,9 +1,13 @@
 package metanectar.provisioning;
 
+import hudson.model.Descriptor;
 import hudson.model.Node;
 import hudson.model.Queue;
 import hudson.model.queue.CauseOfBlockage;
 import hudson.slaves.NodeProperty;
+import net.sf.json.JSONObject;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.StaplerRequest;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -43,6 +47,7 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
      */
     private MasterProvisioningService mps;
 
+    @DataBoundConstructor
     public MasterProvisioningNodeProperty(int maxMasters, MasterProvisioningService mps) {
         this.provisioned = new HashSet<Master>();
         this.maxMasters = maxMasters;
@@ -73,7 +78,15 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
         provisioned.remove(m);
     }
 
-    // TODO use the NodeProperty reconfigure(StaplerRequest request, JSONObject form) { return this; }
+    public NodeProperty<?> reconfigure(StaplerRequest request, JSONObject form) throws Descriptor.FormException {
+        NodeProperty<?> that = super.reconfigure(request, form);
+        if (that == null)
+            return null;
+
+        // Pass on the provisioned masters
+        ((MasterProvisioningNodeProperty)that).getProvisioned().addAll(this.getProvisioned());
+        return that;
+    }
 
     public CauseOfBlockage canTake(Queue.Task task) {
         return new CauseOfBlockage() {
