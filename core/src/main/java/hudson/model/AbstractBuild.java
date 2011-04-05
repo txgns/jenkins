@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi, Yahoo! Inc.
+ * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi, Yahoo! Inc., CloudBees, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,8 @@ import hudson.Functions;
 import hudson.Launcher;
 import hudson.Util;
 import hudson.FilePath;
+import hudson.console.AnnotatedLargeText;
+import hudson.console.ExpandableDetailsNote;
 import hudson.slaves.WorkspaceList;
 import hudson.slaves.NodeProperty;
 import hudson.slaves.WorkspaceList.Lease;
@@ -47,6 +49,7 @@ import hudson.tasks.Builder;
 import hudson.tasks.Fingerprinter.FingerprintAction;
 import hudson.tasks.Publisher;
 import hudson.tasks.BuildStepMonitor;
+import hudson.tasks.BuildTrigger;
 import hudson.tasks.test.AbstractTestResultAction;
 import hudson.util.AdaptedIterator;
 import hudson.util.Iterators;
@@ -63,6 +66,7 @@ import com.cloudbees.hudson.model.PsuedoNode;
 import javax.servlet.ServletException;
 import java.io.File;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -418,12 +422,31 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
                 workspace = lease.path.getRemote();
                 node.getFileSystemProvisioner().prepareWorkspace(AbstractBuild.this,lease.path,listener);
 
+                preCheckout(launcher,listener);
                 checkout(listener);
 
                 if (!preBuild(listener,project.getProperties()))
                     return Result.FAILURE;
 
                 Result result = doRun(listener);
+
+                Computer c = node.toComputer();
+                if (c==null || c.isOffline()) {
+                    // As can be seen in HUDSON-5073, when a build fails because of the slave connectivity problem,
+                    // error message doesn't point users to the slave. So let's do it here.
+                    listener.hyperlink("/computer/"+builtOn+"/log","Looks like the node went offline during the build. Check the slave log for the details.");
+
+                    if (c != null) {
+                        // grab the end of the log file. This might not work very well if the slave already
+                        // starts reconnecting. Fixing this requires a ring buffer in slave logs.
+                        AnnotatedLargeText<Computer> log = c.getLogText();
+                        StringWriter w = new StringWriter();
+                        log.writeHtmlTo(Math.max(0,c.getLogFile().length()-10240),w);
+
+                        listener.getLogger().print(ExpandableDetailsNote.encodeTo("details",w.toString()));
+                        listener.getLogger().println();
+                    }
+                }
 
                 // kill run-away processes that are left
                 // use multiple environment variables so that people can escape this massacre by overriding an environment
@@ -477,6 +500,25 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
             return l;
         }
 
+        
+        /**
+         * Run preCheckout on {@link BuildWrapper}s
+         * 
+         * @param launcher
+         * 		The launcher, never null.
+         * @param listener
+         * 		Never null, connected to the main build output.
+         * @throws IOException
+         * @throws InterruptedException
+         */
+        private void preCheckout(Launcher launcher, BuildListener listener) throws IOException, InterruptedException{
+        	if (project instanceof BuildableItemWithBuildWrappers) {
+                BuildableItemWithBuildWrappers biwbw = (BuildableItemWithBuildWrappers) project;
+                for (BuildWrapper bw : biwbw.getBuildWrappersList())
+                    bw.preCheckout(AbstractBuild.this,launcher,listener);
+            }
+        }
+        
         private void checkout(BuildListener listener) throws Exception {
             try {
                 for (int retryCount=project.getScmCheckoutRetryCount(); ; retryCount--) {
@@ -553,7 +595,8 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
         }
 
         public void cleanUp(BuildListener listener) throws Exception {
-            // default is no-op
+            BuildTrigger.execute(AbstractBuild.this, listener);
+            buildEnvironments = null;
         }
 
         /**
@@ -726,7 +769,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
 
     /**
      * Builds up a set of variable names that contain sensitive values that
-     * should not be exposed. The expection is that this set is populated with
+     * should not be exposed. The expectation is that this set is populated with
      * keys returned by {@link #getBuildVariables()} that should have their
      * values masked for display purposes.
      *
@@ -884,16 +927,12 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
 
         return new Iterable<AbstractBuild<?, ?>>() {
             public Iterator<AbstractBuild<?, ?>> iterator() {
-                return new Iterators.FilterIterator<AbstractBuild<?,?>>(
-                        new AdaptedIterator<Integer,AbstractBuild<?,?>>(nums) {
-                            protected AbstractBuild<?, ?> adapt(Integer item) {
-                                return that.getBuildByNumber(item);
-                            }
-                        }) {
-                    protected boolean filter(AbstractBuild<?,?> build) {
-                        return build!=null;
-                    }
-                };
+                return Iterators.removeNull(
+                    new AdaptedIterator<Integer,AbstractBuild<?,?>>(nums) {
+                        protected AbstractBuild<?, ?> adapt(Integer item) {
+                            return that.getBuildByNumber(item);
+                        }
+                    });
             }
         };
     }

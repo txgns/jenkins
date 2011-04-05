@@ -23,41 +23,83 @@
  */
 package org.jvnet.hudson.test;
 
-import com.gargoylesoftware.htmlunit.DefaultCssErrorHandler;
-import com.gargoylesoftware.htmlunit.javascript.HtmlUnitContextFactory;
-import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLHttpRequest;
-import hudson.*;
+import hudson.ClassicPluginStrategy;
+import hudson.CloseProofOutputStream;
+import hudson.DNSMultiCast;
+import hudson.DescriptorExtensionList;
+import hudson.EnvVars;
+import hudson.Extension;
+import hudson.ExtensionList;
+import hudson.FilePath;
+import hudson.Functions;
+import hudson.Launcher;
+import hudson.Launcher.LocalLauncher;
+import hudson.Main;
+import hudson.PluginManager;
 import hudson.Util;
-import hudson.model.*;
+import hudson.WebAppMain;
+import hudson.matrix.MatrixBuild;
+import hudson.matrix.MatrixProject;
+import hudson.matrix.MatrixRun;
+import hudson.maven.MavenBuild;
+import hudson.maven.MavenEmbedder;
+import hudson.maven.MavenModule;
+import hudson.maven.MavenModuleSet;
+import hudson.maven.MavenModuleSetBuild;
+import hudson.model.AbstractBuild;
+import hudson.model.AbstractProject;
+import hudson.model.BuildListener;
+import hudson.model.Computer;
+import hudson.model.Describable;
+import hudson.model.Descriptor;
+import hudson.model.DownloadService;
+import hudson.model.Executor;
+import hudson.model.FreeStyleBuild;
+import hudson.model.FreeStyleProject;
+import hudson.model.Hudson;
+import hudson.model.Item;
+import hudson.model.JDK;
+import hudson.model.Job;
+import hudson.model.Label;
+import hudson.model.Node;
+import hudson.model.Node.Mode;
 import hudson.model.Queue.Executable;
+import hudson.model.Result;
+import hudson.model.RootAction;
+import hudson.model.Run;
+import hudson.model.Saveable;
+import hudson.model.TaskListener;
+import hudson.model.UpdateSite;
+import hudson.model.User;
+import hudson.model.View;
+import hudson.remoting.Which;
+import hudson.security.ACL;
 import hudson.security.AbstractPasswordBasedSecurityRealm;
 import hudson.security.GroupDetails;
 import hudson.security.SecurityRealm;
-import hudson.tasks.Builder;
-import hudson.tasks.Publisher;
-import hudson.tools.ToolProperty;
-import hudson.remoting.Which;
-import hudson.Launcher.LocalLauncher;
-import hudson.matrix.MatrixProject;
-import hudson.matrix.MatrixBuild;
-import hudson.matrix.MatrixRun;
-import hudson.maven.MavenModuleSet;
-import hudson.maven.MavenEmbedder;
-import hudson.model.Node.Mode;
 import hudson.security.csrf.CrumbIssuer;
 import hudson.slaves.CommandLauncher;
+import hudson.slaves.ComputerConnector;
+import hudson.slaves.ComputerListener;
 import hudson.slaves.DumbSlave;
 import hudson.slaves.RetentionStrategy;
-import hudson.tasks.Mailer;
-import hudson.tasks.Maven;
 import hudson.tasks.Ant;
 import hudson.tasks.Ant.AntInstallation;
+import hudson.tasks.BuildWrapper;
+import hudson.tasks.BuildWrapperDescriptor;
+import hudson.tasks.Builder;
+import hudson.tasks.Mailer;
+import hudson.tasks.Mailer.DescriptorImpl;
+import hudson.tasks.Maven;
 import hudson.tasks.Maven.MavenInstallation;
+import hudson.tasks.Publisher;
+import hudson.tools.ToolProperty;
 import hudson.util.PersistedList;
 import hudson.util.ReflectionUtils;
 import hudson.util.StreamTaskListener;
 import hudson.util.jna.GNUCLibrary;
 
+import java.beans.PropertyDescriptor;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -66,44 +108,46 @@ import java.lang.annotation.Annotation;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.jar.Manifest;
 import java.util.logging.Filter;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-import java.beans.PropertyDescriptor;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletContextEvent;
 
 import junit.framework.TestCase;
-
+import net.sf.json.JSONObject;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.ContextFactory.Listener;
+
 import org.acegisecurity.AuthenticationException;
 import org.acegisecurity.BadCredentialsException;
 import org.acegisecurity.GrantedAuthority;
+import org.acegisecurity.context.SecurityContextHolder;
 import org.acegisecurity.userdetails.UserDetails;
 import org.acegisecurity.userdetails.UsernameNotFoundException;
+import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.resolver.AbstractArtifactResolutionException;
 import org.jvnet.hudson.test.HudsonHomeLoader.CopyExisting;
@@ -116,9 +160,9 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.Dispatcher;
 import org.kohsuke.stapler.MetaClass;
 import org.kohsuke.stapler.MetaClassLoader;
+import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
-import org.kohsuke.stapler.Stapler;
 import org.mortbay.jetty.MimeTypes;
 import org.mortbay.jetty.Server;
 import org.mortbay.jetty.bio.SocketConnector;
@@ -137,21 +181,24 @@ import org.xml.sax.SAXException;
 
 import com.gargoylesoftware.htmlunit.AjaxController;
 import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.DefaultCssErrorHandler;
 import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.html.DomNode;
+import com.gargoylesoftware.htmlunit.html.HtmlButton;
+import com.gargoylesoftware.htmlunit.html.HtmlElement;
+import com.gargoylesoftware.htmlunit.html.HtmlForm;
+import com.gargoylesoftware.htmlunit.html.HtmlInput;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.javascript.HtmlUnitContextFactory;
+import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLHttpRequest;
 import com.gargoylesoftware.htmlunit.xml.XmlPage;
-import com.gargoylesoftware.htmlunit.html.*;
-import hudson.maven.MavenBuild;
-import hudson.maven.MavenModule;
-import hudson.maven.MavenModuleSetBuild;
-import hudson.slaves.ComputerListener;
-import java.util.concurrent.CountDownLatch;
 
 /**
  * Base class for all Hudson test cases.
  *
- * @see <a href="http://wiki.hudson-ci.org/display/HUDSON/Unit+Test">Wiki article about unit testing in Hudson</a>
+ * @see <a href="http://wiki.jenkins-ci.org/display/JENKINS/Unit+Test">Wiki article about unit testing in Hudson</a>
  * @author Kohsuke Kawaguchi
  */
 public abstract class HudsonTestCase extends TestCase implements RootAction {
@@ -202,6 +249,8 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
      * which runs faster.
      */
     public boolean useLocalPluginManager;
+
+    public ComputerConnectorTester computerConnectorTester = new ComputerConnectorTester(this);
 
 
     protected HudsonTestCase(String name) {
@@ -260,7 +309,9 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
 
         // cause all the descriptors to reload.
         // ideally we'd like to reset them to properly emulate the behavior, but that's not possible.
-        Mailer.descriptor().setHudsonUrl(null);
+        DescriptorImpl desc = Mailer.descriptor();
+        // prevent NPE with eclipse 
+        if (desc != null) Mailer.descriptor().setHudsonUrl(null);
         for( Descriptor d : hudson.getExtensionList(Descriptor.class) )
             d.load();
     }
@@ -313,6 +364,8 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     @Override
     protected void runTest() throws Throwable {
         System.out.println("=== Starting "+ getClass().getSimpleName() + "." + getName());
+        // so that test code has all the access to the system
+        SecurityContextHolder.getContext().setAuthentication(ACL.SYSTEM);
         super.runTest();
     }
 
@@ -391,14 +444,31 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
      * Returns the older default Maven, while still allowing specification of other bundled Mavens.
      */
     protected MavenInstallation configureDefaultMaven() throws Exception {
-	return configureDefaultMaven("apache-maven-2.2.1", MavenInstallation.MAVEN_20);
+        return configureDefaultMaven("apache-maven-2.2.1", MavenInstallation.MAVEN_20);
     }
+    
+    protected MavenInstallation configureMaven3() throws Exception {
+        MavenInstallation mvn = configureDefaultMaven("apache-maven-3.0.1", MavenInstallation.MAVEN_30);
+        
+        MavenInstallation m3 = new MavenInstallation("apache-maven-3.0.1",mvn.getHome(), NO_PROPERTIES);
+        hudson.getDescriptorByType(Maven.DescriptorImpl.class).setInstallations(m3);
+        return m3;
+    }    
     
     /**
      * Locates Maven2 and configure that as the only Maven in the system.
      */
     protected MavenInstallation configureDefaultMaven(String mavenVersion, int mavenReqVersion) throws Exception {
         // first if we are running inside Maven, pick that Maven, if it meets the criteria we require..
+        // does it exists in the buildDirectory see maven-junit-plugin systemProperties 
+        // buildDirectory -> ${project.build.directory} (so no reason to be null ;-) )
+        String buildDirectory = System.getProperty( "buildDirectory", "./target/classes/" );
+        File mavenAlreadyInstalled = new File(buildDirectory, mavenVersion);
+        if (mavenAlreadyInstalled.exists()) {
+            MavenInstallation mavenInstallation = new MavenInstallation("default",mavenAlreadyInstalled.getAbsolutePath(), NO_PROPERTIES);
+            hudson.getDescriptorByType(Maven.DescriptorImpl.class).setInstallations(mavenInstallation);
+            return mavenInstallation;
+        }
         String home = System.getProperty("maven.home");
         if(home!=null) {
             MavenInstallation mavenInstallation = new MavenInstallation("default",home, NO_PROPERTIES);
@@ -414,7 +484,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
                 "To avoid a performance hit, set the system property 'maven.home' to point to a Maven2 installation.");
         FilePath mvn = hudson.getRootPath().createTempFile("maven", "zip");
         mvn.copyFrom(HudsonTestCase.class.getClassLoader().getResource(mavenVersion + "-bin.zip"));
-        File mvnHome = createTmpDir();
+        File mvnHome =  new File(buildDirectory);//createTmpDir();
         mvn.unzip(new FilePath(mvnHome));
         // TODO: switch to tar that preserves file permissions more easily
         if(!Functions.isWindows())
@@ -669,12 +739,24 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     }
 
     /**
+     * Hits the Hudson system configuration and submits without any modification.
+     */
+    protected void configRoundtrip() throws Exception {
+        submit(createWebClient().goTo("configure").getFormByName("config"));
+    }
+
+    /**
      * Loads a configuration page and submits it without any modifications, to
      * perform a round-trip configuration test.
      * <p>
-     * See http://wiki.hudson-ci.org/display/HUDSON/Unit+Test#UnitTest-Configurationroundtriptesting
+     * See http://wiki.jenkins-ci.org/display/JENKINS/Unit+Test#UnitTest-Configurationroundtriptesting
      */
     protected <P extends Job> P configRoundtrip(P job) throws Exception {
+        submit(createWebClient().getPage(job,"configure").getFormByName("config"));
+        return job;
+    }
+
+    protected <P extends Item> P configRoundtrip(P job) throws Exception {
         submit(createWebClient().getPage(job,"configure").getFormByName("config"));
         return job;
     }
@@ -685,7 +767,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     protected <B extends Builder> B configRoundtrip(B before) throws Exception {
         FreeStyleProject p = createFreeStyleProject();
         p.getBuildersList().add(before);
-        configRoundtrip(p);
+        configRoundtrip((Item)p);
         return (B)p.getBuildersList().get(before.getClass());
     }
 
@@ -695,8 +777,14 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     protected <P extends Publisher> P configRoundtrip(P before) throws Exception {
         FreeStyleProject p = createFreeStyleProject();
         p.getPublishersList().add(before);
-        configRoundtrip(p);
+        configRoundtrip((Item)p);
         return (P)p.getPublishersList().get(before.getClass());
+    }
+
+    protected <C extends ComputerConnector> C configRoundtrip(C before) throws Exception {
+        computerConnectorTester.connector = before;
+        submit(createWebClient().goTo("self/computerConnectorTester/configure").getFormByName("config"));
+        return (C)computerConnectorTester.connector;
     }
 
 
@@ -1203,9 +1291,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
 
                     String dependencies = m.getMainAttributes().getValue("Plugin-Dependencies");
                     if(dependencies!=null) {
-                        MavenEmbedder embedder = new MavenEmbedder(null);
-                        embedder.setClassLoader(getClass().getClassLoader());
-                        embedder.start();
+                        MavenEmbedder embedder = new MavenEmbedder(getClass().getClassLoader(), null);
                         for( String dep : dependencies.split(",")) {
                             String[] tokens = dep.split(":");
                             String artifactId = tokens[0];
@@ -1243,7 +1329,6 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
                                 FileUtils.copyFile(dependencyJar, dst);
                             }
                         }
-                        embedder.stop();
                     }
                 }
             }
@@ -1278,35 +1363,28 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
 
 
     /**
-     * Executes the given closure on the server, in the context of an HTTP request.
-     * This is useful for testing some methods that require {@link StaplerRequest} and {@link StaplerResponse}.
+     * Executes the given closure on the server, by the servlet request handling thread,
+     * in the context of an HTTP request.
      *
      * <p>
-     * The closure will get the request and response as parameters.
+     * In {@link HudsonTestCase}, a thread that's executing the test code is different from the thread
+     * that carries out HTTP requests made through {@link WebClient}. But sometimes you want to
+     * make assertions and other calls with side-effect from within the request handling thread.
+     *
+     * <p>
+     * This method allows you to do just that. It is useful for testing some methods that
+     * require {@link StaplerRequest} and {@link StaplerResponse}, or getting the credential
+     * of the current user (via {@link Hudson#getAuthentication()}, and so on.
+     *
+     * @param c
+     *      The closure to be executed on the server.
+     * @return
+     *      The return value from the closure.
+     * @throws Exception
+     *      If a closure throws any exception, that exception will be carried forward.
      */
-    public <V> V executeOnServer(final Callable<V> c) throws Exception {
-        final Exception[] t = new Exception[1];
-        final List<V> r = new ArrayList<V>(1);  // size 1 list
-
-        ClosureExecuterAction cea = hudson.getExtensionList(RootAction.class).get(ClosureExecuterAction.class);
-        UUID id = UUID.randomUUID();
-        cea.add(id,new Runnable() {
-            public void run() {
-                try {
-                    StaplerResponse rsp = Stapler.getCurrentResponse();
-                    rsp.setStatus(200);
-                    rsp.setContentType("text/html");
-                    r.add(c.call());
-                } catch (Exception e) {
-                    t[0] = e;
-                }
-            }
-        });
-        createWebClient().goTo("closures/?uuid="+id);
-
-        if (t[0]!=null)
-            throw t[0];
-        return r.get(0);
+    public <V> V executeOnServer(Callable<V> c) throws Exception {
+        return createWebClient().executeOnServer(c);
     }
 
     /**
@@ -1404,6 +1482,52 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         public WebClient login(String username) throws Exception {
             login(username,username);
             return this;
+        }
+
+        /**
+         * Executes the given closure on the server, by the servlet request handling thread,
+         * in the context of an HTTP request.
+         *
+         * <p>
+         * In {@link HudsonTestCase}, a thread that's executing the test code is different from the thread
+         * that carries out HTTP requests made through {@link WebClient}. But sometimes you want to
+         * make assertions and other calls with side-effect from within the request handling thread.
+         *
+         * <p>
+         * This method allows you to do just that. It is useful for testing some methods that
+         * require {@link StaplerRequest} and {@link StaplerResponse}, or getting the credential
+         * of the current user (via {@link Hudson#getAuthentication()}, and so on.
+         *
+         * @param c
+         *      The closure to be executed on the server.
+         * @return
+         *      The return value from the closure.
+         * @throws Exception
+         *      If a closure throws any exception, that exception will be carried forward.
+         */
+        public <V> V executeOnServer(final Callable<V> c) throws Exception {
+            final Exception[] t = new Exception[1];
+            final List<V> r = new ArrayList<V>(1);  // size 1 list
+
+            ClosureExecuterAction cea = hudson.getExtensionList(RootAction.class).get(ClosureExecuterAction.class);
+            UUID id = UUID.randomUUID();
+            cea.add(id,new Runnable() {
+                public void run() {
+                    try {
+                        StaplerResponse rsp = Stapler.getCurrentResponse();
+                        rsp.setStatus(200);
+                        rsp.setContentType("text/html");
+                        r.add(c.call());
+                    } catch (Exception e) {
+                        t[0] = e;
+                    }
+                }
+            });
+            goTo("closures/?uuid="+id);
+
+            if (t[0]!=null)
+                throw t[0];
+            return r.get(0);
         }
 
         public HtmlPage search(String q) throws IOException, SAXException {
@@ -1635,5 +1759,38 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         // DNS multicast support takes up a lot of time during tests, so just disable it altogether
         // this also prevents tests from falsely advertising Hudson
         DNSMultiCast.disabled = true;
+    }
+
+    public static class TestBuildWrapper extends BuildWrapper {
+        public Result buildResultInTearDown;
+
+        @Override
+        public Environment setUp(AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
+            return new BuildWrapper.Environment() {
+                @Override
+                public boolean tearDown(AbstractBuild build, BuildListener listener) throws IOException, InterruptedException {
+                    buildResultInTearDown = build.getResult();
+                    return true;
+                }
+            };
+        }
+
+        @Extension
+        public static class TestBuildWrapperDescriptor extends BuildWrapperDescriptor {
+            @Override
+            public boolean isApplicable(AbstractProject<?, ?> project) {
+                return true;
+            }
+
+            @Override
+            public BuildWrapper newInstance(StaplerRequest req, JSONObject formData) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public String getDisplayName() {
+                return this.getClass().getName();
+            }
+        }
     }
 }

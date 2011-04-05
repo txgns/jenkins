@@ -25,9 +25,12 @@ package hudson.util;
 
 import hudson.EnvVars;
 import hudson.Functions;
+import hudson.Launcher;
 import hudson.ProxyConfiguration;
 import hudson.Util;
 import hudson.FilePath;
+import hudson.model.AbstractBuild;
+import hudson.model.BuildListener;
 import hudson.tasks.Builder;
 import static hudson.Util.fixEmpty;
 import hudson.model.Hudson;
@@ -179,8 +182,10 @@ public abstract class FormValidation extends IOException implements HttpResponse
         if (e==null)    return _errorWithMarkup(Util.escape(message),kind);
 
         return _errorWithMarkup(Util.escape(message)+
-            " <a href='#' class='showDetails'>(show details)</a><pre style='display:none'>"
-                  + Functions.printThrowable(e) +
+            " <a href='#' class='showDetails'>"
+            + Messages.FormValidation_Error_Details()
+            + "</a><pre style='display:none'>"
+            + Functions.printThrowable(e) +
             "</pre>",kind
         );
     }
@@ -221,7 +226,7 @@ public abstract class FormValidation extends IOException implements HttpResponse
     private static FormValidation _errorWithMarkup(final String message, final Kind kind) {
         if(message==null)
             return ok();
-        return new FormValidation(kind) {
+        return new FormValidation(kind, message) {
             public String renderHtml() {
                 // 1x16 spacer needed for IE since it doesn't support min-height
                 return "<div class="+ kind.name().toLowerCase(Locale.ENGLISH) +"><img src='"+
@@ -355,6 +360,15 @@ public abstract class FormValidation extends IOException implements HttpResponse
     }
 
     /**
+     * Makes sure that the given string is not null or empty.
+     */
+    public static FormValidation validateRequired(String value) {
+        if (Util.fixEmptyAndTrim(value) == null)
+            return error(Messages.FormValidation_ValidateRequired());
+        return ok();
+    }
+
+    /**
      * Makes sure that the given string is a base64 encoded text.
      *
      * @param allowWhitespace
@@ -465,6 +479,11 @@ public abstract class FormValidation extends IOException implements HttpResponse
      * @param kind
      */
     private FormValidation(Kind kind) {
+        this.kind = kind;
+    }
+
+    private FormValidation(Kind kind, String message) {
+        super(message);
         this.kind = kind;
     }
 

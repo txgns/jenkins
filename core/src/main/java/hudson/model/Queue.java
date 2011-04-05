@@ -1,7 +1,8 @@
 /*
  * The MIT License
  * 
- * Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Stephen Connolly, Tom Huybrechts, InfraDNA, Inc.
+ * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi,
+ * Stephen Connolly, Tom Huybrechts, InfraDNA, Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -91,8 +92,8 @@ import javax.management.timer.Timer;
 import javax.servlet.ServletException;
 
 import org.acegisecurity.AccessDeniedException;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.HttpResponse;
+import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 
@@ -880,9 +881,10 @@ public class Queue extends ResourceController implements Saveable {
             BlockedItem p = itr.next();
             if (!isBuildBlocked(p.task) && allowNewBuildableTask(p.task)) {
                 // ready to be executed
+                if (makeBuildable(new BuildableItem(p))) {
                 LOGGER.fine(p.task.getFullDisplayName() + " no longer blocked");
                 itr.remove();
-                makeBuildable(new BuildableItem(p));
+                }
             }
         }
 
@@ -894,10 +896,13 @@ public class Queue extends ResourceController implements Saveable {
 
             waitingList.remove(top);
             Task p = top.task;
+            boolean isReady = false;
             if (!isBuildBlocked(p) && allowNewBuildableTask(p)) {
-                // ready to be executed immediately
+                // maybe ready to be executed immediately
+                isReady = makeBuildable(new BuildableItem(top));
+            }
+            if (isReady) {
                 LOGGER.fine(p.getFullDisplayName() + " ready to build");
-                makeBuildable(new BuildableItem(top));
             } else {
                 // this can't be built now because another build is in progress
                 // set this project aside.
@@ -911,7 +916,7 @@ public class Queue extends ResourceController implements Saveable {
         	s.sortBuildableItems(buildables);
     }
 
-    private void makeBuildable(BuildableItem p) {
+    private boolean makeBuildable(BuildableItem p) {
         if(Hudson.FLYWEIGHT_SUPPORT && p.task instanceof FlyweightTask && !ifBlockedByHudsonShutdown(p.task)) {
             ConsistentHash<Node> hash = new ConsistentHash<Node>(new Hash<Node>() {
                 public String hash(Node node) {
@@ -928,14 +933,35 @@ public class Queue extends ResourceController implements Saveable {
                 Computer c = n.toComputer();
                 if (c==null || c.isOffline())    continue;
                 if (lbl!=null && !lbl.contains(n))  continue;
+
+                // Prevent multiple instances of a project's FlyWeightTask
+                // from all executing on the same computer at the same time.
+                // Without this logic, queuing-up several builds for a
+                // parameterized matrix project didn't work:  parent builds
+                // weren't waiting their turn in the queue.
+
+                List<OneOffExecutor> oneOffExecutors = c.getOneOffExecutors();
+                for (OneOffExecutor ooe : oneOffExecutors) {
+                    Queue.Executable exe = ooe.getCurrentExecutable();
+                    if (exe == null)
+                        return false;
+                    if (exe instanceof AbstractBuild) {
+                        AbstractBuild b = (AbstractBuild) exe;
+                        String running = b.getProject().getName();
+                        String toRun = p.task.getName();
+                        if (toRun.equals(running))
+                            return false;
+                    }
+                }
                 c.startFlyWeightTask(new WorkUnitContext(p).createWorkUnit(p.task));
-                return;
+                return true;
             }
             // if the execution get here, it means we couldn't schedule it anywhere.
             // so do the scheduling like other normal jobs.
         }
         
         buildables.put(p.task,p);
+        return true;
     }
 
     public static boolean ifBlockedByHudsonShutdown(Task task) {
@@ -1081,13 +1107,13 @@ public class Queue extends ResourceController implements Saveable {
          * Since this is a newly added method, the invocation may results in {@link AbstractMethodError}.
          * Use {@link Tasks#getSubTasksOf(Task)} that avoids this.
          *
-         * @since 1.FATTASK
+         * @since 1.377
          */
         Collection<? extends SubTask> getSubTasks();
     }
 
     /**
-     * Represents the real meet of the computation run by {@link Executor}.
+     * Represents the real meat of the computation run by {@link Executor}.
      *
      * <h2>Views</h2>
      * <p>
@@ -1100,7 +1126,7 @@ public class Queue extends ResourceController implements Saveable {
          * Never null.
          *
          * <p>
-         * Since this method went through a signature change in 1.FATTASK, the invocation may results in
+         * Since this method went through a signature change in 1.377, the invocation may results in
          * {@link AbstractMethodError}.
          * Use {@link Executables#getParentOf(Executable)} that avoids this.
          */
@@ -1110,6 +1136,18 @@ public class Queue extends ResourceController implements Saveable {
          * Called by {@link Executor} to perform the task
          */
         void run();
+        
+        /**
+         * Estimate of how long will it take to execute this executable.
+         * Measured in milliseconds.
+         * 
+         * Please, consider using {@link Executables#getEstimatedDurationFor(Executable)}
+         * to protected against AbstractMethodErrors!
+         *
+         * @return -1 if it's impossible to estimate.
+         * @since 1.383
+         */
+        long getEstimatedDuration();
 
         /**
          * Used to render the HTML. Should be a human readable text of what this executable is.
@@ -1238,9 +1276,9 @@ public class Queue extends ResourceController implements Saveable {
         /**
          * Called from queue.jelly.
          */
-        public void doCancelQueue( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
+        public HttpResponse doCancelQueue() throws IOException, ServletException {
         	Hudson.getInstance().getQueue().cancel(this);
-            rsp.forwardToPreviousPage(req);
+            return HttpResponses.forwardToPreviousPage();
         }
 
         /**

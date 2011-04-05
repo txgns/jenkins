@@ -30,7 +30,14 @@ import hudson.FilePath;
 import hudson.Functions;
 import hudson.Launcher;
 import hudson.Util;
-import hudson.model.*;
+import hudson.model.AbstractBuild;
+import hudson.model.AbstractProject;
+import hudson.model.BuildListener;
+import hudson.model.Computer;
+import hudson.model.EnvironmentSpecific;
+import hudson.model.Hudson;
+import hudson.model.Node;
+import hudson.model.TaskListener;
 import hudson.remoting.Callable;
 import hudson.slaves.NodeSpecific;
 import hudson.tasks._ant.AntConsoleAnnotator;
@@ -134,6 +141,7 @@ public class Ant extends Builder {
         ArgumentListBuilder args = new ArgumentListBuilder();
 
         EnvVars env = build.getEnvironment(listener);
+        env.overrideAll(build.getBuildVariables());
         
         AntInstallation ai = getAnt();
         if(ai==null) {
@@ -149,10 +157,9 @@ public class Ant extends Builder {
             args.add(exe);
         }
 
-        VariableResolver<String> vr = build.getBuildVariableResolver();
-
+        VariableResolver<String> vr = new VariableResolver.ByMap<String>(env);
         String buildFile = env.expand(this.buildFile);
-        String targets = Util.replaceMacro(env.expand(this.targets), vr);
+        String targets = env.expand(this.targets);
         
         FilePath buildFilePath = buildFilePath(build.getModuleRoot(), buildFile, targets);
 
@@ -246,7 +253,7 @@ public class Ant extends Builder {
         return (DescriptorImpl)super.getDescriptor();
     }
 
-            @Extension
+    @Extension
     public static class DescriptorImpl extends BuildStepDescriptor<Builder> {
         @CopyOnWrite
         private volatile AntInstallation[] installations = new AntInstallation[0];
@@ -416,6 +423,10 @@ public class Ant extends Builder {
                     return FormValidation.error(Messages.Ant_NotAntDirectory(value));
 
                 return FormValidation.ok();
+            }
+
+            public FormValidation doCheckName(@QueryParameter String value) {
+                return FormValidation.validateRequired(value);
             }
         }
 

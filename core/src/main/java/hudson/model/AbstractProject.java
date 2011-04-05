@@ -3,7 +3,8 @@
  * 
  * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi,
  * Brian Westrich, Erik Ramfelt, Ertan Deniz, Jean-Baptiste Quenot,
- * Luca Domenico Milanesio, R. Tyler Ballance, Stephen Connolly, Tom Huybrechts, id:cactusman
+ * Luca Domenico Milanesio, R. Tyler Ballance, Stephen Connolly, Tom Huybrechts,
+ * id:cactusman, Yahoo! Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +26,7 @@
  */
 package hudson.model;
 
+import java.util.regex.Pattern;
 import antlr.ANTLRException;
 import hudson.AbortException;
 import hudson.CopyOnWrite;
@@ -171,6 +173,12 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      * True to suspend new builds.
      */
     protected volatile boolean disabled;
+
+    /**
+     * True to keep builds of this project in queue when downstream projects are
+     * building. False by default to keep from breaking existing behavior.
+     */
+    protected volatile boolean blockBuildWhenDownstreamBuilding = false;
 
     /**
      * True to keep builds of this project in queue when upstream projects are
@@ -498,6 +506,15 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         return true;
     }
 
+    public boolean blockBuildWhenDownstreamBuilding() {
+        return blockBuildWhenDownstreamBuilding;
+    }
+
+    public void setBlockBuildWhenDownstreamBuilding(boolean b) throws IOException {
+        blockBuildWhenDownstreamBuilding = b;
+        save();
+    }
+
     public boolean blockBuildWhenUpstreamBuilding() {
         return blockBuildWhenUpstreamBuilding;
     }
@@ -729,10 +746,22 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      *      For the convenience of the caller, this array can contain null, and those will be silently ignored.
      */
     public Future<R> scheduleBuild2(int quietPeriod, Cause c, Action... actions) {
+        return scheduleBuild2(quietPeriod,c,Arrays.asList(actions));
+    }
+
+    /**
+     * Schedules a build of this project, and returns a {@link Future} object
+     * to wait for the completion of the build.
+     *
+     * @param actions
+     *      For the convenience of the caller, this collection can contain null, and those will be silently ignored.
+     * @since 1.383
+     */
+    public Future<R> scheduleBuild2(int quietPeriod, Cause c, Collection<? extends Action> actions) {
         if (!isBuildable())
             return null;
 
-        List<Action> queueActions = new ArrayList<Action>(Arrays.asList(actions));
+        List<Action> queueActions = new ArrayList<Action>(actions);
         if (isParameterized() && Util.filter(queueActions, ParametersAction.class).isEmpty()) {
             queueActions.add(new ParametersAction(getDefaultParametersValues()));
         }
@@ -984,6 +1013,22 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
             return Messages.AbstractProject_BuildInProgress(lbn, eta);
         }
     }
+    
+    /**
+     * Because the downstream build is in progress, and we are configured to wait for that.
+     */
+    public static class BecauseOfDownstreamBuildInProgress extends CauseOfBlockage {
+        public final AbstractProject<?,?> up;
+
+        public BecauseOfDownstreamBuildInProgress(AbstractProject<?,?> up) {
+            this.up = up;
+        }
+
+        @Override
+        public String getShortDescription() {
+            return Messages.AbstractProject_DownstreamBuildInProgress(up.getName());
+        }
+    }
 
     /**
      * Because the upstream build is in progress, and we are configured to wait for that.
@@ -1004,10 +1049,32 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
     public CauseOfBlockage getCauseOfBlockage() {
         if (isBuilding() && !isConcurrentBuild())
             return new BecauseOfBuildInProgress(getLastBuild());
-        if (blockBuildWhenUpstreamBuilding()) {
+        if (blockBuildWhenDownstreamBuilding()) {
+            AbstractProject<?,?> bup = getBuildingDownstream();
+            if (bup!=null)
+                return new BecauseOfDownstreamBuildInProgress(bup);
+        } else if (blockBuildWhenUpstreamBuilding()) {
             AbstractProject<?,?> bup = getBuildingUpstream();
             if (bup!=null)
                 return new BecauseOfUpstreamBuildInProgress(bup);
+        }
+        return null;
+    }
+
+    /**
+     * Returns the project if any of the downstream project (or itself) is either
+     * building or is in the queue.
+     * <p>
+     * This means eventually there will be an automatic triggering of
+     * the given project (provided that all builds went smoothly.)
+     */
+    protected AbstractProject getBuildingDownstream() {
+    	DependencyGraph graph = Hudson.getInstance().getDependencyGraph();
+        Set<AbstractProject> tups = graph.getTransitiveDownstream(this);
+        tups.add(this);
+        for (AbstractProject tup : tups) {
+            if(tup!=this && (tup.isBuilding() || tup.isInQueue()))
+                return tup;
         }
         return null;
     }
@@ -1151,11 +1218,11 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      */
     public PollingResult poll( TaskListener listener ) {
         SCM scm = getScm();
-        if(scm==null) {
+        if (scm==null) {
             listener.getLogger().println(Messages.AbstractProject_NoSCM());
             return NO_CHANGES;
         }
-        if(isDisabled()) {
+        if (isDisabled()) {
             listener.getLogger().println(Messages.AbstractProject_Disabled());
             return NO_CHANGES;
         }
@@ -1163,7 +1230,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         R lb = getLastBuild();
         if (lb==null) {
             listener.getLogger().println(Messages.AbstractProject_NoBuilds());
-            return BUILD_NOW;
+            return isInQueue() ? NO_CHANGES : BUILD_NOW;
         }
 
         if (pollingBaseline==null) {
@@ -1182,7 +1249,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         }
 
         try {
-            if(scm.requiresWorkspaceForPolling()) {
+            if (scm.requiresWorkspaceForPolling()) {
                 // lock the workspace of the last build
                 FilePath ws=lb.getWorkspace();
 
@@ -1198,8 +1265,13 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
                     listener.getLogger().println( ws==null
                         ? Messages.AbstractProject_WorkspaceOffline()
                         : Messages.AbstractProject_NoWorkspace());
-                    listener.getLogger().println(Messages.AbstractProject_NewBuildForWorkspace());
-                    return BUILD_NOW;
+                    if (isInQueue()) {
+                        listener.getLogger().println(Messages.AbstractProject_AwaitingBuildForWorkspace());
+                        return NO_CHANGES;
+                    } else {
+                        listener.getLogger().println(Messages.AbstractProject_NewBuildForWorkspace());
+                        return BUILD_NOW;
+                    }
                 } else {
                     WorkspaceList l = lb.getBuiltOn().toComputer().getWorkspaceList();
                     // if doing non-concurrent build, acquire a workspace in a way that causes builds to block for this workspace.
@@ -1551,6 +1623,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         } else {
             scmCheckoutRetryCount = null;
         }
+        blockBuildWhenDownstreamBuilding = req.getParameter("blockBuildWhenDownstreamBuilding")!=null;
         blockBuildWhenUpstreamBuilding = req.getParameter("blockBuildWhenUpstreamBuilding")!=null;
 
         if(req.getParameter("hasSlaveAffinity")!=null) {
@@ -1747,12 +1820,70 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
             try {
                 Label.parseExpression(value);
             } catch (ANTLRException e) {
-                return FormValidation.error(e,"Invalid boolean expression: "+e.getMessage());
+                return FormValidation.error(e,
+                        Messages.AbstractProject_AssignedLabelString_InvalidBooleanExpression(e.getMessage()));
             }
             // TODO: if there's an atom in the expression that is empty, report it
             if (Hudson.getInstance().getLabel(value).isEmpty())
-                return FormValidation.warning("There's no slave/cloud that matches this assignment");
+                return FormValidation.warning(Messages.AbstractProject_AssignedLabelString_NoMatch());
             return FormValidation.ok();
+        }
+
+       public AutoCompletionCandidates doAutoCompleteAssignedLabelString(@QueryParameter String value) {
+            AutoCompletionCandidates c = new AutoCompletionCandidates();
+            Set<Label> labels = Hudson.getInstance().getLabels();
+            List<String> queries = new AutoCompleteSeeder(value).getSeeds();
+
+            for (String term : queries) {
+                for (Label l : labels) {
+                    if (l.getName().startsWith(term)) {
+                        c.add(l.getName());
+                    }
+                }
+            }
+            return c;
+        }
+
+        /**
+        * Utility class for taking the current input value and computing a list
+        * of potential terms to match against the list of defined labels.
+         */
+        static class AutoCompleteSeeder {
+            private String source;
+            private Pattern quoteMatcher = Pattern.compile("(\\\"?)(.+?)(\\\"?+)(\\s*)");
+
+            AutoCompleteSeeder(String source) {
+                this.source = source;
+            }
+
+            List<String> getSeeds() {
+                ArrayList<String> terms = new ArrayList();
+                boolean trailingQuote = source.endsWith("\"");
+                boolean leadingQuote = source.startsWith("\"");
+                boolean trailingSpace = source.endsWith(" ");
+
+                if (trailingQuote || (trailingSpace && !leadingQuote)) {
+                    terms.add("");
+                } else {
+                    if (leadingQuote) {
+                        int quote = source.lastIndexOf('"');
+                        if (quote == 0) {
+                            terms.add(source.substring(1));
+                        } else {
+                            terms.add("");
+                        }
+                    } else {
+                        int space = source.lastIndexOf(' ');
+                        if (space > -1) {
+                            terms.add(source.substring(space+1));
+                        } else {
+                            terms.add(source);
+                        }
+                    }
+                }
+
+                return terms;
+            }
         }
     }
 

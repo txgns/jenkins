@@ -37,24 +37,23 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map;
 import java.util.Vector;
 import java.util.WeakHashMap;
-import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Formatter;
 import java.util.logging.Level;
-import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.net.URL;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 /**
  * Represents a communication channel to the remote peer.
@@ -600,9 +599,6 @@ public class Channel implements VirtualChannel, IChannel {
     }
 
     /*package*/ PipeWindow getPipeWindow(int oid) {
-        if (!remoteCapability.supportsPipeThrottling())
-            return PipeWindow.FAKE;
-
         synchronized (pipeWindows) {
             Key k = new Key(oid);
             WeakReference<PipeWindow> v = pipeWindows.get(k);
@@ -612,7 +608,11 @@ public class Channel implements VirtualChannel, IChannel {
                     return w;
             }
 
-            Real w = new Real(k, PIPE_WINDOW_SIZE);
+            PipeWindow w;
+            if (remoteCapability.supportsPipeThrottling())
+                w = new Real(k, PIPE_WINDOW_SIZE);
+            else
+                w = new PipeWindow.Fake();
             pipeWindows.put(k,new WeakReference<PipeWindow>(w));
             return w;
         }
@@ -909,6 +909,32 @@ public class Channel implements VirtualChannel, IChannel {
                 ForwarderFactory.create(forwardHost, forwardPort));
     }
 
+    /**
+     * Blocks until all the I/O packets sent before this gets fully executed by the remote side, then return.
+     *
+     * @throws IOException
+     *      If the remote doesn't support this operation, or if sync fails for other reasons.
+     */
+    public void syncIO() throws IOException, InterruptedException {
+        call(new IOSyncer());
+    }
+
+    private static final class IOSyncer implements Callable<Object, InterruptedException> {
+        public Object call() throws InterruptedException {
+            try {
+                return Channel.current().pipeWriter.submit(new Runnable() {
+                    public void run() {
+                        // noop
+                    }
+                }).get();
+            } catch (ExecutionException e) {
+                throw new AssertionError(e); // impossible
+            }
+        }
+
+        private static final long serialVersionUID = 1L;
+    }
+
     @Override
     public String toString() {
         return super.toString()+":"+name;
@@ -955,14 +981,14 @@ public class Channel implements VirtualChannel, IChannel {
                         ioe.initCause(e);
                         throw ioe;
                     } catch (ClassNotFoundException e) {
-                        logger.log(Level.SEVERE, "Unable to read a command",e);
+                        logger.log(Level.SEVERE, "Unable to read a command (channel " + name + ")",e);
                     }
                     if(logger.isLoggable(Level.FINE))
                         logger.fine("Received "+cmd);
                     try {
                         cmd.execute(Channel.this);
                     } catch (Throwable t) {
-                        logger.log(Level.SEVERE, "Failed to execute command "+cmd,t);
+                        logger.log(Level.SEVERE, "Failed to execute command "+cmd+ " (channel " + name + ")",t);
                         logger.log(Level.SEVERE, "This command is created here",cmd.createdAt);
                     }
                 }

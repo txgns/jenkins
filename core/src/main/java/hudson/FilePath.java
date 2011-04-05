@@ -2,7 +2,8 @@
  * The MIT License
  * 
  * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi,
- * Eric Lefevre-Ardant, Erik Ramfelt, Michael B. Donohue, Alan Harder
+ * Eric Lefevre-Ardant, Erik Ramfelt, Michael B. Donohue, Alan Harder,
+ * Manufacture Francaise des Pneumatiques Michelin, Romain Seguy
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +39,7 @@ import hudson.remoting.Pipe;
 import hudson.remoting.RemoteOutputStream;
 import hudson.remoting.VirtualChannel;
 import hudson.remoting.RemoteInputStream;
+import hudson.security.AccessControlled;
 import hudson.util.DirScanner;
 import hudson.util.IOException2;
 import hudson.util.HeadBufferingStream;
@@ -94,6 +96,8 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipInputStream;
 
 import com.sun.jna.Native;
+import java.util.logging.Logger;
+import org.apache.tools.ant.taskdefs.Chmod;
 
 /**
  * {@link File} like object with remoting support.
@@ -1078,12 +1082,43 @@ public final class FilePath implements Serializable {
         if(!isUnix() || mask==-1)   return;
         act(new FileCallable<Void>() {
             public Void invoke(File f, VirtualChannel channel) throws IOException {
-                if(File.separatorChar=='/' && LIBC.chmod(f.getAbsolutePath(),mask)!=0)
-                    throw new IOException("Failed to chmod "+f+" : "+LIBC.strerror(Native.getLastError()));
+                _chmod(f, mask);
+
                 return null;
             }
         });
     }
+
+    /**
+     * Run chmod via libc if we can, otherwise fall back to Ant.
+     */
+    private static void _chmod(File f, int mask) throws IOException {
+        if (Functions.isWindows())  return; // noop
+
+        try {
+            if(LIBC.chmod(f.getAbsolutePath(),mask)!=0) {
+                throw new IOException("Failed to chmod "+f+" : "+LIBC.strerror(Native.getLastError()));
+            }
+        } catch(NoClassDefFoundError e) {  // cf. https://groups.google.com/group/hudson-dev/browse_thread/thread/6d16c3e8ea0dbc9?hl=fr
+            _chmodAnt(f, mask);
+        } catch(UnsatisfiedLinkError e2) { // HUDSON-8155: use Ant's chmod task on non-GNU C systems
+            _chmodAnt(f, mask);
+        }
+    }
+
+    private static void _chmodAnt(File f, int mask) {
+        if (!CHMOD_WARNED) { // only warn this once to avoid flooding the log
+            CHMOD_WARNED = true;
+            LOGGER.warning("GNU C Library not available: Using Ant's chmod task instead.");
+        }
+        Chmod chmodTask = new Chmod();
+        chmodTask.setProject(new Project());
+        chmodTask.setFile(f);
+        chmodTask.setPerm(Integer.toOctalString(mask));
+        chmodTask.execute();
+    }
+
+    private static boolean CHMOD_WARNED = false;
 
     /**
      * Gets the file permission bit mask.
@@ -1537,7 +1572,7 @@ public final class FilePath implements Serializable {
      * @return
      *      number of files/directories that are written.
      */
-    private Integer writeToTar(File baseDir, String fileMask, String excludes, OutputStream out) throws IOException {
+    private static Integer writeToTar(File baseDir, String fileMask, String excludes, OutputStream out) throws IOException {
         Archiver tw = ArchiverFactory.TAR.create(out);
         try {
             new DirScanner.Glob(fileMask,excludes).scan(baseDir,tw);
@@ -1566,11 +1601,7 @@ public final class FilePath implements Serializable {
                     f.setLastModified(te.getModTime().getTime());
                     int mode = te.getMode()&0777;
                     if(mode!=0 && !Functions.isWindows()) // be defensive
-                        try {
-                            LIBC.chmod(f.getPath(),mode);
-                        } catch (NoClassDefFoundError e) {
-                            // be defensive. see http://www.nabble.com/-3.0.6--Site-copy-problem%3A-hudson.util.IOException2%3A--java.lang.NoClassDefFoundError%3A-Could-not-initialize-class--hudson.util.jna.GNUCLibrary-td23588879.html
-                        }
+                        _chmod(f,mode);
                 }
             }
         } catch(IOException e) {
@@ -1747,12 +1778,12 @@ public final class FilePath implements Serializable {
 
     /**
      * Checks the GLOB-style file mask. See {@link #validateAntFileMask(String)}.
-     * Requires configure permission on ancestor AbstractProject object in request.
+     * Requires configure permission on ancestor AbstractProject object in request,
+     * or admin permission if no such ancestor is found.
      * @since 1.294
      */
     public FormValidation validateFileMask(String value, boolean errorIfNotExist) throws IOException {
-        AbstractProject subject = Stapler.getCurrentRequest().findAncestorObject(AbstractProject.class);
-        subject.checkPermission(Item.CONFIGURE);
+        checkPermissionForValidate();
 
         value = fixEmpty(value);
         if(value==null)
@@ -1772,7 +1803,8 @@ public final class FilePath implements Serializable {
 
     /**
      * Validates a relative file path from this {@link FilePath}.
-     * Requires configure permission on ancestor AbstractProject object in request.
+     * Requires configure permission on ancestor AbstractProject object in request,
+     * or admin permission if no such ancestor is found.
      *
      * @param value
      *      The relative path being validated.
@@ -1783,13 +1815,12 @@ public final class FilePath implements Serializable {
      *      Otherwise, the relative path is expected to be pointing to a directory.
      */
     public FormValidation validateRelativePath(String value, boolean errorIfNotExist, boolean expectingFile) throws IOException {
-        AbstractProject subject = Stapler.getCurrentRequest().findAncestorObject(AbstractProject.class);
-        subject.checkPermission(Item.CONFIGURE);
+        checkPermissionForValidate();
 
         value = fixEmpty(value);
 
         // none entered yet, or something is seriously wrong
-        if(value==null || (AbstractProject<?,?>)subject ==null) return FormValidation.ok();
+        if(value==null) return FormValidation.ok();
 
         // a common mistake is to use wildcard
         if(value.contains("*")) return FormValidation.error(Messages.FilePath_validateRelativePath_wildcardNotAllowed());
@@ -1820,6 +1851,14 @@ public final class FilePath implements Serializable {
         } catch (InterruptedException e) {
             return FormValidation.ok();
         }
+    }
+
+    private static void checkPermissionForValidate() {
+        AccessControlled subject = Stapler.getCurrentRequest().findAncestorObject(AbstractProject.class);
+        if (subject == null)
+            Hudson.getInstance().checkPermission(Hudson.ADMINISTER);
+        else
+            subject.checkPermission(Item.CONFIGURE);
     }
 
     /**
@@ -1876,6 +1915,8 @@ public final class FilePath implements Serializable {
     private static final long serialVersionUID = 1L;
 
     public static int SIDE_BUFFER_SIZE = 1024;
+
+    private static final Logger LOGGER = Logger.getLogger(FilePath.class.getName());
 
     /**
      * Adapts {@link FileCallable} to {@link Callable}.

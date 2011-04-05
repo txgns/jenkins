@@ -2,7 +2,8 @@
  * The MIT License
  * 
  * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi,
- * Daniel Dyer, Red Hat, Inc., Tom Huybrechts, Romain Seguy
+ * Daniel Dyer, Red Hat, Inc., Tom Huybrechts, Romain Seguy, Yahoo! Inc.,
+ * Darek Ostolski
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +25,7 @@
  */
 package hudson.model;
 
+import hudson.console.ConsoleLogFilter;
 import hudson.Functions;
 import hudson.AbortException;
 import hudson.BulkChange;
@@ -38,6 +40,7 @@ import hudson.console.AnnotatedLargeText;
 import hudson.console.ConsoleNote;
 import hudson.matrix.MatrixBuild;
 import hudson.matrix.MatrixRun;
+import hudson.model.Descriptor.FormException;
 import hudson.model.listeners.RunListener;
 import hudson.model.listeners.SaveableListener;
 import hudson.search.SearchIndexBuilder;
@@ -91,8 +94,12 @@ import java.util.zip.GZIPInputStream;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 
+import net.sf.json.JSONObject;
 import org.apache.commons.io.input.NullInputStream;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.jelly.XMLOutput;
+import org.kohsuke.stapler.HttpResponse;
+import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
@@ -164,6 +171,13 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
      * Human-readable description. Can be null.
      */
     protected volatile String description;
+
+    /**
+     * Human-readable name of this build. Can be null.
+     * If non-null, this text is displayed instead of "#NNN", which is the default.
+     * @since 1.390
+     */
+    private volatile String displayName;
 
     /**
      * The current build state.
@@ -591,11 +605,25 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
 
     @Exported
     public String getFullDisplayName() {
-        return project.getFullDisplayName()+" #"+number;
+        return project.getFullDisplayName()+' '+getDisplayName();
     }
 
     public String getDisplayName() {
-        return "#"+number;
+        return displayName!=null ? displayName : "#"+number;
+    }
+
+    public boolean hasCustomDisplayName() {
+        return displayName!=null;
+    }
+
+    /**
+     * @param value
+     *      Set to null to revert back to the default "#NNN".
+     */
+    public void setDisplayName(String value) throws IOException {
+        checkPermission(UPDATE);
+        this.displayName = value;
+        save();
     }
 
     @Exported(visibility=2)
@@ -687,6 +715,42 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
         while( r!=null && r.getResult()!=Result.FAILURE )
             r=r.previousBuild;
         return r;
+    }
+
+    /**
+     * Returns the last successful build before this build.
+     * @since 1.383
+     */
+    public RunT getPreviousSuccessfulBuild() {
+        RunT r=previousBuild;
+        while( r!=null && r.getResult()!=Result.SUCCESS )
+            r=r.previousBuild;
+        return r;
+    }
+
+    /**
+     * Returns the last 'numberOfBuilds' builds with a build result >= 'threshold'.
+     * 
+     * @param numberOfBuilds the desired number of builds
+     * @param threshold the build result threshold
+     * @return a list with the builds (youngest build first).
+     *   May be smaller than 'numberOfBuilds' or even empty
+     *   if not enough builds satisfying the threshold have been found. Never null.
+     * @since 1.383
+     */
+    public List<RunT> getPreviousBuildsOverThreshold(int numberOfBuilds, Result threshold) {
+        List<RunT> builds = new ArrayList<RunT>(numberOfBuilds);
+        
+        RunT r = getPreviousBuild();
+        while (r != null && builds.size() < numberOfBuilds) {
+            if (!r.isBuilding() && 
+                 (r.getResult() != null && r.getResult().isBetterOrEqualTo(threshold))) {
+                builds.add(r);
+            }
+            r = r.getPreviousBuild();
+        }
+        
+        return builds;
     }
 
     public RunT getNextBuild() {
@@ -1034,8 +1098,19 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
      * @since 1.349
      */
     public void writeLogTo(long offset, XMLOutput out) throws IOException {
-        // TODO: resurrect compressed log file support
-        getLogText().writeHtmlTo(offset,out.asWriter());
+        try {
+			getLogText().writeHtmlTo(offset,out.asWriter());
+		} catch (IOException e) {
+			// try to fall back to the old getLogInputStream()
+			// mainly to support .gz compressed files
+			// In this case, console annotation handling will be turned off.
+			InputStream input = getLogInputStream();
+			try {
+				IOUtils.copy(input, out.asWriter());
+			} finally {
+				IOUtils.closeQuietly(input);
+			}
+		}
     }
 
     /**
@@ -1261,6 +1336,13 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
                     // served to the browser immediately
                     OutputStream logger = new FileOutputStream(getLogFile());
                     RunT build = job.getBuild();
+
+                    // Global log filters
+                    for (ConsoleLogFilter filter : ConsoleLogFilter.all()) {
+                        logger = filter.decorateLogger((AbstractBuild) build, logger);
+                    }
+
+                    // Project specific log filterss
                     if (project instanceof BuildableItemWithBuildWrappers && build instanceof AbstractBuild) {
                         BuildableItemWithBuildWrappers biwbw = (BuildableItemWithBuildWrappers) project;
                         for (BuildWrapper bw : biwbw.getBuildWrappersList()) {
@@ -1505,7 +1587,8 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
                 return new Summary(false, Messages.Run_Summary_BrokenForALongTime());
             if(since==prev)
                 return new Summary(true, Messages.Run_Summary_BrokenSinceThisBuild());
-            return new Summary(false, Messages.Run_Summary_BrokenSince(since.getDisplayName()));
+            RunT failedBuild = since.getNextBuild();
+            return new Summary(false, Messages.Run_Summary_BrokenSince(failedBuild.getDisplayName()));
         }
 
         if(getResult()==Result.ABORTED)
@@ -1637,7 +1720,6 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
      * Accepts the new description.
      */
     public synchronized void doSubmitDescription( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
-        req.setCharacterEncoding("UTF-8");
         setDescription(req.getParameter("description"));
         rsp.sendRedirect(".");  // go to the top page
     }
@@ -1678,16 +1760,20 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
      * @since 1.305
      */
     public EnvVars getEnvironment(TaskListener log) throws IOException, InterruptedException {
-        EnvVars env = Computer.currentComputer().getEnvironment().overrideAll(getCharacteristicEnvVars());
+        EnvVars env = getCharacteristicEnvVars();
+        Computer c = Computer.currentComputer();
+        if (c!=null)
+            env = c.getEnvironment().overrideAll(env);
         String rootUrl = Hudson.getInstance().getRootUrl();
         if(rootUrl!=null) {
-            env.put("HUDSON_URL", rootUrl);
+            env.put("JENKINS_URL", rootUrl);
+            env.put("HUDSON_URL", rootUrl); // Legacy compatibility
             env.put("BUILD_URL", rootUrl+getUrl());
             env.put("JOB_URL", rootUrl+getParent().getUrl());
         }
         
-        if(!env.containsKey("HUDSON_HOME"))
-            env.put("HUDSON_HOME", Hudson.getInstance().getRootDir().getPath() );
+        env.put("JENKINS_HOME", Hudson.getInstance().getRootDir().getPath() );
+        env.put("HUDSON_HOME", Hudson.getInstance().getRootDir().getPath() );   // legacy compatibility
 
         Thread t = Thread.currentThread();
         if (t instanceof Executor) {
@@ -1699,6 +1785,9 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
                 env.put("NODE_LABELS",Util.join(n.getAssignedLabels()," "));
         }
 
+        for (EnvironmentContributor ec : EnvironmentContributor.all())
+            ec.buildEnvironmentFor(this,env,log);
+
         return env;
     }
 
@@ -1708,10 +1797,11 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
      */
     public final EnvVars getCharacteristicEnvVars() {
         EnvVars env = new EnvVars();
-        env.put("HUDSON_SERVER_COOKIE",Util.getDigestOf("ServerID:"+Hudson.getInstance().getSecretKey()));
+        env.put("JENKINS_SERVER_COOKIE",Util.getDigestOf("ServerID:"+Hudson.getInstance().getSecretKey()));
+        env.put("HUDSON_SERVER_COOKIE",Util.getDigestOf("ServerID:"+Hudson.getInstance().getSecretKey())); // Legacy compatibility
         env.put("BUILD_NUMBER",String.valueOf(number));
         env.put("BUILD_ID",getId());
-        env.put("BUILD_TAG","hudson-"+getParent().getName()+"-"+number);
+        env.put("BUILD_TAG","jenkins-"+getParent().getName()+"-"+number);
         env.put("JOB_NAME",getParent().getFullName());
         return env;
     }
@@ -1732,6 +1822,35 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
         return job.getBuildByNumber(number);
     }
 
+    /**
+     * Returns the estimated duration for this run if it is currently running.
+     * Default to {@link Job#getEstimatedDuration()}, may be overridden in subclasses
+     * if duration may depend on run specific parameters (like incremental Maven builds).
+     * 
+     * @return the estimated duration in milliseconds
+     * @since 1.383
+     */
+    public long getEstimatedDuration() {
+        return project.getEstimatedDuration();
+    }
+
+    public HttpResponse doConfigSubmit( StaplerRequest req ) throws IOException, ServletException, FormException {
+        checkPermission(UPDATE);
+        BulkChange bc = new BulkChange(this);
+        try {
+            JSONObject json = req.getSubmittedForm();
+            submit(json);
+            bc.commit();
+        } finally {
+            bc.abort();
+        }
+        return HttpResponses.redirectToDot();
+    }
+
+    protected void submit(JSONObject json) throws IOException {
+        setDisplayName(Util.fixEmptyAndTrim(json.getString("displayName")));
+        setDescription(json.getString("description"));
+    }
 
     public static final XStream XSTREAM = new XStream2();
     static {
@@ -1809,8 +1928,7 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
         }
 
         public String getEntryDescription(Run entry) {
-            // TODO: this could provide some useful details
-            return null;
+            return entry.getDescription();
         }
 
         public Calendar getEntryTimestamp(Run entry) {

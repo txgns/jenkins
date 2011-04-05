@@ -159,7 +159,6 @@ public class Launcher {
     }
 
     public static void main(String... args) throws Exception {
-        computeVersion();
         Launcher launcher = new Launcher();
         CmdLineParser parser = new CmdLineParser(launcher);
         try {
@@ -375,7 +374,7 @@ public class Launcher {
                 System.out.println(
                         "WARNING: Are you running slave agent from an interactive console?\n" +
                         "If so, you are probably using it incorrectly.\n" +
-                        "See http://hudson.gotdns.com/wiki/display/HUDSON/Launching+slave.jar+from+from+console");
+                        "See http://wiki.jenkins-ci.org/display/JENKINS/Launching+slave.jar+from+from+console");
             }
         } catch (LinkageError e) {
             // we are probably running on JDK5 that doesn't have System.console()
@@ -439,7 +438,7 @@ public class Launcher {
         return File.pathSeparatorChar==';';
     }
 
-    private static void computeVersion() {
+    private static String computeVersion() {
         Properties props = new Properties();
         try {
             InputStream is = Launcher.class.getResourceAsStream("hudson-version.properties");
@@ -448,11 +447,11 @@ public class Launcher {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        VERSION = props.getProperty("version", "?");
+        return props.getProperty("version", "?");
     }
 
     /**
      * Version number of Hudson this slave.jar is from.
      */
-    public static String VERSION = "?";
+    public static final String VERSION = computeVersion();
 }

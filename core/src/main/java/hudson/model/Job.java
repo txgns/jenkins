@@ -28,13 +28,10 @@ import static javax.servlet.http.HttpServletResponse.SC_NO_CONTENT;
 
 import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 import hudson.ExtensionPoint;
-import hudson.Util;
-import hudson.XmlFile;
 import hudson.PermalinkList;
 import hudson.Extension;
 import hudson.cli.declarative.CLIResolver;
 import hudson.model.Descriptor.FormException;
-import hudson.model.listeners.ItemListener;
 import hudson.model.PermalinkProjectAction.Permalink;
 import hudson.model.Fingerprint.RangeSet;
 import hudson.model.Fingerprint.Range;
@@ -45,7 +42,6 @@ import hudson.search.SearchItem;
 import hudson.search.SearchItems;
 import hudson.security.ACL;
 import hudson.tasks.LogRotator;
-import hudson.util.AtomicFileWriter;
 import hudson.util.ChartUtil;
 import hudson.util.ColorPalette;
 import hudson.util.CopyOnWriteList;
@@ -76,17 +72,10 @@ import java.util.SortedMap;
 import java.util.LinkedList;
 
 import javax.servlet.ServletException;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.stream.StreamResult;
-import javax.xml.transform.stream.StreamSource;
 
 import net.sf.json.JSONObject;
 import net.sf.json.JSONException;
 
-import org.apache.tools.ant.taskdefs.Copy;
-import org.apache.tools.ant.types.FileSet;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.CategoryAxis;
@@ -98,9 +87,9 @@ import org.jfree.chart.renderer.category.StackedAreaRenderer;
 import org.jfree.data.category.CategoryDataset;
 import org.jfree.ui.RectangleInsets;
 import org.jvnet.localizer.Localizable;
+import org.kohsuke.stapler.StaplerOverridable;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
-import org.kohsuke.stapler.WebMethod;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.CmdLineException;
@@ -117,7 +106,7 @@ import org.kohsuke.args4j.CmdLineException;
  * @author Kohsuke Kawaguchi
  */
 public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, RunT>>
-        extends AbstractItem implements ExtensionPoint {
+        extends AbstractItem implements ExtensionPoint, StaplerOverridable {
 
     /**
      * Next build number. Kept in a separate file because this is the only
@@ -251,10 +240,7 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
         return b!=null && b.isBuilding();
     }
 
-    /**
-     * Get the term used in the UI to represent this kind of
-     * {@link AbstractProject}. Must start with a capital letter.
-     */
+    @Override
     public String getPronoun() {
         return Messages.Job_Pronoun();
     }
@@ -430,6 +416,16 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
         return null;
     }
 
+    /**
+     * Overrides from job properties.
+     */
+    public Collection<?> getOverrides() {
+        List<Object> r = new ArrayList<Object>();
+        for (JobProperty<? super JobT> p : properties)
+            r.addAll(p.getJobOverrides());
+        return r;
+    }
+
     public List<Widget> getWidgets() {
         ArrayList<Widget> r = new ArrayList<Widget>();
         r.add(createHistoryWidget());
@@ -471,6 +467,7 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
     /**
      * Renames a job.
      */
+    @Override
     public void renameTo(String newName) throws IOException {
         super.renameTo(newName);
     }
@@ -933,8 +930,6 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
             StaplerResponse rsp) throws IOException, ServletException, FormException {
         checkPermission(CONFIGURE);
 
-        req.setCharacterEncoding("UTF-8");
-
         description = req.getParameter("description");
 
         keepDependencies = req.getParameter("keepDependencies") != null;
@@ -984,51 +979,6 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
             rsp.setStatus(SC_BAD_REQUEST);
             sendError(sw.toString(), req, rsp, true);
         }
-    }
-
-    /**
-     * Accepts <tt>config.xml</tt> submission, as well as serve it.
-     */
-    @WebMethod(name = "config.xml")
-    public void doConfigDotXml(StaplerRequest req, StaplerResponse rsp)
-            throws IOException {
-        if (req.getMethod().equals("GET")) {
-            // read
-            checkPermission(EXTENDED_READ);
-            rsp.setContentType("application/xml;charset=UTF-8");
-            getConfigFile().writeRawTo(rsp.getWriter());
-            return;
-        }
-        if (req.getMethod().equals("POST")) {
-            // submission
-            checkPermission(CONFIGURE);
-            XmlFile configXmlFile = getConfigFile();
-            AtomicFileWriter out = new AtomicFileWriter(configXmlFile.getFile());
-
-            try {
-                // this allows us to use UTF-8 for storing data,
-                // plus it checks any well-formedness issue in the submitted
-                // data
-                Transformer t = TransformerFactory.newInstance()
-                        .newTransformer();
-                t.transform(new StreamSource(req.getReader()),
-                        new StreamResult(out));
-                out.close();
-            } catch (TransformerException e) {
-                throw new IOException2("Failed to persist configuration.xml", e);
-            }
-
-            // try to reflect the changes by reloading
-            new XmlFile(Items.XSTREAM, out.getTemporaryFile()).unmarshal(this);
-            onLoad(getParent(), getRootDir().getName());
-
-            // if everything went well, commit this new version
-            out.commit();
-            return;
-        }
-
-        // huh?
-        rsp.sendError(SC_BAD_REQUEST);
     }
 
     /**

@@ -27,8 +27,8 @@ import net.sf.json.JSONObject;
 
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.export.Exported;
 import hudson.Extension;
-
 
 public class RunParameterDefinition extends SimpleParameterDefinition {
 
@@ -40,6 +40,7 @@ public class RunParameterDefinition extends SimpleParameterDefinition {
         this.projectName = projectName;
     }
 
+    @Exported
     public String getProjectName() {
         return projectName;
     }

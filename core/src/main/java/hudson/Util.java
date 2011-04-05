@@ -57,6 +57,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
+import java.io.StringReader;
 import java.io.Writer;
 import java.io.PrintStream;
 import java.io.InputStreamReader;
@@ -80,6 +81,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.MissingResourceException;
+import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.SimpleTimeZone;
 import java.util.StringTokenizer;
@@ -396,8 +399,13 @@ public class Util {
      *      null if no such message is available.
      */
     public static String getWin32ErrorMessage(int n) {
-        ResourceBundle rb = ResourceBundle.getBundle("/hudson/win32errors");
-        return rb.getString("error"+n);
+        try {
+            ResourceBundle rb = ResourceBundle.getBundle("/hudson/win32errors");
+            return rb.getString("error"+n);
+        } catch (MissingResourceException e) {
+            LOGGER.log(Level.WARNING,"Failed to find resource bundle",e);
+            return null;
+        }
     }
 
     /**
@@ -801,6 +809,12 @@ public class Util {
             if(ch=='&')
                 buf.append("&amp;");
             else
+            if(ch=='"')
+                buf.append("&quot;");
+            else
+            if(ch=='\'')
+                buf.append("&#039;");
+            else
             if(ch==' ') {
                 // All spaces in a block of consecutive spaces are converted to
                 // non-breaking space (&nbsp;) except for the last one.  This allows
@@ -1019,7 +1033,7 @@ public class Util {
                 listener.getLogger().println(String.format("ln -s %s %s failed: %d %s",targetPath, symlinkFile, r, errmsg));
         } catch (IOException e) {
             PrintStream log = listener.getLogger();
-            log.printf("ln %s %s failed\n",targetPath, new File(baseDir, symlinkPath));
+            log.printf("ln %s %s failed%n",targetPath, new File(baseDir, symlinkPath));
             Util.displayIOException(e,listener);
             e.printStackTrace( log );
         }
@@ -1148,6 +1162,24 @@ public class Util {
      */
     public static String intern(String s) {
         return s==null ? s : s.intern();
+    }
+
+    /**
+     * Loads a key/value pair string as {@link Properties}
+     * @since 1.392
+     */
+    @IgnoreJRERequirement
+    public static Properties loadProperties(String properties) throws IOException {
+        Properties p = new Properties();
+        try {
+            p.load(new StringReader(properties));
+        } catch (NoSuchMethodError e) {
+            // load(Reader) method is only available on JDK6.
+            // this fall back version doesn't work correctly with non-ASCII characters,
+            // but there's no other easy ways out it seems.
+            p.load(new ByteArrayInputStream(properties.getBytes()));
+        }
+        return p;
     }
 
     public static final FastDateFormat XS_DATETIME_FORMATTER = FastDateFormat.getInstance("yyyy-MM-dd'T'HH:mm:ss'Z'",new SimpleTimeZone(0,"GMT"));

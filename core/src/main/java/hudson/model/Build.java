@@ -24,7 +24,6 @@
 package hudson.model;
 
 import hudson.tasks.BuildStep;
-import hudson.tasks.BuildTrigger;
 import hudson.tasks.BuildWrapper;
 import hudson.tasks.Builder;
 import hudson.tasks.Recorder;
@@ -36,8 +35,8 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.List;
-import java.util.logging.Logger;
 
+import static hudson.model.Result.ABORTED;
 import static hudson.model.Result.FAILURE;
 
 /**
@@ -137,6 +136,9 @@ public abstract class Build <P extends Project<P,B>,B extends Build<P,B>>
 
                 if(!build(listener,project.getBuilders()))
                     r = FAILURE;
+            } catch (InterruptedException e) {
+                r = ABORTED;
+                throw e;
             } finally {
                 if (r != null) setResult(r);
                 // tear down in reverse order
@@ -165,8 +167,7 @@ public abstract class Build <P extends Project<P,B>,B extends Build<P,B>>
             // at this point it's too late to mark the build as a failure, so ignore return value.
             performAllBuildSteps(listener, project.getPublishers(), false);
             performAllBuildSteps(listener, project.getProperties(), false);
-            BuildTrigger.execute(Build.this, listener);
-            buildEnvironments = null;
+            super.cleanUp(listener);
         }
 
         private boolean build(BuildListener listener, Collection<Builder> steps) throws IOException, InterruptedException {
@@ -176,6 +177,4 @@ public abstract class Build <P extends Project<P,B>,B extends Build<P,B>>
             return true;
         }
     }
-
-    private static final Logger LOGGER = Logger.getLogger(Build.class.getName());
 }

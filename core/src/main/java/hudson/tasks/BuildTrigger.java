@@ -1,18 +1,18 @@
 /*
  * The MIT License
- * 
+ *
  * Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Brian Westrich, Martin Eigenbrodt
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -23,36 +23,35 @@
  */
 package hudson.tasks;
 
-import hudson.Launcher;
 import hudson.Extension;
+import hudson.Launcher;
 import hudson.Util;
-import hudson.security.AccessControlled;
-import hudson.matrix.MatrixAggregatable;
-import hudson.matrix.MatrixAggregator;
-import hudson.matrix.MatrixBuild;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
+import hudson.model.AutoCompletionCandidates;
 import hudson.model.BuildListener;
+import hudson.model.Cause.UpstreamCause;
 import hudson.model.DependecyDeclarer;
 import hudson.model.DependencyGraph;
 import hudson.model.DependencyGraph.Dependency;
 import hudson.model.Hudson;
 import hudson.model.Item;
 import hudson.model.Items;
+import hudson.model.Job;
 import hudson.model.Project;
 import hudson.model.Result;
 import hudson.model.Run;
-import hudson.model.Cause.UpstreamCause;
 import hudson.model.TaskListener;
 import hudson.model.listeners.ItemListener;
-import hudson.tasks.BuildTrigger.DescriptorImpl.ItemListenerImpl;
+import hudson.security.AccessControlled;
 import hudson.util.FormValidation;
 import net.sf.json.JSONObject;
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.StaplerRequest;
+import org.apache.commons.lang.StringUtils;
 import org.kohsuke.stapler.AncestorInPath;
+import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -70,7 +69,7 @@ import java.util.logging.Logger;
  *
  * <p>
  * Despite what the name suggests, this class doesn't actually trigger other jobs
- * as a part of {@link #perform} method. Its main job is to simply augument
+ * as a part of {@link #perform} method. Its main job is to simply augment
  * {@link DependencyGraph}. Jobs are responsible for triggering downstream jobs
  * on its own, because dependencies may come from other sources.
  *
@@ -80,7 +79,7 @@ import java.util.logging.Logger;
  *
  * @author Kohsuke Kawaguchi
  */
-public class BuildTrigger extends Recorder implements DependecyDeclarer, MatrixAggregatable {
+public class BuildTrigger extends Recorder implements DependecyDeclarer {
 
     /**
      * Comma-separated list of other projects to be scheduled.
@@ -133,7 +132,7 @@ public class BuildTrigger extends Recorder implements DependecyDeclarer, MatrixA
     public BuildStepMonitor getRequiredMonitorService() {
         return BuildStepMonitor.NONE;
     }
-    
+
     /**
      * Checks if this trigger has the exact same set of children as the given list.
      */
@@ -216,15 +215,6 @@ public class BuildTrigger extends Recorder implements DependecyDeclarer, MatrixA
         return true;
     }
 
-    public MatrixAggregator createAggregator(MatrixBuild build, Launcher launcher, BuildListener listener) {
-        return new MatrixAggregator(build, launcher, listener) {
-            @Override
-            public boolean endBuild() throws InterruptedException, IOException {
-                return execute(build,listener);
-            }
-        };
-    }
-
     /**
      * Called from {@link ItemListenerImpl} when a job is renamed.
      *
@@ -280,8 +270,12 @@ public class BuildTrigger extends Recorder implements DependecyDeclarer, MatrixA
 
         @Override
         public Publisher newInstance(StaplerRequest req, JSONObject formData) throws FormException {
+            String childProjectsString = formData.getString("childProjects").trim();
+            if (childProjectsString.endsWith(",")) {
+                childProjectsString = childProjectsString.substring(0, childProjectsString.length() - 1).trim();
+            }
             return new BuildTrigger(
-                formData.getString("childProjects"),
+                childProjectsString,
                 formData.has("evenIfUnstable") && formData.getBoolean("evenIfUnstable"));
         }
 
@@ -291,7 +285,7 @@ public class BuildTrigger extends Recorder implements DependecyDeclarer, MatrixA
         }
 
         public boolean showEvenIfUnstableOption(Class<? extends AbstractProject> jobType) {
-            // UGLY: for promotion process, this option doesn't make sense. 
+            // UGLY: for promotion process, this option doesn't make sense.
             return !jobType.getName().contains("PromotionProcess");
         }
 
@@ -303,16 +297,36 @@ public class BuildTrigger extends Recorder implements DependecyDeclarer, MatrixA
             if(!subject.hasPermission(Item.CONFIGURE))      return FormValidation.ok();
 
             StringTokenizer tokens = new StringTokenizer(Util.fixNull(value),",");
+            boolean hasProjects = false;
             while(tokens.hasMoreTokens()) {
                 String projectName = tokens.nextToken().trim();
-                Item item = Hudson.getInstance().getItemByFullName(projectName,Item.class);
-                if(item==null)
-                    return FormValidation.error(Messages.BuildTrigger_NoSuchProject(projectName,AbstractProject.findNearest(projectName).getName()));
-                if(!(item instanceof AbstractProject))
-                    return FormValidation.error(Messages.BuildTrigger_NotBuildable(projectName));
+                if (StringUtils.isNotBlank(projectName)) {
+                    Item item = Hudson.getInstance().getItemByFullName(projectName,Item.class);
+                    if(item==null)
+                        return FormValidation.error(Messages.BuildTrigger_NoSuchProject(projectName,AbstractProject.findNearest(projectName).getName()));
+                    if(!(item instanceof AbstractProject))
+                        return FormValidation.error(Messages.BuildTrigger_NotBuildable(projectName));
+                    hasProjects = true;
+                }
+            }
+            if (!hasProjects) {
+                return FormValidation.error(Messages.BuildTrigger_NoProjectSpecified());
             }
 
             return FormValidation.ok();
+        }
+
+        public AutoCompletionCandidates doAutoCompleteChildProjects(@QueryParameter String value) {
+            AutoCompletionCandidates candidates = new AutoCompletionCandidates();
+            List<Job> jobs = Hudson.getInstance().getItems(Job.class);
+            for (Job job: jobs) {
+                if (job.getFullName().startsWith(value)) {
+                    if (job.hasPermission(Item.READ)) {
+                        candidates.add(job.getFullName());
+                    }
+                }
+            }
+            return candidates;
         }
 
         @Extension

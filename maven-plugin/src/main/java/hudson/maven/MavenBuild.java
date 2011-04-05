@@ -30,6 +30,8 @@ import hudson.slaves.WorkspaceList;
 import hudson.slaves.WorkspaceList.Lease;
 import hudson.maven.agent.AbortException;
 import hudson.model.BuildListener;
+import hudson.model.Computer;
+import hudson.model.Hudson;
 import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.Environment;
@@ -40,8 +42,11 @@ import hudson.remoting.Channel;
 import hudson.scm.ChangeLogSet;
 import hudson.scm.ChangeLogSet.Entry;
 import hudson.tasks.BuildWrapper;
+import hudson.tasks.Maven.MavenInstallation;
 import hudson.util.ArgumentListBuilder;
+import hudson.util.IOUtils;
 import org.apache.maven.BuildFailureException;
+import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.execution.ReactorManager;
 import org.apache.maven.lifecycle.LifecycleExecutionException;
@@ -84,6 +89,13 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
      */
     private List<ExecutedMojo> executedMojos;
 
+    /**
+     * Name of the slave this project was built on.
+     * Null or "" if built by the master. (null happens when we read old record that didn't have this information.)
+     * @since 1.394
+     */
+    private String builtOn;    
+    
     public MavenBuild(MavenModule job) throws IOException {
         super(job);
     }
@@ -181,6 +193,18 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
         String opts = project.getParent().getMavenOpts();
         if(opts!=null)
             envs.put("MAVEN_OPTS", opts);
+        // We need to add M2_HOME and the mvn binary to the PATH so if Maven
+        // needs to run Maven it will pick the correct one.
+        // This can happen if maven calls ANT which itself calls Maven
+        // or if Maven calls itself e.g. maven-release-plugin
+        MavenInstallation mvn = project.getParent().getMaven();
+        if (mvn == null)
+            throw new AbortException(
+                    "A Maven installation needs to be available for this project to be built.\n"
+                    + "Either your server has no Maven installations defined, or the requested Maven version does not exist.");
+        mvn = mvn.forEnvironment(envs).forNode(Computer.currentComputer().getNode(), log);
+        envs.put("M2_HOME", mvn.getHome());
+        envs.put("PATH+MAVEN", mvn.getHome() + "/bin");
         return envs;
     }
 
@@ -244,6 +268,27 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
     protected void setWorkspace(FilePath path) {
         super.setWorkspace(path);
     }
+    
+    
+    /**
+     * @see hudson.model.AbstractBuild#getBuiltOn()
+     * @since 1.394
+     */
+    public Node getBuiltOn() {
+        if(builtOn==null || builtOn.equals(""))
+            return Hudson.getInstance();
+        else
+            return Hudson.getInstance().getNode(builtOn);
+    }
+
+    /**
+     * @param builtOn
+     * @since 1.394
+     */
+    public void setBuiltOnStr( String builtOn )
+    {
+        this.builtOn = builtOn;
+    }    
 
     /**
      * Runs Maven and builds the project.
@@ -275,7 +320,13 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
                 futures.add(Channel.current().callAsync(new AsyncInvoker(core,program)));
             }
 
+            public MavenBuildInformation getMavenBuildInformation()
+            {
+                return super.core.getMavenBuildInformation();
+            }            
+            
             private static final long serialVersionUID = 1L;
+
         }
 
         @Override
@@ -405,9 +456,13 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
         private Object writeReplace() {
             return Channel.current().export(MavenBuildProxy.class,this);
         }
+
+        public MavenBuildInformation getMavenBuildInformation() {
+            return new MavenBuildInformation( MavenBuild.this.getModuleSetBuild().getMavenVersionUsed());
+        }
     }
 
-    class ProxyImpl2 extends ProxyImpl implements MavenBuildProxy2 {
+    public class ProxyImpl2 extends ProxyImpl implements MavenBuildProxy2 {
         private final SplittableBuildListener listener;
         long startTime;
         private final OutputStream log;
@@ -496,6 +551,8 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
                 Executor.currentExecutor().newImpersonatingProxy(MavenBuildProxy2.class,this));
         }
     }
+    
+    
 
     private class RunnerImpl extends AbstractRunner {
         private List<MavenReporter> reporters;
@@ -522,14 +579,56 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
 
             EnvVars envVars = getEnvironment(listener); // buildEnvironments should be set up first
             
-            ProcessCache.MavenProcess process = mavenProcessCache.get(launcher.getChannel(), listener,
-                new MavenProcessFactory(getParent().getParent(),launcher,envVars,null));
+            MavenInstallation mvn = getProject().getParent().getMaven();
+            
+            mvn = mvn.forEnvironment(envVars).forNode(Computer.currentComputer().getNode(), listener);
+            
+            MavenInformation mavenInformation = getModuleRoot().act( new MavenVersionCallable( mvn.getHome() ));
+            
+            String mavenVersion = mavenInformation.getVersion();
+            
+            listener.getLogger().println("Found mavenVersion " + mavenVersion + " from file " + mavenInformation.getVersionResourcePath());
+            
+            ProcessCache.MavenProcess process = null;
+            
+            boolean maven3orLater = new ComparableVersion (mavenVersion).compareTo( new ComparableVersion ("3.0") ) >= 0;
+           
+            if ( maven3orLater )
+            {
+                process =
+                    MavenBuild.mavenProcessCache.get( launcher.getChannel(), listener,
+                                                      new Maven3ProcessFactory( getParent().getParent(), launcher,
+                                                                                envVars, null ) );
+            }
+            else
+            {
+                process =
+                    MavenBuild.mavenProcessCache.get( launcher.getChannel(), listener,
+                                                      new MavenProcessFactory( getParent().getParent(), launcher,
+                                                                               envVars, null ) );
+            }
+
 
             ArgumentListBuilder margs = new ArgumentListBuilder("-N","-B");
             if(mms.usesPrivateRepository())
                 // use the per-project repository. should it be per-module? But that would cost too much in terms of disk
                 // the workspace must be on this node, so getRemote() is safe.
                 margs.add("-Dmaven.repo.local="+getWorkspace().child(".repository").getRemote());
+
+            if (mms.getAlternateSettings() != null) {
+                if (IOUtils.isAbsolute(mms.getAlternateSettings())) {
+                    margs.add("-s").add(mms.getAlternateSettings());
+                } else {
+                    FilePath mrSettings = getModuleRoot().child(mms.getAlternateSettings());
+                    FilePath wsSettings = getWorkspace().child(mms.getAlternateSettings());
+                    if (!wsSettings.exists() && mrSettings.exists())
+                        wsSettings = mrSettings;
+
+                    margs.add("-s").add(wsSettings.getRemote());
+                }
+            }
+
+
             margs.add("-f",getModuleRoot().child("pom.xml").getRemote());
             margs.addTokenized(getProject().getGoals());
 
@@ -538,25 +637,33 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
             systemProps.put("hudson.build.number",String.valueOf(getNumber()));
 
             boolean normalExit = false;
-            try {
-                Result r = process.call(new Builder(
-                    listener,new ProxyImpl(),
-                    reporters.toArray(new MavenReporter[reporters.size()]), margs.toList(), systemProps));
-                normalExit = true;
-                return r;
-            } finally {
-                if(normalExit)  process.recycle();
-                else            process.discard();
-
-                // tear down in reverse order
-                boolean failed=false;
-                for( int i=buildEnvironments.size()-1; i>=0; i-- ) {
-                    if (!buildEnvironments.get(i).tearDown(MavenBuild.this,listener)) {
-                        failed=true;
-                    }                    
+            if (maven3orLater)
+            { 
+                // FIXME here for maven 3 builds
+                return Result.ABORTED;
+            }
+            else
+            {
+                try {
+                    Result r = process.call(new Builder(
+                        listener,new ProxyImpl(),
+                        reporters.toArray(new MavenReporter[reporters.size()]), margs.toList(), systemProps));
+                    normalExit = true;
+                    return r;
+                } finally {
+                    if(normalExit)  process.recycle();
+                    else            process.discard();
+    
+                    // tear down in reverse order
+                    boolean failed=false;
+                    for( int i=buildEnvironments.size()-1; i>=0; i-- ) {
+                        if (!buildEnvironments.get(i).tearDown(MavenBuild.this,listener)) {
+                            failed=true;
+                        }                    
+                    }
+                    // WARNING The return in the finally clause will trump any return before
+                    if (failed) return Result.FAILURE;
                 }
-                // WARNING The return in the finally clause will trump any return before
-                if (failed) return Result.FAILURE;
             }
         }
 
@@ -565,11 +672,6 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
                 reporter.end(MavenBuild.this,launcher,listener);
         }
 
-        @Override
-        public void cleanUp(BuildListener listener) throws Exception {
-            scheduleDownstreamBuilds(listener);
-            buildEnvironments = null;
-        }
     }
 
     private static final int MAX_PROCESS_CACHE = 5;
@@ -585,4 +687,7 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
     public MavenModule getParent() {// don't know why, but javac wants this
         return super.getParent();
     }
+
+    
+
 }

@@ -605,6 +605,7 @@ var hudsonRules = {
         ac.animSpeed = 0;
         ac.useShadow = true;
         ac.autoSnapContainer = true;
+        ac.delimChar = e.getAttribute("autoCompleteDelimChar");
         ac.doBeforeExpandContainer = function(textbox,container) {// adjust the width every time we show it
             container.style.width=textbox.clientWidth+"px";
             var Dom = YAHOO.util.Dom;
@@ -1028,7 +1029,7 @@ function refillOnChange(e,onChange) {
                 if (window.YUI!=null)      YUI.log("Unable to find a nearby control of the name "+name,"warn")
                 return;
             }
-            c.addEventListener("change",h,false);
+            try { c.addEventListener("change",h,false); } catch (ex) { c.attachEvent("change",h); }
             deps.push({name:Path.tail(name),control:c});
         });
     }
@@ -1471,6 +1472,9 @@ function updateBuildHistory(ajaxUrl,nBuild) {
 
     function updateBuilds() {
         var bh = $('buildHistory');
+        if (bh.headers == null) {
+            // Yahoo.log("Missing headers in buildHistory element");
+        }
         new Ajax.Request(ajaxUrl, {
             requestHeaders: bh.headers,
             onSuccess: function(rsp) {
@@ -1534,8 +1538,9 @@ function updateListBox(listBox,url,config) {
             originalOnSuccess(rsp);
     },
     config.onFailure = function(rsp) {
-        var l = $(listBox);
-        l.options[0] = null;
+        // deleting values can result in the data loss, so let's not do that
+//        var l = $(listBox);
+//        l.options[0] = null;
     }
 
     new Ajax.Request(url, config);
@@ -1652,7 +1657,7 @@ function shortenName(name) {
 
 //
 // structured form submission handling
-//   see http://wiki.hudson-ci.org/display/HUDSON/Structured+Form+Submission
+//   see http://wiki.jenkins-ci.org/display/JENKINS/Structured+Form+Submission
 function buildFormTree(form) {
     try {
         // I initially tried to use an associative array with DOM elemnets as keys

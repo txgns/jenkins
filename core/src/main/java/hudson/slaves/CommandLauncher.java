@@ -120,10 +120,15 @@ public class CommandLauncher extends ComputerLauncher {
             computer.setChannel(proc.getInputStream(), proc.getOutputStream(), listener.getLogger(), new Channel.Listener() {
                 @Override
                 public void onClosed(Channel channel, IOException cause) {
-                    if (cause != null) {
-                        cause.printStackTrace(
-                            listener.error(hudson.model.Messages.Slave_Terminated(getTimestamp())));
+                    try {
+                        int exitCode = proc.exitValue();
+                        if (exitCode!=0) {
+                            listener.error("Process terminated with exit code "+exitCode);
+                        }
+                    } catch (IllegalThreadStateException e) {
+                        // hasn't terminated yet
                     }
+
                     try {
                         ProcessTree.get().killAll(proc, cookie);
                     } catch (InterruptedException e) {
@@ -171,7 +176,7 @@ public class CommandLauncher extends ComputerLauncher {
 
         public FormValidation doCheckCommand(@QueryParameter String value) {
             if(Util.fixEmptyAndTrim(value)==null)
-                return FormValidation.error("Command is empty");
+                return FormValidation.error(Messages.CommandLauncher_NoLaunchCommand());
             else
                 return FormValidation.ok();
         }
