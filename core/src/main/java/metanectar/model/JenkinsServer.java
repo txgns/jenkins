@@ -122,7 +122,7 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
      * If the connection to this Jenkins has already been acknowledged, return the public key of that server.
      * Otherwise null.
      */
-    public RSAPublicKey getIdentity() {
+    public synchronized RSAPublicKey getIdentity() {
         try {
             return (RSAPublicKey)KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(identity));
         } catch (GeneralSecurityException e) {

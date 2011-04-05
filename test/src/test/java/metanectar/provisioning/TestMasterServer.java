@@ -20,6 +20,8 @@ import java.security.*;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -46,17 +48,17 @@ public class TestMasterServer {
         Channel channel;
 
         @Override
-        public URL getOurURL() throws IOException {
+        public URL getEndpoint() throws IOException {
             return endpoint;
         }
 
         @Override
-        public void onConnectingTo(URL address, X509Certificate identity) throws GeneralSecurityException, IOException {
-            LOGGER.info("Connecting to: " + address);
+        public void onConnectingTo(URL address, X509Certificate identity, String organization, Map<String, String> properties) throws GeneralSecurityException, IOException {
+            LOGGER.info("Connecting to: " + organization + " " + address);
         }
 
         @Override
-        public void onConnectedTo(Channel channel, X509Certificate identity) throws IOException {
+        public void onConnectedTo(Channel channel, X509Certificate identity, String organization) throws IOException {
             LOGGER.info("Connected: " + channel);
 
             this.channel = channel;
@@ -75,6 +77,7 @@ public class TestMasterServer {
 
         @Override
         public void onError(Exception e) throws Exception {
+            // Don't re-throw so that the agent keeps tr-trying
             LOGGER.log(Level.SEVERE, "Error connecting to server", e);
         }
     }
@@ -82,13 +85,22 @@ public class TestMasterServer {
     class Resolver implements Agent.ConnectionResolver {
         public InetSocketAddress resolve() throws IOException {
             HttpURLConnection c = (HttpURLConnection)metaNectarEndpoint.openConnection();
-            int port = c.getHeaderFieldInt("X-MetaNectar-Port", 0);
+            c.setRequestMethod("HEAD");
+            c.getResponseCode();
+            String s = c.getHeaderField("X-MetaNectar-Port");
+            if (s != null) {
+                int port = c.getHeaderFieldInt("X-MetaNectar-Port", 0);
+                c.getInputStream().close();
+                c.disconnect();
+                return new InetSocketAddress(metaNectarEndpoint.getHost(), port);
+            } else {
+                throw new IOException("X-MetaNectar-Port header not present at " + metaNectarEndpoint.toExternalForm());
+            }
 
-            return new InetSocketAddress(metaNectarEndpoint.getHost(), port);
         }
     }
 
-    public TestMasterServer(URL metaNectarEndpoint, String organization) throws IOException {
+    public TestMasterServer(URL metaNectarEndpoint, String organization, Map<String, String> properties) throws IOException {
 
         HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/", new HttpHandler() {
@@ -112,6 +124,8 @@ public class TestMasterServer {
         MetaNectarAgentProtocol.Outbound p = new MetaNectarAgentProtocol.Outbound(
                 MetaNectarAgentProtocol.getInstanceIdentityCertificate(id, endpoint.toExternalForm()),
                 id.getPrivate(),
+                organization,
+                properties,
                 new Client(),
                 null);
 

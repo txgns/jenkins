@@ -127,7 +127,7 @@ public class MasterProvisioner {
                 } catch (InterruptedException e) {
                     throw new AssertionError(e); // since we confirmed that the future is already done
                 } catch (ExecutionException e) {
-                    LOGGER.log(Level.WARNING, "Provisioned master "+pm.organization +" failed to launch",e);
+                    LOGGER.log(Level.WARNING, "Provisioned master "+pm.organization +" failed to launch",e.getCause());
                 } finally {
                     itr.remove();
                 }

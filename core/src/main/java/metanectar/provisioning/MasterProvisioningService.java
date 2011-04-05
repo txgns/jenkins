@@ -11,6 +11,7 @@ import java.util.concurrent.Future;
  * The master provision service capable of provisioning, deleting and obtaining provisioned masters.
  * <p>
  * TODO listener or task listener
+ * TODO require provision and terminate functions to be idempotent
  *
  * @author Paul Sandoz
  */
@@ -44,7 +45,7 @@ public interface MasterProvisioningService {
     /**
      * Get the provisioned masters.
      *
-     * @param channel the channle on which remote execution can be performed to get the provisioned masters.
+     * @param channel the channel on which remote execution can be performed to get the provisioned masters.
      * @return a map of organization to master.
      */
     Map<String, Master> getProvisioned(VirtualChannel channel);
