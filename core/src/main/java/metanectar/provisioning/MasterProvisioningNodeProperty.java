@@ -22,17 +22,6 @@ import java.util.Set;
 public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
 
     /**
-     * The provisioned masters associated with this node.
-     * <p>
-     * This is independent of whether provisioned masters are online or not.
-     * <p>
-     * When a master is provisioned or terminated for this node then this list will be updated.
-     * <p>
-     * This state is not configurable and must be retained over one or more saves of configuration.
-     */
-    private Set<Master> provisioned;
-
-    /**
      * The maximum number of masters that can be provisioned for this node.
      * <p>
      * TODO should this be an implementation detail? should there be a method on MasterProvisioningService?
@@ -51,7 +40,6 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
 
     @DataBoundConstructor
     public MasterProvisioningNodeProperty(int maxMasters, MasterProvisioningService mps) {
-        this.provisioned = Collections.synchronizedSet(new HashSet<Master>());
         this.maxMasters = maxMasters;
         this.mps = mps;
     }
@@ -62,36 +50,6 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
 
     public MasterProvisioningService getProvisioningService() {
         return mps;
-    }
-
-    public Set<Master> getProvisioned() {
-        return provisioned;
-    }
-
-    public boolean isProvisioned(Master m) {
-        return provisioned.contains(m);
-    }
-
-    public void provision(Master m) {
-        provisioned.add(m);
-        // TODO this needs to be saved
-    }
-
-    public void terminate(Master m) {
-        provisioned.remove(m);
-        // TODO this needs to be saved
-    }
-
-    public NodeProperty<?> reconfigure(StaplerRequest request, JSONObject form) throws Descriptor.FormException {
-        NodeProperty<?> that = super.reconfigure(request, form);
-        if (that == null)
-            return null;
-
-        // TODO what happens if the set of provisioned masters is modified  by the MasterProvisioner while here?
-
-        // Pass on the provisioned masters
-        ((MasterProvisioningNodeProperty)that).getProvisioned().addAll(this.getProvisioned());
-        return that;
     }
 
     public CauseOfBlockage canTake(Queue.Task task) {

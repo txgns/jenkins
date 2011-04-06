@@ -2,24 +2,14 @@ package metanectar.model;
 
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import hudson.Extension;
-import hudson.model.AbstractItem;
-import hudson.model.Computer;
-import hudson.model.Descriptor;
-import hudson.model.Hudson;
-import hudson.model.Item;
-import hudson.model.ItemGroup;
-import hudson.model.Job;
-import hudson.model.StatusIcon;
-import hudson.model.StockStatusIcon;
-import hudson.model.TaskListener;
-import hudson.model.TopLevelItem;
-import hudson.model.TopLevelItemDescriptor;
+import hudson.model.*;
 import hudson.remoting.Channel;
 import hudson.slaves.OfflineCause;
 import hudson.util.FormValidation;
 import hudson.util.RemotingDiagnostics;
 import hudson.util.StreamTaskListener;
 import hudson.util.io.ReopenableFileOutputStream;
+import metanectar.provisioning.Master;
 import metanectar.provisioning.MetaNectarSlaveManager;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
@@ -60,19 +50,44 @@ import static javax.servlet.http.HttpServletResponse.*;
  */
 public class MasterServer extends AbstractItem implements TopLevelItem, HttpResponse {
     /**
-     * Points to the top page of the Jenkins.
+     *
      */
-    protected URL serverUrl;
-
-    /**
-     * The encoded image of the public key that indicates the identitiy of this server.
-     */
-    private volatile byte[] identity;
+    private String grantId;
 
     /**
      * If the connection to this Jenkins is approved, set to true.
      */
     private volatile boolean approved;
+
+    /**
+     * The name of the node where the master is provisioned
+     */
+    private volatile String nodeName;
+
+    /**
+     * The node where this masters is provisioned.
+     * <p>
+     * Only the node name is serialized.
+     */
+    private transient volatile Node node;
+
+    /**
+     * The URL to the master.
+     */
+    protected volatile URL endpoint;
+
+    /**
+     * The URL to the master.
+     */
+    protected volatile URL serverUrl;
+
+    /**
+     * The encoded image of the public key that indicates the identity of the masters.
+     */
+    private volatile byte[] identity;
+
+
+    // connected state
 
     protected transient volatile OfflineCause offlineCause;
 
@@ -114,10 +129,60 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         channelLock = new Object();
     }
 
+    public void setProvisioningState() throws IOException {
+    }
+
+    public void setProvisionedState(Node n, URL endpoint) throws IOException {
+        this.endpoint = endpoint;
+        setNode(n);
+    }
+
+    public void setTerminatedState() throws IOException {
+        this.node = null;
+        this.nodeName = null;
+        this.endpoint = null;
+        this.serverUrl = null;
+        save();
+    }
+
     public File getLogFile() {
         return new File(getRootDir(),"log.txt");
     }
 
+    public String getGrantId() {
+        return grantId;
+    }
+
+    public void setGrantId(String grantId) throws IOException {
+        this.grantId = grantId;
+        save();
+    }
+
+    public final URL getServerUrl() {
+        return serverUrl;
+    }
+
+    public void setServerUrl(URL url) throws IOException {
+        this.serverUrl = url;
+        save();
+    }
+
+    public void setNode(Node node) throws IOException {
+        this.nodeName = node.getNodeName();
+        this.node = node;
+        save();
+    }
+
+    public Node getNode() {
+        if (node == null) {
+            if (nodeName == null)
+                return null;
+
+            node = MetaNectar.getInstance().getNode(nodeName);
+        }
+
+        return node;
+    }
     /**
      * If the connection to this Jenkins has already been acknowledged, return the public key of that server.
      * Otherwise null.
@@ -176,15 +241,6 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         }
     }
 
-    public final URL getServerUrl() {
-        return serverUrl;
-    }
-
-    public void setServerUrl(URL url) throws IOException {
-        this.serverUrl = url;
-        save();
-    }
-
     public String getIcon() {
         if (!isApproved())
             return "computer-gray.png";
@@ -196,11 +252,6 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
     public Channel getChannel() {
         return channel;
-    }
-
-    @Override
-    public String getDisplayName() {
-        return serverUrl.toExternalForm();
     }
 
     public void setChannel(InputStream in, OutputStream out, Channel.Listener listener) throws IOException, InterruptedException {

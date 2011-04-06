@@ -7,15 +7,15 @@ import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol.GracefulCo
 import com.thoughtworks.xstream.core.util.Base64Encoder;
 import hudson.PluginManager;
 import hudson.Util;
-import hudson.model.Failure;
-import hudson.model.Hudson;
-import hudson.model.View;
+import hudson.model.*;
 import hudson.remoting.Channel;
 import hudson.util.AdministrativeError;
+import hudson.util.FormValidation;
 import hudson.util.IOException2;
 import hudson.util.IOUtils;
 import hudson.views.StatusColumn;
 import metanectar.model.views.MasterServerColumn;
+import metanectar.provisioning.Master;
 import metanectar.provisioning.MasterProvisioner;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 import org.jvnet.hudson.reactor.ReactorException;
@@ -39,6 +39,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
+import static hudson.Util.fixEmpty;
+
 /**
  * The root object of MetaNectar.
  *
@@ -50,15 +52,13 @@ import java.util.logging.Logger;
 public class MetaNectar extends Hudson {
     private static final Logger LOGGER = Logger.getLogger(MetaNectar.class.getName());
 
-    private static final String METANECTAR_ROOT_URL = System.getProperty("METANECTAR_ROOT_URL");
+    public static final String METANECTAR_ROOT_URL = System.getProperty("METANECTAR_ROOT_URL");
 
     public static final String GRANT_PROPERTY = "grant";
 
     private transient AgentListener nectarAgentListener;
 
     public transient final MasterProvisioner masterProvisioner = new MasterProvisioner();
-
-    private final Map<String, String> masterProvisioningGrants = new ConcurrentHashMap<String, String>();
 
     public static class AgentProtocolListener extends MetaNectarAgentProtocol.Listener {
         private final MetaNectar metaNectar;
@@ -75,51 +75,49 @@ public class MetaNectar extends Hudson {
         }
 
         public void onConnectingTo(URL address, X509Certificate identity, String organization, Map<String, String> properties) throws GeneralSecurityException, IOException {
-            // locate matching jenkins server
-            MasterServer server = metaNectar.getServerByIdentity(identity.getPublicKey());
-            if (server!=null) {
-                if (server.isApproved()) {
-                    LOGGER.info("Master is approved: " + organization + " " + address);
-                    return;
-                } else {
-                    throw new GracefulConnectionRefusalException("The master " + organization + " is not approved by the MetaNectar administrator");
-                }
+            MasterServer server = metaNectar.getMasterByOrganization(organization);
+
+            if (server == null) {
+                throw new GeneralSecurityException("The master " + organization + " does not exist");
             }
 
-            // TODO: define a mode where MetaNectar admin can disable such new registration
-            server = metaNectar.createProject(MasterServer.class, Util.getDigestOf(new ByteArrayInputStream(identity.getPublicKey().getEncoded())));
-            server.setServerUrl(address);
+            if (server.isApproved()) {
+                if (server.getIdentity().equals(identity.getPublicKey())) {
+                    LOGGER.info("Master is approved: " + organization + " " + address);
+                } else {
+                    throw new GracefulConnectionRefusalException("The master " + organization + "identities do not match");
+                }
+                return;
+            }
+
             server.setIdentity((RSAPublicKey)identity.getPublicKey());
+            server.setServerUrl(address);
 
             // Check if there is a grant for automatic registration
             if (properties.containsKey(GRANT_PROPERTY)) {
                 final String receivedGrant = properties.get(GRANT_PROPERTY);
 
-                final Map<String, String> masterProvisioningGrants = metaNectar.masterProvisioningGrants;
-                if (masterProvisioningGrants.containsKey(organization)) {
-                    String issuedGrant = masterProvisioningGrants.get(organization);
-                    if (issuedGrant.equals(receivedGrant)) {
-                        masterProvisioningGrants.remove(organization);
+                if (server.getGrantId() != null) {
+                    if (server.getGrantId().equals(receivedGrant)) {
                         server.setApproved(true);
-                        LOGGER.info("Valid grant received. Master is automatically approved: " + organization + " " + address);
+                        LOGGER.info("Valid grant received. Master is approved: " + organization + " " + address);
                         return;
                     } else {
                         // Grant is not the same that was issued
-                        throw new GeneralSecurityException("Invalid grant for master " + organization);
+                        throw new GracefulConnectionRefusalException("Invalid grant for master " + organization);
                     }
                 } else {
-                    // Grant was not issued for the organization
-                    throw new GeneralSecurityException("No grant was issued for master " + organization);
+                    throw new IllegalStateException("The master " + organization + " has no grant");
                 }
             }
 
             LOGGER.info("Master is not approved: "+ organization + " " + address);
-            throw new GracefulConnectionRefusalException("This master is not yet approved by the MetaNectar administrator");
+            throw new GracefulConnectionRefusalException("This master is not approved by MetaNectar");
         }
 
         public void onConnectedTo(Channel channel, X509Certificate identity, String organization) throws IOException {
-            MasterServer server = metaNectar.getServerByIdentity(identity.getPublicKey());
-            if (server!=null) {
+            MasterServer server = metaNectar.getMasterByOrganization(organization);
+            if (server != null) {
                 server.setChannel(channel);
                 return;
             }
@@ -201,11 +199,15 @@ public class MetaNectar extends Hudson {
         return Messages.MetaNectar_DisplayName();
     }
 
-    public MasterServer getServerByIdentity(PublicKey identity) {
+    public MasterServer getMasterByIdentity(PublicKey identity) {
         for (MasterServer js : getItems(MasterServer.class))
             if (js.getIdentity().equals(identity))
                 return js;
         return null;
+    }
+
+    public MasterServer getMasterByOrganization(String organization) {
+        return (MasterServer)getItem(organization);
     }
 
     /**
@@ -219,7 +221,6 @@ public class MetaNectar extends Hudson {
                     new StatusColumn(),
                     new MasterServerColumn()));
             return lv;
-
         } catch (IOException e) {
             // view doesn't save itself unless it's connected to the parent, which we don't do in this method.
             // so this never happens
@@ -228,49 +229,73 @@ public class MetaNectar extends Hudson {
     }
 
     /**
-     * Registers a new Nectar instance to this MetaNectar.
+     * Create a grant for a master to be provisioned automatically.
      */
-    public MasterServer doAddMasterServer(@QueryParameter URL url) throws IOException, HttpResponseException {
-        checkPermission(ADMINISTER);
+    private String createGrantForMaster() {
+        return UUID.randomUUID().toString();
+    }
 
-        final URLConnection con = url.openConnection();
-        if (!(con instanceof HttpURLConnection))
-            // otherwise this gives access to local files, etc.
-            throw new Failure(url+ " is not a valid HTTP URL");
+    public MasterServer createMasterServer(String organization) throws IOException {
+        checkOrganizationName(organization);
 
-        final HttpURLConnection hcon = (HttpURLConnection) con;
-        hcon.connect();
-        if (hcon.getResponseCode()>=400) {
-            StringWriter sw = new StringWriter();
-            sw.write(url+ " couldn't be retrieved. Status code was "+hcon.getResponseCode()+"\n");
-            IOUtils.copy(new InputStreamReader(hcon.getErrorStream()), sw); // TODO: use the right encoding
-            throw new Failure(sw.toString(),true);
+        final MasterServer server = createProject(MasterServer.class, organization);
+
+        server.setGrantId(createGrantForMaster());
+        return server;
+    }
+
+    private void checkOrganizationName(String name) {
+        checkPermission(Item.CREATE);
+
+        checkGoodName(name);
+        name = name.trim();
+        if (getItem(name) != null)
+            throw new Failure("Organization " + name + "already exists");
+    }
+
+    public FormValidation doCheckOrganizationName(@QueryParameter String value) {
+        // this method can be used to check if a file exists anywhere in the file system,
+        // so it should be protected.
+        checkPermission(Item.CREATE);
+
+        if(fixEmpty(value)==null)
+            return FormValidation.ok();
+
+        try {
+            checkOrganizationName(value);
+
+            return FormValidation.ok();
+        } catch (Failure e) {
+            return FormValidation.error(e.getMessage());
         }
+    }
 
-        if (hcon.getHeaderField("X-Jenkins")==null)
-            throw new Failure(url+ " is neither Jenkins nor Nectar --- there's no X-Jenkins header");
+    /**
+     * Provision a new master and issue a grant for automatic approval.
+     *
+     */
+    public MasterServer doProvisionMasterServer(String organization) throws IOException {
+        final MasterServer server = createMasterServer(organization);
 
-        RSAPublicKey key=null;
-        if (!BYPASS_INSTANCE_AUTHENTICATION) {
-            final String id = hcon.getHeaderField("X-Instance-Identity");
-            if (id==null)
-                throw new Failure(url+ " doesn't appear to have the MetaNectar connector plugin installed.");
+        // TODO update state of the master server
+        provisionMaster(new MasterProvisioner.MasterProvisionListener() {
 
-            try {
-                key = (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(new Base64Encoder().decode(id)));
-            } catch (GeneralSecurityException e) {
-                throw new IOException2("Failed to parse the identity: "+id,e);
+            public void onProvisionStarted(MasterServer ms, Node n) {
+                //To change body of implemented methods use File | Settings | File Templates.
             }
-        }
 
-        // Add a new server. Since this instance was manually added, it's fair to say
-        // that act constitutes an approval
-        final MasterServer server = createProject(MasterServer.class, Util.getDigestOf(url.toExternalForm()));
-        server.setServerUrl(url);
-        if (key!=null) {
-            server.setIdentity(key);
-            server.setApproved(true);
-        }
+            public void onProvisionStartedError(MasterServer ms, Node n, Throwable error) {
+                //To change body of implemented methods use File | Settings | File Templates.
+            }
+
+            public void onProvisionCompleted(MasterServer ms) {
+                //To change body of implemented methods use File | Settings | File Templates.
+            }
+
+            public void onProvisionCompletedError(MasterServer ms, Throwable error) {
+                //To change body of implemented methods use File | Settings | File Templates.
+            }
+        }, server);
 
         return server;
     }
@@ -280,38 +305,16 @@ public class MetaNectar extends Hudson {
      * Provision a new master and issue a grant for automatic approval.
      *
      */
-    public void provisionMaster(MasterProvisioner.MasterProvisionListener ml, String organization) {
-        provisionMaster(ml, organization, true);
-    }
-
-    /**
-     * Provision a new masters.
-     */
-    public void provisionMaster(MasterProvisioner.MasterProvisionListener ml, String organization, boolean grant) {
+    public void provisionMaster(MasterProvisioner.MasterProvisionListener ml, MasterServer server) {
         Map<String, String> properties = new HashMap<String, String>();
-        if (grant)
-            properties.put(GRANT_PROPERTY, createGrantForMaster(organization));
-        masterProvisioner.provision(ml, organization, getRootUrlAsURL(), properties);
+        properties.put(GRANT_PROPERTY, server.getGrantId());
+        masterProvisioner.provision(ml, server, getRootUrlAsURL(), properties);
     }
 
-    /**
-     * Create a grant for a master to be provisioned automatically.
-     */
-    public String createGrantForMaster(String organization) {
-        String grant = UUID.randomUUID().toString();
-        masterProvisioningGrants.put(organization, grant);
-        return grant;
-    }
 
     //
 
     public static MetaNectar getInstance() {
         return (MetaNectar)Hudson.getInstance();
     }
-
-    /**
-     * If true, bypass the RSA-based instance ID authentication altogether.
-     * Convenient for debugging.
-     */
-    public static boolean BYPASS_INSTANCE_AUTHENTICATION = Boolean.getBoolean(MetaNectar.class.getName()+".bypassInstanceAuthentication");
 }

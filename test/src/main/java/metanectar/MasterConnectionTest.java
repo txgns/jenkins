@@ -114,10 +114,13 @@ public class MasterConnectionTest extends MetaNectarTestCase {
         metaNectar.configureNectarAgentListener(new TestAgentProtocolListener(new MetaNectar.AgentProtocolListener(metaNectar), onEventCdl, onEventCdl));
 
         Client client = new Client();
+
+        MasterServer ms = metaNectar.createMasterServer("org");
+
         Map<String, String> properties = new HashMap<String, String>();
-        properties.put(MetaNectar.GRANT_PROPERTY, metaNectar.createGrantForMaster("org"));
+        properties.put(MetaNectar.GRANT_PROPERTY, ms.getGrantId());
         MetaNectarAgentProtocol.Outbound p = new MetaNectarAgentProtocol.Outbound(
-                MetaNectarAgentProtocol.getInstanceIdentityCertificate(id,metaNectar), id.getPrivate(),
+                MetaNectarAgentProtocol.getInstanceIdentityCertificate(id, metaNectar), id.getPrivate(),
                 "org",
                 properties,
                 client, null);
@@ -125,71 +128,25 @@ public class MasterConnectionTest extends MetaNectarTestCase {
         Agent agent = new Agent(new AgentStatusListener.LoggerListener(LOGGER), null, p);
         InetSocketAddress serverAddress = new InetSocketAddress("localhost", metaNectar.getNectarAgentListener().getPort());
 
-        MasterServer js = metaNectar.getServerByIdentity(id.getPublic());
-        assertNull(js);
-
         agent.connectOnce(serverAddress);
 
+        assertNotNull(ms.getIdentity());
+        assertNotNull(ms.getServerUrl());
+
         // this should create an unapproved Jenkins instance on the server
-        js = metaNectar.getServerByIdentity(id.getPublic());
-        assertNotNull(js);
-        assertTrue(js.isApproved());
+        ms = metaNectar.getMasterByIdentity(id.getPublic());
+        assertNotNull(ms);
+        assertTrue(ms.isApproved());
         assertNotNull(client.channel);
 
         // Wait for channel to be established on the server
         onEventCdl.await(1, TimeUnit.MINUTES);
-        assertNotNull(js.getChannel());
+        assertNotNull(ms.getChannel());
 
         // verify that we can talk to each other
         client.channel.setProperty("client","hello");
-        assertEquals("hello",js.getChannel().waitForRemoteProperty("client"));
+        assertEquals("hello", ms.getChannel().waitForRemoteProperty("client"));
     }
-
-    public void testConnectionWithApproval() throws Exception {
-        CountDownLatch onEventCdl = new CountDownLatch(2);
-        metaNectar.configureNectarAgentListener(new TestAgentProtocolListener(new MetaNectar.AgentProtocolListener(metaNectar), onEventCdl, onEventCdl));
-
-        Client client = new Client();
-        MetaNectarAgentProtocol.Outbound p = new MetaNectarAgentProtocol.Outbound(
-                MetaNectarAgentProtocol.getInstanceIdentityCertificate(id,metaNectar), id.getPrivate(),
-                "org",
-                Collections.<String, String>emptyMap(),
-                client, null);
-
-        Agent agent = new Agent(new AgentStatusListener.LoggerListener(LOGGER), null, p);
-        InetSocketAddress serverAddress = new InetSocketAddress("localhost", metaNectar.getNectarAgentListener().getPort());
-
-        MasterServer js = metaNectar.getServerByIdentity(id.getPublic());
-        assertNull(js);
-
-        try {
-            agent.connectOnce(serverAddress);
-            fail();
-        } catch (MetaNectarAgentProtocol.GracefulConnectionRefusalException e) {
-            // we aren't approved yet
-        }
-
-        // this should create an unapproved Jenkins instance on the server
-        js = metaNectar.getServerByIdentity(id.getPublic());
-        assertNotNull(js);
-        assertFalse(js.isApproved());
-
-        // approve it, and reconnect
-        js.setApproved(true);
-        agent.connectOnce(serverAddress);
-
-        // this should succeed, and the channel should be established
-        assertNotNull(client.channel);
-
-        // Wait for channel to be established on the server
-        onEventCdl.await(1, TimeUnit.MINUTES);
-        assertNotNull(js.getChannel());
-
-        // verify that we can talk to each other
-        client.channel.setProperty("client","hello");
-        assertEquals("hello",js.getChannel().waitForRemoteProperty("client"));
-    }
-
 
     public void testAgentListenerPort() throws IOException, SAXException {
         HtmlPage wc = new WebClient().goTo("/");

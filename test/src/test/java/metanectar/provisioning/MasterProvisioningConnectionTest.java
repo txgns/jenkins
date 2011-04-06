@@ -4,7 +4,6 @@ import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import hudson.model.*;
 import hudson.remoting.Channel;
-import hudson.remoting.VirtualChannel;
 import hudson.tasks.Mailer;
 import metanectar.model.MasterServer;
 import metanectar.model.MetaNectar;
@@ -15,9 +14,7 @@ import java.net.URL;
 import java.security.GeneralSecurityException;
 import java.security.cert.X509Certificate;
 import java.util.*;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -52,68 +49,18 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
             this.cdl = cdl;
         }
 
-        public void onProvisionStarted(String organization, Node n) {
+        public void onProvisionStarted(MasterServer ms, Node n) {
             cdl.countDown();
         }
 
-        public void onProvisionStartedError(String organization, Node n, Throwable error) {
+        public void onProvisionStartedError(MasterServer ms, Node n, Throwable error) {
         }
 
-        public void onProvisionCompleted(Master m, Node n) {
+        public void onProvisionCompleted(MasterServer ms) {
             cdl.countDown();
         }
 
-        public void onProvisionCompletedError(String organization, Node n, Throwable error) {
-        }
-    }
-
-    public static class Service implements MasterProvisioningService {
-
-        private final int delay;
-
-        Service(int delay) {
-            this.delay = delay;
-        }
-
-        public Future<Master> provision(final VirtualChannel channel, final String organization, final URL metaNectarEndpoint, final Map<String, String> properties) throws IOException, InterruptedException {
-            return Computer.threadPoolForRemoting.submit(new Callable<Master>() {
-                public Master call() throws Exception {
-                    System.out.println("Launching master " + organization);
-
-                    Thread.sleep(delay);
-
-                    final URL endpoint = channel.call(new TestMasterServerCallable(metaNectarEndpoint, organization, properties));
-
-                    System.out.println("Launched master " + organization + ": " + endpoint);
-                    return new Master(organization, endpoint);
-                }
-            });
-        }
-
-        public Future<?> terminate(VirtualChannel channel, String organization, boolean clean) throws IOException, InterruptedException {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public Map<String, Master> getProvisioned(VirtualChannel channel) {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-    }
-
-    public static class TestMasterServerCallable implements hudson.remoting.Callable<URL, Exception> {
-        private final String organization;
-        private final URL metaNectarEndpoint;
-        private final Map<String, String> properties;
-
-        public TestMasterServerCallable(URL metaNectarEndpoint, String organization, Map<String, String> properties) {
-            this.organization = organization;
-            this.metaNectarEndpoint = metaNectarEndpoint;
-            this.properties = properties;
-        }
-
-        public URL call() throws Exception {
-            TestMasterServer masterServer = new TestMasterServer(metaNectarEndpoint, organization, properties);
-            masterServer.setRetryInterval(500);
-            return masterServer.start();
+        public void onProvisionCompletedError(MasterServer ms, Throwable error) {
         }
     }
 
@@ -181,7 +128,7 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
         CountDownLatch onEventCdl = new CountDownLatch(masters);
         metaNectar.configureNectarAgentListener(new TestAgentProtocolListener(new MetaNectar.AgentProtocolListener(metaNectar), onEventCdl, onEventCdl));
 
-        Service s = new Service(100);
+        TestMasterProvisioningService s = new TestMasterProvisioningService(100);
         TestSlaveCloud cloud = new TestSlaveCloud(this, 4, s, 100);
         metaNectar.clouds.add(cloud);
 
@@ -189,7 +136,8 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
         Listener l = new Listener(masterProvisionCdl);
 
         for (int i = 0; i < masters; i++) {
-            metaNectar.provisionMaster(l, "org" + i);
+            MasterServer ms = metaNectar.createMasterServer("org" + i);
+            metaNectar.provisionMaster(l, ms);
         }
 
         // Wait for masters to be provisioned
@@ -203,67 +151,4 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
             assertTrue(js.isApproved());
         }
     }
-
-    private class TestApprovingAgentProtocolListener extends TestAgentProtocolListener {
-
-        public TestApprovingAgentProtocolListener(MetaNectarAgentProtocol.Listener l, CountDownLatch onConnectedLatch, CountDownLatch onRefusalLatch) {
-            super(l, onConnectedLatch, onRefusalLatch);
-        }
-
-        public void onConnectingTo(URL address, X509Certificate identity, String organization, Map<String, String> properties) throws GeneralSecurityException, IOException {
-            try {
-                super.onConnectingTo(address, identity, organization, properties);
-            } catch (MetaNectarAgentProtocol.GracefulConnectionRefusalException e) {
-                MasterServer server = metaNectar.getServerByIdentity(identity.getPublicKey());
-                server.setApproved(true);
-                throw e;
-            }
-        }
-    }
-
-    public void testProvisionOneMasterNoGrant() throws Exception {
-        _testProvisionNoGrant(1);
-    }
-
-    public void testProvisionTwoMasterNoGrant() throws Exception {
-        _testProvisionNoGrant(2);
-    }
-
-    public void testProvisionFourMasterNoGrant() throws Exception {
-        _testProvisionNoGrant(4);
-    }
-
-    public void testProvisionEightMasterNoGrant() throws Exception {
-        _testProvisionNoGrant(8);
-    }
-
-    public void _testProvisionNoGrant(int masters) throws Exception {
-        HtmlPage wc = new WebClient().goTo("/");
-
-        CountDownLatch onEventCdl = new CountDownLatch(2 * masters);
-        metaNectar.configureNectarAgentListener(new TestApprovingAgentProtocolListener(new MetaNectar.AgentProtocolListener(metaNectar), onEventCdl, onEventCdl));
-
-        Service s = new Service(100);
-        TestSlaveCloud cloud = new TestSlaveCloud(this, 4, s, 100);
-        metaNectar.clouds.add(cloud);
-
-        CountDownLatch masterProvisionCdl = new CountDownLatch(2 * masters);
-        Listener l = new Listener(masterProvisionCdl);
-
-        for (int i = 0; i < masters; i++) {
-            metaNectar.provisionMaster(l, "org" + i, false);
-        }
-
-        // Wait for masters to be provisioned
-        masterProvisionCdl.await(1, TimeUnit.MINUTES);
-
-        // Wait for masters to be approved and connected
-        onEventCdl.await(1, TimeUnit.MINUTES);
-
-        assertEquals(masters, metaNectar.getItems(MasterServer.class).size());
-        for (MasterServer js : metaNectar.getItems(MasterServer.class)) {
-            assertTrue(js.isApproved());
-        }
-    }
-
 }

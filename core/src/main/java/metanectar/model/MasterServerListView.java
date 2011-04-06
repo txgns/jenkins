@@ -26,12 +26,15 @@ package metanectar.model;
 
 import hudson.Extension;
 import hudson.model.*;
+import hudson.util.FormValidation;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.HttpResponses.HttpResponseException;
 import org.kohsuke.stapler.QueryParameter;
 
 import java.io.IOException;
 import java.net.URL;
+
+import static hudson.Util.fixEmpty;
 
 /**
  *
@@ -62,8 +65,8 @@ public class MasterServerListView extends ListView implements Saveable {
 //    }
 
 
-    public MasterServer doAddMasterServer(@QueryParameter URL url) throws IOException, HttpResponseException {
-        final MasterServer s = MetaNectar.getInstance().doAddMasterServer(url);
+    public MasterServer doProvisionMasterServer(@QueryParameter String name) throws IOException {
+        MasterServer s = MetaNectar.getInstance().doProvisionMasterServer(name);
         add(s);
         return s;
     }

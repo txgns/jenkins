@@ -4,6 +4,7 @@ import hudson.Extension;
 import hudson.model.*;
 import hudson.remoting.VirtualChannel;
 import hudson.slaves.*;
+import metanectar.model.MasterServer;
 import metanectar.model.MetaNectar;
 import metanectar.test.MetaNectarTestCase;
 
@@ -45,18 +46,18 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
             this.cdl = cdl;
         }
 
-        public void onProvisionStarted(String organization, Node n) {
+        public void onProvisionStarted(MasterServer ms, Node n) {
             cdl.countDown();
         }
 
-        public void onProvisionStartedError(String organization, Node n, Throwable error) {
+        public void onProvisionStartedError(MasterServer ms, Node n, Throwable error) {
         }
 
-        public void onProvisionCompleted(Master m, Node n) {
+        public void onProvisionCompleted(MasterServer ms) {
             cdl.countDown();
         }
 
-        public void onProvisionCompletedError(String organization, Node n, Throwable error) {
+        public void onProvisionCompletedError(MasterServer ms, Throwable error) {
         }
     }
 
@@ -67,15 +68,15 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
             this.cdl = cdl;
         }
 
-        public void onTerminateStarted(Master m, Node n) {
+        public void onTerminateStarted(MasterServer ms) {
             cdl.countDown();
         }
 
-        public void onTerminateCompleted(Master m, Node n) {
+        public void onTerminateCompleted(MasterServer ms, Node n) {
             cdl.countDown();
         }
 
-        public void onTerminateError(Master m, Node n, Throwable e) {
+        public void onTerminateError(MasterServer ms, Node n, Throwable e) {
         }
     }
 
@@ -171,14 +172,15 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
         Map<String, String> properties = new HashMap<String, String>();
         properties.put("key", "value");
         for (int i = 0; i < masters; i++) {
-            metaNectar.masterProvisioner.provision(l, "org" + i, new URL("http://test/"), properties);
+            MasterServer ms = metaNectar.createMasterServer("org" + i);
+            metaNectar.masterProvisioner.provision(l, ms, new URL("http://test/"), properties);
         }
 
         cdl.await(1, TimeUnit.MINUTES);
 
         assertEquals(nodes, MyComputerListener.get().online.size());
         assertEquals(nodes, metaNectar.masterProvisioner.masterLabel.getNodes().size());
-        assertEquals(masters, metaNectar.masterProvisioner.getProvisionedMasters().size());
+        assertEquals(masters, MasterProvisioner.getProvisionedMasters(metaNectar).size());
     }
 
 
@@ -223,7 +225,7 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
 //        assertEquals(nodes, MyComputerListener.get().online.size());
 //        assertEquals(nodes, metaNectar.masterProvisioner.masterLabel.getNodes().size());
 
-        assertEquals(0, metaNectar.masterProvisioner.getProvisionedMasters().size());
+        assertEquals(0, MasterProvisioner.getProvisionedMasters(metaNectar).size());
     }
 
 
