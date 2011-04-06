@@ -58,7 +58,7 @@ import static javax.servlet.http.HttpServletResponse.*;
  *
  * @author Kohsuke Kawaguchi, Paul Sandoz
  */
-public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpResponse {
+public class MasterServer extends AbstractItem implements TopLevelItem, HttpResponse {
     /**
      * Points to the top page of the Jenkins.
      */
@@ -90,7 +90,7 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
      */
     private transient TaskListener taskListener;
 
-    protected JenkinsServer(ItemGroup parent, String name) {
+    protected MasterServer(ItemGroup parent, String name) {
         super(parent, name);
     }
 
@@ -221,7 +221,7 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
         channel.addListener(new Channel.Listener() {
             @Override
             public void onClosed(Channel c, IOException cause) {
-                JenkinsServer.this.channel = null;
+                MasterServer.this.channel = null;
                 // Orderly shutdown will have null exception
                 if (cause!=null) {
                     offlineCause = new OfflineCause.ChannelTermination(cause);
@@ -378,9 +378,9 @@ public class JenkinsServer extends AbstractItem implements TopLevelItem, HttpRes
 
         @Override
         public TopLevelItem newInstance(ItemGroup parent, String name) {
-            return new JenkinsServer(parent,name);
+            return new MasterServer(parent,name);
         }
     }
 
-    private static final Logger LOGGER = Logger.getLogger(JenkinsServer.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(MasterServer.class.getName());
 }

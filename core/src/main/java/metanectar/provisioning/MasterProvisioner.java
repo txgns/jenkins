@@ -28,11 +28,8 @@ import java.util.logging.Logger;
  * provisioned from the Cloud.
  * <p>
  * TODO
- * - store state on a NodeProperty
- *   - max number of masters that can be provisioned
- *   - list of masters that are provisioned
- *   - master provisioning service class for factory?
- * -
+ * - how to manage failures
+ * - make provision requests idempotent?
  *
  * @author Paul Sandoz
  */
@@ -93,7 +90,6 @@ public class MasterProvisioner {
     // TODO make configurable
     public final Label masterLabel = MetaNectar.getInstance().getLabel("_masters_");
 
-    // TODO should this be a weak hash map?
     private Multimap<Node, PlannedMaster> pendingPlannedMasters = ArrayListMultimap.create();
 
     private List<PlannedMasterRequest> pendingPlannedMasterRequests = Collections.synchronizedList(new ArrayList<PlannedMasterRequest>());

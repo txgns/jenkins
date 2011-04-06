@@ -2,15 +2,11 @@ package metanectar.provisioning;
 
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import hudson.Extension;
-import hudson.ExtensionList;
 import hudson.model.*;
-import hudson.model.listeners.ItemListener;
 import hudson.remoting.Channel;
 import hudson.remoting.VirtualChannel;
-import hudson.slaves.ComputerListener;
 import hudson.tasks.Mailer;
-import metanectar.model.JenkinsServer;
+import metanectar.model.MasterServer;
 import metanectar.model.MetaNectar;
 import metanectar.test.MetaNectarTestCase;
 
@@ -202,8 +198,8 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
         // Wait for masters to be connected
         onEventCdl.await(1, TimeUnit.MINUTES);
 
-        assertEquals(masters, metaNectar.getItems(JenkinsServer.class).size());
-        for (JenkinsServer js : metaNectar.getItems(JenkinsServer.class)) {
+        assertEquals(masters, metaNectar.getItems(MasterServer.class).size());
+        for (MasterServer js : metaNectar.getItems(MasterServer.class)) {
             assertTrue(js.isApproved());
         }
     }
@@ -218,7 +214,7 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
             try {
                 super.onConnectingTo(address, identity, organization, properties);
             } catch (MetaNectarAgentProtocol.GracefulConnectionRefusalException e) {
-                JenkinsServer server = metaNectar.getServerByIdentity(identity.getPublicKey());
+                MasterServer server = metaNectar.getServerByIdentity(identity.getPublicKey());
                 server.setApproved(true);
                 throw e;
             }
@@ -264,8 +260,8 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
         // Wait for masters to be approved and connected
         onEventCdl.await(1, TimeUnit.MINUTES);
 
-        assertEquals(masters, metaNectar.getItems(JenkinsServer.class).size());
-        for (JenkinsServer js : metaNectar.getItems(JenkinsServer.class)) {
+        assertEquals(masters, metaNectar.getItems(MasterServer.class).size());
+        for (MasterServer js : metaNectar.getItems(MasterServer.class)) {
             assertTrue(js.isApproved());
         }
     }

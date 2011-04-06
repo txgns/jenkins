@@ -8,9 +8,9 @@ import org.kohsuke.stapler.DataBoundConstructor;
 /**
  * @author Paul Sandoz
  */
-public class JenkinsServerColumn extends ListViewColumn {
+public class MasterServerColumn extends ListViewColumn {
     @DataBoundConstructor
-    public JenkinsServerColumn() {
+    public MasterServerColumn() {
     }
 
     @Extension

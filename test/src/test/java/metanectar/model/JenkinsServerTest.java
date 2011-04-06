@@ -14,14 +14,14 @@ import java.util.Arrays;
  */
 public class JenkinsServerTest extends MetaNectarTestCase {
     /**
-     * Makes sure that the key round-trips in {@link JenkinsServer#getIdentity()}.
+     * Makes sure that the key round-trips in {@link MasterServer#getIdentity()}.
      */
     public void testAcknowledgement() throws Exception {
         final boolean old = MetaNectar.BYPASS_INSTANCE_AUTHENTICATION;
         MetaNectar.BYPASS_INSTANCE_AUTHENTICATION=true;
 
         try {
-            final JenkinsServer s = metaNectar.doAddNectar(getURL());
+            final MasterServer s = metaNectar.doAddNectar(getURL());
 
             RSAKeyPairGenerator gen = new RSAKeyPairGenerator();
             gen.initialize(2048,new SecureRandom());

@@ -6,7 +6,7 @@ import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import hudson.remoting.Channel;
 import hudson.tasks.Mailer;
-import metanectar.model.JenkinsServer;
+import metanectar.model.MasterServer;
 import metanectar.model.MetaNectar;
 import metanectar.test.MetaNectarTestCase;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
@@ -125,7 +125,7 @@ public class MasterConnectionTest extends MetaNectarTestCase {
         Agent agent = new Agent(new AgentStatusListener.LoggerListener(LOGGER), null, p);
         InetSocketAddress serverAddress = new InetSocketAddress("localhost", metaNectar.getNectarAgentListener().getPort());
 
-        JenkinsServer js = metaNectar.getServerByIdentity(id.getPublic());
+        MasterServer js = metaNectar.getServerByIdentity(id.getPublic());
         assertNull(js);
 
         agent.connectOnce(serverAddress);
@@ -159,7 +159,7 @@ public class MasterConnectionTest extends MetaNectarTestCase {
         Agent agent = new Agent(new AgentStatusListener.LoggerListener(LOGGER), null, p);
         InetSocketAddress serverAddress = new InetSocketAddress("localhost", metaNectar.getNectarAgentListener().getPort());
 
-        JenkinsServer js = metaNectar.getServerByIdentity(id.getPublic());
+        MasterServer js = metaNectar.getServerByIdentity(id.getPublic());
         assertNull(js);
 
         try {

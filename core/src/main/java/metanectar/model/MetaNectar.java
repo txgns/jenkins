@@ -15,14 +15,12 @@ import hudson.util.AdministrativeError;
 import hudson.util.IOException2;
 import hudson.util.IOUtils;
 import hudson.views.StatusColumn;
-import metanectar.model.views.JenkinsServerColumn;
+import metanectar.model.views.MasterServerColumn;
 import metanectar.provisioning.MasterProvisioner;
-import metanectar.provisioning.MasterProvisioningService;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 import org.jvnet.hudson.reactor.ReactorException;
 import org.kohsuke.stapler.HttpResponses.HttpResponseException;
 import org.kohsuke.stapler.QueryParameter;
-import org.omg.CORBA.PUBLIC_MEMBER;
 
 import javax.servlet.ServletContext;
 import java.io.ByteArrayInputStream;
@@ -39,7 +37,6 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Logger;
 
 /**
@@ -79,7 +76,7 @@ public class MetaNectar extends Hudson {
 
         public void onConnectingTo(URL address, X509Certificate identity, String organization, Map<String, String> properties) throws GeneralSecurityException, IOException {
             // locate matching jenkins server
-            JenkinsServer server = metaNectar.getServerByIdentity(identity.getPublicKey());
+            MasterServer server = metaNectar.getServerByIdentity(identity.getPublicKey());
             if (server!=null) {
                 if (server.isApproved()) {
                     LOGGER.info("Master is approved: " + organization + " " + address);
@@ -90,7 +87,7 @@ public class MetaNectar extends Hudson {
             }
 
             // TODO: define a mode where MetaNectar admin can disable such new registration
-            server = metaNectar.createProject(JenkinsServer.class, Util.getDigestOf(new ByteArrayInputStream(identity.getPublicKey().getEncoded())));
+            server = metaNectar.createProject(MasterServer.class, Util.getDigestOf(new ByteArrayInputStream(identity.getPublicKey().getEncoded())));
             server.setServerUrl(address);
             server.setIdentity((RSAPublicKey)identity.getPublicKey());
 
@@ -121,7 +118,7 @@ public class MetaNectar extends Hudson {
         }
 
         public void onConnectedTo(Channel channel, X509Certificate identity, String organization) throws IOException {
-            JenkinsServer server = metaNectar.getServerByIdentity(identity.getPublicKey());
+            MasterServer server = metaNectar.getServerByIdentity(identity.getPublicKey());
             if (server!=null) {
                 server.setChannel(channel);
                 return;
@@ -204,8 +201,8 @@ public class MetaNectar extends Hudson {
         return Messages.MetaNectar_DisplayName();
     }
 
-    public JenkinsServer getServerByIdentity(PublicKey identity) {
-        for (JenkinsServer js : getItems(JenkinsServer.class))
+    public MasterServer getServerByIdentity(PublicKey identity) {
+        for (MasterServer js : getItems(MasterServer.class))
             if (js.getIdentity().equals(identity))
                 return js;
         return null;
@@ -217,10 +214,10 @@ public class MetaNectar extends Hudson {
     @Override
     protected View createInitialView() {
         try {
-            JenkinsServerListView lv = new JenkinsServerListView("All");
+            MasterServerListView lv = new MasterServerListView("All");
             lv.setColumns(Arrays.asList(
                     new StatusColumn(),
-                    new JenkinsServerColumn()));
+                    new MasterServerColumn()));
             return lv;
 
         } catch (IOException e) {
@@ -233,7 +230,7 @@ public class MetaNectar extends Hudson {
     /**
      * Registers a new Nectar instance to this MetaNectar.
      */
-    public JenkinsServer doAddNectar(@QueryParameter URL url) throws IOException, HttpResponseException {
+    public MasterServer doAddNectar(@QueryParameter URL url) throws IOException, HttpResponseException {
         checkPermission(ADMINISTER);
 
         final URLConnection con = url.openConnection();
@@ -268,7 +265,7 @@ public class MetaNectar extends Hudson {
 
         // Add a new server. Since this instance was manually added, it's fair to say
         // that act constitutes an approval
-        final JenkinsServer server = createProject(JenkinsServer.class, Util.getDigestOf(url.toExternalForm()));
+        final MasterServer server = createProject(MasterServer.class, Util.getDigestOf(url.toExternalForm()));
         server.setServerUrl(url);
         if (key!=null) {
             server.setIdentity(key);

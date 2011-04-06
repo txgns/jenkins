@@ -1,5 +1,6 @@
 package metanectar.provisioning;
 
+import com.google.common.collect.Sets;
 import hudson.model.Descriptor;
 import hudson.model.Node;
 import hudson.model.Queue;
@@ -9,6 +10,7 @@ import net.sf.json.JSONObject;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -49,7 +51,7 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
 
     @DataBoundConstructor
     public MasterProvisioningNodeProperty(int maxMasters, MasterProvisioningService mps) {
-        this.provisioned = new HashSet<Master>();
+        this.provisioned = Collections.synchronizedSet(new HashSet<Master>());
         this.maxMasters = maxMasters;
         this.mps = mps;
     }
@@ -72,16 +74,20 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
 
     public void provision(Master m) {
         provisioned.add(m);
+        // TODO this needs to be saved
     }
 
     public void terminate(Master m) {
         provisioned.remove(m);
+        // TODO this needs to be saved
     }
 
     public NodeProperty<?> reconfigure(StaplerRequest request, JSONObject form) throws Descriptor.FormException {
         NodeProperty<?> that = super.reconfigure(request, form);
         if (that == null)
             return null;
+
+        // TODO what happens if the set of provisioned masters is modified  by the MasterProvisioner while here?
 
         // Pass on the provisioned masters
         ((MasterProvisioningNodeProperty)that).getProvisioned().addAll(this.getProvisioned());
