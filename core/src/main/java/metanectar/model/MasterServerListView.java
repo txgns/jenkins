@@ -62,8 +62,8 @@ public class MasterServerListView extends ListView implements Saveable {
 //    }
 
 
-    public MasterServer doAddNectar(@QueryParameter URL url) throws IOException, HttpResponseException {
-        final MasterServer s = MetaNectar.getInstance().doAddNectar(url);
+    public MasterServer doAddMasterServer(@QueryParameter URL url) throws IOException, HttpResponseException {
+        final MasterServer s = MetaNectar.getInstance().doAddMasterServer(url);
         add(s);
         return s;
     }

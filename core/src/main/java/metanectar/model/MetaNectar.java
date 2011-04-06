@@ -230,7 +230,7 @@ public class MetaNectar extends Hudson {
     /**
      * Registers a new Nectar instance to this MetaNectar.
      */
-    public MasterServer doAddNectar(@QueryParameter URL url) throws IOException, HttpResponseException {
+    public MasterServer doAddMasterServer(@QueryParameter URL url) throws IOException, HttpResponseException {
         checkPermission(ADMINISTER);
 
         final URLConnection con = url.openConnection();

@@ -12,7 +12,7 @@ import java.util.Arrays;
 /**
  * @author Kohsuke Kawaguchi
  */
-public class JenkinsServerTest extends MetaNectarTestCase {
+public class MasterServerTest extends MetaNectarTestCase {
     /**
      * Makes sure that the key round-trips in {@link MasterServer#getIdentity()}.
      */
@@ -21,7 +21,7 @@ public class JenkinsServerTest extends MetaNectarTestCase {
         MetaNectar.BYPASS_INSTANCE_AUTHENTICATION=true;
 
         try {
-            final MasterServer s = metaNectar.doAddNectar(getURL());
+            final MasterServer s = metaNectar.doAddMasterServer(getURL());
 
             RSAKeyPairGenerator gen = new RSAKeyPairGenerator();
             gen.initialize(2048,new SecureRandom());

@@ -31,7 +31,7 @@ THE SOFTWARE.
       <p>
         Put your Nectar/Jenkins under the control of MetaNectar by adding it.
       </p>
-      <f:form method="post" action="addNectar" name="addNectar">
+      <f:form method="post" action="addMasterServer" name="addMasterServer">
         <f:entry title="${%URL}">
           <f:textbox name="url"/>
         </f:entry>

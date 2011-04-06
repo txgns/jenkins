@@ -360,7 +360,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     public static class DescriptorImpl extends TopLevelItemDescriptor {
         @Override
         public String getDisplayName() {
-            return "Jenkins server";
+            return "Master server";
         }
 
         public FormValidation doCheckServerUrl(@QueryParameter String value) throws IOException, ServletException {
