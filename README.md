@@ -8,3 +8,5 @@ Not ready for production use.
 This has been merged with Jenkins 1.400.
 
 The results of the merge have still to be validated.
+
+The current validation shows that some things are broken
