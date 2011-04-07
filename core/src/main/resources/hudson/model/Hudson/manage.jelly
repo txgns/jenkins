@@ -42,7 +42,7 @@ THE SOFTWARE.
 
   <st:include page="sidepanel.jelly" />
   <l:main-panel>
-    <h1>${%Manage Hudson}</h1>
+    <h1>${%Manage Jenkins}</h1>
     <!--<j:if test="${it.checkURIEncodingEnabled}">-->
       <!--<script>-->
         <!--var url='checkURIEncoding';-->
