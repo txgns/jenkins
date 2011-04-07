@@ -24,11 +24,10 @@ public interface MasterProvisioningService {
      * @param metaNectarEndpoint the MetaNectar URL, so that masters can make contact.
      * @param properties a map of properties for provisioning.
      * @return a future of the master, when the future is done the master is considered provisioned.
-     * @throws IOException
-     * @throws InterruptedException
+     * @throws Exception
      */
     Future<Master> provision(VirtualChannel channel, String organization, URL metaNectarEndpoint,
-                                               Map<String, String> properties) throws IOException, InterruptedException;
+                                               Map<String, String> properties) throws Exception;
 
     /**
      * Terminate a provisioned master.
@@ -37,10 +36,9 @@ public interface MasterProvisioningService {
      * @param organization the organization associated with the master.
      * @param clean if true then any local resources, such as home and workspace directories, will be cleaned up.
      * @return a future, when done the provisioned master is considered terminated.
-     * @throws IOException
-     * @throws InterruptedException
+     * @throws Exception
      */
-    Future<?> terminate(VirtualChannel channel, String organization, boolean clean) throws IOException, InterruptedException;
+    Future<?> terminate(VirtualChannel channel, String organization, boolean clean) throws Exception;
 
     /**
      * Get the provisioned masters.

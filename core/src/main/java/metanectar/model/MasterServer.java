@@ -1,34 +1,26 @@
 package metanectar.model;
 
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
+import com.google.common.base.Objects;
 import hudson.Extension;
 import hudson.model.*;
 import hudson.remoting.Channel;
 import hudson.slaves.OfflineCause;
-import hudson.util.FormValidation;
 import hudson.util.RemotingDiagnostics;
 import hudson.util.StreamTaskListener;
 import hudson.util.io.ReopenableFileOutputStream;
-import metanectar.provisioning.Master;
 import metanectar.provisioning.MetaNectarSlaveManager;
-import net.sf.json.JSONException;
-import net.sf.json.JSONObject;
+import org.bouncycastle.asn1.cmp.ProtectedPart;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.HttpResponses;
-import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
 import javax.servlet.ServletException;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.interfaces.RSAPublicKey;
@@ -39,18 +31,36 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static javax.servlet.http.HttpServletResponse.*;
-
 /**
- * Representation of remote Jenkins server inside Meta Nectar.
- *
- * TODO should we separate out the connection information in a new class?
+ * Representation of remote Master server inside MetaNectar.
  *
  * @author Kohsuke Kawaguchi, Paul Sandoz
  */
 public class MasterServer extends AbstractItem implements TopLevelItem, HttpResponse {
+
+    // Created, Provisioning, Provisioned, Connectable, Connected, Terminating, Terminated
+
+    static enum State {
+        Created,
+        Provisioning,
+        Provisioned,
+        Connectable,
+        Terminating,
+        Terminated
+    }
+
     /**
-     *
+     * The state of the master.
+     */
+    protected volatile State state;
+
+    /**
+     * Error associated with a particular state.
+     */
+    protected transient volatile Throwable error;
+
+    /**
+     * The grant ID for the master to validat when initially connecting.
      */
     private String grantId;
 
@@ -77,19 +87,11 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     protected volatile URL endpoint;
 
     /**
-     * The URL to the master.
-     */
-    protected volatile URL serverUrl;
-
-    /**
      * The encoded image of the public key that indicates the identity of the masters.
      */
     private volatile byte[] identity;
 
-
     // connected state
-
-    protected transient volatile OfflineCause offlineCause;
 
     protected transient /* final */ Object channelLock = new Object();
 
@@ -123,98 +125,25 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     private void init() {
-        updateOfflineCause();
         log = new ReopenableFileOutputStream(getLogFile());
         taskListener = new StreamTaskListener(log);
         channelLock = new Object();
     }
 
-    public void setProvisioningState() throws IOException {
-    }
-
-    public void setProvisionedState(Node n, URL endpoint) throws IOException {
-        this.endpoint = endpoint;
-        setNode(n);
-    }
-
-    public void setTerminatedState() throws IOException {
-        this.node = null;
-        this.nodeName = null;
-        this.endpoint = null;
-        this.serverUrl = null;
-        save();
-    }
-
-    public File getLogFile() {
+    private File getLogFile() {
         return new File(getRootDir(),"log.txt");
     }
 
-    public String getGrantId() {
-        return grantId;
-    }
-
-    public void setGrantId(String grantId) throws IOException {
-        this.grantId = grantId;
-        save();
-    }
-
-    public final URL getServerUrl() {
-        return serverUrl;
-    }
-
-    public void setServerUrl(URL url) throws IOException {
-        this.serverUrl = url;
-        save();
-    }
-
-    public void setNode(Node node) throws IOException {
-        this.nodeName = node.getNodeName();
-        this.node = node;
-        save();
-    }
-
-    public Node getNode() {
-        if (node == null) {
-            if (nodeName == null)
-                return null;
-
-            node = MetaNectar.getInstance().getNode(nodeName);
-        }
-
-        return node;
-    }
-    /**
-     * If the connection to this Jenkins has already been acknowledged, return the public key of that server.
-     * Otherwise null.
-     */
-    public synchronized RSAPublicKey getIdentity() {
-        try {
-            return (RSAPublicKey)KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(identity));
-        } catch (GeneralSecurityException e) {
-            LOGGER.log(Level.WARNING,"Failed to load the key", identity);
-            identity = null;
-            return null;
-        }
-    }
-
-    /**
-     * Acknowledge the given public key as a valid identity of this server
-     * (thereby granting future connections from this Jenkins.)
-     */
-    public void setIdentity(RSAPublicKey pk) throws IOException {
-        checkPermission(CONFIGURE);
-        identity = pk.getEncoded();
-        approved = false;
-        save();
-    }
-
-    public boolean isApproved() {
-        return approved;
-    }
-
-    public void setApproved(boolean approved) throws IOException {
-        this.approved = approved;
-        save();
+    public String toString() {
+        return Objects.toStringHelper(this).
+                add("state", state).
+                add("error", error).
+                add("grantId", grantId).
+                add("approved", approved).
+                add("node", nodeName).
+                add("endpoint", endpoint).
+                add("channel", channel).
+                add("identity", getIdentity()).toString();
     }
 
     /**
@@ -232,81 +161,154 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         return (TopLevelItemDescriptor) Hudson.getInstance().getDescriptorOrDie(getClass());
     }
 
-    public StatusIcon getIconColor() {
-        String icon = getIcon();
-        if (isOffline())  {
-            return new StockStatusIcon(icon, Messages._JenkinsServer_Status_Offline());
-        } else {
-            return new StockStatusIcon(icon, Messages._JenkinsServer_Status_Online());
+    // Methods for modifying state
+
+    public void setCreatedState(String grantId) throws IOException {
+        setState(State.Created);
+        this.grantId = grantId;
+        save();
+
+        taskListener.getLogger().println("Created");
+        taskListener.getLogger().println(toString());
+    }
+
+    public void setProvisionStartedState(Node node) throws IOException {
+        setState(State.Provisioning);
+        this.nodeName = node.getNodeName();
+        this.node = node;
+        save();
+
+        taskListener.getLogger().println("Provisioning");
+        taskListener.getLogger().println(toString());
+    }
+
+    public void setProvisionCompletedState(Node node, URL endpoint) throws IOException {
+        // Potentially may go from the provisioning state to the connectable state
+        // Do set set state if >= connectable
+        if (this.state == State.Provisioning) {
+            setState(State.Provisioned);
+            this.nodeName = node.getNodeName();
+            this.node = node;
+            this.endpoint = endpoint;
+            save();
+        }
+
+        taskListener.getLogger().println("Provisioned");
+        taskListener.getLogger().println(toString());
+    }
+
+    public void setProvisionErrorState(Node node, Throwable error) throws IOException {
+        setState(State.Provisioning);
+        this.error = error;
+
+        taskListener.getLogger().println("Provision Error");
+        taskListener.getLogger().println(toString());
+        error.printStackTrace(taskListener.error("Provision Error"));
+    }
+
+
+    public void setConnectableState(RSAPublicKey pk, URL endpoint) throws IOException {
+        setState(State.Connectable);
+        this.identity = pk.getEncoded();
+        this.endpoint = endpoint;
+        this.approved = true;
+        save();
+
+        taskListener.getLogger().println("Connectable");
+        taskListener.getLogger().println(toString());
+    }
+
+    public void setConnectedState(Channel channel) throws IOException {
+        this.error = null;
+
+        setChannel(channel);
+
+        channel.setProperty(SlaveManager.class.getName(),
+                channel.export(SlaveManager.class, new MetaNectarSlaveManager()));
+
+        taskListener.getLogger().println("Connected");
+        taskListener.getLogger().println(toString());
+    }
+
+    public void setDisconnectState() throws IOException {
+        this.channel.close();
+
+        taskListener.getLogger().println("Disconnecting");
+        taskListener.getLogger().println(toString());
+    }
+
+    public void setTerminateStartedState() throws IOException {
+        setState(State.Terminating);
+        this.channel.close();
+        save();
+
+        taskListener.getLogger().println(toString());
+    }
+
+    public void setTerminateCompletedState() throws IOException {
+        setState(State.Terminated);
+        this.node = null;
+        this.nodeName = null;
+        this.endpoint = null;
+        save();
+
+        taskListener.getLogger().println(toString());
+    }
+
+    public void setTerminateErrorState(Throwable error) throws IOException {
+        setState(State.Terminating);
+        this.error = error;
+        save();
+
+        taskListener.getLogger().println(toString());
+        error.printStackTrace(taskListener.error("Terminating Error"));
+    }
+
+    private void setState(State state) {
+        this.state = state;
+        this.error = null;
+    }
+
+    // Methods for accessing state
+
+    public String getGrantId() {
+        return grantId;
+    }
+
+    public final URL getEndpoint() {
+        return endpoint;
+    }
+
+    public Node getNode() {
+        if (node == null) {
+            if (nodeName == null)
+                return null;
+
+            node = MetaNectar.getInstance().getNode(nodeName);
+        }
+
+        return node;
+    }
+
+    public synchronized RSAPublicKey getIdentity() {
+        try {
+            if (identity == null)
+                return null;
+
+            return (RSAPublicKey)KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(identity));
+        } catch (GeneralSecurityException e) {
+            LOGGER.log(Level.WARNING, "Failed to load the key", identity);
+            identity = null;
+            return null;
         }
     }
 
-    public String getIcon() {
-        if (!isApproved())
-            return "computer-gray.png";
-        if(isOffline())
-            return "computer-x.png";
-        else
-            return "computer.png";
+    public boolean isApproved() {
+        return approved;
     }
 
     public Channel getChannel() {
         return channel;
-    }
-
-    public void setChannel(InputStream in, OutputStream out, Channel.Listener listener) throws IOException, InterruptedException {
-        if(this.channel!=null)
-            throw new IllegalStateException("Already connected");
-
-        Channel channel = new Channel(name, Computer.threadPoolForRemoting, Channel.Mode.NEGOTIATE,
-            in,out, taskListener.getLogger());
-        if(listener!=null)
-            channel.addListener(listener);
-        setChannel(channel);
-    }
-
-    /**
-     * Call this method when a connection is established with this server.
-     */
-    public void setChannel(Channel channel) throws IOException {
-        channel.addListener(new Channel.Listener() {
-            @Override
-            public void onClosed(Channel c, IOException cause) {
-                MasterServer.this.channel = null;
-                // Orderly shutdown will have null exception
-                if (cause!=null) {
-                    offlineCause = new OfflineCause.ChannelTermination(cause);
-                     cause.printStackTrace(taskListener.error("Connection terminated"));
-                } else {
-                    taskListener.getLogger().println("Connection terminated");
-                }
-            }
-        });
-
-        // TODO call some stuff on channel for initializing, logging etc
-
-        offlineCause = null;
-
-        // update the data structure atomically to prevent others from seeing a channel that's not properly initialized yet
-        synchronized(channelLock) {
-            if(this.channel!=null) {
-                // check again. we used to have this entire method in a big sycnhronization block,
-                // but Channel constructor blocks for an external process to do the connection
-                // if CommandLauncher is used, and that cannot be interrupted because it blocks at InputStream.
-                // so if the process hangs, it hangs the thread in a lock, and since Hudson will try to relaunch,
-                // we'll end up queuing the lot of threads in a pseudo deadlock.
-                // This implementation prevents that by avoiding a lock. HUDSON-1705 is likely a manifestation of this.
-                channel.close();
-                throw new IllegalStateException("Already connected");
-            }
-            this.channel = channel;
-        }
-        onSetChannel();
-    }
-
-    private void onSetChannel() {
-        channel.setProperty(SlaveManager.class.getName(),
-                channel.export(SlaveManager.class, new MetaNectarSlaveManager()));
     }
 
     public boolean isOnline() {
@@ -317,53 +319,86 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         return getChannel() == null;
     }
 
-    public OfflineCause getOfflineCause() {
-        if (offlineCause == null) {
-            updateOfflineCause();
+    public String getIcon() {
+        if (!isApproved())
+            return "computer-gray.png";
+
+        if(isOffline())
+            return "computer-x.png";
+        else
+            return "computer.png";
+    }
+
+    public StatusIcon getIconColor() {
+        String icon = getIcon();
+        if (isOffline())  {
+            return new StockStatusIcon(icon, Messages._JenkinsServer_Status_Offline());
+        } else {
+            return new StockStatusIcon(icon, Messages._JenkinsServer_Status_Online());
         }
-        return offlineCause;
     }
 
-    public void updateOfflineCause() {
-        offlineCause = pollOfflineCause();
-    }
 
-    public OfflineCause pollOfflineCause() {
-        if (isOnline())
-            return null;
+    //
 
-        // TODO this should not occur
-        if (serverUrl == null)
-            return null;
+    private void setChannel(Channel channel) throws IOException, IllegalStateException {
+        // update the data structure atomically to prevent others from seeing a channel that's not properly initialized yet
+        synchronized (channelLock) {
+            if(this.channel != null) {
+                // check again. we used to have this entire method in a big sycnhronization block,
+                // but Channel constructor blocks for an external process to do the connection
+                // if CommandLauncher is used, and that cannot be interrupted because it blocks at InputStream.
+                // so if the process hangs, it hangs the thread in a lock, and since Hudson will try to relaunch,
+                // we'll end up queuing the lot of threads in a pseudo deadlock.
+                // This implementation prevents that by avoiding a lock. HUDSON-1705 is likely a manifestation of this.
+                channel.close();
+                LOGGER.warning("Already connected");
+                return;
+            }
 
-        // TODO this should probably be made in another thread so as not to block
-
-        // Ping the URL to determine if server is online
-        try {
-            HttpURLConnection c = (HttpURLConnection)serverUrl.openConnection();
-            c.setRequestMethod("HEAD");
-            c.getResponseCode();
-        } catch (IOException ex) {
-            return OfflineCause.create(Messages._JenkinsServer_ServerOffline());
+            this.channel = channel;
         }
 
-        // If server is online wait for connection from server
-        return OfflineCause.create(Messages._JenkinsServer_EstablishConnection());
+        this.channel.addListener(new Channel.Listener() {
+            @Override
+            public void onClosed(Channel c, IOException cause) {
+                MasterServer.this.channel = null;
+
+                // Orderly shutdown will have null exception
+                if (cause != null) {
+                    MasterServer.this.setDisconnectStateCallback(cause);
+                } else {
+                    MasterServer.this.setDisconnectStateCallback();
+                }
+            }
+        });
     }
 
-    public HttpResponse doPollOffline() {
-        updateOfflineCause();
-        return HttpResponses.redirectToDot();
+    private void setDisconnectStateCallback() {
+        this.error = null;
+
+        taskListener.getLogger().println("Disconnected");
+        taskListener.getLogger().println(toString());
     }
 
-    public HttpResponse doDisconnect() throws IOException {
-        channel.close();
-        updateOfflineCause();
-        return HttpResponses.redirectToDot();
+    private void setDisconnectStateCallback(Throwable error) {
+        this.error = error;
+
+        taskListener.getLogger().println("Disconnected Error");
+        taskListener.getLogger().println(toString());
+        error.printStackTrace(taskListener.error("Disconnected Error"));
     }
+
 
     public Map<String,String> getThreadDump() throws IOException, InterruptedException {
         return RemotingDiagnostics.getThreadDump(getChannel());
+    }
+
+
+    //
+
+    public void doDisconnect() throws IOException {
+        setDisconnectState();
     }
 
     public synchronized void doConfigSubmit(StaplerRequest req,
@@ -371,38 +406,9 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         checkPermission(CONFIGURE);
 
         description = req.getParameter("description");
-
-        serverUrl = new URL(req.getParameter("_.serverUrl"));
-
-        try {
-            JSONObject json = req.getSubmittedForm();
-
-            save();
-
-            String newName = req.getParameter("name");
-            if (newName != null && !newName.equals(name)) {
-                // check this error early to avoid HTTP response splitting.
-                Hudson.checkGoodName(newName);
-                rsp.sendRedirect("rename?newName=" + URLEncoder.encode(newName, "UTF-8"));
-            } else {
-                rsp.sendRedirect(".");
-            }
-        } catch (JSONException e) {
-            StringWriter sw = new StringWriter();
-            PrintWriter pw = new PrintWriter(sw);
-            pw.println("Failed to parse form data. Please report this problem as a bug");
-            pw.println("JSON=" + req.getSubmittedForm());
-            pw.println();
-            e.printStackTrace(pw);
-
-            rsp.setStatus(SC_BAD_REQUEST);
-            sendError(sw.toString(), req, rsp, true);
-        }
+        save();
     }
 
-    /**
-     * When used as an HTTP response, issue a redirect to this server.
-     */
     public void generateResponse(StaplerRequest req, StaplerResponse rsp, Object node) throws IOException, ServletException {
         HttpResponses.redirectViaContextPath(getUrl()).generateResponse(req,rsp,node);
     }
@@ -414,22 +420,9 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
             return "Master server";
         }
 
-        public FormValidation doCheckServerUrl(@QueryParameter String value) throws IOException, ServletException {
-            if(value.length()==0)
-                return FormValidation.error("Please set a server URL");
-
-            try {
-                URL u = new URL(value);
-            } catch (Exception e) {
-                return FormValidation.error("Not a URL");
-            }
-
-            return FormValidation.ok();
-        }
-
         @Override
         public TopLevelItem newInstance(ItemGroup parent, String name) {
-            return new MasterServer(parent,name);
+            return new MasterServer(parent, name);
         }
     }
 

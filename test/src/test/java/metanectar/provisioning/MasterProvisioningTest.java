@@ -50,14 +50,11 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
             cdl.countDown();
         }
 
-        public void onProvisionStartedError(MasterServer ms, Node n, Throwable error) {
-        }
-
         public void onProvisionCompleted(MasterServer ms) {
             cdl.countDown();
         }
 
-        public void onProvisionCompletedError(MasterServer ms, Throwable error) {
+        public void onProvisionError(MasterServer ms, Node n, Throwable error) {
         }
     }
 
@@ -216,7 +213,7 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
         TerminateListener l = new TerminateListener(cdl);
 
         for (int i = 0; i < masters; i++) {
-            metaNectar.masterProvisioner.terminate(l, "org" + i, true);
+            metaNectar.masterProvisioner.terminate(l, metaNectar.getMasterByOrganization("org" + i), true);
         }
 
         cdl.await(1, TimeUnit.MINUTES);

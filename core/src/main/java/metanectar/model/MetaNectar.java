@@ -4,39 +4,27 @@ import com.cloudbees.commons.metanectar.agent.AgentListener;
 import com.cloudbees.commons.metanectar.agent.AgentStatusListener;
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol.GracefulConnectionRefusalException;
-import com.thoughtworks.xstream.core.util.Base64Encoder;
 import hudson.PluginManager;
-import hudson.Util;
 import hudson.model.*;
 import hudson.remoting.Channel;
 import hudson.util.AdministrativeError;
 import hudson.util.FormValidation;
-import hudson.util.IOException2;
-import hudson.util.IOUtils;
 import hudson.views.StatusColumn;
 import metanectar.model.views.MasterServerColumn;
-import metanectar.provisioning.Master;
 import metanectar.provisioning.MasterProvisioner;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 import org.jvnet.hudson.reactor.ReactorException;
-import org.kohsuke.stapler.HttpResponses.HttpResponseException;
 import org.kohsuke.stapler.QueryParameter;
 
 import javax.servlet.ServletContext;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.StringWriter;
 import java.net.*;
 import java.security.GeneralSecurityException;
-import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
-import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 import static hudson.Util.fixEmpty;
@@ -75,7 +63,7 @@ public class MetaNectar extends Hudson {
         }
 
         public void onConnectingTo(URL address, X509Certificate identity, String organization, Map<String, String> properties) throws GeneralSecurityException, IOException {
-            MasterServer server = metaNectar.getMasterByOrganization(organization);
+            final MasterServer server = metaNectar.getMasterByOrganization(organization);
 
             if (server == null) {
                 throw new GeneralSecurityException("The master " + organization + " does not exist");
@@ -83,15 +71,12 @@ public class MetaNectar extends Hudson {
 
             if (server.isApproved()) {
                 if (server.getIdentity().equals(identity.getPublicKey())) {
-                    LOGGER.info("Master is approved: " + organization + " " + address);
+                    LOGGER.info("Master is identified and approved: " + organization + " " + address);
                 } else {
-                    throw new GracefulConnectionRefusalException("The master " + organization + "identities do not match");
+                    throw new GracefulConnectionRefusalException("The master " + organization + " identity does not match");
                 }
                 return;
             }
-
-            server.setIdentity((RSAPublicKey)identity.getPublicKey());
-            server.setServerUrl(address);
 
             // Check if there is a grant for automatic registration
             if (properties.containsKey(GRANT_PROPERTY)) {
@@ -99,8 +84,8 @@ public class MetaNectar extends Hudson {
 
                 if (server.getGrantId() != null) {
                     if (server.getGrantId().equals(receivedGrant)) {
-                        server.setApproved(true);
-                        LOGGER.info("Valid grant received. Master is approved: " + organization + " " + address);
+                        server.setConnectableState((RSAPublicKey) identity.getPublicKey(), address);
+                        LOGGER.info("Valid grant received. Master is identified and approved: " + organization + " " + address);
                         return;
                     } else {
                         // Grant is not the same that was issued
@@ -116,9 +101,10 @@ public class MetaNectar extends Hudson {
         }
 
         public void onConnectedTo(Channel channel, X509Certificate identity, String organization) throws IOException {
-            MasterServer server = metaNectar.getMasterByOrganization(organization);
+            final MasterServer server = metaNectar.getMasterByOrganization(organization);
+
             if (server != null) {
-                server.setChannel(channel);
+                server.setConnectedState(channel);
                 return;
             }
 
@@ -240,7 +226,7 @@ public class MetaNectar extends Hudson {
 
         final MasterServer server = createProject(MasterServer.class, organization);
 
-        server.setGrantId(createGrantForMaster());
+        server.setCreatedState(createGrantForMaster());
         return server;
     }
 
@@ -279,22 +265,15 @@ public class MetaNectar extends Hudson {
 
         // TODO update state of the master server
         provisionMaster(new MasterProvisioner.MasterProvisionListener() {
-
             public void onProvisionStarted(MasterServer ms, Node n) {
-                //To change body of implemented methods use File | Settings | File Templates.
-            }
-
-            public void onProvisionStartedError(MasterServer ms, Node n, Throwable error) {
-                //To change body of implemented methods use File | Settings | File Templates.
             }
 
             public void onProvisionCompleted(MasterServer ms) {
-                //To change body of implemented methods use File | Settings | File Templates.
             }
 
-            public void onProvisionCompletedError(MasterServer ms, Throwable error) {
-                //To change body of implemented methods use File | Settings | File Templates.
+            public void onProvisionError(MasterServer ms, Node n, Throwable error) {
             }
+
         }, server);
 
         return server;

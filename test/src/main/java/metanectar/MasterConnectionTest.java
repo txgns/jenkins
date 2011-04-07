@@ -131,7 +131,7 @@ public class MasterConnectionTest extends MetaNectarTestCase {
         agent.connectOnce(serverAddress);
 
         assertNotNull(ms.getIdentity());
-        assertNotNull(ms.getServerUrl());
+        assertNotNull(ms.getEndpoint());
 
         // this should create an unapproved Jenkins instance on the server
         ms = metaNectar.getMasterByIdentity(id.getPublic());

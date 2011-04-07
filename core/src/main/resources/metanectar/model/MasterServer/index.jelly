@@ -31,6 +31,9 @@ THE SOFTWARE.
       <st:nbsp />
       <a href="${it.serverUrl}">${it.displayName}</a>
     </h1>
+        <p>
+            ${it.toString()}
+        </p>
     <t:editableDescription permission="${it.CONFIGURE}"/>
 
     <j:if test="${it.offline and it.offlineCause!=null}">

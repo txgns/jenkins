@@ -53,14 +53,11 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
             cdl.countDown();
         }
 
-        public void onProvisionStartedError(MasterServer ms, Node n, Throwable error) {
-        }
-
         public void onProvisionCompleted(MasterServer ms) {
             cdl.countDown();
         }
 
-        public void onProvisionCompletedError(MasterServer ms, Throwable error) {
+        public void onProvisionError(MasterServer ms, Node n, Throwable error) {
         }
     }
 
