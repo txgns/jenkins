@@ -223,7 +223,13 @@ public final class WebAppMain implements ServletContextListener {
                 @Override
                 public void run() {
                     try {
-                        context.setAttribute(APP,new Hudson(home,context));
+                        Hudson theInstance = new Hudson(home, context);
+                        RegistrationHandler rh = new RegistrationHandler(context);
+                        // is this licenseKey valid for this installation?
+                        if (!LicenseManager.getInstance().isExpired() || Main.isUnitTest)
+                            context.setAttribute(APP, theInstance);
+                        else
+                            context.setAttribute(APP, rh);
 
                         // trigger the loading of changelogs in the background,
                         // but give the system 10 seconds so that the first page
