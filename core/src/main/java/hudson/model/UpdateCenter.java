@@ -354,7 +354,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
      * Loads the data from the disk into this object.
      */
     public synchronized void load() throws IOException {
-        UpdateSite defaultSite = new UpdateSite("ichci", "http://updates.infradna.com/update-center.json");
+        UpdateSite defaultSite = new UpdateSite("ichci", "http://nectar-updates.cloudbees.com/updateCenter/1.383/update-center.json");
         XmlFile file = getConfigFile();
         if(file.exists()) {
             try {
