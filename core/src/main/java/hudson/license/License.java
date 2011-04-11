@@ -113,7 +113,7 @@ public final class License {
 
         // make sure that it's got the valid trust chain
         Set<TrustAnchor> anchors = new HashSet<TrustAnchor>();
-        X509Certificate ca = (X509Certificate) cf.generateCertificate(getClass().getResourceAsStream("/infradna-root-cacert.pem"));
+        X509Certificate ca = loadLicenseCaCertificate();
         anchors.add(new TrustAnchor(ca,null));
 
         try {
@@ -121,6 +121,11 @@ public final class License {
         } catch (GeneralSecurityException e) {
             throw FormValidation.error(e,"Invalid CA in the license key");
         }
+    }
+
+    /*package*/ static X509Certificate loadLicenseCaCertificate() throws CertificateException {
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+        return (X509Certificate) cf.generateCertificate(License.class.getResourceAsStream("/infradna-root-cacert.pem"));
     }
 
     /**

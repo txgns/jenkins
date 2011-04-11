@@ -67,7 +67,7 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
 
     /**
      * Gets the parsed license object.
-     * Null if we are in the evaluation mode.
+     * Null if we have no license.
      */
     public License getParsed() {
         return parsed;
