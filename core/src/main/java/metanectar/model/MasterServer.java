@@ -41,8 +41,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         ProvisioningErrorNoResources,
         ProvisioningError,
         Provisioned,
-        Disconnected,
-        Connected,
+        Connectable,
         Terminating,
         TerminatingError,
         Terminated
@@ -226,7 +225,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     public void setApprovedState(RSAPublicKey pk, URL endpoint) throws IOException {
-        setState(State.Disconnected);
+        setState(State.Connectable);
         this.identity = pk.getEncoded();
         this.endpoint = endpoint;
         this.approved = true;
@@ -241,8 +240,6 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         if (!setChannel(channel))
             return;
 
-        setState(State.Connected);
-        save();
         fireOnConnected();
 
         channel.setProperty(SlaveManager.class.getName(),
@@ -253,7 +250,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     public void setTerminateStartedState() throws IOException {
-        if (state == State.Connected) {
+        if (isOnline()) {
             this.channel.close();
         }
 
@@ -509,17 +506,12 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     private void setDisconnectStateCallback() throws IOException {
-        setState(State.Disconnected);
-        save();
-
         taskListener.getLogger().println("Disconnected");
         taskListener.getLogger().println(toString());
     }
 
     private void setDisconnectStateCallback(Throwable error) throws IOException {
-        setState(State.Disconnected);
         this.error = error;
-        save();
 
         taskListener.getLogger().println("Disconnected Error");
         taskListener.getLogger().println(toString());
