@@ -24,7 +24,7 @@ public class MasterServerTest extends MetaNectarTestCase {
         KeyPair userKey = gen.generateKeyPair();
         PublicKey original = userKey.getPublic();
 
-        s.setConnectableState((RSAPublicKey) original, getURL());
+        s.setApprovedState((RSAPublicKey) original, getURL());
         final RSAPublicKey current = s.getIdentity();
 
         assertTrue(Arrays.equals(original.getEncoded(), current.getEncoded()));

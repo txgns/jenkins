@@ -8,6 +8,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import hudson.remoting.Channel;
+import metanectar.model.MetaNectar;
 import org.apache.commons.codec.binary.Base64;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 
@@ -100,7 +101,7 @@ public class TestMasterServer {
         }
     }
 
-    public TestMasterServer(URL metaNectarEndpoint, String organization, Map<String, String> properties) throws IOException {
+    public TestMasterServer(URL metaNectarEndpoint, String organization, Map<String, Object> properties) throws IOException {
 
         HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/", new HttpHandler() {
@@ -121,11 +122,13 @@ public class TestMasterServer {
         this.metaNectarEndpoint = metaNectarEndpoint;
         this.organization = organization;
 
+        Map<String, String> protocolProperties = new HashMap<String, String>();
+        protocolProperties.put(MetaNectar.GRANT_PROPERTY, (String)properties.get(MetaNectar.GRANT_PROPERTY));
         MetaNectarAgentProtocol.Outbound p = new MetaNectarAgentProtocol.Outbound(
                 MetaNectarAgentProtocol.getInstanceIdentityCertificate(id, endpoint.toExternalForm()),
                 id.getPrivate(),
                 organization,
-                properties,
+                protocolProperties,
                 new Client(),
                 null);
 

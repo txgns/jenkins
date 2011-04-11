@@ -12,6 +12,7 @@ import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.remoting.Channel;
 import hudson.remoting.VirtualChannel;
+import metanectar.model.MetaNectar;
 import metanectar.provisioning.Master;
 import metanectar.provisioning.MasterProvisioningService;
 import org.apache.commons.codec.binary.Base64;
@@ -28,6 +29,7 @@ import java.security.*;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
@@ -54,7 +56,7 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
         this.delay = delay;
     }
 
-    public Future<Master> provision(final VirtualChannel channel, final String organization, final URL metaNectarEndpoint, final Map<String, String> properties) throws IOException, InterruptedException {
+    public Future<Master> provision(final VirtualChannel channel, final String organization, final URL metaNectarEndpoint, final Map<String, Object> properties) throws IOException, InterruptedException {
         return Computer.threadPoolForRemoting.submit(new Callable<Master>() {
             public Master call() throws Exception {
                 System.out.println("Launching master " + organization);
@@ -80,9 +82,9 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
     public static class TestMasterServerCallable implements hudson.remoting.Callable<URL, Exception> {
         private final String organization;
         private final URL metaNectarEndpoint;
-        private final Map<String, String> properties;
+        private final Map<String, Object> properties;
 
-        public TestMasterServerCallable(URL metaNectarEndpoint, String organization, Map<String, String> properties) {
+        public TestMasterServerCallable(URL metaNectarEndpoint, String organization, Map<String, Object> properties) {
             this.organization = organization;
             this.metaNectarEndpoint = metaNectarEndpoint;
             this.properties = properties;
@@ -171,7 +173,7 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
             }
         }
 
-        public TestMasterServer(URL metaNectarEndpoint, String organization, Map<String, String> properties) throws IOException {
+        public TestMasterServer(URL metaNectarEndpoint, String organization, Map<String, Object> properties) throws IOException {
 
             HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
             server.createContext("/", new HttpHandler() {
@@ -195,11 +197,13 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
             this.metaNectarEndpoint = metaNectarEndpoint;
             this.organization = organization;
 
+            Map<String, String> protocolProperties = new HashMap<String, String>();
+            protocolProperties.put(MetaNectar.GRANT_PROPERTY, (String)properties.get(MetaNectar.GRANT_PROPERTY));
             MetaNectarAgentProtocol.Outbound p = new MetaNectarAgentProtocol.Outbound(
                     MetaNectarAgentProtocol.getInstanceIdentityCertificate(id, endpoint.toExternalForm()),
                     id.getPrivate(),
                     organization,
-                    properties,
+                    protocolProperties,
                     new Client(),
                     null);
 

@@ -84,7 +84,7 @@ public class MetaNectar extends Hudson {
 
                 if (server.getGrantId() != null) {
                     if (server.getGrantId().equals(receivedGrant)) {
-                        server.setConnectableState((RSAPublicKey) identity.getPublicKey(), address);
+                        server.setApprovedState((RSAPublicKey) identity.getPublicKey(), address);
                         LOGGER.info("Valid grant received. Master is identified and approved: " + organization + " " + address);
                         return;
                     } else {
@@ -264,17 +264,7 @@ public class MetaNectar extends Hudson {
         final MasterServer server = createMasterServer(organization);
 
         // TODO update state of the master server
-        provisionMaster(new MasterProvisioner.MasterProvisionListener() {
-            public void onProvisionStarted(MasterServer ms, Node n) {
-            }
-
-            public void onProvisionCompleted(MasterServer ms) {
-            }
-
-            public void onProvisionError(MasterServer ms, Node n, Throwable error) {
-            }
-
-        }, server);
+        provisionMaster(server);
 
         return server;
     }
@@ -284,10 +274,10 @@ public class MetaNectar extends Hudson {
      * Provision a new master and issue a grant for automatic approval.
      *
      */
-    public void provisionMaster(MasterProvisioner.MasterProvisionListener ml, MasterServer server) {
-        Map<String, String> properties = new HashMap<String, String>();
+    public void provisionMaster(MasterServer server) {
+        Map<String, Object> properties = new HashMap<String, Object>();
         properties.put(GRANT_PROPERTY, server.getGrantId());
-        masterProvisioner.provision(ml, server, getRootUrlAsURL(), properties);
+        masterProvisioner.provision(server, getRootUrlAsURL(), properties);
     }
 
 

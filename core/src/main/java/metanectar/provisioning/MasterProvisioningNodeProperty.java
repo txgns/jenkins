@@ -64,9 +64,9 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
     }
 
     public Collection<MasterServer> getProvisioned() {
-        Multimap<Node, MasterServer> x = MasterProvisioner.getProvisionedMasters(MetaNectar.getInstance());
+        Multimap<Node, MasterServer> nodesAndMasters = MasterProvisioner.getProvisionedMasters(MetaNectar.getInstance());
         Node n = getNode();
-        return x.get(n);
+        return nodesAndMasters.get(n);
     }
 
     // TODO setNode is never called

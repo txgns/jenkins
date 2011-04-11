@@ -33,7 +33,7 @@ public abstract class MasterProvisioningService extends AbstractDescribableImpl<
      * @throws Exception
      */
     public abstract Future<Master> provision(VirtualChannel channel, String organization, URL metaNectarEndpoint,
-                                               Map<String, String> properties) throws Exception;
+                                               Map<String, Object> properties) throws Exception;
 
     /**
      * Terminate a provisioned master.

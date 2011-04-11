@@ -5,6 +5,7 @@ import hudson.model.*;
 import hudson.remoting.VirtualChannel;
 import hudson.slaves.*;
 import metanectar.model.MasterServer;
+import metanectar.model.MasterServerListener;
 import metanectar.model.MetaNectar;
 import metanectar.test.MetaNectarTestCase;
 
@@ -39,41 +40,49 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
         MasterProvisioner.MasterProvisionerInvoker.RECURRENCEPERIOD = original;
     }
 
-    public static class ProvisionListener implements MasterProvisioner.MasterProvisionListener {
+    @Extension
+    public static class ProvisionListener extends MasterServerListener {
         CountDownLatch cdl;
 
-        ProvisionListener(CountDownLatch cdl) {
+        void init(CountDownLatch cdl) {
             this.cdl = cdl;
         }
 
-        public void onProvisionStarted(MasterServer ms, Node n) {
-            cdl.countDown();
+        public void onProvisioning(MasterServer ms) {
+            if (cdl != null)
+                cdl.countDown();
         }
 
-        public void onProvisionCompleted(MasterServer ms) {
-            cdl.countDown();
+        public void onProvisioned(MasterServer ms) {
+            if (cdl != null)
+                cdl.countDown();
         }
 
-        public void onProvisionError(MasterServer ms, Node n, Throwable error) {
+        public static ProvisionListener get() {
+            return Hudson.getInstance().getExtensionList(MasterServerListener.class).get(ProvisionListener.class);
         }
     }
 
-    public static class TerminateListener implements MasterProvisioner.MasterTerminateListener {
+    @Extension
+    public static class TerminateListener extends MasterServerListener {
         CountDownLatch cdl;
 
-        TerminateListener(CountDownLatch cdl) {
+        void init(CountDownLatch cdl) {
             this.cdl = cdl;
         }
 
-        public void onTerminateStarted(MasterServer ms) {
-            cdl.countDown();
+        public void onTerminating(MasterServer ms) {
+            if (cdl != null)
+                cdl.countDown();
         }
 
-        public void onTerminateCompleted(MasterServer ms, Node n) {
-            cdl.countDown();
+        public void onTerminated(MasterServer ms) {
+            if (cdl != null)
+                cdl.countDown();
         }
 
-        public void onTerminateError(MasterServer ms, Node n, Throwable e) {
+        public static TerminateListener get() {
+            return Hudson.getInstance().getExtensionList(MasterServerListener.class).get(TerminateListener.class);
         }
     }
 
@@ -85,7 +94,7 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
             this.delay = delay;
         }
 
-        public Future<Master> provision(VirtualChannel channel, final String organization, final URL metaNectarEndpoint, Map<String, String> properties) throws IOException, InterruptedException {
+        public Future<Master> provision(VirtualChannel channel, final String organization, final URL metaNectarEndpoint, Map<String, Object> properties) throws IOException, InterruptedException {
             return Computer.threadPoolForRemoting.submit(new Callable<Master>() {
                 public Master call() throws Exception {
                     Thread.sleep(delay);
@@ -164,13 +173,13 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
         metaNectar.clouds.add(cloud);
 
         CountDownLatch cdl = new CountDownLatch(2 * masters);
-        ProvisionListener l = new ProvisionListener(cdl);
+        ProvisionListener.get().init(cdl);
 
-        Map<String, String> properties = new HashMap<String, String>();
+        Map<String, Object> properties = new HashMap<String, Object>();
         properties.put("key", "value");
         for (int i = 0; i < masters; i++) {
             MasterServer ms = metaNectar.createMasterServer("org" + i);
-            metaNectar.masterProvisioner.provision(l, ms, new URL("http://test/"), properties);
+            metaNectar.masterProvisioner.provision(ms, new URL("http://test/"), properties);
         }
 
         cdl.await(1, TimeUnit.MINUTES);
@@ -210,10 +219,10 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
         int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
 
         CountDownLatch cdl = new CountDownLatch(2 * masters);
-        TerminateListener l = new TerminateListener(cdl);
+        TerminateListener.get().init(cdl);
 
         for (int i = 0; i < masters; i++) {
-            metaNectar.masterProvisioner.terminate(l, metaNectar.getMasterByOrganization("org" + i), true);
+            metaNectar.masterProvisioner.terminate(metaNectar.getMasterByOrganization("org" + i), true);
         }
 
         cdl.await(1, TimeUnit.MINUTES);

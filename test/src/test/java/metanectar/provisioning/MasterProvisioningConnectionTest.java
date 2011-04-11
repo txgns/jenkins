@@ -2,10 +2,12 @@ package metanectar.provisioning;
 
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import hudson.Extension;
 import hudson.model.*;
 import hudson.remoting.Channel;
 import hudson.tasks.Mailer;
 import metanectar.model.MasterServer;
+import metanectar.model.MasterServerListener;
 import metanectar.model.MetaNectar;
 import metanectar.test.MetaNectarTestCase;
 
@@ -42,22 +44,26 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
         MasterProvisioner.MasterProvisionerInvoker.RECURRENCEPERIOD = original;
     }
 
-    public static class Listener implements MasterProvisioner.MasterProvisionListener {
+    @Extension
+    public static class Listener extends MasterServerListener {
         CountDownLatch cdl;
 
-        Listener(CountDownLatch cdl) {
+        void init(CountDownLatch cdl) {
             this.cdl = cdl;
         }
 
-        public void onProvisionStarted(MasterServer ms, Node n) {
-            cdl.countDown();
+        public void onProvisioning(MasterServer ms) {
+            if (cdl != null)
+                cdl.countDown();
         }
 
-        public void onProvisionCompleted(MasterServer ms) {
-            cdl.countDown();
+        public void onProvisioned(MasterServer ms) {
+            if (cdl != null)
+                cdl.countDown();
         }
 
-        public void onProvisionError(MasterServer ms, Node n, Throwable error) {
+        public static Listener get() {
+            return Hudson.getInstance().getExtensionList(MasterServerListener.class).get(Listener.class);
         }
     }
 
@@ -130,11 +136,11 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
         metaNectar.clouds.add(cloud);
 
         CountDownLatch masterProvisionCdl = new CountDownLatch(2 * masters);
-        Listener l = new Listener(masterProvisionCdl);
+        Listener.get().init(masterProvisionCdl);
 
         for (int i = 0; i < masters; i++) {
             MasterServer ms = metaNectar.createMasterServer("org" + i);
-            metaNectar.provisionMaster(l, ms);
+            metaNectar.provisionMaster(ms);
         }
 
         // Wait for masters to be provisioned
