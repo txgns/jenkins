@@ -1,5 +1,10 @@
 package metanectar.provisioning;
 
+import hudson.DescriptorExtensionList;
+import hudson.model.AbstractDescribableImpl;
+import hudson.model.Descriptor;
+import hudson.ExtensionPoint;
+import hudson.model.Hudson;
 import hudson.remoting.VirtualChannel;
 
 import java.io.IOException;
@@ -15,7 +20,8 @@ import java.util.concurrent.Future;
  *
  * @author Paul Sandoz
  */
-public interface MasterProvisioningService {
+public abstract class MasterProvisioningService extends AbstractDescribableImpl<MasterProvisioningService> implements ExtensionPoint {
+
     /**
      * Provision a new master.
      *
@@ -26,7 +32,7 @@ public interface MasterProvisioningService {
      * @return a future of the master, when the future is done the master is considered provisioned.
      * @throws Exception
      */
-    Future<Master> provision(VirtualChannel channel, String organization, URL metaNectarEndpoint,
+    public abstract Future<Master> provision(VirtualChannel channel, String organization, URL metaNectarEndpoint,
                                                Map<String, String> properties) throws Exception;
 
     /**
@@ -38,7 +44,7 @@ public interface MasterProvisioningService {
      * @return a future, when done the provisioned master is considered terminated.
      * @throws Exception
      */
-    Future<?> terminate(VirtualChannel channel, String organization, boolean clean) throws Exception;
+    public abstract Future<?> terminate(VirtualChannel channel, String organization, boolean clean) throws Exception;
 
     /**
      * Get the provisioned masters.
@@ -46,5 +52,13 @@ public interface MasterProvisioningService {
      * @param channel the channel on which remote execution can be performed to get the provisioned masters.
      * @return a map of organization to master.
      */
-    Map<String, Master> getProvisioned(VirtualChannel channel);
+    public abstract Map<String, Master> getProvisioned(VirtualChannel channel);
+
+    /**
+     * Returns all the registered {@link MasterProvisioningService} descriptors.
+     */
+    public static DescriptorExtensionList<MasterProvisioningService,Descriptor<MasterProvisioningService>> all() {
+        return (DescriptorExtensionList) Hudson.getInstance().getDescriptorList(MasterProvisioningService.class);
+    }
+
 }

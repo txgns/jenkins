@@ -1,18 +1,20 @@
 package metanectar.provisioning;
 
-import com.google.common.collect.Sets;
-import hudson.model.Descriptor;
-import hudson.model.Node;
-import hudson.model.Queue;
+import com.google.common.collect.Multimap;
+import hudson.Extension;
+import hudson.model.*;
+import hudson.model.labels.LabelAtom;
 import hudson.model.queue.CauseOfBlockage;
 import hudson.slaves.NodeProperty;
-import net.sf.json.JSONObject;
+import hudson.slaves.NodePropertyDescriptor;
+import metanectar.model.MasterServer;
+import metanectar.model.MetaNectar;
 import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.StaplerRequest;
 
+import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
+import java.util.Map;
 
 /**
  * The master provisioning node property.
@@ -61,8 +63,57 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
         };
     }
 
+    public Collection<MasterServer> getProvisioned() {
+        Multimap<Node, MasterServer> x = MasterProvisioner.getProvisionedMasters(MetaNectar.getInstance());
+        Node n = getNode();
+        return x.get(n);
+    }
+
+    // TODO setNode is never called
+    private Node getNode() {
+        for (Node n : MetaNectar.getInstance().getNodes()) {
+            for (NodeProperty np : n.getNodeProperties().toList()) {
+                if (this == np) {
+                    return n;
+                }
+            }
+        }
+        return null;
+    }
+
     public static MasterProvisioningNodeProperty get(Node n) {
         return n.getNodeProperties().get(MasterProvisioningNodeProperty.class);
     }
 
+
+    public static List<Descriptor<MasterProvisioningService>> getMasterProvisioningServiceDescriptors() {
+        return Hudson.getInstance().<MasterProvisioningService,Descriptor<MasterProvisioningService>>getDescriptorList(MasterProvisioningService.class);
+    }
+
+    @Extension
+    public static class DescriptorImpl extends NodePropertyDescriptor {
+
+        @Override
+		public String getDisplayName() {
+            return "Master provisioning";
+		}
+    }
+
+    // TODO this is not working as the MasterProvision.masterLabel.getNodes()
+    // is not returning nodes whose labels have been modified by findLabels.
+    /**
+     * Automatically add the
+     */
+    @Extension
+    public static class MasterLabelFinder extends LabelFinder {
+        @Override
+        public Collection<LabelAtom> findLabels(Node node) {
+
+            if (MasterProvisioningNodeProperty.get(node) != null) {
+                return Collections.singleton(MetaNectar.getInstance().getLabelAtom(MasterProvisioner.MASTER_LABEL_ATOM_STRING));
+            } else {
+                return Collections.emptySet();
+            }
+        }
+    }
 }

@@ -36,6 +36,11 @@ THE SOFTWARE.
         </p>
     <t:editableDescription permission="${it.CONFIGURE}"/>
 
+
+    <j:if test="${it.node != null}">
+        <p>Provisioned on node: <a class="${item.className}" href="${rootURL}/${it.node.searchUrl}">${it.node.displayName}</a></p>
+    </j:if>
+
     <j:if test="${it.offline and it.offlineCause!=null}">
         <form method="post" action="pollOffline">
           <f:submit value="Check"  />

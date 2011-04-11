@@ -36,6 +36,8 @@ import java.util.logging.Logger;
  */
 public class MasterProvisioner {
 
+    public static final String MASTER_LABEL_ATOM_STRING = "_masters_";
+
     private static final Logger LOGGER = Logger.getLogger(MasterProvisioner.class.getName());
 
     public static interface MasterProvisionListener {
@@ -87,7 +89,7 @@ public class MasterProvisioner {
     }
 
     // TODO make configurable
-    public final Label masterLabel = MetaNectar.getInstance().getLabel("_masters_");
+    public final Label masterLabel = MetaNectar.getInstance().getLabel(MASTER_LABEL_ATOM_STRING);
 
     private Multimap<Node, PlannedMaster> pendingPlannedMasters = ArrayListMultimap.create();
 
@@ -206,7 +208,7 @@ public class MasterProvisioner {
 
             if (pns == null) {
                 for (PlannedMasterRequest pmr : pendingPlannedMasterRequests) {
-                    LOGGER.log(Level.WARNING, "No resources to provision master" + pmr.ms.getName());
+                    LOGGER.log(Level.WARNING, "No resources to provision master " + pmr.ms.getName());
                 }
             }
         }

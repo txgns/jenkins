@@ -77,7 +77,7 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
         }
     }
 
-    public static class Service implements MasterProvisioningService {
+    public static class Service extends MasterProvisioningService {
 
         private final int delay;
 

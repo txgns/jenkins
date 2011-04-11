@@ -1,4 +1,4 @@
-package metanectar.slave;
+package metanectar.provisioning.test;
 
 import com.cloudbees.commons.metanectar.agent.Agent;
 import com.cloudbees.commons.metanectar.agent.AgentStatusListener;
@@ -11,11 +11,8 @@ import hudson.Extension;
 import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.remoting.Channel;
-import hudson.model.Slave;
 import hudson.remoting.VirtualChannel;
-import hudson.slaves.*;
 import metanectar.provisioning.Master;
-import metanectar.provisioning.MasterProvisioningNodeProperty;
 import metanectar.provisioning.MasterProvisioningService;
 import org.apache.commons.codec.binary.Base64;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
@@ -23,6 +20,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.URL;
@@ -30,8 +28,6 @@ import java.security.*;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
@@ -40,88 +36,73 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A master provisioning dumb slave.
- * <p>
- * At the moment this starts a new thread on the slave.jar that emulates a master.
- * <p>
- * This will be modified to start a nectar instance (via a daemon to avoid the process getting killed
- * if the slave.jar process dies).
- *
+ * A test master provisioning service that creates a fake master.
  *
  * @author Paul Sandoz
- */
-public class MasterProvisioningSlave extends Slave {
+*/
+@Extension
+public class TestMasterProvisioningService extends MasterProvisioningService {
+
+    private final int delay;
 
     @DataBoundConstructor
-    public MasterProvisioningSlave(String name, String nodeDescription, String remoteFS, String numExecutors, Mode mode, String labelString, ComputerLauncher launcher, RetentionStrategy retentionStrategy, List<? extends NodeProperty<?>> nodeProperties) throws IOException, Descriptor.FormException {
-    	super(name, nodeDescription, remoteFS, numExecutors, mode, "_masters_", launcher, retentionStrategy, adapt(nodeProperties));
+    public TestMasterProvisioningService() {
+        this(1000);
+    }
+
+    public TestMasterProvisioningService(int delay) {
+        this.delay = delay;
+    }
+
+    public Future<Master> provision(final VirtualChannel channel, final String organization, final URL metaNectarEndpoint, final Map<String, String> properties) throws IOException, InterruptedException {
+        return Computer.threadPoolForRemoting.submit(new Callable<Master>() {
+            public Master call() throws Exception {
+                System.out.println("Launching master " + organization);
+
+                Thread.sleep(delay);
+
+                final URL endpoint = channel.call(new TestMasterServerCallable(metaNectarEndpoint, organization, properties));
+
+                System.out.println("Launched master " + organization + ": " + endpoint);
+                return new Master(organization, endpoint);
+            }
+        });
+    }
+
+    public Future<?> terminate(VirtualChannel channel, String organization, boolean clean) throws IOException, InterruptedException {
+        return null;
+    }
+
+    public Map<String, Master> getProvisioned(VirtualChannel channel) {
+        return null;
+    }
+
+    public static class TestMasterServerCallable implements hudson.remoting.Callable<URL, Exception> {
+        private final String organization;
+        private final URL metaNectarEndpoint;
+        private final Map<String, String> properties;
+
+        public TestMasterServerCallable(URL metaNectarEndpoint, String organization, Map<String, String> properties) {
+            this.organization = organization;
+            this.metaNectarEndpoint = metaNectarEndpoint;
+            this.properties = properties;
+        }
+
+        public URL call() throws Exception {
+            TestMasterServer masterServer = new TestMasterServer(metaNectarEndpoint, organization, properties);
+            masterServer.setRetryInterval(2000);
+            return masterServer.start();
+        }
     }
 
     @Extension
-    public static final class DescriptorImpl extends SlaveDescriptor {
+    public static class DescriptorImpl extends Descriptor<MasterProvisioningService> {
         public String getDisplayName() {
-            return "Master Provisioning Dumb Slave";
+            return "Test Master Provisioning Service";
         }
     }
 
-    static List<? extends NodeProperty<?>> adapt(List<? extends NodeProperty<?>> l) {
-        List<NodeProperty<?>> copy = new ArrayList<NodeProperty<?>>(l);
-        copy.add(new MasterProvisioningNodeProperty(4, new TestMasterProvisioningService(2000)));
-        return copy;
-    }
-
-
-    public static class TestMasterProvisioningService implements MasterProvisioningService {
-
-        private final int delay;
-
-        TestMasterProvisioningService(int delay) {
-            this.delay = delay;
-        }
-
-        public Future<Master> provision(final VirtualChannel channel, final String organization, final URL metaNectarEndpoint, final Map<String, String> properties) throws IOException, InterruptedException {
-            return Computer.threadPoolForRemoting.submit(new Callable<Master>() {
-                public Master call() throws Exception {
-                    System.out.println("Launching master " + organization);
-
-                    Thread.sleep(delay);
-
-                    final URL endpoint = channel.call(new TestMasterServerCallable(metaNectarEndpoint, organization, properties));
-
-                    System.out.println("Launched master " + organization + ": " + endpoint);
-                    return new Master(organization, endpoint);
-                }
-            });
-        }
-
-        public Future<?> terminate(VirtualChannel channel, String organization, boolean clean) throws IOException, InterruptedException {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public Map<String, Master> getProvisioned(VirtualChannel channel) {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public static class TestMasterServerCallable implements hudson.remoting.Callable<URL, Exception> {
-            private final String organization;
-            private final URL metaNectarEndpoint;
-            private final Map<String, String> properties;
-
-            public TestMasterServerCallable(URL metaNectarEndpoint, String organization, Map<String, String> properties) {
-                this.organization = organization;
-                this.metaNectarEndpoint = metaNectarEndpoint;
-                this.properties = properties;
-            }
-
-            public URL call() throws Exception {
-                TestMasterServer masterServer = new TestMasterServer(metaNectarEndpoint, organization, properties);
-                masterServer.setRetryInterval(2000);
-                return masterServer.start();
-            }
-        }
-    }
-
-    public static class TestMasterServer {
+    static class TestMasterServer {
         private static final Logger LOGGER = Logger.getLogger(TestMasterServer.class.getName());
 
         final URL metaNectarEndpoint;
@@ -200,6 +181,9 @@ public class MasterProvisioningSlave extends Slave {
 
                     responseHeaders.add("X-Instance-Identity", new String(Base64.encodeBase64(id.getPublic().getEncoded())));
                     httpExchange.sendResponseHeaders(200, 0);
+                    OutputStream out = httpExchange.getResponseBody();
+                    out.write("This is a fake master".getBytes());
+                    out.close();
                     httpExchange.close();
                 }
             });

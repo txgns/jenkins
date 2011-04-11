@@ -16,7 +16,7 @@ import java.util.concurrent.Future;
 * Time: 6:36 PM
 * To change this template use File | Settings | File Templates.
 */
-public class TestMasterProvisioningService implements MasterProvisioningService {
+public class TestMasterProvisioningService extends MasterProvisioningService {
 
     private final int delay;
 

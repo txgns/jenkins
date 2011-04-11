@@ -29,8 +29,8 @@ THE SOFTWARE.
     <l:main-panel>
       <h1><img src="${imagesURL}/32x32/computer.png"/> ${%Provision Master}</h1>
       <f:form method="post" action="provisionMasterServer" name="provisionMasterServer">
-        <f:entry title="${%Organization name}">
-          <f:textbox name="name" checkUrl="'checkOrganizationName?value='+encodeURIComponent(this.value)"/>
+        <f:entry title="${%Name}">
+          <f:textbox name="name"/>
         </f:entry>
         <f:block>
           <f:submit value="${%Provision}"/>
