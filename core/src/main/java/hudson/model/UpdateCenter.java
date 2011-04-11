@@ -364,7 +364,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
             }
             for (UpdateSite site : sites) {
                 // if this is an overlay to the existing Hudson installation, overwrite the 'default' that points to the Hudson community update center
-                if (site.getId().equals("default")) {
+                if (site.getId().equals("default") || site.getId().equals("ichci")) {
                     sites.remove(site);
                     sites.add(defaultSite);
                     break;
