@@ -39,6 +39,8 @@ THE SOFTWARE.
     <l:tasks>
       <l:task icon="images/24x24/new-package.gif" href="${rootURL}/${it.viewUrl}provision" title="${%Provision Master}" permission="${it.itemCreatePermission}" it="${app}" />
 
+      <l:task icon="images/24x24/new-package.gif" href="${rootURL}/${it.viewUrl}attach" title="${%Attach Master}" permission="${it.itemCreatePermission}" it="${app}" />
+
       <l:task icon="images/24x24/setting.gif" href="${rootURL}/manage" title="${%Manage Jenkins}" permission="${app.ADMINISTER}" it="${app}" />
       <!--
       <j:choose>

@@ -58,16 +58,21 @@ public class MasterProvisioningDumbSlaveCloud extends Cloud {
 
     public DumbSlave toDumbSlave(String name) throws Descriptor.FormException, IOException {
         return new DumbSlave(name, nodeDescription, remoteFS, numExecutors, mode, labelString,
-                launcher, retentionStrategy, nodeProperties.toList());
+                launcher, retentionStrategy, cloneNodeProperties(nodeProperties.toList()));
     }
 
-//    public DumbSlave toDumbSlave(String name) throws Descriptor.FormException, IOException {
-//        return new DumbSlave(name, name, "/var/tmp/slaves/" + name, "1", Node.Mode.NORMAL, "",
-//                new CommandLauncher("java -jar /Users/sandoz/Downloads/_slave.jar"),
-//                new RetentionStrategy.Always(),
-//                getNodeProperties());
-//    }
-//
+    private static List<? extends NodeProperty<?>> cloneNodeProperties(List<? extends NodeProperty<?>> nodeProperties) {
+        List<NodeProperty<?>> nps = new ArrayList<NodeProperty<?>>();
+        for (NodeProperty<?> p : nodeProperties) {
+            if (p instanceof MasterProvisioningNodeProperty) {
+                MasterProvisioningNodeProperty that = (MasterProvisioningNodeProperty)p;
+                p = new MasterProvisioningNodeProperty(that.getMaxMasters(), that.getProvisioningService());
+            }
+            nps.add(p);
+        }
+        return nps;
+    }
+
     public String getNodeDescription() {
         return nodeDescription;
     }

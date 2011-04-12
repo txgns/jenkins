@@ -31,9 +31,11 @@ THE SOFTWARE.
       <st:nbsp />
       <a href="${it.serverUrl}">${it.displayName}</a>
     </h1>
-        <p>
-            ${it.toString()}
-        </p>
+
+    <p>
+        ${it.toString()}
+    </p>
+
     <t:editableDescription permission="${it.CONFIGURE}"/>
 
 

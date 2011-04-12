@@ -263,12 +263,20 @@ public class MetaNectar extends Hudson {
     public MasterServer doProvisionMasterServer(String organization) throws IOException {
         final MasterServer server = createMasterServer(organization);
 
-        // TODO update state of the master server
         provisionMaster(server);
 
         return server;
     }
 
+    /**
+     * Attach to a new master and issue a grant for automatic approval.
+     *
+     */
+    public MasterServer doAttachMasterServer(String organization) throws IOException {
+        final MasterServer server = createMasterServer(organization);
+
+        return server;
+    }
 
     /**
      * Provision a new master and issue a grant for automatic approval.

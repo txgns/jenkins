@@ -50,15 +50,15 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     /**
      * The state of the master.
      */
-    protected volatile State state;
+    private volatile State state;
 
     /**
      * Error associated with a particular state.
      */
-    protected transient volatile Throwable error;
+    private transient volatile Throwable error;
 
     /**
-     * The grant ID for the master to validat when initially connecting.
+     * The grant ID for the master to validate when initially connecting.
      */
     private String grantId;
 
@@ -82,7 +82,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     /**
      * The URL to the master.
      */
-    protected volatile URL endpoint;
+    private volatile URL endpoint;
 
     /**
      * The encoded image of the public key that indicates the identity of the masters.
@@ -91,9 +91,9 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
     // connected state
 
-    protected transient /* final */ Object channelLock = new Object();
+    private transient /* final */ Object channelLock = new Object();
 
-    protected transient volatile Channel channel;
+    private transient volatile Channel channel;
 
     /**
      * Perpetually writable log file.
@@ -141,7 +141,8 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
                 add("node", nodeName).
                 add("endpoint", endpoint).
                 add("channel", channel).
-                add("identity", getIdentity()).toString();
+                add("identity", getIdentity()).
+                toString();
     }
 
     /**
@@ -232,7 +233,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         save();
         fireOnApproved();
 
-        taskListener.getLogger().println("Disconnected");
+        taskListener.getLogger().println("Approved");
         taskListener.getLogger().println(toString());
     }
 
@@ -240,6 +241,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         if (!setChannel(channel))
             return;
 
+        this.error = null;
         fireOnConnected();
 
         channel.setProperty(SlaveManager.class.getName(),
@@ -396,6 +398,10 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
     // Methods for accessing state
 
+    public State getState() {
+        return state;
+    }
+
     public String getGrantId() {
         return grantId;
     }
@@ -506,12 +512,15 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     private void setDisconnectStateCallback() throws IOException {
+        fireOnDisconnected();
+
         taskListener.getLogger().println("Disconnected");
         taskListener.getLogger().println(toString());
     }
 
     private void setDisconnectStateCallback(Throwable error) throws IOException {
         this.error = error;
+        fireOnDisconnected();
 
         taskListener.getLogger().println("Disconnected Error");
         taskListener.getLogger().println(toString());
@@ -526,12 +535,14 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
     //
 
-    public void doDisconnect() throws IOException {
+    public HttpResponse doDisconnect() throws IOException {
         this.channel.close();
 
         taskListener.getLogger().println("Disconnecting");
         taskListener.getLogger().println(toString());
+        return HttpResponses.redirectToDot();
     }
+
 
     public synchronized void doConfigSubmit(StaplerRequest req,
             StaplerResponse rsp) throws IOException, ServletException, Descriptor.FormException {

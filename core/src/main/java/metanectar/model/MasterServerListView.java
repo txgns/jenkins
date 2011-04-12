@@ -71,6 +71,11 @@ public class MasterServerListView extends ListView implements Saveable {
         return s;
     }
 
+    public MasterServer doAttachMasterServer(@QueryParameter String name) throws IOException {
+        MasterServer s = MetaNectar.getInstance().doAttachMasterServer(name);
+        add(s);
+        return s;
+    }
 
     @Extension
     public static final class DescriptorImpl extends ViewDescriptor {
