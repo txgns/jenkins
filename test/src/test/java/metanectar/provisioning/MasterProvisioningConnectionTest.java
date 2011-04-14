@@ -67,6 +67,29 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
         }
     }
 
+    @Extension
+    public static class TerminateListener extends MasterServerListener {
+        CountDownLatch cdl;
+
+        void init(CountDownLatch cdl) {
+            this.cdl = cdl;
+        }
+
+        public void onTerminating(MasterServer ms) {
+            if (cdl != null)
+                cdl.countDown();
+        }
+
+        public void onTerminated(MasterServer ms) {
+            if (cdl != null)
+                cdl.countDown();
+        }
+
+        public static TerminateListener get() {
+            return Hudson.getInstance().getExtensionList(MasterServerListener.class).get(TerminateListener.class);
+        }
+    }
+
     private class TestAgentProtocolListener extends MetaNectarAgentProtocol.Listener {
 
         private final MetaNectarAgentProtocol.Listener l;
@@ -126,14 +149,41 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
     }
 
     public void _testProvision(int masters) throws Exception {
+        _testProvision(masters, new Configurable() {
+            public void configure() throws Exception {
+                TestMasterProvisioningService s = new TestMasterProvisioningService(100);
+                TestSlaveCloud cloud = new TestSlaveCloud(MasterProvisioningConnectionTest.this, 4, s, 100);
+                metaNectar.clouds.add(cloud);
+            }
+        });
+    }
+
+    public void testProvisionOneMasterOnMetaNectar() throws Exception {
+        _testProvisionOnMetaNectar(1);
+    }
+
+    public void _testProvisionOnMetaNectar(int masters) throws Exception {
+        _testProvision(masters, new Configurable() {
+            public void configure() throws Exception {
+                TestMasterProvisioningService s = new TestMasterProvisioningService(100);
+                metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(4, s));
+                // Reset the labels
+                metaNectar.setNodes(metaNectar.getNodes());
+            }
+        });
+    }
+
+    interface Configurable {
+        void configure() throws Exception;
+    }
+
+    public void _testProvision(int masters, Configurable c) throws Exception {
         HtmlPage wc = new WebClient().goTo("/");
 
         CountDownLatch onEventCdl = new CountDownLatch(masters);
         metaNectar.configureNectarAgentListener(new TestAgentProtocolListener(new MetaNectar.AgentProtocolListener(metaNectar), onEventCdl, onEventCdl));
 
-        TestMasterProvisioningService s = new TestMasterProvisioningService(100);
-        TestSlaveCloud cloud = new TestSlaveCloud(this, 4, s, 100);
-        metaNectar.clouds.add(cloud);
+        c.configure();
 
         CountDownLatch masterProvisionCdl = new CountDownLatch(2 * masters);
         Listener.get().init(masterProvisionCdl);
@@ -150,8 +200,56 @@ public class MasterProvisioningConnectionTest extends MetaNectarTestCase {
         onEventCdl.await(1, TimeUnit.MINUTES);
 
         assertEquals(masters, metaNectar.getItems(MasterServer.class).size());
-        for (MasterServer js : metaNectar.getItems(MasterServer.class)) {
-            assertTrue(js.isApproved());
+        for (MasterServer ms : metaNectar.getItems(MasterServer.class)) {
+            assertTrue(ms.isApproved());
+            assertNotNull(ms.getChannel());
         }
     }
+
+
+    public void testDeleteOneMaster() throws Exception {
+        _testProvisionAndDelete(1);
+    }
+
+    public void testDeleteTwoMaster() throws Exception {
+        _testProvisionAndDelete(2);
+    }
+
+    public void testDeleteFourMaster() throws Exception {
+        _testProvisionAndDelete(4);
+    }
+
+    public void testDeleteEightMaster() throws Exception {
+        _testProvisionAndDelete(8);
+    }
+
+    private void _testProvisionAndDelete(int masters) throws Exception {
+        _testProvision(masters);
+        _testDelete(masters);
+    }
+
+    private void _testDelete(int masters) throws Exception {
+        CountDownLatch cdl = new CountDownLatch(2 * masters);
+        TerminateListener.get().init(cdl);
+
+        for (int i = 0; i < masters; i++) {
+            metaNectar.masterProvisioner.terminate(metaNectar.getMasterByOrganization("org" + i), true);
+        }
+
+        cdl.await(1, TimeUnit.MINUTES);
+
+
+        assertEquals(masters, metaNectar.getItems(MasterServer.class).size());
+        for (MasterServer ms : metaNectar.getItems(MasterServer.class)) {
+            assertEquals(MasterServer.State.Terminated, ms.getState());
+            assertNull(ms.getChannel());
+        }
+
+        // TODO when node terminate is implemented need to assert that there are no nodes
+//        assertEquals(nodes, MyComputerListener.get().online.size());
+//        assertEquals(nodes, metaNectar.masterProvisioner.masterLabel.getNodes().size());
+
+        assertEquals(0, MasterProvisioner.getProvisionedMasters(metaNectar).size());
+    }
+
 }

@@ -71,18 +71,27 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
 
     // TODO setNode is never called
     private Node getNode() {
+        MetaNectar mn = MetaNectar.getInstance();
+        if (this == mn.getGlobalNodeProperties().get(this.getClass()))
+            return mn;
+
         for (Node n : MetaNectar.getInstance().getNodes()) {
-            for (NodeProperty np : n.getNodeProperties().toList()) {
-                if (this == np) {
-                    return n;
-                }
-            }
+            if (this == n.getNodeProperties().get(this.getClass()))
+                return n;
         }
+
         return null;
     }
 
     public static MasterProvisioningNodeProperty get(Node n) {
-        return n.getNodeProperties().get(MasterProvisioningNodeProperty.class);
+        MasterProvisioningNodeProperty np = n.getNodeProperties().get(MasterProvisioningNodeProperty.class);
+        if (np != null)
+            return np;
+
+        if (n instanceof MetaNectar)
+            return ((MetaNectar)n).getGlobalNodeProperties().get(MasterProvisioningNodeProperty.class);
+
+        return null;
     }
 
 
@@ -99,8 +108,6 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
 		}
     }
 
-    // TODO this is not working as the MasterProvision.masterLabel.getNodes()
-    // is not returning nodes whose labels have been modified by findLabels.
     /**
      * Automatically add the
      */

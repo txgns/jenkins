@@ -14,6 +14,7 @@ import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.URL;
@@ -44,6 +45,8 @@ public class TestMasterServer {
     final InstanceIdentity id;
 
     final Agent agent;
+
+    Thread agentThread;
 
     class Client extends MetaNectarAgentProtocol.Listener {
         Channel channel;
@@ -103,15 +106,30 @@ public class TestMasterServer {
 
     public TestMasterServer(URL metaNectarEndpoint, String organization, Map<String, Object> properties) throws IOException {
 
-        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        final HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/", new HttpHandler() {
             public void handle(HttpExchange httpExchange) throws IOException {
-                Headers responseHeaders = httpExchange.getResponseHeaders();
-                responseHeaders.add("X-Jenkins", "");
+                if (httpExchange.getRequestMethod().equalsIgnoreCase("POST") && httpExchange.getRequestURI().getPath().equals("/stop")) {
+                    stop();
 
-                responseHeaders.add("X-Instance-Identity", new String(Base64.encodeBase64(id.getPublic().getEncoded())));
-                httpExchange.sendResponseHeaders(200, 0);
-                httpExchange.close();
+                    httpExchange.sendResponseHeaders(200, 0);
+                    OutputStream out = httpExchange.getResponseBody();
+                    out.write("Stopping".getBytes());
+                    out.close();
+                    httpExchange.close();
+
+                    server.stop(0);
+                } else {
+                    Headers responseHeaders = httpExchange.getResponseHeaders();
+                    responseHeaders.add("X-Jenkins", "");
+                    responseHeaders.add("X-Instance-Identity", new String(Base64.encodeBase64(id.getPublic().getEncoded())));
+
+                    httpExchange.sendResponseHeaders(200, 0);
+                    OutputStream out = httpExchange.getResponseBody();
+                    out.write("This is a fake master".getBytes());
+                    out.close();
+                    httpExchange.close();
+                }
             }
         });
         server.setExecutor(Executors.newCachedThreadPool());
@@ -166,7 +184,13 @@ public class TestMasterServer {
     }
 
     public URL start() {
-        new Thread(agent).start();
+        this.agentThread = new Thread(agent);
+        agentThread.start();
         return endpoint;
     }
+
+    public void stop() {
+        agentThread.interrupt();
+    }
+
 }

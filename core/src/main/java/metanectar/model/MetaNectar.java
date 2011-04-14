@@ -161,8 +161,7 @@ public class MetaNectar extends Hudson {
 
     public URL getRootUrlAsURL() {
         try {
-        return new URL(getRootUrl());
-
+            return new URL(getRootUrl());
         } catch (MalformedURLException e) {
             throw new IllegalStateException(e);
         }

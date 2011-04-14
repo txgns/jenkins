@@ -7,6 +7,7 @@ import hudson.slaves.*;
 import metanectar.model.MasterServer;
 import metanectar.model.MasterServerListener;
 import metanectar.model.MetaNectar;
+import metanectar.provisioning.test.*;
 import metanectar.test.MetaNectarTestCase;
 
 import java.io.IOException;
@@ -235,5 +236,56 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
     }
 
 
+    public void testProvisionOneMasterOnMetaNectarNode() throws Exception {
+        _testProvisionOnMetaNectarNode(1, 4);
+    }
+
+    private void _testProvisionOnMetaNectarNode(int masters, int nodesPerMaster) throws Exception {
+        int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
+
+        Service s = new Service(100);
+        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(nodesPerMaster, s));
+        // Reset the labels
+        metaNectar.setNodes(metaNectar.getNodes());
+
+        CountDownLatch cdl = new CountDownLatch(2 * masters);
+        ProvisionListener.get().init(cdl);
+
+        Map<String, Object> properties = new HashMap<String, Object>();
+        properties.put("key", "value");
+        for (int i = 0; i < masters; i++) {
+            MasterServer ms = metaNectar.createMasterServer("org" + i);
+            metaNectar.masterProvisioner.provision(ms, new URL("http://test/"), properties);
+        }
+
+        cdl.await(1, TimeUnit.MINUTES);
+
+        assertEquals(nodes, metaNectar.masterProvisioner.masterLabel.getNodes().size());
+        assertEquals(masters, MasterProvisioner.getProvisionedMasters(metaNectar).size());
+    }
+
+    public void testDeleteOneMasterOnMetaNectarNode() throws Exception {
+        _testDeleteOnMetaNectarNode(1);
+    }
+
+    private void _testDeleteOnMetaNectarNode(int masters) throws Exception {
+        _testProvisionOnMetaNectarNode(masters, 4);
+        _testDeleteOnMetaNectarNode(masters, 4);
+    }
+
+    private void _testDeleteOnMetaNectarNode(int masters, int nodesPerMaster) throws Exception {
+        int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
+
+        CountDownLatch cdl = new CountDownLatch(2 * masters);
+        TerminateListener.get().init(cdl);
+
+        for (int i = 0; i < masters; i++) {
+            metaNectar.masterProvisioner.terminate(metaNectar.getMasterByOrganization("org" + i), true);
+        }
+
+        cdl.await(1, TimeUnit.MINUTES);
+
+        assertEquals(0, MasterProvisioner.getProvisionedMasters(metaNectar).size());
+    }
 
 }

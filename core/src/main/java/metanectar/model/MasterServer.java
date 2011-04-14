@@ -35,7 +35,7 @@ import java.util.logging.Logger;
  */
 public class MasterServer extends AbstractItem implements TopLevelItem, HttpResponse {
 
-    static enum State {
+    public static enum State {
         Created,
         Provisioning,
         ProvisioningErrorNoResources,

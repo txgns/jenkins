@@ -1,9 +1,12 @@
 package metanectar.provisioning;
 
+import com.google.common.collect.Maps;
 import hudson.model.Computer;
 import hudson.remoting.VirtualChannel;
+import hudson.util.IOUtils;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -20,6 +23,8 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
 
     private final int delay;
 
+    private final Map<String, URL> provisioned = Maps.newHashMap();
+
     TestMasterProvisioningService(int delay) {
         this.delay = delay;
     }
@@ -34,13 +39,27 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
                 final URL endpoint = channel.call(new TestMasterServerCallable(metaNectarEndpoint, organization, properties));
 
                 System.out.println("Launched master " + organization + ": " + endpoint);
+                provisioned.put(organization, endpoint);
                 return new Master(organization, endpoint);
             }
         });
     }
 
-    public Future<?> terminate(VirtualChannel channel, String organization, boolean clean) throws IOException, InterruptedException {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    public Future<?> terminate(VirtualChannel channel, final String organization, boolean clean) throws IOException, InterruptedException {
+        return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
+            public Void call() throws Exception {
+                URL endpoint = provisioned.get(organization);
+
+                URL stop = new URL(endpoint.toExternalForm() + "/stop");
+                HttpURLConnection c = (HttpURLConnection)stop.openConnection();
+                c.setDoOutput(true);
+                c.setRequestMethod("POST");
+                IOUtils.toString(c.getInputStream());
+                c.getResponseCode();
+
+                return null;
+            }
+        });
     }
 
     public Map<String, Master> getProvisioned(VirtualChannel channel) {
