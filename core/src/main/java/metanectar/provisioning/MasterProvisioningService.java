@@ -26,14 +26,17 @@ public abstract class MasterProvisioningService extends AbstractDescribableImpl<
      * Provision a new master.
      *
      * @param channel the channel on which remote execution can be performed to provision a new master.
-     * @param organization the organization to be associated with the master.
+     * @param id a unique number assigned to the master that is always less than or equal to the number of masters
+     *        provisioned or being provisioned. This may be used to assign a HTTP port to a master.
+     * @param organization a unique name associated with the master.
      * @param metaNectarEndpoint the MetaNectar URL, so that masters can make contact.
      * @param properties a map of properties for provisioning.
      * @return a future of the master, when the future is done the master is considered provisioned.
      * @throws Exception
      */
-    public abstract Future<Master> provision(VirtualChannel channel, String organization, URL metaNectarEndpoint,
-                                               Map<String, Object> properties) throws Exception;
+    public abstract Future<Master> provision(VirtualChannel channel,
+                                             int id, String organization, URL metaNectarEndpoint,
+                                             Map<String, Object> properties) throws Exception;
 
     /**
      * Terminate a provisioned master.

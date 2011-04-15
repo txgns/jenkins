@@ -31,6 +31,8 @@ import java.util.logging.Logger;
 /**
  * Representation of remote Master server inside MetaNectar.
  *
+ * TODO construct vanity URL
+ *
  * @author Kohsuke Kawaguchi, Paul Sandoz
  */
 public class MasterServer extends AbstractItem implements TopLevelItem, HttpResponse {
@@ -80,9 +82,21 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     private transient volatile Node node;
 
     /**
-     * The URL to the master.
+     * A unique number that is always less than or equal to the total number of masters
+     * provisioned for a node.
+     */
+    private int id;
+
+    /**
+     * The direct URL to the master.
      */
     private volatile URL endpoint;
+
+    /**
+     * The clean URL to the master that is server through the reverse proxy, if any,
+     * otherwise the same as <code>endpoint</code>.
+     */
+    private volatile URL vanityEndpoint;
 
     /**
      * The encoded image of the public key that indicates the identity of the masters.
@@ -139,6 +153,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
                 add("grantId", grantId).
                 add("approved", approved).
                 add("node", nodeName).
+                add("id", id).
                 add("endpoint", endpoint).
                 add("channel", channel).
                 add("identity", getIdentity()).
@@ -172,10 +187,11 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         taskListener.getLogger().println(toString());
     }
 
-    public void setProvisionStartedState(Node node) throws IOException {
+    public void setProvisionStartedState(Node node, int ordinal) throws IOException {
         setState(State.Provisioning);
         this.nodeName = node.getNodeName();
         this.node = node;
+        this.id = ordinal;
         save();
         fireOnProvisioning();
 
@@ -205,6 +221,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         this.error = error;
         this.nodeName = node.getNodeName();
         this.node = node;
+        this.id = 0;
         save();
         fireOnProvisioningError();
 
@@ -269,6 +286,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         this.node = null;
         this.nodeName = null;
         this.endpoint = null;
+        this.id = 0;
         save();
         fireOnTerminated();
 
@@ -419,6 +437,10 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         }
 
         return node;
+    }
+
+    public int getId() {
+        return id;
     }
 
     public synchronized RSAPublicKey getIdentity() {

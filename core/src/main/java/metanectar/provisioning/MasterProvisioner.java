@@ -159,13 +159,15 @@ public class MasterProvisioner {
                 for (Iterator<PlannedMasterRequest> itr = Iterators.limit(pendingPlannedMasterRequests.iterator(), freeSlots); itr.hasNext();) {
                     final PlannedMasterRequest pmr = itr.next();
                     try {
-                        Future<Master> f = p.getProvisioningService().provision(n.toComputer().getChannel(), pmr.ms.getName(), pmr.metaNectarEndpoint, pmr.properties);
+                        final int ordinal = getFreeOrdinal(n, provisioned, pendingPlannedMasters);
+                        final Future<Master> f = p.getProvisioningService().provision(n.toComputer().getChannel(),
+                                ordinal, pmr.ms.getName(), pmr.metaNectarEndpoint, pmr.properties);
                         pendingPlannedMasters.put(n, pmr.toPlannedMaster(n, f));
 
                         LOGGER.info(pmr.ms.getName() +" master provisioning started");
 
                         // Set the provision started state on the master server
-                        pmr.ms.setProvisionStartedState(n);
+                        pmr.ms.setProvisionStartedState(n, ordinal);
                     } catch (Exception e) {
                         LOGGER.log(Level.WARNING, "Provisioned masters node " + pmr.ms.getName() + " failed to launch", e);
 
@@ -208,6 +210,51 @@ public class MasterProvisioner {
         return provisioned;
     }
 
+    private int getFreeOrdinal(Node n,
+                               Multimap<Node, MasterServer> provisioned,
+                               Multimap<Node, PlannedMaster> provisioning) {
+        final List<MasterServer> l = new ArrayList<MasterServer>(provisioned.get(n));
+        for (PlannedMaster pm : provisioning.get(n)) {
+            l.add(pm.ms);
+        }
+
+        return getFreeOrdinal(l);
+    }
+
+    private int getFreeOrdinal(final List<MasterServer> provisioned) {
+        // Empty
+        if (provisioned.isEmpty())
+            return 0;
+
+        // One Element
+        if (provisioned.size() == 1) {
+            final MasterServer ms = provisioned.get(0);
+            return (ms.getId() > 0) ? 0 : ms.getId() + 1;
+        }
+
+        // Multiple elements, sort by ordinal then find a gap in the
+        // intervals
+        Collections.sort(provisioned, new Comparator<MasterServer>() {
+            public int compare(MasterServer ms1, MasterServer ms2) {
+                return ms1.getId() - ms2.getId();
+            }
+        });
+
+        final Iterator<MasterServer> msi = provisioned.iterator();
+        MasterServer start = msi.next();
+        MasterServer end = null;
+        while (msi.hasNext()) {
+            end = msi.next();
+
+            if (end.getId() - start.getId() > 1) {
+                return start.getId() + 1;
+            }
+
+            start = end;
+        }
+
+        return end.getId() + 1;
+    }
 
     private static final class TerminateMasterRequest {
         public final MasterServer ms;

@@ -56,7 +56,7 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
         this.delay = delay;
     }
 
-    public Future<Master> provision(final VirtualChannel channel, final String organization, final URL metaNectarEndpoint, final Map<String, Object> properties) throws IOException, InterruptedException {
+    public Future<Master> provision(final VirtualChannel channel, int id, final String organization, final URL metaNectarEndpoint, final Map<String, Object> properties) throws IOException, InterruptedException {
         return Computer.threadPoolForRemoting.submit(new Callable<Master>() {
             public Master call() throws Exception {
                 System.out.println("Launching master " + organization);

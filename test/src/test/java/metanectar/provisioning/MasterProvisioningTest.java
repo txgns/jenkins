@@ -7,7 +7,6 @@ import hudson.slaves.*;
 import metanectar.model.MasterServer;
 import metanectar.model.MasterServerListener;
 import metanectar.model.MetaNectar;
-import metanectar.provisioning.test.*;
 import metanectar.test.MetaNectarTestCase;
 
 import java.io.IOException;
@@ -95,14 +94,14 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
             this.delay = delay;
         }
 
-        public Future<Master> provision(VirtualChannel channel, final String organization, final URL metaNectarEndpoint, Map<String, Object> properties) throws IOException, InterruptedException {
+        public Future<Master> provision(VirtualChannel channel, int ordinal, final String id, final URL metaNectarEndpoint, Map<String, Object> properties) throws IOException, InterruptedException {
             return Computer.threadPoolForRemoting.submit(new Callable<Master>() {
                 public Master call() throws Exception {
                     Thread.sleep(delay);
 
                     System.out.println("launching master");
 
-                    return new Master(organization, metaNectarEndpoint);
+                    return new Master(id, metaNectarEndpoint);
                 }
             });
         }
@@ -288,4 +287,107 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
         assertEquals(0, MasterProvisioner.getProvisionedMasters(metaNectar).size());
     }
 
+
+    public void testOrdinal1() throws Exception {
+        config();
+
+        MasterServer ms0 = provisionedMaster("0");
+        assertEquals(0, ms0.getId());
+
+        terminateMaster(ms0);
+
+        ms0 = provisionedMaster("0");
+        assertEquals(0, ms0.getId());
+    }
+
+    public void testOrdinal2() throws Exception {
+        config();
+
+        MasterServer ms0 = provisionedMaster("0");
+        assertEquals(0, ms0.getId());
+
+        MasterServer ms1 = provisionedMaster("1");
+        assertEquals(1, ms1.getId());
+
+        terminateMaster(ms0);
+
+        ms0 = provisionedMaster("0");
+        assertEquals(0, ms0.getId());
+
+        terminateMaster(ms1);
+
+        ms1 = provisionedMaster("1");
+        assertEquals(1, ms1.getId());
+    }
+
+
+    public void testOrdinal4() throws Exception {
+        config();
+
+        MasterServer ms0 = provisionedMaster("0");
+        assertEquals(0, ms0.getId());
+
+        MasterServer ms1 = provisionedMaster("1");
+        assertEquals(1, ms1.getId());
+
+        MasterServer ms2 = provisionedMaster("2");
+        assertEquals(2, ms2.getId());
+
+        MasterServer ms3 = provisionedMaster("3");
+        assertEquals(3, ms3.getId());
+
+        terminateMaster(ms1);
+        terminateMaster(ms2);
+
+        ms1 = provisionedMaster("1");
+        assertEquals(1, ms1.getId());
+
+        ms2 = provisionedMaster("2");
+        assertEquals(2, ms2.getId());
+
+        terminateMaster(ms0);
+        terminateMaster(ms1);
+        terminateMaster(ms2);
+
+        ms0 = provisionedMaster("0");
+        assertEquals(0, ms0.getId());
+
+        ms1 = provisionedMaster("1");
+        assertEquals(1, ms1.getId());
+
+        ms2 = provisionedMaster("2");
+        assertEquals(2, ms2.getId());
+
+    }
+
+    private void config() throws Exception {
+        Service s = new Service(100);
+        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(10, s));
+        // Reset the labels
+        metaNectar.setNodes(metaNectar.getNodes());
+    }
+
+    private MasterServer provisionedMaster(String name) throws Exception {
+        CountDownLatch cdl = new CountDownLatch(2);
+        ProvisionListener.get().init(cdl);
+
+        Map<String, Object> properties = new HashMap<String, Object>();
+        properties.put("key", "value");
+        MasterServer ms = metaNectar.createMasterServer(name);
+        metaNectar.masterProvisioner.provision(ms, new URL("http://test/"), properties);
+
+        cdl.await(1, TimeUnit.MINUTES);
+        return ms;
+    }
+
+    private void terminateMaster(MasterServer ms) throws Exception {
+        CountDownLatch cdl = new CountDownLatch(2);
+        TerminateListener.get().init(cdl);
+
+        metaNectar.masterProvisioner.terminate(ms, true);
+        metaNectar.getItems().remove(ms);
+
+        cdl.await(1, TimeUnit.MINUTES);
+        ms.delete();
+    }
 }
