@@ -11,11 +11,11 @@
   <f:dropdownList name="master.mps" title="Master Provisioning Service">
     <j:forEach var="d" items="${ds}">
       <f:dropdownListBlock value="${d.clazz.name}" name="${d.displayName}"
-                           selected="${instance.mps.descriptor==d}"
+                           selected="${instance.provisioningService.descriptor==d}"
                            title="${d.displayName}">
         <j:set var="descriptor" value="${d}"/>
         <j:set var="instance"
-               value="${instance.mps.descriptor==d ? instance.mps.descriptor : null}"/>
+               value="${instance.provisioningService.descriptor==d ? instance.provisioningService : null}"/>
         <f:invisibleEntry>
           <input type="hidden" name="stapler-class" value="${d.clazz.name}" />
         </f:invisibleEntry>

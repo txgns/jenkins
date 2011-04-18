@@ -51,6 +51,8 @@ public class MetaNectarTestCase extends HudsonTestCase {
         File home = homeLoader.allocate();
         for (Recipe.Runner r : recipes)
             r.decorateHome(this,home);
-        return metaNectar = new MetaNectar(home, createWebServer(), useLocalPluginManager ? null : TestPluginManager.INSTANCE);
+        metaNectar = new MetaNectar(home, createWebServer(), useLocalPluginManager ? null : TestPluginManager.INSTANCE);
+        metaNectar.setRootUrl(getURL().toExternalForm());
+        return metaNectar;
     }
 }

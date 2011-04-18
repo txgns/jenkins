@@ -159,6 +159,21 @@ public class MetaNectar extends Hudson {
         }
     }
 
+    private String rootUrl;
+
+    @Override
+    public String getRootUrl() {
+        if (rootUrl != null) {
+            return rootUrl;
+        }
+
+        return super.getRootUrl();
+    }
+
+    public void setRootUrl(String rootUrl) {
+        this.rootUrl = rootUrl;
+    }
+
     public URL getRootUrlAsURL() {
         try {
             return new URL(getRootUrl());

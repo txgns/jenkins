@@ -113,7 +113,7 @@ public class MasterProvisioner {
                     throw new AssertionError(e); // since we confirmed that the future is already done
                 } catch (Exception e) {
                     final Throwable cause = (e instanceof ExecutionException) ? e.getCause() : e;
-                    LOGGER.log(Level.WARNING, "Provisioned master" + pm.ms.getName() + " failed to launch", cause);
+                    LOGGER.log(Level.WARNING, "Provisioned master " + pm.ms.getName() + " failed to launch", cause);
 
                     pm.ms.setProvisionErrorState(pm.node, cause);
                 } finally {
@@ -159,15 +159,16 @@ public class MasterProvisioner {
                 for (Iterator<PlannedMasterRequest> itr = Iterators.limit(pendingPlannedMasterRequests.iterator(), freeSlots); itr.hasNext();) {
                     final PlannedMasterRequest pmr = itr.next();
                     try {
-                        final int ordinal = getFreeOrdinal(n, provisioned, pendingPlannedMasters);
-                        final Future<Master> f = p.getProvisioningService().provision(n.toComputer().getChannel(),
-                                ordinal, pmr.ms.getName(), pmr.metaNectarEndpoint, pmr.properties);
+                        final int id = getFreeId(n, provisioned, pendingPlannedMasters);
+                        final Future<Master> f = p.getProvisioningService().provision(
+                                n.toComputer().getChannel(), pmr.ms.getTaskListener(),
+                                id, pmr.ms.getName(), pmr.metaNectarEndpoint, pmr.properties);
                         pendingPlannedMasters.put(n, pmr.toPlannedMaster(n, f));
 
                         LOGGER.info(pmr.ms.getName() +" master provisioning started");
 
                         // Set the provision started state on the master server
-                        pmr.ms.setProvisionStartedState(n, ordinal);
+                        pmr.ms.setProvisionStartedState(n, id);
                     } catch (Exception e) {
                         LOGGER.log(Level.WARNING, "Provisioned masters node " + pmr.ms.getName() + " failed to launch", e);
 
@@ -210,18 +211,18 @@ public class MasterProvisioner {
         return provisioned;
     }
 
-    private int getFreeOrdinal(Node n,
-                               Multimap<Node, MasterServer> provisioned,
-                               Multimap<Node, PlannedMaster> provisioning) {
+    private int getFreeId(Node n,
+                          Multimap<Node, MasterServer> provisioned,
+                          Multimap<Node, PlannedMaster> provisioning) {
         final List<MasterServer> l = new ArrayList<MasterServer>(provisioned.get(n));
         for (PlannedMaster pm : provisioning.get(n)) {
             l.add(pm.ms);
         }
 
-        return getFreeOrdinal(l);
+        return getFreeId(l);
     }
 
-    private int getFreeOrdinal(final List<MasterServer> provisioned) {
+    private int getFreeId(final List<MasterServer> provisioned) {
         // Empty
         if (provisioned.isEmpty())
             return 0;
@@ -322,7 +323,9 @@ public class MasterProvisioner {
                 // If so ignore
 
                 final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(n);
-                final Future<?> f = p.getProvisioningService().terminate(n.toComputer().getChannel(), ms.getName(), tmr.clean);
+                final Future<?> f = p.getProvisioningService().terminate(
+                        n.toComputer().getChannel(), ms.getTaskListener(),
+                        ms.getName(), tmr.clean);
                 pendingTerminateMasters.add(tmr.toDeleteMaster(f));
 
                 // Set terminate stated state on the master server

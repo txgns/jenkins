@@ -10,6 +10,7 @@ import com.sun.net.httpserver.HttpServer;
 import hudson.Extension;
 import hudson.model.Computer;
 import hudson.model.Descriptor;
+import hudson.model.TaskListener;
 import hudson.remoting.Channel;
 import hudson.remoting.VirtualChannel;
 import metanectar.model.MetaNectar;
@@ -56,7 +57,8 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
         this.delay = delay;
     }
 
-    public Future<Master> provision(final VirtualChannel channel, int id, final String organization, final URL metaNectarEndpoint, final Map<String, Object> properties) throws IOException, InterruptedException {
+    public Future<Master> provision(final VirtualChannel channel, TaskListener listener,
+                                    int id, final String organization, final URL metaNectarEndpoint, final Map<String, Object> properties) throws IOException, InterruptedException {
         return Computer.threadPoolForRemoting.submit(new Callable<Master>() {
             public Master call() throws Exception {
                 System.out.println("Launching master " + organization);
@@ -71,7 +73,8 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
         });
     }
 
-    public Future<?> terminate(VirtualChannel channel, String organization, boolean clean) throws IOException, InterruptedException {
+    public Future<?> terminate(VirtualChannel channel, TaskListener listener,
+                               String organization, boolean clean) throws IOException, InterruptedException {
         return null;
     }
 

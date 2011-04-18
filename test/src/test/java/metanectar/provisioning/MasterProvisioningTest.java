@@ -20,25 +20,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author Paul Sandoz
  */
-public class MasterProvisioningTest extends MetaNectarTestCase {
-    private int original;
-
-    @Override
-    protected void setUp() throws Exception {
-        original = LoadStatistics.CLOCK;
-        LoadStatistics.CLOCK = 10; // run x1000 the regular speed to speed up the test
-        MasterProvisioner.MasterProvisionerInvoker.INITIALDELAY = 100;
-        MasterProvisioner.MasterProvisionerInvoker.RECURRENCEPERIOD = 10;
-        super.setUp();
-    }
-
-    @Override
-    protected void tearDown() throws Exception {
-        super.tearDown();
-        LoadStatistics.CLOCK = original;
-        MasterProvisioner.MasterProvisionerInvoker.INITIALDELAY = original*10;
-        MasterProvisioner.MasterProvisionerInvoker.RECURRENCEPERIOD = original;
-    }
+public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
 
     @Extension
     public static class ProvisionListener extends MasterServerListener {
@@ -94,19 +76,21 @@ public class MasterProvisioningTest extends MetaNectarTestCase {
             this.delay = delay;
         }
 
-        public Future<Master> provision(VirtualChannel channel, int ordinal, final String id, final URL metaNectarEndpoint, Map<String, Object> properties) throws IOException, InterruptedException {
+        public Future<Master> provision(VirtualChannel channel, TaskListener listener,
+                                        int id, final String organization, final URL metaNectarEndpoint, Map<String, Object> properties) throws IOException, InterruptedException {
             return Computer.threadPoolForRemoting.submit(new Callable<Master>() {
                 public Master call() throws Exception {
                     Thread.sleep(delay);
 
                     System.out.println("launching master");
 
-                    return new Master(id, metaNectarEndpoint);
+                    return new Master(organization, metaNectarEndpoint);
                 }
             });
         }
 
-        public Future<?> terminate(VirtualChannel channel, String organization, boolean clean) throws IOException, InterruptedException {
+        public Future<?> terminate(VirtualChannel channel, TaskListener listener,
+                                   String organization, boolean clean) throws IOException, InterruptedException {
             return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
                 public Void call() throws Exception {
                     Thread.sleep(delay);

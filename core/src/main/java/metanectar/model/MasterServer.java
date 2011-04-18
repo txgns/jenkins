@@ -5,6 +5,7 @@ import com.google.common.base.Objects;
 import hudson.Extension;
 import hudson.model.*;
 import hudson.remoting.Channel;
+import hudson.util.IOUtils;
 import hudson.util.RemotingDiagnostics;
 import hudson.util.StreamTaskListener;
 import hudson.util.io.ReopenableFileOutputStream;
@@ -16,6 +17,7 @@ import org.kohsuke.stapler.StaplerResponse;
 
 import javax.servlet.ServletException;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
@@ -300,6 +302,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         save();
         fireOnTerminatingError();
 
+        taskListener.getLogger().println("Terminating Error");
         taskListener.getLogger().println(toString());
         error.printStackTrace(taskListener.error("Terminating Error"));
     }
@@ -458,6 +461,10 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
     public boolean isApproved() {
         return approved;
+    }
+
+    public TaskListener getTaskListener() {
+        return taskListener;
     }
 
     public Channel getChannel() {
