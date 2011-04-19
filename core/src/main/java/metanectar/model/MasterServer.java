@@ -5,7 +5,6 @@ import com.google.common.base.Objects;
 import hudson.Extension;
 import hudson.model.*;
 import hudson.remoting.Channel;
-import hudson.util.IOUtils;
 import hudson.util.RemotingDiagnostics;
 import hudson.util.StreamTaskListener;
 import hudson.util.io.ReopenableFileOutputStream;
@@ -17,7 +16,6 @@ import org.kohsuke.stapler.StaplerResponse;
 
 import javax.servlet.ServletException;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
@@ -39,13 +37,19 @@ import java.util.logging.Logger;
  */
 public class MasterServer extends AbstractItem implements TopLevelItem, HttpResponse {
 
+    /**
+     * The states of the master.
+     * <p>
+     */
     public static enum State {
         Created,
+        PreProvisioning,
         Provisioning,
         ProvisioningErrorNoResources,
         ProvisioningError,
         Provisioned,
         Connectable,
+        PreTerminating,
         Terminating,
         TerminatingError,
         Terminated
@@ -154,7 +158,8 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
                 add("error", error).
                 add("grantId", grantId).
                 add("approved", approved).
-                add("node", nodeName).
+                add("nodeName", nodeName).
+                add("node", getNode()).
                 add("id", id).
                 add("endpoint", endpoint).
                 add("channel", channel).
@@ -189,11 +194,19 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         taskListener.getLogger().println(toString());
     }
 
-    public void setProvisionStartedState(Node node, int ordinal) throws IOException {
+    public void setPreProvisionState() throws IOException {
+        setState(State.PreProvisioning);
+        save();
+
+        taskListener.getLogger().println("PreProvisioning");
+        taskListener.getLogger().println(toString());
+    }
+
+    public void setProvisionStartedState(Node node, int id) throws IOException {
         setState(State.Provisioning);
         this.nodeName = node.getNodeName();
         this.node = node;
-        this.id = ordinal;
+        this.id = id;
         save();
         fireOnProvisioning();
 
@@ -241,7 +254,6 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
             taskListener.getLogger().println("Provision Error No Resources");
             taskListener.getLogger().println(toString());
         }
-
     }
 
     public void setApprovedState(RSAPublicKey pk, URL endpoint) throws IOException {
@@ -267,6 +279,14 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
                 channel.export(SlaveManager.class, new MetaNectarSlaveManager()));
 
         taskListener.getLogger().println("Connected");
+        taskListener.getLogger().println(toString());
+    }
+
+    public void setPreTerminateState() throws IOException {
+        setState(State.PreTerminating);
+        save();
+
+        taskListener.getLogger().println("PreTerminating");
         taskListener.getLogger().println(toString());
     }
 
@@ -436,7 +456,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
             if (nodeName == null)
                 return null;
 
-            node = MetaNectar.getInstance().getNode(nodeName);
+            node = (nodeName.isEmpty()) ? MetaNectar.getInstance() : MetaNectar.getInstance().getNode(nodeName);
         }
 
         return node;
@@ -481,7 +501,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
     public String getIcon() {
         if (!isApproved())
-            return "computer-gray.png";
+            return "computer-x.png";
 
         if(isOffline())
             return "computer-x.png";
@@ -498,6 +518,17 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         }
     }
 
+    public boolean canTerminate() {
+        return (state.ordinal() > State.Provisioning.ordinal() && state.ordinal() < State.Terminated.ordinal());
+    }
+
+    public boolean canDelete() {
+        return !canTerminate();
+    }
+
+    public boolean isTerminating() {
+        return state.ordinal() > State.PreTerminating.ordinal();
+    }
 
     //
 
@@ -548,12 +579,16 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     private void setDisconnectStateCallback(Throwable error) throws IOException {
-        this.error = error;
-        fireOnDisconnected();
+        // Ignore the error if in the process of terminating
+        if (state.ordinal() < State.Terminating.ordinal()) {
+            setDisconnectStateCallback();
+        } else {
+            fireOnDisconnected();
 
-        taskListener.getLogger().println("Disconnected Error");
-        taskListener.getLogger().println(toString());
-        error.printStackTrace(taskListener.error("Disconnected Error"));
+            taskListener.getLogger().println("Disconnected Error");
+            taskListener.getLogger().println(toString());
+            error.printStackTrace(taskListener.error("Disconnected Error"));
+        }
     }
 
 
@@ -564,14 +599,33 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
     //
 
-    public HttpResponse doDisconnect() throws IOException {
+    public void terminate(boolean clean) throws IOException {
+        MetaNectar.getInstance().masterProvisioner.terminate(this, clean);
+    }
+
+    public HttpResponse doDoTerminate() throws Exception  {
+        requirePOST();
+
+        if (!canTerminate()) {
+            // TODO better error
+            throw new IOException("Cannot terminate");
+        }
+
+        terminate(false);
+
+        return HttpResponses.redirectToDot();
+
+    }
+
+    public HttpResponse doDisconnect() throws Exception {
+        requirePOST();
+
         this.channel.close();
 
         taskListener.getLogger().println("Disconnecting");
         taskListener.getLogger().println(toString());
         return HttpResponses.redirectToDot();
     }
-
 
     public synchronized void doConfigSubmit(StaplerRequest req,
             StaplerResponse rsp) throws IOException, ServletException, Descriptor.FormException {
@@ -582,7 +636,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     public void generateResponse(StaplerRequest req, StaplerResponse rsp, Object node) throws IOException, ServletException {
-        HttpResponses.redirectViaContextPath(getUrl()).generateResponse(req,rsp,node);
+        HttpResponses.redirectViaContextPath(getUrl()).generateResponse(req, rsp, node);
     }
 
     @Extension

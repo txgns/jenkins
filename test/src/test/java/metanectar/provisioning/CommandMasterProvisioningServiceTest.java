@@ -9,7 +9,6 @@ import metanectar.model.MasterServer;
 import metanectar.model.MasterServerListener;
 import metanectar.model.MetaNectar;
 
-import javax.swing.plaf.metal.MetalIconFactory;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;

@@ -56,10 +56,7 @@ public class MetaNectar extends Hudson {
         }
 
         public URL getEndpoint() throws IOException {
-            // TODO MetaNectar.this.getRootUrl() is returning null
-            String url = metaNectar.getRootUrl();
-            if (url == null) url = metaNectar.METANECTAR_ROOT_URL;
-            return new URL(url);
+            return new URL(metaNectar.getRootUrl());
         }
 
         public void onConnectingTo(URL address, X509Certificate identity, String organization, Map<String, String> properties) throws GeneralSecurityException, IOException {
@@ -67,6 +64,10 @@ public class MetaNectar extends Hudson {
 
             if (server == null) {
                 throw new GeneralSecurityException("The master " + organization + " does not exist");
+            }
+
+            if (server.isTerminating()) {
+                throw new GeneralSecurityException("The master " + organization + " is terminating");
             }
 
             if (server.isApproved()) {
@@ -163,10 +164,15 @@ public class MetaNectar extends Hudson {
 
     @Override
     public String getRootUrl() {
+        if (METANECTAR_ROOT_URL != null) {
+            return METANECTAR_ROOT_URL;
+        }
+
         if (rootUrl != null) {
             return rootUrl;
         }
 
+        // TODO Hudson.getRootUrl() is returning null
         return super.getRootUrl();
     }
 
@@ -296,12 +302,11 @@ public class MetaNectar extends Hudson {
      * Provision a new master and issue a grant for automatic approval.
      *
      */
-    public void provisionMaster(MasterServer server) {
+    public void provisionMaster(MasterServer server) throws IOException {
         Map<String, Object> properties = new HashMap<String, Object>();
         properties.put(GRANT_PROPERTY, server.getGrantId());
         masterProvisioner.provision(server, getRootUrlAsURL(), properties);
     }
-
 
     //
 

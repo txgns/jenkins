@@ -13,6 +13,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -96,10 +97,11 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
 
         return Computer.threadPoolForRemoting.submit(new Callable<Master>() {
             public Master call() throws Exception {
-                HomeDirectoryProvisioner hdp = new HomeDirectoryProvisioner(getFilePath(channel, home));
+                final HomeDirectoryProvisioner hdp = new HomeDirectoryProvisioner(listener, getFilePath(channel, home));
 
                 final ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
+                listener.getLogger().println("Executing provisioning script with environment variables: " + variables);
                 final Proc proc = getLauncher(channel, listener).launch().
                         envs(variables).
                         cmds(Util.tokenize(getProvisionCommand())).
@@ -110,12 +112,21 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
                 final int result = proc.joinWithTimeout(timeOut, TimeUnit.SECONDS, listener);
 
                 if (result != 0) {
-                    throw new IOException(
-                            "Failed to provision master, received signal from provision command: " + result);
+                    final String errorString = "Failed to provision master, received signal from provision command: " + result;
+                    listener.error(errorString);
+                    throw new IOException(errorString);
                 }
 
-                final URL endpoint = new URL(new String(baos.toByteArray()));
-                return new Master(organization, endpoint);
+                final String resultValue = new String(baos.toByteArray());
+                listener.getLogger().println("Provisioning script succeeded with result: " + resultValue);
+                try {
+                    final URL endpoint = new URL(resultValue);
+
+                    return new Master(organization, endpoint);
+                } catch (MalformedURLException e) {
+                    listener.error("Provisioning script result is not a valid URL");
+                    throw e;
+                }
             }
         });
     }
@@ -129,6 +140,8 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
         return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
             public Void call() throws Exception {
 
+                listener.getLogger().println("Executing termination script with environment variables: " + variables);
+
                 final Proc proc = getLauncher(channel, listener).launch().
                         envs(variables).
                         cmds(Util.tokenize(getTerminateCommand())).
@@ -139,19 +152,16 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
                 final int result = proc.joinWithTimeout(timeOut, TimeUnit.SECONDS, listener);
 
                 if (result != 0) {
-                    throw new IOException(
-                            "Failed to terminate master, received signal from terminate command: " + result);
+                    final String errorString = "Failed to terminate master, received signal from provision command: " + result;
+                    listener.error(errorString);
+                    throw new IOException(errorString);
                 }
+
+                listener.getLogger().println("Termination script succeeded");
 
                 return null;
             }
         });
-    }
-
-    @Override
-    public Map<String, Master> getProvisioned(VirtualChannel channel) {
-
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
     }
 
     private Launcher getLauncher(final VirtualChannel channel, final TaskListener listener) throws Exception {

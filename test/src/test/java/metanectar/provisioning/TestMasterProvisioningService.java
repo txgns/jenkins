@@ -65,10 +65,6 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
         });
     }
 
-    public Map<String, Master> getProvisioned(VirtualChannel channel) {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
-    }
-
     public static class TestMasterServerCallable implements hudson.remoting.Callable<URL, Exception> {
         private final String organization;
         private final URL metaNectarEndpoint;

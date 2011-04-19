@@ -52,14 +52,6 @@ public abstract class MasterProvisioningService extends AbstractDescribableImpl<
                                         String organization, boolean clean) throws Exception;
 
     /**
-     * Get the provisioned masters.
-     *
-     * @param channel the channel on which remote execution can be performed to get the provisioned masters.
-     * @return a map of organization to master.
-     */
-    public abstract Map<String, Master> getProvisioned(VirtualChannel channel);
-
-    /**
      * Returns all the registered {@link MasterProvisioningService} descriptors.
      */
     public static DescriptorExtensionList<MasterProvisioningService,Descriptor<MasterProvisioningService>> all() {

@@ -10,6 +10,7 @@ import metanectar.model.MetaNectar;
 import static hudson.slaves.NodeProvisioner.PlannedNode;
 
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -266,7 +267,7 @@ public class MasterProvisioner {
             this.clean = clean;
         }
 
-        public TerminateMaster toDeleteMaster(Future<?> future) {
+        public TerminateMaster toTerminateMaster(Future<?> future) {
             return new TerminateMaster(ms, future);
         }
     }
@@ -285,8 +286,8 @@ public class MasterProvisioner {
 
     private List<TerminateMaster> pendingTerminateMasters = Collections.synchronizedList(new ArrayList<TerminateMaster>());
 
-    void delete(MetaNectar mn, Multimap<Node, MasterServer> provisioned) throws Exception {
-        // Process pending delete masters
+    void terminate(MetaNectar mn, Multimap<Node, MasterServer> provisioned) throws Exception {
+        // Process pending terminate masters
         for (Iterator<TerminateMaster> itr = pendingTerminateMasters.iterator(); itr.hasNext();) {
             final TerminateMaster tm = itr.next();
             final Node n = tm.ms.getNode();
@@ -297,22 +298,22 @@ public class MasterProvisioner {
 
                     // Set terminate completed state on the master server
                     tm.ms.setTerminateCompletedState();
-                    LOGGER.info(tm.ms.getName() +" master deleted");
+                    LOGGER.info(tm.ms.getName() +" master terminated");
                 } catch (InterruptedException e) {
                     throw new AssertionError(e); // since we confirmed that the future is already done
                 } catch (Exception e) {
                     final Throwable cause = (e instanceof ExecutionException) ? e.getCause() : e;
-                    LOGGER.log(Level.WARNING, "Deletion of master " + tm.ms.getName() + " failed", cause);
+                    LOGGER.log(Level.WARNING, "Termination of master " + tm.ms.getName() + " failed", cause);
 
                     tm.ms.setTerminateErrorState(cause);
                 } finally {
-                    // TODO should we remote the master from the node on failure?
+                    // TODO should we remove the master from the node on failure?
                     itr.remove();
                 }
             }
         }
 
-        // Process pending delete master requests
+        // Process pending terminate master requests
         for (Iterator<TerminateMasterRequest> itr = pendingTerminateMasterRequests.iterator(); itr.hasNext();) {
             final TerminateMasterRequest tmr = itr.next();
             final MasterServer ms = tmr.ms;
@@ -326,19 +327,19 @@ public class MasterProvisioner {
                 final Future<?> f = p.getProvisioningService().terminate(
                         n.toComputer().getChannel(), ms.getTaskListener(),
                         ms.getName(), tmr.clean);
-                pendingTerminateMasters.add(tmr.toDeleteMaster(f));
+                pendingTerminateMasters.add(tmr.toTerminateMaster(f));
 
                 // Set terminate stated state on the master server
                 ms.setTerminateStartedState();
-                LOGGER.info(ms.getName() +" master deletion started");
+                LOGGER.info(ms.getName() +" master termination started");
             } catch (InterruptedException e) {
                 throw new AssertionError(e); // since we confirmed that the future is already done
             } catch (Exception e) {
-                LOGGER.log(Level.WARNING, "Deletion of master "+ tmr.ms.getName() + " failed", e);
+                LOGGER.log(Level.WARNING, "Termination of master "+ tmr.ms.getName() + " failed", e);
 
                 tmr.ms.setTerminateErrorState(e);
             } finally {
-                // TODO should we remote the master from the node on failure?
+                // TODO should we remove the master from the node on failure?
                 itr.remove();
             }
         }
@@ -381,7 +382,7 @@ public class MasterProvisioner {
 
             try {
                 Multimap<Node, MasterServer> provisioned = mn.masterProvisioner.provision(mn);
-                mn.masterProvisioner.delete(mn, provisioned);
+                mn.masterProvisioner.terminate(mn, provisioned);
             } catch (Exception e) {
                 LOGGER.log(Level.SEVERE, "Error when master provisioning or terminating", e);
             }
@@ -400,11 +401,13 @@ public class MasterProvisioner {
         return masters;
     }
 
-    public void provision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) {
+    public void provision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
+        ms.setPreProvisionState();
         pendingPlannedMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties));
     }
 
-    void terminate(MasterServer ms, boolean clean) {
+    public void terminate(MasterServer ms, boolean clean) throws IOException {
+        ms.setPreTerminateState();
         pendingTerminateMasterRequests.add(new TerminateMasterRequest(ms, clean));
     }
 }

@@ -101,10 +101,6 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
                 }
             });
         }
-
-        public Map<String, Master> getProvisioned(VirtualChannel channel) {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
     }
 
     @Extension
