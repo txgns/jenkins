@@ -120,7 +120,7 @@ THE SOFTWARE.
                 <resolveArtifact artifactId="remoting" tofile="${basedir}/target/generated-resources/WEB-INF/remoting.jar" />
                 <resolveArtifact artifactId="remoting" tofile="${basedir}/target/generated-resources/WEB-INF/slave.jar" />
                 <resolveArtifact groupId="${project.groupId}" artifactId="cli" classifier="jar-with-dependencies" version="${project.version}" type="jar" tofile="${basedir}/target/generated-resources/WEB-INF/jenkins-cli.jar" />
-                <resolveArtifact groupId="org.jvnet.hudson.winstone" artifactId="winstone" version="0.9.10-hudson-24" type="jar" tofile="${basedir}/target/generated-resources/winstone.jar" />
+                <resolveArtifact artifactId="winstone" tofile="${basedir}/target/generated-resources/winstone.jar" />
                 
                 <!-- bundled plugins -->
                 <resolveArtifact type="hpi" groupId="${project.groupId}" artifactId="maven-plugin" version="${project.version}" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/maven-plugin.hpi" />
@@ -131,6 +131,22 @@ THE SOFTWARE.
             </configuration>
           </execution>
         </executions>
+      </plugin>
+      <plugin><!-- generate licenses.xml -->
+        <groupId>com.cloudbees</groupId>
+        <artifactId>maven-license-plugin</artifactId>
+        <configuration>
+          <generateLicenseXml>target/classes/META-INF/licenses.xml</generateLicenseXml>
+          <inlineScript>
+            filter {
+                // add Winstone since we are bundling it.
+                def d = project.dependencies.find { it.artifactId=="winstone" };
+                def a = mojo.artifactFactory.createProjectArtifact(d.groupId,d.artifactId,d.version);
+                def p = mojo.projectBuilder.buildFromRepository(a, project.getRemoteArtifactRepositories(), mojo.localRepository)
+                models.put(a,p);
+            }
+          </inlineScript>
+        </configuration>
       </plugin>
       <plugin>
         <!-- this is really just a patched version of maven-jetty-plugin to workaround issue #932 -->
@@ -148,14 +164,16 @@ THE SOFTWARE.
                 <port>${port}</port>
             </connector>
           </connectors>
-          <!--
-            read directly from core module's output directory,
-            so that changes are picked up right away without running mvn.
-          -->
-          <classesDirectory>../core/target/classes</classesDirectory>
-          <!-- use the test classpath for loading resources, since this takes priority -->
-          <testClassesDirectory>../core/src/main/resources</testClassesDirectory>
-          <useTestClasspath>true</useTestClasspath>
+          <additionalClassesDirectories>
+            <!-- load resoures straight from source -->
+            <additionalClassesDirectory>../core/src/main/resources</additionalClassesDirectory>
+            
+            <!--
+              read directly from core module's output directory,
+              so that changes are picked up right away without running mvn.
+            -->
+            <additionalClassesDirectory>../core/target/classes</additionalClassesDirectory>
+          </additionalClassesDirectories>
           <userRealms>
             <userRealm implementation="org.mortbay.jetty.security.HashUserRealm">
               <name>default</name>
@@ -257,6 +275,15 @@ THE SOFTWARE.
       <classifier>jar-with-dependencies</classifier>
       <version>${project.version}</version>
       <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <!--
+        not actually used by test but used by antrun plugin to include it inside the war.
+      -->
+      <groupId>org.jenkins-ci</groupId>
+      <artifactId>winstone</artifactId>
+      <version>0.9.10-jenkins-25</version>
+      <scope>test</scope>
     </dependency>
     <!-- offline profiler API when we need it -->
     <!--dependency>

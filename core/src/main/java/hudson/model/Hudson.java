@@ -239,7 +239,7 @@ import java.util.regex.Pattern;
  * @author Kohsuke Kawaguchi
  */
 @ExportedBean
-public final class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProxy, StaplerFallback, ViewGroup, AccessControlled, DescriptorByNameOwner {
+public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProxy, StaplerFallback, ViewGroup, AccessControlled, DescriptorByNameOwner {
     private transient final Queue queue;
 
     /**
@@ -1310,6 +1310,15 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
         }
 
         return r;
+    }
+
+    /**
+     * Gets all the items recursively.
+     *
+     * @since 1.402
+     */
+    public List<Item> getAllItems() {
+        return getAllItems(Item.class);
     }
 
     /**
