@@ -155,6 +155,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     public String toString() {
+        final RSAPublicKey key = getIdentity();
         return Objects.toStringHelper(this).
                 add("state", state).
                 add("error", error).
@@ -165,7 +166,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
                 add("id", id).
                 add("endpoint", endpoint).
                 add("channel", channel).
-                add("identity", getIdentity()).
+                add("identity", key.getFormat() + ", " + key.getAlgorithm()).
                 toString();
     }
 
