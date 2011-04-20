@@ -425,7 +425,6 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
      */
     protected Hudson newHudson() throws Exception {
         File home = homeLoader.allocate();
-        createSecretKey(home);
         createLicense(home);
         for (Runner r : recipes)
             r.decorateHome(this,home);
@@ -446,13 +445,6 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         b.append("\n</certificate>");
         b.append("\n</hudson.license.LicenseManager>");
         f.write(b.toString());
-    }
-
-    private static void createSecretKey(File home) throws IOException {
-        TextFile secretFile = new TextFile(new File(home,"secret.key"));
-        if(secretFile.exists())
-            secretFile.delete();
-        secretFile.write("cafebabe"); //"cafebabe" is the fixed secret key
     }
 
     /**
