@@ -40,22 +40,6 @@ public class MasterProvisioner {
 
     private static final Logger LOGGER = Logger.getLogger(MasterProvisioner.class.getName());
 
-    public static interface MasterProvisionListener {
-        void onProvisionStarted(MasterServer ms, Node n);
-
-        void onProvisionCompleted(MasterServer ms);
-
-        void onProvisionError(MasterServer ms, Node n, Throwable error);
-    }
-
-    public static interface MasterTerminateListener {
-        public void onTerminateStarted(MasterServer ms);
-
-        public void onTerminateCompleted(MasterServer ms, Node n);
-
-        public void onTerminateError(MasterServer ms, Node n, Throwable e);
-    }
-
     private static final class PlannedMaster {
         public final MasterServer ms;
         public final Node node;
