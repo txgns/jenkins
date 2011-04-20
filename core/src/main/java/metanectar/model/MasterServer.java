@@ -166,7 +166,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
                 add("id", id).
                 add("endpoint", endpoint).
                 add("channel", channel).
-                add("identity", key.getFormat() + ", " + key.getAlgorithm()).
+                add("identity", (key == null) ? null : key.getFormat() + ", " + key.getAlgorithm()).
                 toString();
     }
 
