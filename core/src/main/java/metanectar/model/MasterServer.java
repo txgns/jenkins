@@ -28,6 +28,8 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static metanectar.model.MasterServer.State.*;
+
 /**
  * Representation of remote Master server inside MetaNectar.
  *
@@ -185,7 +187,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     // Methods for modifying state
 
     public void setCreatedState(String grantId) throws IOException {
-        setState(State.Created);
+        setState(Created);
         this.grantId = grantId;
         save();
         fireOnCreated();
@@ -195,7 +197,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     public void setPreProvisionState() throws IOException {
-        setState(State.PreProvisioning);
+        setState(PreProvisioning);
         save();
 
         taskListener.getLogger().println("PreProvisioning");
@@ -203,7 +205,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     public void setProvisionStartedState(Node node, int id) throws IOException {
-        setState(State.Provisioning);
+        setState(Provisioning);
         this.nodeName = node.getNodeName();
         this.node = node;
         this.id = id;
@@ -218,8 +220,8 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         // Potentially may go from the provisioning state to the disconnected state
         // if the master communicates with nectar before the periodic timer executes
         // to process the provisioning event
-        if (this.state == State.Provisioning) {
-            setState(State.Provisioned);
+        if (this.state == Provisioning) {
+            setState(Provisioned);
             this.nodeName = node.getNodeName();
             this.node = node;
             this.endpoint = endpoint;
@@ -232,7 +234,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     public void setProvisionErrorState(Node node, Throwable error) throws IOException {
-        setState(State.ProvisioningError);
+        setState(ProvisioningError);
         this.error = error;
         this.nodeName = node.getNodeName();
         this.node = node;
@@ -246,8 +248,8 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     public void setProvisionErrorNoResourcesState() throws IOException {
-        if (state != State.ProvisioningErrorNoResources) {
-            setState(State.ProvisioningErrorNoResources);
+        if (state != ProvisioningErrorNoResources) {
+            setState(ProvisioningErrorNoResources);
             save();
             fireOnProvisioningErrorNoResources();
 
@@ -257,7 +259,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     public void setApprovedState(RSAPublicKey pk, URL endpoint) throws IOException {
-        setState(State.Connectable);
+        setState(Connectable);
         this.identity = pk.getEncoded();
         this.endpoint = endpoint;
         this.approved = true;
@@ -283,7 +285,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     public void setPreTerminateState() throws IOException {
-        setState(State.PreTerminating);
+        setState(PreTerminating);
         save();
 
         taskListener.getLogger().println("PreTerminating");
@@ -295,7 +297,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
             this.channel.close();
         }
 
-        setState(State.Terminating);
+        setState(Terminating);
         save();
         fireOnTerminating();
 
@@ -304,7 +306,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     public void setTerminateCompletedState() throws IOException {
-        setState(State.Terminated);
+        setState(Terminated);
         this.node = null;
         this.nodeName = null;
         this.endpoint = null;
@@ -317,7 +319,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     public void setTerminateErrorState(Throwable error) throws IOException {
-        setState(State.TerminatingError);
+        setState(TerminatingError);
         this.error = error;
         save();
         fireOnTerminatingError();
@@ -519,15 +521,31 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     public boolean canTerminate() {
-        return (state.ordinal() > State.Provisioning.ordinal() && state.ordinal() < State.Terminated.ordinal());
+        switch (state) {
+            case ProvisioningError:
+            case Provisioned:
+            case Connectable:
+            case TerminatingError:
+                return true;
+
+            default:
+                return false;
+        }
     }
 
     public boolean canDelete() {
-        return !canTerminate();
+        switch (state) {
+            case TerminatingError:
+            case Terminated:
+                return true;
+
+            default:
+                return false;
+        }
     }
 
     public boolean isTerminating() {
-        return state.ordinal() > State.PreTerminating.ordinal();
+        return state.ordinal() > PreTerminating.ordinal();
     }
 
     //
@@ -580,7 +598,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
     private void setDisconnectStateCallback(Throwable error) throws IOException {
         // Ignore the error if in the process of terminating
-        if (state.ordinal() < State.Terminating.ordinal()) {
+        if (state.ordinal() < Terminating.ordinal()) {
             setDisconnectStateCallback();
         } else {
             fireOnDisconnected();

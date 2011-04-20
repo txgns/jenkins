@@ -32,15 +32,14 @@ THE SOFTWARE.
             <j:set var="url" value="${h.getNearestAncestorUrl(request,it)}"/>
             <l:task icon="images/24x24/up.gif" href="${rootURL}/" title="${%Back to Dashboard}"/>
             <l:task icon="images/24x24/search.gif" href="${url}/" title="${%Status}"/>
+
             <l:isAdmin>
-                <j:choose>
-                  <j:when test="${it.canTerminate()}">
-                      <l:task icon="images/24x24/edit-delete.gif" href="terminate" title="${%Terminate Server}"/>
-                  </j:when>
-                  <j:when test="${it.canDelete()}">
-                      <l:task icon="images/24x24/edit-delete.gif" href="delete" title="${%Delete Server}"/>
-                  </j:when>
-                </j:choose>
+                <j:if test="${it.canTerminate()}">
+                    <l:task icon="images/24x24/edit-delete.gif" href="terminate" title="${%Terminate Server}"/>
+                </j:if>
+                <j:if test="${it.canDelete()}">
+                    <l:task icon="images/24x24/edit-delete.gif" href="delete" title="${%Delete Server}"/>
+                </j:if>
                 <l:task icon="images/24x24/setting.gif" href="configure" title="${%Configure}"/>
             </l:isAdmin>
         </l:tasks>

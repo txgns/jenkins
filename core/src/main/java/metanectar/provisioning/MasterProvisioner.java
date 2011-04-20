@@ -145,7 +145,7 @@ public class MasterProvisioner {
         for (Node n : masterLabel.getNodes()) {
             if (n.toComputer().isOnline()) {
 
-                // TODO check if masters are already provisioned, if so this means a reprovision.
+                // TODO check if masters are already provisioned, if so this means a re-provision.
                 //
                 final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(n);
                 final int freeSlots = p.getMaxMasters() - (provisioned.get(n).size() + pendingPlannedMasters.get(n).size());
@@ -157,6 +157,10 @@ public class MasterProvisioner {
                 for (Iterator<PlannedMasterRequest> itr = Iterators.limit(copyOfPendingPlannedMasterRequests.iterator(), freeSlots); itr.hasNext();) {
                     final PlannedMasterRequest pmr = itr.next();
                     try {
+                        // Ignore request if advanced from the pre-provisioning state
+                        if (pmr.ms.getState().ordinal() > MasterServer.State.PreProvisioning.ordinal())
+                            continue;
+
                         final int id = getFreeId(n, provisioned, pendingPlannedMasters);
                         final Future<Master> f = p.getProvisioningService().provision(
                                 n.toComputer().getChannel(), pmr.ms.getTaskListener(),
@@ -330,8 +334,10 @@ public class MasterProvisioner {
             final Node n = ms.getNode();
 
             try {
-                // TODO check if master server is in a terminate compatible state
-                // If so ignore
+                // Ignore request if in the process of terminating or terminated
+                if (ms.getState() == MasterServer.State.Terminating ||
+                        ms.getState() == MasterServer.State.Terminated)
+                    continue;
 
                 final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(n);
                 final Future<?> f = p.getProvisioningService().terminate(
