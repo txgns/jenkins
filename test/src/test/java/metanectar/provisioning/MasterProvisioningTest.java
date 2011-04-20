@@ -1,72 +1,31 @@
 package metanectar.provisioning;
 
 import hudson.Extension;
-import hudson.model.*;
+import hudson.model.Computer;
+import hudson.model.Node;
+import hudson.model.TaskListener;
 import hudson.remoting.VirtualChannel;
-import hudson.slaves.*;
+import hudson.slaves.ComputerListener;
 import metanectar.model.MasterServer;
-import metanectar.model.MasterServerListener;
 import metanectar.model.MetaNectar;
-import metanectar.test.MetaNectarTestCase;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+
+import static metanectar.provisioning.LatchMasterServerListener.ProvisionListener;
+import static metanectar.provisioning.LatchMasterServerListener.TerminateListener;
 
 /**
  * @author Paul Sandoz
  */
 public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
-
-    @Extension
-    public static class ProvisionListener extends MasterServerListener {
-        CountDownLatch cdl;
-
-        void init(CountDownLatch cdl) {
-            this.cdl = cdl;
-        }
-
-        public void onProvisioning(MasterServer ms) {
-            if (cdl != null)
-                cdl.countDown();
-        }
-
-        public void onProvisioned(MasterServer ms) {
-            if (cdl != null)
-                cdl.countDown();
-        }
-
-        public static ProvisionListener get() {
-            return Hudson.getInstance().getExtensionList(MasterServerListener.class).get(ProvisionListener.class);
-        }
-    }
-
-    @Extension
-    public static class TerminateListener extends MasterServerListener {
-        CountDownLatch cdl;
-
-        void init(CountDownLatch cdl) {
-            this.cdl = cdl;
-        }
-
-        public void onTerminating(MasterServer ms) {
-            if (cdl != null)
-                cdl.countDown();
-        }
-
-        public void onTerminated(MasterServer ms) {
-            if (cdl != null)
-                cdl.countDown();
-        }
-
-        public static TerminateListener get() {
-            return Hudson.getInstance().getExtensionList(MasterServerListener.class).get(TerminateListener.class);
-        }
-    }
 
     public static class Service extends MasterProvisioningService {
 
@@ -103,25 +62,22 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
         }
     }
 
-    @Extension
     public static class MyComputerListener extends ComputerListener {
 
         Set<Node> online = new HashSet<Node>();
 
+        public MyComputerListener() {
+            ComputerListener.all().add(0, this);
+        }
+
         public void onOnline(Computer c, TaskListener listener) throws IOException, InterruptedException {
-            System.out.println("ONLINE: " + c.getNode().getDisplayName());
             if (MetaNectar.getInstance().masterProvisioner != null && MetaNectar.getInstance().masterProvisioner.masterLabel.matches(c.getNode()))
                 online.add(c.getNode());
         }
 
         public void onOffline(Computer c) {
-            System.out.println("OFFLINE: " + c.getNode().getDisplayName());
             if (MetaNectar.getInstance().masterProvisioner.masterLabel.matches(c.getNode()))
                 online.remove(c.getNode());
-        }
-
-        static MyComputerListener get() {
-            return ComputerListener.all().get(MyComputerListener.class);
         }
     }
 
@@ -148,12 +104,12 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
     private void _testProvision(int masters, int nodesPerMaster) throws Exception {
         int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
 
+        MyComputerListener cl = new MyComputerListener();
         Service s = new Service(100);
         TestSlaveCloud cloud = new TestSlaveCloud(this, nodesPerMaster, s, 100);
         metaNectar.clouds.add(cloud);
 
-        CountDownLatch cdl = new CountDownLatch(2 * masters);
-        ProvisionListener.get().init(cdl);
+        ProvisionListener pl = new ProvisionListener(2 * masters);
 
         Map<String, Object> properties = new HashMap<String, Object>();
         properties.put("key", "value");
@@ -162,9 +118,9 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
             metaNectar.masterProvisioner.provision(ms, new URL("http://test/"), properties);
         }
 
-        cdl.await(1, TimeUnit.MINUTES);
+        pl.await(1, TimeUnit.MINUTES);
 
-        assertEquals(nodes, MyComputerListener.get().online.size());
+        assertEquals(nodes, cl.online.size());
         assertEquals(nodes, metaNectar.masterProvisioner.masterLabel.getNodes().size());
         assertEquals(masters, MasterProvisioner.getProvisionedMasters(metaNectar).size());
     }
@@ -198,14 +154,13 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
     private void _testDelete(int masters, int nodesPerMaster) throws Exception {
         int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
 
-        CountDownLatch cdl = new CountDownLatch(2 * masters);
-        TerminateListener.get().init(cdl);
+        TerminateListener tl = new TerminateListener(2 * masters);
 
         for (int i = 0; i < masters; i++) {
             metaNectar.masterProvisioner.terminate(metaNectar.getMasterByOrganization("org" + i), true);
         }
 
-        cdl.await(1, TimeUnit.MINUTES);
+        tl.await(1, TimeUnit.MINUTES);
 
         // TODO when node terminate is implemented need to assert that there are no nodes
 //        assertEquals(nodes, MyComputerListener.get().online.size());
@@ -227,8 +182,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());
 
-        CountDownLatch cdl = new CountDownLatch(2 * masters);
-        ProvisionListener.get().init(cdl);
+        ProvisionListener pl = new ProvisionListener(2 * masters);
 
         Map<String, Object> properties = new HashMap<String, Object>();
         properties.put("key", "value");
@@ -237,7 +191,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
             metaNectar.masterProvisioner.provision(ms, new URL("http://test/"), properties);
         }
 
-        cdl.await(1, TimeUnit.MINUTES);
+        pl.await(1, TimeUnit.MINUTES);
 
         assertEquals(nodes, metaNectar.masterProvisioner.masterLabel.getNodes().size());
         assertEquals(masters, MasterProvisioner.getProvisionedMasters(metaNectar).size());
@@ -255,14 +209,13 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
     private void _testDeleteOnMetaNectarNode(int masters, int nodesPerMaster) throws Exception {
         int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
 
-        CountDownLatch cdl = new CountDownLatch(2 * masters);
-        TerminateListener.get().init(cdl);
+        TerminateListener tl = new TerminateListener(2 * masters);
 
         for (int i = 0; i < masters; i++) {
             metaNectar.masterProvisioner.terminate(metaNectar.getMasterByOrganization("org" + i), true);
         }
 
-        cdl.await(1, TimeUnit.MINUTES);
+        tl.await(1, TimeUnit.MINUTES);
 
         assertEquals(0, MasterProvisioner.getProvisionedMasters(metaNectar).size());
     }
@@ -348,26 +301,24 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
     }
 
     private MasterServer provisionedMaster(String name) throws Exception {
-        CountDownLatch cdl = new CountDownLatch(2);
-        ProvisionListener.get().init(cdl);
+        ProvisionListener pl = new ProvisionListener(2);
 
         Map<String, Object> properties = new HashMap<String, Object>();
         properties.put("key", "value");
         MasterServer ms = metaNectar.createMasterServer(name);
         metaNectar.masterProvisioner.provision(ms, new URL("http://test/"), properties);
 
-        cdl.await(1, TimeUnit.MINUTES);
+        pl.await(1, TimeUnit.MINUTES);
         return ms;
     }
 
     private void terminateMaster(MasterServer ms) throws Exception {
-        CountDownLatch cdl = new CountDownLatch(2);
-        TerminateListener.get().init(cdl);
+        TerminateListener tl = new TerminateListener(2);
 
         metaNectar.masterProvisioner.terminate(ms, true);
         metaNectar.getItems().remove(ms);
 
-        cdl.await(1, TimeUnit.MINUTES);
+        tl.await(1, TimeUnit.MINUTES);
         ms.delete();
     }
 }

@@ -1,12 +1,9 @@
 package metanectar.provisioning;
 
 import com.google.common.collect.Maps;
-import hudson.Extension;
 import hudson.model.Computer;
-import hudson.model.Hudson;
 import hudson.slaves.DumbSlave;
 import metanectar.model.MasterServer;
-import metanectar.model.MasterServerListener;
 import metanectar.model.MetaNectar;
 
 import java.io.File;
@@ -18,58 +15,15 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import static metanectar.provisioning.LatchMasterServerListener.ProvisionListener;
+import static metanectar.provisioning.LatchMasterServerListener.TerminateListener;
+
 /**
  * TODO, these tests most likely only work on unix unless the rm command is available on windows.
  *
  * @author Paul Sandoz
  */
 public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisioningTest {
-
-    @Extension
-    public static class ProvisionListener extends MasterServerListener {
-        CountDownLatch cdl;
-
-        void init(CountDownLatch cdl) {
-            this.cdl = cdl;
-        }
-
-        public void onProvisioning(MasterServer ms) {
-            if (cdl != null)
-                cdl.countDown();
-        }
-
-        public void onProvisioned(MasterServer ms) {
-            if (cdl != null)
-                cdl.countDown();
-        }
-
-        public static ProvisionListener get() {
-            return Hudson.getInstance().getExtensionList(MasterServerListener.class).get(ProvisionListener.class);
-        }
-    }
-
-    @Extension
-    public static class TerminateListener extends MasterServerListener {
-        CountDownLatch cdl;
-
-        void init(CountDownLatch cdl) {
-            this.cdl = cdl;
-        }
-
-        public void onTerminating(MasterServer ms) {
-            if (cdl != null)
-                cdl.countDown();
-        }
-
-        public void onTerminated(MasterServer ms) {
-            if (cdl != null)
-                cdl.countDown();
-        }
-
-        public static TerminateListener get() {
-            return Hudson.getInstance().getExtensionList(MasterServerListener.class).get(TerminateListener.class);
-        }
-    }
 
     public void testProvisionLocally() throws Exception {
         metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(1, getDefaultCommand()));
@@ -121,15 +75,14 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     }
 
     private MasterServer provision() throws Exception {
-        CountDownLatch cdl = new CountDownLatch(2);
-        ProvisionListener.get().init(cdl);
+        ProvisionListener pl = new ProvisionListener(2);
 
         Map<String, Object> properties = new HashMap<String, Object>();
         properties.put(MetaNectar.GRANT_PROPERTY, "grant");
         MasterServer ms = metaNectar.createMasterServer("org1");
         metaNectar.masterProvisioner.provision(ms, new URL("http://test/"), properties);
 
-        cdl.await(1, TimeUnit.MINUTES);
+        pl.await(1, TimeUnit.MINUTES);
 
         Map<String, String> params = getParams(ms.getEndpoint());
 
@@ -158,11 +111,11 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         assertTrue(getTerminatingFile().exists());
 
         CountDownLatch cdl = new CountDownLatch(2);
-        TerminateListener.get().init(cdl);
+        TerminateListener tl = new TerminateListener(2);
 
         metaNectar.masterProvisioner.terminate(ms, false);
 
-        cdl.await(1, TimeUnit.MINUTES);
+        tl.await(1, TimeUnit.MINUTES);
 
         assertFalse(getTerminatingFile().exists());
     }

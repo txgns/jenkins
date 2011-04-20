@@ -6,11 +6,13 @@ import hudson.slaves.*;
 import hudson.util.DescribableList;
 import metanectar.model.MetaNectar;
 import metanectar.provisioning.MasterProvisioningNodeProperty;
-import metanectar.provisioning.test.TestMasterProvisioningService;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 
 /**

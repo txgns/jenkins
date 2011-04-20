@@ -98,8 +98,14 @@ public class MasterProvisioner {
     // TODO check if cannot provision a master because there are no nodes/clouds configured
 
     private Multimap<Node, MasterServer> provision(MetaNectar mn) throws Exception {
-        Hudson hudson = Hudson.getInstance();
+        provisionMasters();
+        provisionNodes(mn);
+        final Multimap<Node, MasterServer> provisioned = provisionMasterRequests(mn);
+        provisionFromCloud();
+        return provisioned;
+    }
 
+    private void provisionMasters() throws Exception {
         // Process pending planned masters
         for (Iterator<PlannedMaster> itr = pendingPlannedMasters.values().iterator(); itr.hasNext();) {
             final PlannedMaster pm = itr.next();
@@ -122,16 +128,18 @@ public class MasterProvisioner {
                 }
             }
         }
+    }
 
+    private void provisionNodes(MetaNectar mn) {
         // Process pending planned masters nodes
         for (Iterator<PlannedNode> itr = pendingPlannedNodes.iterator(); itr.hasNext();) {
             final PlannedNode pn = itr.next();
             if (pn.future.isDone()) {
                 try {
-                    hudson.addNode(pn.future.get());
+                    mn.addNode(pn.future.get());
 
                     // TODO listener node provision
-                    LOGGER.info(pn.displayName+" provisioning successfully completed. We have now "+hudson.getComputers().length+" computer(s)");
+                    LOGGER.info(pn.displayName+" provisioning successfully completed. There are now " + mn.getComputers().length + " computer(s)");
                 } catch (InterruptedException e) {
                     throw new AssertionError(e); // since we confirmed that the future is already done
                 } catch (Exception e) {
@@ -145,6 +153,9 @@ public class MasterProvisioner {
             }
         }
 
+    }
+
+    private Multimap<Node, MasterServer> provisionMasterRequests(MetaNectar mn) throws Exception {
         // Check masters nodes to see if a new master can be provisioned on an existing masters node
         final Multimap<Node, MasterServer> provisioned = MasterProvisioner.getProvisionedMasters(mn);
         for (Node n : masterLabel.getNodes()) {
@@ -157,7 +168,9 @@ public class MasterProvisioner {
                 if (freeSlots < 0)
                     continue;
 
-                for (Iterator<PlannedMasterRequest> itr = Iterators.limit(pendingPlannedMasterRequests.iterator(), freeSlots); itr.hasNext();) {
+                // Create a copy of the requests to iterate over rather than synchronizing the loop
+                final List<PlannedMasterRequest> copyOfPendingPlannedMasterRequests = synchronizedCopy(pendingPlannedMasterRequests);
+                for (Iterator<PlannedMasterRequest> itr = Iterators.limit(copyOfPendingPlannedMasterRequests.iterator(), freeSlots); itr.hasNext();) {
                     final PlannedMasterRequest pmr = itr.next();
                     try {
                         final int id = getFreeId(n, provisioned, pendingPlannedMasters);
@@ -175,12 +188,16 @@ public class MasterProvisioner {
 
                         pmr.ms.setProvisionErrorState(n, e);
                     } finally {
-                        itr.remove();
+                        pendingPlannedMasterRequests.remove(pmr);
                     }
                 }
             }
         }
 
+        return provisioned;
+    }
+
+    private void provisionFromCloud() throws Exception {
         // TODO capable nodes could be offline, meaning there are still pending planned master requests
         // Need to be careful provisioning more nodes in such cases.
 
@@ -208,8 +225,6 @@ public class MasterProvisioner {
                 }
             }
         }
-
-        return provisioned;
     }
 
     private int getFreeId(Node n,
@@ -284,9 +299,15 @@ public class MasterProvisioner {
 
     private List<TerminateMasterRequest> pendingTerminateMasterRequests = Collections.synchronizedList(new ArrayList<TerminateMasterRequest>());
 
-    private List<TerminateMaster> pendingTerminateMasters = Collections.synchronizedList(new ArrayList<TerminateMaster>());
+    private List<TerminateMaster> pendingTerminateMasters = new ArrayList<TerminateMaster>();
 
-    void terminate(MetaNectar mn, Multimap<Node, MasterServer> provisioned) throws Exception {
+    void terminate(Multimap<Node, MasterServer> provisioned) throws Exception {
+        terminateMasters();
+        terminateMasterRequests();
+        terminateNodes(provisioned);
+    }
+
+    private void terminateMasters() throws Exception {
         // Process pending terminate masters
         for (Iterator<TerminateMaster> itr = pendingTerminateMasters.iterator(); itr.hasNext();) {
             final TerminateMaster tm = itr.next();
@@ -313,9 +334,14 @@ public class MasterProvisioner {
             }
         }
 
+    }
+
+    private void terminateMasterRequests() throws Exception {
+        // Create a copy of the requests to iterate over rather than synchronizing the loop
+        final List<TerminateMasterRequest> copyOfPendingTerminateMasterRequests = synchronizedCopy(pendingTerminateMasterRequests);
+
         // Process pending terminate master requests
-        for (Iterator<TerminateMasterRequest> itr = pendingTerminateMasterRequests.iterator(); itr.hasNext();) {
-            final TerminateMasterRequest tmr = itr.next();
+        for (final TerminateMasterRequest tmr : copyOfPendingTerminateMasterRequests) {
             final MasterServer ms = tmr.ms;
             final Node n = ms.getNode();
 
@@ -340,11 +366,12 @@ public class MasterProvisioner {
                 tmr.ms.setTerminateErrorState(e);
             } finally {
                 // TODO should we remove the master from the node on failure?
-                itr.remove();
+                pendingTerminateMasterRequests.remove(tmr);
             }
         }
+    }
 
-
+    private void terminateNodes(Multimap<Node, MasterServer> provisioned) throws Exception {
         // If there are no pending requests to provision masters or provision masters nodes
         // then check if nodes with no provisioned masters can be terminated
         if (pendingPlannedMasterRequests.size() == 0 && pendingPlannedNodes.size() == 0) {
@@ -356,7 +383,6 @@ public class MasterProvisioner {
             }
         }
     }
-
 
 
     @Extension
@@ -382,7 +408,7 @@ public class MasterProvisioner {
 
             try {
                 Multimap<Node, MasterServer> provisioned = mn.masterProvisioner.provision(mn);
-                mn.masterProvisioner.terminate(mn, provisioned);
+                mn.masterProvisioner.terminate(provisioned);
             } catch (Exception e) {
                 LOGGER.log(Level.SEVERE, "Error when master provisioning or terminating", e);
             }
@@ -409,5 +435,11 @@ public class MasterProvisioner {
     public void terminate(MasterServer ms, boolean clean) throws IOException {
         ms.setPreTerminateState();
         pendingTerminateMasterRequests.add(new TerminateMasterRequest(ms, clean));
+    }
+
+    private <T> List<T> synchronizedCopy(List<T> l) {
+        synchronized (l) {
+            return Lists.newArrayList(l);
+        }
     }
 }

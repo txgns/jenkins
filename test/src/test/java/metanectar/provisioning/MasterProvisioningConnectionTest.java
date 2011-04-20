@@ -1,74 +1,26 @@
 package metanectar.provisioning;
 
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import hudson.Extension;
-import hudson.model.*;
 import hudson.remoting.Channel;
-import hudson.tasks.Mailer;
 import metanectar.model.MasterServer;
-import metanectar.model.MasterServerListener;
 import metanectar.model.MetaNectar;
-import metanectar.test.MetaNectarTestCase;
 
 import java.io.IOException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
 import java.security.cert.X509Certificate;
-import java.util.*;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
+import static metanectar.provisioning.LatchMasterServerListener.ProvisionListener;
+import static metanectar.provisioning.LatchMasterServerListener.TerminateListener;
+
 
 /**
  * @author Paul Sandoz
  */
 public class MasterProvisioningConnectionTest extends AbstractMasterProvisioningTest {
-
-    @Extension
-    public static class Listener extends MasterServerListener {
-        CountDownLatch cdl;
-
-        void init(CountDownLatch cdl) {
-            this.cdl = cdl;
-        }
-
-        public void onProvisioning(MasterServer ms) {
-            if (cdl != null)
-                cdl.countDown();
-        }
-
-        public void onProvisioned(MasterServer ms) {
-            if (cdl != null)
-                cdl.countDown();
-        }
-
-        public static Listener get() {
-            return Hudson.getInstance().getExtensionList(MasterServerListener.class).get(Listener.class);
-        }
-    }
-
-    @Extension
-    public static class TerminateListener extends MasterServerListener {
-        CountDownLatch cdl;
-
-        void init(CountDownLatch cdl) {
-            this.cdl = cdl;
-        }
-
-        public void onTerminating(MasterServer ms) {
-            if (cdl != null)
-                cdl.countDown();
-        }
-
-        public void onTerminated(MasterServer ms) {
-            if (cdl != null)
-                cdl.countDown();
-        }
-
-        public static TerminateListener get() {
-            return Hudson.getInstance().getExtensionList(MasterServerListener.class).get(TerminateListener.class);
-        }
-    }
 
     private class TestAgentProtocolListener extends MetaNectarAgentProtocol.Listener {
 
@@ -158,15 +110,14 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
     }
 
     public void _testProvision(int masters, Configurable c) throws Exception {
-        HtmlPage wc = new WebClient().goTo("/");
+        new WebClient().goTo("/");
 
         CountDownLatch onEventCdl = new CountDownLatch(masters);
         metaNectar.configureNectarAgentListener(new TestAgentProtocolListener(new MetaNectar.AgentProtocolListener(metaNectar), onEventCdl, onEventCdl));
 
         c.configure();
 
-        CountDownLatch masterProvisionCdl = new CountDownLatch(2 * masters);
-        Listener.get().init(masterProvisionCdl);
+        ProvisionListener pl = new ProvisionListener(2 * masters);
 
         for (int i = 0; i < masters; i++) {
             MasterServer ms = metaNectar.createMasterServer("org" + i);
@@ -174,7 +125,7 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
         }
 
         // Wait for masters to be provisioned
-        masterProvisionCdl.await(1, TimeUnit.MINUTES);
+        pl.await(1, TimeUnit.MINUTES);
 
         // Wait for masters to be connected
         onEventCdl.await(1, TimeUnit.MINUTES);
@@ -209,14 +160,13 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
     }
 
     private void _testDelete(int masters) throws Exception {
-        CountDownLatch cdl = new CountDownLatch(2 * masters);
-        TerminateListener.get().init(cdl);
+        TerminateListener tl = new TerminateListener(2 * masters);
 
         for (int i = 0; i < masters; i++) {
             metaNectar.masterProvisioner.terminate(metaNectar.getMasterByOrganization("org" + i), true);
         }
 
-        cdl.await(1, TimeUnit.MINUTES);
+        tl.await(1, TimeUnit.MINUTES);
 
 
         assertEquals(masters, metaNectar.getItems(MasterServer.class).size());
