@@ -64,7 +64,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
 
     private CommandMasterProvisioningService getDefaultCommand() throws IOException {
         return getCommand(
-                "echo \"" + getTestUrl() + "\"",
+                "echo \"master_endpoint:" + getTestUrl() + "\"",
                 "rm " + getTerminatingFile().toString());
     }
 

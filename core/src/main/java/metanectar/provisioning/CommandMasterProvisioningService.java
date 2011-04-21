@@ -7,15 +7,15 @@ import hudson.model.Descriptor;
 import hudson.model.TaskListener;
 import hudson.remoting.LocalChannel;
 import hudson.remoting.VirtualChannel;
+import hudson.util.IOException2;
 import metanectar.model.MetaNectar;
 import org.kohsuke.stapler.DataBoundConstructor;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -34,6 +34,10 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
         MASTER_HOME,
         MASTER_METANECTAR_ENDPOINT,
         MASTER_GRANT_ID
+    }
+
+    private enum Property {
+        MASTER_ENDPOINT
     }
 
     private final int basePort;
@@ -117,18 +121,51 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
                     throw new IOException(errorString);
                 }
 
-                final String resultValue = new String(baos.toByteArray());
-                listener.getLogger().println("Provisioning script succeeded with result: " + resultValue);
+
+                Map<String, String> properties;
                 try {
-                    final URL endpoint = new URL(resultValue);
+                    properties = parseProperties(listener, new ByteArrayInputStream(baos.toByteArray()));
+                } catch (IOException e) {
+                    e.printStackTrace(listener.error("Error parsing provisioning script result into properties of the form \"<name>:<value>\" per line"));
+                    throw e;
+                }
+
+                listener.getLogger().println("Provisioning script succeeded and returned with the properties: " + properties);
+
+                if (!properties.containsKey(Property.MASTER_ENDPOINT.toString())) {
+                    String msg = "The returned properties does not contain the required property \"" + Property.MASTER_ENDPOINT.toString() + "\"";
+                    listener.error(msg);
+                    throw new IOException(msg);
+                }
+
+                try {
+                    final URL endpoint = new URL(properties.get(Property.MASTER_ENDPOINT.toString()));
 
                     return new Master(organization, endpoint);
                 } catch (MalformedURLException e) {
-                    listener.error("Provisioning script result is not a valid URL");
+                    e.printStackTrace(listener.error("The property \"" + Property.MASTER_ENDPOINT.toString() + "\" is not a valid URL: " + properties.get(Property.MASTER_ENDPOINT.toString())));
                     throw e;
                 }
             }
         });
+    }
+
+    private Map<String, String> parseProperties(TaskListener listener, InputStream in) throws IOException {
+        final Map<String, String> properties = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
+
+        final BufferedReader r = new BufferedReader(new InputStreamReader(in));
+
+        String line;
+        while ((line = r.readLine()) != null) {
+            String[] nameValue = line.split(":", 2);
+            if (nameValue.length == 2) {
+                properties.put(nameValue[0], nameValue[1]);
+            } else if (nameValue.length == 1) {
+                properties.put(nameValue[0], "");
+            }
+        }
+
+        return properties;
     }
 
     @Override

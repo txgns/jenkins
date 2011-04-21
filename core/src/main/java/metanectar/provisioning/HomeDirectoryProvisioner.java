@@ -22,6 +22,8 @@ public class HomeDirectoryProvisioner {
         if (!homeDirectory.exists()) {
             homeDirectory.mkdirs();
         }
+
+        // TODO copy the initial set of plugins
     }
 
 
