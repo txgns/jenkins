@@ -2613,6 +2613,11 @@ public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProx
         }
     }
 
+    /**
+     * Gets the {@link CrumbIssuer} currently in use.
+     *
+     * @return null if none is in use.
+     */
     public CrumbIssuer getCrumbIssuer() {
         return crumbIssuer;
     }
@@ -3497,6 +3502,7 @@ public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProx
             if(rest.startsWith("/login")
             || rest.startsWith("/logout")
             || rest.startsWith("/accessDenied")
+            || rest.startsWith("/adjuncts/")
             || rest.startsWith("/signup")
             || rest.startsWith("/jnlpJars/")
             || rest.startsWith("/tcpSlaveAgentListener")
