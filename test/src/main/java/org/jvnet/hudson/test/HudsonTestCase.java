@@ -427,26 +427,9 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
      */
     protected Hudson newHudson() throws Exception {
         File home = homeLoader.allocate();
-        createLicense(home);
         for (Runner r : recipes)
             r.decorateHome(this,home);
         return new Hudson(home, createWebServer(), useLocalPluginManager ? null : TestPluginManager.INSTANCE);
-    }
-
-    private static void createLicense(File home) throws Exception {
-        String cert = IOUtils.toString(HudsonTestCase.class.getClassLoader().getResourceAsStream("cert.10.year"));
-        String lk = IOUtils.toString(HudsonTestCase.class.getClassLoader().getResourceAsStream("license.key"));
-        TextFile f = new TextFile(new File(home, "license.xml"));
-        StringBuilder b = new StringBuilder("<?xml version='1.0' encoding='UTF-8'?>\n");
-        b.append("<hudson.license.LicenseManager>\n");
-        b.append("<key>\n");
-        b.append(lk);
-        b.append("\n</key>\n");
-        b.append("<certificate>\n");
-        b.append(cert);
-        b.append("\n</certificate>");
-        b.append("\n</hudson.license.LicenseManager>");
-        f.write(b.toString());
     }
 
     /**

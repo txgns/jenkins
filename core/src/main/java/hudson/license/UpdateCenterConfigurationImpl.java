@@ -52,7 +52,8 @@ public class UpdateCenterConfigurationImpl extends UpdateCenterConfiguration {
 
         KeyStore keystore = KeyStore.getInstance("JKS");
         keystore.load(null);
-        keystore.setKeyEntry("nectar", lic.getPrivateKey(), KEYSTORE_PASSWORD, new Certificate[]{lic.getCert()});
+        if (lic!=null)
+            keystore.setKeyEntry("nectar", lic.getPrivateKey(), KEYSTORE_PASSWORD, new Certificate[]{lic.getCert()});
 
         KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance("SunX509");
         keyManagerFactory.init(keystore, KEYSTORE_PASSWORD);
