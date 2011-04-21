@@ -180,9 +180,9 @@ public class MetaNectar extends Hudson {
         this.rootUrl = rootUrl;
     }
 
-    public URL getRootUrlAsURL() {
+    public URL getMetaNectarPortUrl() {
         try {
-            return new URL(getRootUrl());
+            return new URL(getRootUrl() + "/" + MetaNectarPortRootAction.URL_NAME + "/");
         } catch (MalformedURLException e) {
             throw new IllegalStateException(e);
         }
@@ -305,7 +305,7 @@ public class MetaNectar extends Hudson {
     public void provisionMaster(MasterServer server) throws IOException {
         Map<String, Object> properties = new HashMap<String, Object>();
         properties.put(GRANT_PROPERTY, server.getGrantId());
-        masterProvisioner.provision(server, getRootUrlAsURL(), properties);
+        masterProvisioner.provision(server, getMetaNectarPortUrl(), properties);
     }
 
     //

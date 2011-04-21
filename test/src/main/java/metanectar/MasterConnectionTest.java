@@ -3,11 +3,13 @@ package metanectar;
 import com.cloudbees.commons.metanectar.agent.Agent;
 import com.cloudbees.commons.metanectar.agent.AgentStatusListener;
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
+import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import hudson.remoting.Channel;
 import hudson.tasks.Mailer;
 import metanectar.model.MasterServer;
 import metanectar.model.MetaNectar;
+import metanectar.model.MetaNectarPortRootAction;
 import metanectar.test.MetaNectarTestCase;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 import org.xml.sax.SAXException;
@@ -148,8 +150,8 @@ public class MasterConnectionTest extends MetaNectarTestCase {
         assertEquals("hello", ms.getChannel().waitForRemoteProperty("client"));
     }
 
-    public void testAgentListenerPort() throws IOException, SAXException {
-        HtmlPage wc = new WebClient().goTo("/");
+    public void testMetaNectarPort() throws IOException, SAXException {
+        Page wc = new WebClient().goTo("/" + MetaNectarPortRootAction.URL_NAME + "/", "");
 
         List l = wc.getWebResponse().getResponseHeaders();
 
