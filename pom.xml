@@ -51,6 +51,7 @@ THE SOFTWARE.
     <module>test</module>
     <module>cli</module>
     <module>nectar-war</module>
+    <module>plugins</module>
   </modules>
   
   <scm>
