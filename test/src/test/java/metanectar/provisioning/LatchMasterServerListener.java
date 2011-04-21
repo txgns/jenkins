@@ -21,17 +21,25 @@ public abstract class LatchMasterServerListener extends MasterServerListener {
         cdl.await(timeout, unit);
     }
 
+    public void countDown() {
+        cdl.countDown();
+    }
+
+    public long getCount() {
+        return cdl.getCount();
+    }
+
     public static class ProvisionListener extends LatchMasterServerListener {
         public ProvisionListener(int i) {
             super(i);
         }
 
         public void onProvisioning(MasterServer ms) {
-            cdl.countDown();
+            countDown();
         }
 
         public void onProvisioned(MasterServer ms) {
-            cdl.countDown();
+            countDown();
         }
     }
 
@@ -41,11 +49,11 @@ public abstract class LatchMasterServerListener extends MasterServerListener {
         }
 
         public void onTerminating(MasterServer ms) {
-            cdl.countDown();
+            countDown();
         }
 
         public void onTerminated(MasterServer ms) {
-            cdl.countDown();
+            countDown();
         }
     }
 }

@@ -158,7 +158,8 @@ public class MasterProvisioner {
                     final PlannedMasterRequest pmr = itr.next();
                     try {
                         // Ignore request if advanced from the pre-provisioning state
-                        if (pmr.ms.getState().ordinal() > MasterServer.State.PreProvisioning.ordinal())
+                        if (pmr.ms.getState().ordinal() > MasterServer.State.PreProvisioning.ordinal() &&
+                                pmr.ms.getState() != MasterServer.State.ProvisioningErrorNoResources)
                             continue;
 
                         final int id = getFreeId(n, provisioned, pendingPlannedMasters);
