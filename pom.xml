@@ -41,6 +41,7 @@ THE SOFTWARE.
   <modules>
     <module>remoting</module>
     <module>core</module>
+    <module>maven-plugin</module>
     <module>war</module>
     <module>test</module>
     <module>cli</module>
