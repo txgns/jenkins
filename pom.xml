@@ -258,10 +258,12 @@ THE SOFTWARE.
         <artifactId>wagon-http</artifactId>
         <version>1.0-beta-5</version>
       </extension>
+<!--
       <extension>
         <groupId>org.apache.maven.wagon</groupId>
         <artifactId>wagon-webdav</artifactId>
       </extension>
+-->
     </extensions>
   </build>
 
