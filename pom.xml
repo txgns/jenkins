@@ -47,8 +47,8 @@ THE SOFTWARE.
   </modules>
   
   <scm>
-    <connection>scm:git:git@github.com:cloudbees/hudson.git</connection>
-    <developerConnection>scm:git:git@github.com:cloudbees/hudson.git</developerConnection>
+    <connection>scm:git:ssh://git@git.cloudbees.com/cloudbees/hudson.git</connection>
+    <developerConnection>scm:git:ssh://git@git.cloudbees.com/cloudbees/hudson.git</developerConnection>
   </scm>
 
   <build>
@@ -257,6 +257,10 @@ THE SOFTWARE.
         <groupId>org.apache.maven.wagon</groupId>
         <artifactId>wagon-http</artifactId>
         <version>1.0-beta-5</version>
+      </extension>
+      <extension>
+        <groupId>org.apache.maven.wagon</groupId>
+        <artifactId>wagon-webdav</artifactId>
       </extension>
     </extensions>
   </build>
@@ -570,16 +574,12 @@ THE SOFTWARE.
 
   <distributionManagement>
     <repository>
-      <id>repository.infradna.com</id>
-      <url>scp://maven.infradna.com/home/maven/repository/releases</url>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>dav:https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
     </repository>
     <snapshotRepository>
-      <id>repository.infradna.com</id>
-      <url>scp://maven.infradna.com/home/maven/repository/snapshots</url>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>dav:https://repository-cloudbees.forge.cloudbees.com/private-snapshot/</url>
     </snapshotRepository>
-    <site><!-- shall we put this anywhere? -->
-      <id>dummy</id>
-      <url>file:.</url>
-    </site>
   </distributionManagement>
 </project>
