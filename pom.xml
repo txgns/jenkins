@@ -41,7 +41,6 @@ THE SOFTWARE.
   <modules>
     <module>remoting</module>
     <module>core</module>
-    <module>maven-plugin</module>
     <module>war</module>
     <module>test</module>
     <module>cli</module>
@@ -549,6 +548,13 @@ THE SOFTWARE.
       <snapshots>
         <enabled>false</enabled>
       </snapshots>
+    </repository>
+    <repository>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
     </repository>
   </repositories>
 
