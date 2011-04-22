@@ -188,6 +188,24 @@
         </configuration>
       </plugin>
       <plugin>
+        <!--
+          The release process runs animal-sniffer:check and it complains that this module doesn't have a signature,
+          so define one. We set inherited to false so that this doesn't affect plugin builds.
+        -->
+        <groupId>org.jvnet</groupId>
+        <artifactId>animal-sniffer</artifactId>
+        <version>1.2</version>
+
+        <inherited>false</inherited>
+        <configuration>
+          <signature>
+            <groupId>org.jvnet.animal-sniffer</groupId>
+            <artifactId>java1.5</artifactId>
+            <version>1.0</version>
+          </signature>
+        </configuration>
+      </plugin>
+      <plugin>
         <groupId>com.cloudbees</groupId>
         <artifactId>maven-license-plugin</artifactId>
         <version>1.1</version>
