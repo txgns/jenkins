@@ -27,7 +27,7 @@ THE SOFTWARE.
   <parent>
     <artifactId>pom</artifactId>
     <groupId>com.cloudbees.metanectar</groupId>
-    <version>1.400.2-SNAPSHOT</version>
+    <version>1.400.1-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.cloudbees.metanectar</groupId>
