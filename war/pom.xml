@@ -123,7 +123,6 @@ THE SOFTWARE.
                 <resolveArtifact groupId="org.jvnet.hudson.winstone" artifactId="winstone" version="0.9.10-hudson-24" type="jar" tofile="${basedir}/target/generated-resources/winstone.jar" />
                 
                 <!-- bundled plugins -->
-                <resolveArtifact type="hpi" groupId="${project.groupId}" artifactId="maven-plugin" version="${project.version}" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/maven-plugin.hpi" />
                 <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="active-directory" version="1.16" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/active-directory.hpi" />
                 <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="ssh-slaves" version="0.14" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/ssh-slaves.hpi" />
 
@@ -245,14 +244,6 @@ THE SOFTWARE.
           <artifactId>jsp-api</artifactId>
         </exclusion>
       </exclusions>
-    </dependency>
-    <!-- declare this in reactors, so i can use now directly : mvn install -pl war -am to get the war  -->
-    <!-- TO REMOVE when maven-plugin won't be anymore a bundle plugin -->
-    <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>maven-plugin</artifactId>
-      <version>${project.version}</version>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
