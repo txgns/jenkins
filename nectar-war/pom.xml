@@ -109,19 +109,19 @@ THE SOFTWARE.
                 <mkdir dir="target/generated-resources" />
 
                 <!-- nectar integrated plugins -->
-                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="active-directory" version="1.16" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/active-directory.hpi" />
-                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="analysis-core" version="1.8" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/analysis-core.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jenkins-ci.plugins" artifactId="active-directory" version="1.18" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/active-directory.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="analysis-core" version="1.18" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/analysis-core.hpi" />
                 <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="build-timeout" version="1.6" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/build-timeout.hpi" />
-                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="copyartifact" version="1.5" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/copyartifact.hpi" />
-                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="dashboard-view" version="1.5" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/dashboard-view.hpi" />
-                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="findbugs" version="4.8" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/findbugs.hpi" />
-                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="git" version="0.8.3" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/git.hpi" />
-                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="mercurial" version="1.28" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/mercurial.hpi" />
-                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="monitoring" version="1.26.0" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/monitoring.hpi" />
-                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="parameterized-trigger" version="2.3" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/parameterized-trigger.hpi" />
-                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="promoted-builds" version="1.7" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/promoted-builds.hpi" />
-                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="translation" version="1.4" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/translation.hpi" />
-                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="warnings" version="3.5" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/warnings.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jenkins-ci.plugins" artifactId="copyartifact" version="1.15" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/copyartifact.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jenkins-ci.plugins" artifactId="dashboard-view" version="2.0.2" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/dashboard-view.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="findbugs" version="4.22" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/findbugs.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="git" version="1.1.5" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/git.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="mercurial" version="1.34" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/mercurial.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="monitoring" version="1.27.0" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/monitoring.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jenkins-ci.plugins" artifactId="parameterized-trigger" version="2.7" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/parameterized-trigger.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jenkins-ci.plugins" artifactId="promoted-builds" version="2.0" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/promoted-builds.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="translation" version="1.5" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/translation.hpi" />
+                <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="warnings" version="3.16" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/warnings.hpi" />
 
                 <!-- proprietary plugins -->
                 <macrodef name="resolvePlugin">
