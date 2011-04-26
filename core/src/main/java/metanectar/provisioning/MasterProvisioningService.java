@@ -54,8 +54,7 @@ public abstract class MasterProvisioningService extends AbstractDescribableImpl<
     /**
      * Returns all the registered {@link MasterProvisioningService} descriptors.
      */
-    public static DescriptorExtensionList<MasterProvisioningService,Descriptor<MasterProvisioningService>> all() {
-        return (DescriptorExtensionList) Hudson.getInstance().getDescriptorList(MasterProvisioningService.class);
+    public static DescriptorExtensionList<MasterProvisioningService, Descriptor<MasterProvisioningService>> all() {
+        return Hudson.getInstance().<MasterProvisioningService,Descriptor<MasterProvisioningService>>getDescriptorList(MasterProvisioningService.class);
     }
-
 }

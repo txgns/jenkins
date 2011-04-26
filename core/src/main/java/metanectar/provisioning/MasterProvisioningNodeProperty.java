@@ -39,16 +39,16 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
      * TODO what happens if the configuration is modified to change the master provisioning service
      * and there are masters already provisioned?
      */
-    private MasterProvisioningService mps;
+    private MasterProvisioningService provisioningService;
 
     @DataBoundConstructor
-    public MasterProvisioningNodeProperty(int maxMasters, MasterProvisioningService mps) {
+    public MasterProvisioningNodeProperty(int maxMasters, MasterProvisioningService provisioningService) {
         this.maxMasters = maxMasters;
-        this.mps = mps;
+        this.provisioningService = provisioningService;
     }
 
     public MasterProvisioningNodeProperty clone() {
-        return new MasterProvisioningNodeProperty(maxMasters, mps);
+        return new MasterProvisioningNodeProperty(maxMasters, provisioningService);
     }
 
     public int getMaxMasters() {
@@ -56,7 +56,7 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
     }
 
     public MasterProvisioningService getProvisioningService() {
-        return mps;
+        return provisioningService;
     }
 
     public CauseOfBlockage canTake(Queue.Task task) {
@@ -99,11 +99,6 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
         return null;
     }
 
-
-    public static List<Descriptor<MasterProvisioningService>> getMasterProvisioningServiceDescriptors() {
-        return Hudson.getInstance().<MasterProvisioningService,Descriptor<MasterProvisioningService>>getDescriptorList(MasterProvisioningService.class);
-    }
-
     @Extension
     public static class DescriptorImpl extends NodePropertyDescriptor {
 
@@ -111,10 +106,6 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
 		public String getDisplayName() {
             return "Master provisioning";
 		}
-    }
-
-    public static NodePropertyDescriptor getMasterProvisioningNodePropertyDescriptor() {
-        return NodeProperty.all().find(MasterProvisioningNodeProperty.class);
     }
 
     /**
