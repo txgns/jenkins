@@ -31,12 +31,16 @@ public class Config {
 
     private final Map<String, String> properties = Maps.newConcurrentMap();
 
-    /* protected */ Config() {
-        load(METANECTAR_PROPERTIES_URL);
+    public Config() {
+        this(METANECTAR_PROPERTIES_URL);
     }
 
-    /* protected */ Config(String propertiesUrl) {
+    public Config(String propertiesUrl) {
         load(propertiesUrl);
+    }
+
+    public Config(Properties ps) {
+        load(ps);
     }
 
     private static class SingletonHolder {
@@ -55,11 +59,15 @@ public class Config {
         try {
             Properties ps = new Properties();
             ps.load(new URL(propertiesUrl).openStream());
-            for (Map.Entry e : ps.entrySet()) {
-                properties.put((String)e.getKey(), (String)e.getValue());
-            }
+            load(ps);
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error loading properties file \"" + propertiesUrl + "\"", e);
+        }
+    }
+
+    private void load(Properties ps) {
+        for (Map.Entry e : ps.entrySet()) {
+            properties.put((String)e.getKey(), (String)e.getValue());
         }
     }
 

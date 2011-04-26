@@ -3,6 +3,7 @@ package metanectar.provisioning;
 import com.google.common.collect.Maps;
 import hudson.model.Computer;
 import hudson.slaves.DumbSlave;
+import metanectar.Config;
 import metanectar.model.MasterServer;
 import metanectar.model.MetaNectar;
 
@@ -11,6 +12,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -24,6 +26,22 @@ import static metanectar.provisioning.LatchMasterServerListener.TerminateListene
  * @author Paul Sandoz
  */
 public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisioningTest {
+    public void testConfigProvisionLocally() throws Exception {
+        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(1, getConfigCommand()));
+        // Reset the labels
+        metaNectar.setNodes(metaNectar.getNodes());
+
+        terminate(provision());
+    }
+
+    public void testConfigProvisionRemotely() throws Exception {
+        DumbSlave slave = createSlave(metaNectar.masterProvisioner.masterLabel);
+        slave.getNodeProperties().add(new MasterProvisioningNodeProperty(1, getConfigCommand()));
+        Computer computer = slave.toComputer();
+        computer.connect(false).get();
+
+        terminate(provision());
+    }
 
     public void testProvisionLocally() throws Exception {
         metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(1, getDefaultCommand()));
@@ -62,16 +80,40 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         return homeDir;
     }
 
+
+    private ConfiguredCommandMasterProvisioningService getConfigCommand() throws IOException {
+        Map<String, String> properties = Maps.newHashMap();
+        properties.put("metaNectar.endpoint", "http://localhost:8080");
+        properties.put("metaNectar.isMasterProvisioning", "true");
+        properties.put("metaNectar.master.provisioning.basePort", "8080");
+        properties.put("metaNectar.master.provisioning.homeLocation", getHomeDir().toString());
+        properties.put("metaNectar.master.provisioning.timeOut", "2");
+        properties.put("metaNectar.master.provisioning.script.provision", getProvisionScript());
+        properties.put("metaNectar.master.provisioning.script.terminate", getTermianteScript());
+
+        Properties ps = new Properties();
+        ps.putAll(properties);
+        return new ConfiguredCommandMasterProvisioningService(new Config(ps));
+    }
+
     private CommandMasterProvisioningService getDefaultCommand() throws IOException {
         return getCommand(
-                "echo \"master_endpoint:" + getTestUrl() + "\"",
-                "rm " + getTerminatingFile().toString());
+                getProvisionScript(),
+                getTermianteScript());
     }
 
     private CommandMasterProvisioningService getCommand(String provisionCommand, String terminateCommand) throws IOException {
         return new CommandMasterProvisioningService(8080, getHomeDir().toString(), 2,
                 provisionCommand,
                 terminateCommand);
+    }
+
+    private String getProvisionScript() {
+        return "echo \"master_endpoint:" + getTestUrl() + "\"";
+    }
+
+    private String getTermianteScript() throws IOException {
+        return "rm " + getTerminatingFile().toString();
     }
 
     private MasterServer provision() throws Exception {

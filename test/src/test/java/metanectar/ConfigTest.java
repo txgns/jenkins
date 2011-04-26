@@ -37,7 +37,7 @@ public class ConfigTest extends TestCase {
             for (Map.Entry<String, String> e : properties.entrySet()) {
                 System.setProperty(e.getKey(), e.getValue());
             }
-            final Config c = new Config(null);
+            final Config c = new Config((String)null);
             testProperties(c);
         } finally {
             for (String name : properties.keySet()) {
@@ -52,7 +52,7 @@ public class ConfigTest extends TestCase {
     }
 
     public void testNoProperties() throws Exception {
-        final Config c = new Config(null);
+        final Config c = new Config((String)null);
         testNoProperties(c);
     }
 

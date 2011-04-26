@@ -35,21 +35,25 @@ public class ConfiguredCommandMasterProvisioningService extends MasterProvisioni
 
     @DataBoundConstructor
     public ConfiguredCommandMasterProvisioningService() {
-        init();
+        init(Config.getInstance());
+    }
+
+    public ConfiguredCommandMasterProvisioningService(Config c) {
+        init(c);
     }
 
     private Object readResolve() {
-        init();
+        init(Config.getInstance());
         return this;
     }
 
-    private void init() {
+    private void init(Config c) {
         this.s = new CommandMasterProvisioningService(
-                Config.getInstance().getMasterProvisioningBasePort(),
-                Config.getInstance().getMasterProvisioningHomeLocation(),
-                Config.getInstance().getMasterProvisioningTimeOut(),
-                Config.getInstance().getMasterProvisioningScriptProvision(),
-                Config.getInstance().getMasterProvisioningScriptTerminate());
+                c.getMasterProvisioningBasePort(),
+                c.getMasterProvisioningHomeLocation(),
+                c.getMasterProvisioningTimeOut(),
+                c.getMasterProvisioningScriptProvision(),
+                c.getMasterProvisioningScriptTerminate());
     }
 
     @Override
