@@ -31,16 +31,16 @@ THE SOFTWARE.
     <relativePath>../pom.xml</relativePath>
   </parent>
   
-  <artifactId>jenkins-war</artifactId>
+  <artifactId>metanectar-war</artifactId>
   <packaging>war</packaging>
-  <name>Jenkins war</name>
+  <name>MetaNectar war</name>
   <description>
     Creates a war file. Also includes additional static web resources, such as images, CSS, JavaScript, and
     some HTML files.
   </description>
   
   <build>
-    <finalName>meta-nectar</finalName>
+    <finalName>metanectar</finalName>
     <plugins>
       <plugin>
         <artifactId>maven-war-plugin</artifactId>
@@ -93,7 +93,7 @@ THE SOFTWARE.
             <configuration>
               <tasks>
                 <!-- deploy the war as a jar, so that the tests can pull this into the classpath -->
-                <attachArtifact file="target/meta-nectar.war" classifier="war-for-test" type="jar" />
+                <attachArtifact file="target/metanectar.war" classifier="war-for-test" type="jar" />
               </tasks>
             </configuration>
           </execution>
@@ -323,7 +323,7 @@ THE SOFTWARE.
 
                       For release, you should define the real values in ~/.m2/settings.xml
                     -->
-                    <signjar jar="target/jenkins.war" alias="${hudson.sign.alias}" keystore="${hudson.sign.keystore}" storepass="${hudson.sign.storepass}" />
+                    <signjar jar="target/metanectar.war" alias="${hudson.sign.alias}" keystore="${hudson.sign.keystore}" storepass="${hudson.sign.storepass}" />
                   </tasks>
                 </configuration>
               </execution>
