@@ -1,6 +1,7 @@
 package metanectar.provisioning;
 
 import com.google.common.collect.Multimap;
+import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.model.*;
 import hudson.model.labels.LabelAtom;
@@ -110,6 +111,10 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
 		public String getDisplayName() {
             return "Master provisioning";
 		}
+    }
+
+    public static NodePropertyDescriptor getMasterProvisioningNodePropertyDescriptor() {
+        return NodeProperty.all().find(MasterProvisioningNodeProperty.class);
     }
 
     /**

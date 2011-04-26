@@ -24,21 +24,28 @@ import java.util.concurrent.TimeoutException;
  */
 public class MasterProvisioningCloud extends AbstractProvisioningCloud {
 
-    private final Cloud c;
+    private final MasterProvisioningNodeProperty nodeProperty;
 
-    private final MasterProvisioningNodeProperty mpnp;
+    private final Cloud cloud;
 
     @DataBoundConstructor
-    public MasterProvisioningCloud(Cloud c, MasterProvisioningNodeProperty mpnp) {
-        super("master-provisioning-" + c.name);
-        this.c = c;
-        this.mpnp = mpnp;
+    public MasterProvisioningCloud(MasterProvisioningNodeProperty nodeProperty, Cloud cloud) {
+        super("master-provisioning-" + cloud.name);
+        this.cloud = cloud;
+        this.nodeProperty = nodeProperty;
     }
 
+    public Cloud getCloud() {
+        return cloud;
+    }
+
+    public MasterProvisioningNodeProperty getNodeProperty() {
+        return nodeProperty;
+    }
 
     @Override
     public Collection<NodeProvisioner.PlannedNode> provision(Label label, int excessWorkload) {
-        final Collection<NodeProvisioner.PlannedNode> delegatedNodes = c.provision(label, excessWorkload);
+        final Collection<NodeProvisioner.PlannedNode> delegatedNodes = cloud.provision(label, excessWorkload);
         final Collection<NodeProvisioner.PlannedNode> pns = new ArrayList<NodeProvisioner.PlannedNode>(delegatedNodes.size());
 
         for (final NodeProvisioner.PlannedNode delegated : delegatedNodes) {
@@ -74,7 +81,7 @@ public class MasterProvisioningCloud extends AbstractProvisioningCloud {
             private Node process(Node n) throws ExecutionException {
                 try {
                     if (n.getNodeProperties().get(MasterProvisioningNodeProperty.class) == null) {
-                        n.getNodeProperties().add(mpnp.clone());
+                        n.getNodeProperties().add(nodeProperty.clone());
                     }
                     return n;
                 } catch (IOException e) {
