@@ -1,0 +1,10 @@
+#!/bin/bash
+
+mkdir -p ${MASTER_HOME}/plugins
+cp ${HOME}/.m2/repository/com/cloudbees/nectar/plugins/cloudbees-metanectar-plugin/1.1/cloudbees-metanectar-plugin-1.1.hpi ${MASTER_HOME}/plugins/cloudbees-metanectar-plugin.hpi
+
+java -DMASTER_ENDPOINT=http://localhost:${MASTER_PORT} -DJENKINS_HOME=${MASTER_HOME} -DMASTER_METANECTAR_ENDPOINT=${MASTER_METANECTAR_ENDPOINT} -DMASTER_GRANT_ID=${MASTER_GRANT_ID} -jar ${HOME}/.m2/repository/org/jenkins-ci/main/jenkins-war/1.410-SNAPSHOT/jenkins-war-1.410-SNAPSHOT.war --httpPort=${MASTER_PORT} &> ${MASTER_HOME}.log.txt &
+
+echo $! > ${MASTER_HOME}.pid
+
+echo -n "MASTER_ENDPOINT: http://localhost:${MASTER_PORT}"

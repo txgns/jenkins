@@ -10,6 +10,7 @@ import hudson.remoting.Channel;
 import hudson.util.AdministrativeError;
 import hudson.util.FormValidation;
 import hudson.views.StatusColumn;
+import metanectar.Config;
 import metanectar.model.views.MasterServerColumn;
 import metanectar.provisioning.MasterProvisioner;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
@@ -39,8 +40,6 @@ import static hudson.Util.fixEmpty;
  */
 public class MetaNectar extends Hudson {
     private static final Logger LOGGER = Logger.getLogger(MetaNectar.class.getName());
-
-    public static final String METANECTAR_ROOT_URL = System.getProperty("METANECTAR_ROOT_URL");
 
     public static final String GRANT_PROPERTY = "grant";
 
@@ -164,13 +163,14 @@ public class MetaNectar extends Hudson {
 
     @Override
     public String getRootUrl() {
-        if (METANECTAR_ROOT_URL != null) {
-            return METANECTAR_ROOT_URL;
-        }
-
         if (rootUrl != null) {
             return rootUrl;
         }
+
+        try {
+            URL u = Config.getInstance().getEndpoint();
+            rootUrl = u.toExternalForm();
+        } catch (Exception ex) {}
 
         // TODO Hudson.getRootUrl() is returning null
         return super.getRootUrl();
@@ -182,7 +182,11 @@ public class MetaNectar extends Hudson {
 
     public URL getMetaNectarPortUrl() {
         try {
-            return new URL(getRootUrl() + "/" + MetaNectarPortRootAction.URL_NAME + "/");
+            String rootUrl = getRootUrl();
+            if (!rootUrl.endsWith("/"))
+                rootUrl += "/";
+
+            return new URL(rootUrl + MetaNectarPortRootAction.URL_NAME + "/");
         } catch (MalformedURLException e) {
             throw new IllegalStateException(e);
         }
