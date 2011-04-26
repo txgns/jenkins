@@ -46,6 +46,10 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
         this.mps = mps;
     }
 
+    public MasterProvisioningNodeProperty clone() {
+        return new MasterProvisioningNodeProperty(maxMasters, mps);
+    }
+
     public int getMaxMasters() {
         return maxMasters;
     }
@@ -109,7 +113,7 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
     }
 
     /**
-     * Automatically add the
+     * Automatically add the master provisioning label
      */
     @Extension
     public static class MasterLabelFinder extends LabelFinder {
