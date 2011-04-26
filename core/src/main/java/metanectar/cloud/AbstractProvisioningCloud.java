@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * The base class for cloud-based provisioning of masters or slaves.
+ *
  * @author Paul Sandoz
  */
 public abstract class AbstractProvisioningCloud extends Cloud {

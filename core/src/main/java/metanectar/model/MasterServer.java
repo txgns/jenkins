@@ -24,6 +24,7 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -61,6 +62,13 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
      * The state of the master.
      */
     private volatile State state;
+
+    /**
+     * The time stamp when the state was modified.
+     *
+     * @see {@link java.util.Date#getTime()}.
+     */
+    private volatile long timeStamp;
 
     /**
      * Error associated with a particular state.
@@ -158,6 +166,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         final RSAPublicKey key = getIdentity();
         return Objects.toStringHelper(this).
                 add("state", state).
+                add("timeStamp", timeStamp).
                 add("error", error).
                 add("grantId", grantId).
                 add("approved", approved).
@@ -333,6 +342,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     private void setState(State state) {
         this.state = state;
         this.error = null;
+        this.timeStamp = new Date().getTime();
     }
 
     // Event firing
