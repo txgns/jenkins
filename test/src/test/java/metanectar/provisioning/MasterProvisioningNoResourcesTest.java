@@ -42,7 +42,7 @@ public class MasterProvisioningNoResourcesTest extends AbstractMasterProvisionin
         assertEquals(MasterServer.State.ProvisioningErrorNoResources, ms.getState());
         assertEquals(4, connected.getCount());
 
-        // Add provisioning reosurces
+        // Add provisioning resources
         TestMasterProvisioningService s = new TestMasterProvisioningService(100);
         metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(4, s));
         // Reset the labels

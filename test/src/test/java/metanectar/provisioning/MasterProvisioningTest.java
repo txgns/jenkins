@@ -123,7 +123,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
         pl.await(1, TimeUnit.MINUTES);
 
         assertEquals(nodes, cl.online.size());
-        assertEquals(nodes, metaNectar.masterProvisioner.masterLabel.getNodes().size());
+        assertEquals(nodes, metaNectar.masterProvisioner.getLabel().getNodes().size());
         assertEquals(masters, MasterProvisioner.getProvisionedMasters(metaNectar).size());
     }
 
@@ -195,7 +195,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
 
         pl.await(1, TimeUnit.MINUTES);
 
-        assertEquals(nodes, metaNectar.masterProvisioner.masterLabel.getNodes().size());
+        assertEquals(nodes, metaNectar.masterProvisioner.getLabel().getNodes().size());
         assertEquals(masters, MasterProvisioner.getProvisionedMasters(metaNectar).size());
     }
 

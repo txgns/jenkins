@@ -40,6 +40,45 @@ public class MasterProvisioner {
 
     private static final Logger LOGGER = Logger.getLogger(MasterProvisioner.class.getName());
 
+    private final MetaNectar mn;
+
+    private Label masterLabel;
+
+    // TODO check is a master is already provisioned or to be provisioned
+
+    // TODO check if cannot provision a master because there are no nodes/clouds configured
+
+    public MasterProvisioner(MetaNectar mn) {
+        this.mn = mn;
+    }
+
+    public Label getLabel() {
+        // TODO make configurable
+        return MetaNectar.getInstance().getLabel(MASTER_LABEL_ATOM_STRING);
+    }
+
+    public void provision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
+        ms.setPreProvisionState();
+        pendingPlannedMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties));
+    }
+
+    public void terminate(MasterServer ms, boolean clean) throws IOException {
+        ms.setPreTerminateState();
+        pendingTerminateMasterRequests.add(new TerminateMasterRequest(ms, clean));
+    }
+
+    private void process() throws Exception {
+        // It is not possible to hold onto the reference as the label will be removed from Hudson
+        // on a configuration change when labels are trimmed and if the  label does not contain
+        // any nodes or clouds. Once removed the label will not be updated if/when new clouds/nodes are
+        // added.
+        masterLabel = getLabel();
+        Multimap<Node, MasterServer> provisioned = provision();
+        terminate(provisioned);
+    }
+
+    // Provisioning
+
     private static final class PlannedMaster {
         public final MasterServer ms;
         public final Node node;
@@ -54,9 +93,9 @@ public class MasterProvisioner {
 
     private static final class PlannedMasterRequest {
         public final MasterServer ms;
-        public final URL metaNectarEndpoint; 
+        public final URL metaNectarEndpoint;
         public final Map<String, Object> properties;
-        
+
         public PlannedMasterRequest(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) {
             this.ms = ms;
             this.metaNectarEndpoint = metaNectarEndpoint;
@@ -68,23 +107,17 @@ public class MasterProvisioner {
         }
     }
 
-    // TODO make configurable
-    public final Label masterLabel = MetaNectar.getInstance().getLabel(MASTER_LABEL_ATOM_STRING);
+    private final Multimap<Node, PlannedMaster> pendingPlannedMasters = ArrayListMultimap.create();
 
-    private Multimap<Node, PlannedMaster> pendingPlannedMasters = ArrayListMultimap.create();
+    private final List<PlannedMasterRequest> pendingPlannedMasterRequests = Collections.synchronizedList(new ArrayList<PlannedMasterRequest>());
 
-    private List<PlannedMasterRequest> pendingPlannedMasterRequests = Collections.synchronizedList(new ArrayList<PlannedMasterRequest>());
+    private final List<PlannedNode> pendingPlannedNodes = new ArrayList<PlannedNode>();
 
-    private List<PlannedNode> pendingPlannedNodes = new ArrayList<PlannedNode>();
-
-    // TODO check is a master is already provisioned or to be provisioned
-
-    // TODO check if cannot provision a master because there are no nodes/clouds configured
-
-    private Multimap<Node, MasterServer> provision(MetaNectar mn) throws Exception {
+    private Multimap<Node, MasterServer> provision() throws Exception {
         provisionMasters();
-        provisionNodes(mn);
-        final Multimap<Node, MasterServer> provisioned = provisionMasterRequests(mn);
+        provisionNodes();
+        final Multimap<Node, MasterServer> provisioned = MasterProvisioner.getProvisionedMasters(mn);
+        provisionMasterRequests(provisioned);
         provisionFromCloud();
         return provisioned;
     }
@@ -114,7 +147,7 @@ public class MasterProvisioner {
         }
     }
 
-    private void provisionNodes(MetaNectar mn) {
+    private void provisionNodes() {
         // Process pending planned masters nodes
         for (Iterator<PlannedNode> itr = pendingPlannedNodes.iterator(); itr.hasNext();) {
             final PlannedNode pn = itr.next();
@@ -139,9 +172,11 @@ public class MasterProvisioner {
 
     }
 
-    private Multimap<Node, MasterServer> provisionMasterRequests(MetaNectar mn) throws Exception {
+    private void provisionMasterRequests(Multimap<Node, MasterServer> provisioned) throws Exception {
         // Check masters nodes to see if a new master can be provisioned on an existing masters node
-        final Multimap<Node, MasterServer> provisioned = MasterProvisioner.getProvisionedMasters(mn);
+        if (pendingPlannedMasterRequests.isEmpty())
+            return;
+
         for (Node n : masterLabel.getNodes()) {
             if (n.toComputer().isOnline()) {
 
@@ -182,8 +217,6 @@ public class MasterProvisioner {
                 }
             }
         }
-
-        return provisioned;
     }
 
     private void provisionFromCloud() throws Exception {
@@ -262,6 +295,8 @@ public class MasterProvisioner {
         return end.getId() + 1;
     }
 
+    // Terminating
+
     private static final class TerminateMasterRequest {
         public final MasterServer ms;
         public final boolean clean;
@@ -286,9 +321,9 @@ public class MasterProvisioner {
         }
     }
 
-    private List<TerminateMasterRequest> pendingTerminateMasterRequests = Collections.synchronizedList(new ArrayList<TerminateMasterRequest>());
+    private final List<TerminateMasterRequest> pendingTerminateMasterRequests = Collections.synchronizedList(new ArrayList<TerminateMasterRequest>());
 
-    private List<TerminateMaster> pendingTerminateMasters = new ArrayList<TerminateMaster>();
+    private final List<TerminateMaster> pendingTerminateMasters = new ArrayList<TerminateMaster>();
 
     void terminate(Multimap<Node, MasterServer> provisioned) throws Exception {
         terminateMasters();
@@ -398,8 +433,7 @@ public class MasterProvisioner {
                 return;
 
             try {
-                Multimap<Node, MasterServer> provisioned = mn.masterProvisioner.provision(mn);
-                mn.masterProvisioner.terminate(provisioned);
+                mn.masterProvisioner.process();
             } catch (Exception e) {
                 LOGGER.log(Level.SEVERE, "Error when master provisioning or terminating", e);
             }
@@ -416,16 +450,6 @@ public class MasterProvisioner {
         }
 
         return masters;
-    }
-
-    public void provision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
-        ms.setPreProvisionState();
-        pendingPlannedMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties));
-    }
-
-    public void terminate(MasterServer ms, boolean clean) throws IOException {
-        ms.setPreTerminateState();
-        pendingTerminateMasterRequests.add(new TerminateMasterRequest(ms, clean));
     }
 
     private <T> List<T> synchronizedCopy(List<T> l) {

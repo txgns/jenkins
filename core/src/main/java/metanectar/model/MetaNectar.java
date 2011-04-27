@@ -16,8 +16,11 @@ import metanectar.provisioning.MasterProvisioner;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 import org.jvnet.hudson.reactor.ReactorException;
 import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.StaplerResponse;
 
 import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
 import java.io.File;
 import java.io.IOException;
 import java.net.*;
@@ -45,7 +48,7 @@ public class MetaNectar extends Hudson {
 
     private transient AgentListener nectarAgentListener;
 
-    public transient final MasterProvisioner masterProvisioner = new MasterProvisioner();
+    public transient final MasterProvisioner masterProvisioner;
 
     public static class AgentProtocolListener extends MetaNectarAgentProtocol.Listener {
         private final MetaNectar metaNectar;
@@ -129,6 +132,8 @@ public class MetaNectar extends Hudson {
 
     public MetaNectar(File root, ServletContext context, PluginManager pluginManager) throws IOException, InterruptedException, ReactorException {
         super(root, context, pluginManager);
+
+        this.masterProvisioner = new MasterProvisioner(this);
 
         configureNectarAgentListener(new AgentProtocolListener(this));
     }
@@ -261,6 +266,13 @@ public class MetaNectar extends Hudson {
         name = name.trim();
         if (getItem(name) != null)
             throw new Failure("Organization " + name + "already exists");
+    }
+
+    @Override
+    public synchronized void doConfigSubmit(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, Descriptor.FormException {
+        super.doConfigSubmit(req, rsp);
+        // Override and trim the labels in case master provisioning on MetaNectar configuration was added or removed.
+        trimLabels();
     }
 
     public FormValidation doCheckOrganizationName(@QueryParameter String value) {

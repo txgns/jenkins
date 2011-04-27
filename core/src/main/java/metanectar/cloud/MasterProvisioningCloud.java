@@ -61,7 +61,7 @@ public class MasterProvisioningCloud extends AbstractProvisioningCloud {
     @Override
     public boolean canProvision(Label label) {
         // TODO consider supporting labels of cloud as a refinement for master provisioning
-        return label.equals(MetaNectar.getInstance().masterProvisioner.masterLabel);
+        return label.equals(MetaNectar.getInstance().masterProvisioner.getLabel());
     }
 
     private Future<Node> adapt(final Future<Node> fn) {

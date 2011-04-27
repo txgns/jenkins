@@ -52,7 +52,6 @@ public class MasterProvisioningDumbSlaveCloud extends Cloud {
         this.labelString = labelString;
         this.launcher = launcher;
         this.retentionStrategy = retentionStrategy;
-
         this.nodeProperties.replaceBy(nodeProperties);
 
         this.delay = 1000;
@@ -60,19 +59,7 @@ public class MasterProvisioningDumbSlaveCloud extends Cloud {
 
     public DumbSlave toDumbSlave(String name) throws Descriptor.FormException, IOException {
         return new DumbSlave(name, nodeDescription, remoteFS, numExecutors, mode, labelString,
-                launcher, retentionStrategy, cloneNodeProperties(nodeProperties.toList()));
-    }
-
-    private static List<? extends NodeProperty<?>> cloneNodeProperties(List<? extends NodeProperty<?>> nodeProperties) {
-        List<NodeProperty<?>> nps = new ArrayList<NodeProperty<?>>();
-        for (NodeProperty<?> p : nodeProperties) {
-            if (p instanceof MasterProvisioningNodeProperty) {
-                MasterProvisioningNodeProperty that = (MasterProvisioningNodeProperty)p;
-                p = new MasterProvisioningNodeProperty(that.getMaxMasters(), that.getProvisioningService());
-            }
-            nps.add(p);
-        }
-        return nps;
+                launcher, retentionStrategy, nodeProperties.toList());
     }
 
     public String getNodeDescription() {
@@ -134,7 +121,7 @@ public class MasterProvisioningDumbSlaveCloud extends Cloud {
 
     @Override
     public boolean canProvision(Label label) {
-        return label.equals(MetaNectar.getInstance().masterProvisioner.masterLabel);
+        return false;
     }
 
     @Extension

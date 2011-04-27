@@ -1654,7 +1654,7 @@ public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProx
     /**
      * Resets all labels and remove invalid ones.
      */
-    private void trimLabels() {
+    protected void trimLabels() {
         for (Iterator<Label> itr = labels.values().iterator(); itr.hasNext();) {
             Label l = itr.next();
             l.reset();

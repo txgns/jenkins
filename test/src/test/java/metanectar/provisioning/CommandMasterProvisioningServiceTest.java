@@ -35,7 +35,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     }
 
     public void testConfigProvisionRemotely() throws Exception {
-        DumbSlave slave = createSlave(metaNectar.masterProvisioner.masterLabel);
+        DumbSlave slave = createSlave(metaNectar.masterProvisioner.getLabel());
         slave.getNodeProperties().add(new MasterProvisioningNodeProperty(1, getConfigCommand()));
         Computer computer = slave.toComputer();
         computer.connect(false).get();
@@ -52,7 +52,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     }
 
     public void testProvisionRemotely() throws Exception {
-        DumbSlave slave = createSlave(metaNectar.masterProvisioner.masterLabel);
+        DumbSlave slave = createSlave(metaNectar.masterProvisioner.getLabel());
         slave.getNodeProperties().add(new MasterProvisioningNodeProperty(1, getDefaultCommand()));
         Computer computer = slave.toComputer();
         computer.connect(false).get();
