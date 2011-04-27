@@ -18,11 +18,14 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Logger;
 
 /**
  * @author Paul Sandoz
  */
 public class MasterProvisioningCloud extends AbstractProvisioningCloud {
+
+    private static final Logger LOGGER = Logger.getLogger(MasterProvisioningCloud.class.getName());
 
     private final MasterProvisioningNodeProperty nodeProperty;
 
@@ -81,6 +84,7 @@ public class MasterProvisioningCloud extends AbstractProvisioningCloud {
             private Node process(Node n) throws ExecutionException {
                 try {
                     if (n.getNodeProperties().get(MasterProvisioningNodeProperty.class) == null) {
+                        LOGGER.info("Adding master provisioning node property to node " + n.getDisplayName());
                         n.getNodeProperties().add(nodeProperty.clone());
                     }
                     return n;

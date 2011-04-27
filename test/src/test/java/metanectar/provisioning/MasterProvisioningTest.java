@@ -6,6 +6,7 @@ import hudson.model.Node;
 import hudson.model.TaskListener;
 import hudson.remoting.VirtualChannel;
 import hudson.slaves.ComputerListener;
+import metanectar.cloud.MasterProvisioningCloud;
 import metanectar.model.MasterServer;
 import metanectar.model.MetaNectar;
 
@@ -71,12 +72,12 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
         }
 
         public void onOnline(Computer c, TaskListener listener) throws IOException, InterruptedException {
-            if (MetaNectar.getInstance().masterProvisioner != null && MetaNectar.getInstance().masterProvisioner.masterLabel.matches(c.getNode()))
+            if (MetaNectar.getInstance().masterProvisioner != null)
                 online.add(c.getNode());
         }
 
         public void onOffline(Computer c) {
-            if (MetaNectar.getInstance().masterProvisioner.masterLabel.matches(c.getNode()))
+            if (MetaNectar.getInstance().masterProvisioner != null)
                 online.remove(c.getNode());
         }
     }
@@ -105,9 +106,10 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
         int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
 
         MyComputerListener cl = new MyComputerListener();
-        Service s = new Service(100);
-        TestSlaveCloud cloud = new TestSlaveCloud(this, nodesPerMaster, s, 100);
-        metaNectar.clouds.add(cloud);
+
+        MasterProvisioningNodeProperty p = new MasterProvisioningNodeProperty(nodesPerMaster, new TestMasterProvisioningService(100));
+        MasterProvisioningCloud pc = new MasterProvisioningCloud(p, new TestSlaveCloud(this, 100));
+        metaNectar.clouds.add(pc);
 
         ProvisionListener pl = new ProvisionListener(2 * masters);
 

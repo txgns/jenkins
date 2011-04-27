@@ -24,15 +24,9 @@ class TestSlaveCloud extends Cloud {
 
     private final int delay;
 
-    private final int maxMasters;
-
-    private final MasterProvisioningService mps;
-
-    public TestSlaveCloud(MetaNectarTestCase mtc, int maxMasters, MasterProvisioningService mps, int delay) {
+    public TestSlaveCloud(MetaNectarTestCase mtc, int delay) {
         super("test-cloud");
         this.mtc = mtc;
-        this.maxMasters = maxMasters;
-        this.mps = mps;
         this.delay = delay;
     }
 
@@ -48,8 +42,7 @@ class TestSlaveCloud extends Cloud {
 
                             System.out.println("launching slave");
 
-                            DumbSlave slave = mtc.createSlave(mtc.metaNectar.masterProvisioner.masterLabel);
-                            slave.getNodeProperties().add(new MasterProvisioningNodeProperty(maxMasters, mps));
+                            DumbSlave slave = mtc.createSlave();
 
                             Computer computer = slave.toComputer();
                             computer.connect(false).get();
@@ -67,7 +60,7 @@ class TestSlaveCloud extends Cloud {
 
     @Override
     public boolean canProvision(Label label) {
-        return label.equals(mtc.metaNectar.masterProvisioner.masterLabel);
+        return false;
     }
 
     public Descriptor<Cloud> getDescriptor() {
