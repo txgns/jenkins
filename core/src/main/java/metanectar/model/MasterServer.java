@@ -456,6 +456,14 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         return state;
     }
 
+    public long getTimeStamp() {
+        return timeStamp;
+    }
+
+    public Throwable getError() {
+        return error;
+    }
+
     public String getGrantId() {
         return grantId;
     }

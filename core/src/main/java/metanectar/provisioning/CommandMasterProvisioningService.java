@@ -29,6 +29,19 @@ import java.util.concurrent.TimeUnit;
  */
 public class CommandMasterProvisioningService extends MasterProvisioningService {
 
+    public static class CommandProvisioningError extends IOException {
+        final int exitCode;
+
+        public CommandProvisioningError(String s, int exitCode) {
+            super(s);
+            this.exitCode = exitCode;
+        }
+
+        public int getExitCode() {
+            return exitCode;
+        }
+    }
+
     public enum Variable {
         MASTER_PORT,
         MASTER_HOME,
@@ -118,7 +131,7 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
                 if (result != 0) {
                     final String errorString = "Failed to provision master, received signal from provision command: " + result;
                     listener.error(errorString);
-                    throw new IOException(errorString);
+                    throw new CommandProvisioningError(errorString, result);
                 }
 
 
@@ -191,7 +204,7 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
                 if (result != 0) {
                     final String errorString = "Failed to terminate master, received signal from provision command: " + result;
                     listener.error(errorString);
-                    throw new IOException(errorString);
+                    throw new CommandProvisioningError(errorString, result);
                 }
 
                 listener.getLogger().println("Termination script succeeded");

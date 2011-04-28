@@ -10,10 +10,6 @@ import java.util.concurrent.TimeUnit;
 public class MasterProvisioningNoResourcesTest extends AbstractMasterProvisioningTest {
 
     public void testProvisionOneMasterOnMetaNectar() throws Exception {
-        _testProvisionOnMetaNectar(1);
-    }
-
-    public void _testProvisionOnMetaNectar(int masters) throws Exception {
         new WebClient().goTo("/");
 
         MasterServer ms = metaNectar.createMasterServer("org");

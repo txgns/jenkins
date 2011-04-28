@@ -30,6 +30,10 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
         this.delay = delay;
     }
 
+    public int getDelay() {
+        return delay;
+    }
+
     public Future<Master> provision(final VirtualChannel channel, TaskListener listener,
                                     int id, final String organization, final URL metaNectarEndpoint, final Map<String, Object> properties) throws IOException, InterruptedException {
         return Computer.threadPoolForRemoting.submit(new Callable<Master>() {

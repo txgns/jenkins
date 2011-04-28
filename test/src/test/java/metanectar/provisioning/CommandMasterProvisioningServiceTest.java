@@ -2,6 +2,7 @@ package metanectar.provisioning;
 
 import com.google.common.collect.Maps;
 import hudson.model.Computer;
+import hudson.model.Node;
 import hudson.slaves.DumbSlave;
 import metanectar.Config;
 import metanectar.model.MasterServer;
@@ -59,6 +60,51 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
 
         terminate(provision());
     }
+
+
+    public void testProvisionCommandTimeOut() throws Exception {
+        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(1, getCommand("sleep 60", "sleep 60")));
+        // Reset the labels
+        metaNectar.setNodes(metaNectar.getNodes());
+
+        LatchMasterServerListener provisioningError = new LatchMasterServerListener(1) {
+            public void onProvisioningError(MasterServer ms, Node n) {
+                countDown();
+            }
+        };
+
+        Map<String, Object> properties = new HashMap<String, Object>();
+        properties.put(MetaNectar.GRANT_PROPERTY, "grant");
+        MasterServer ms = metaNectar.createMasterServer("org1");
+        metaNectar.masterProvisioner.provision(ms, new URL("http://test/"), properties);
+
+        provisioningError.await(1, TimeUnit.MINUTES);
+
+        assertEquals(MasterServer.State.ProvisioningError, ms.getState());
+        assertEquals(CommandMasterProvisioningService.CommandProvisioningError.class, ms.getError().getClass());
+    }
+
+    public void testTerminateCommandTimeOut() throws Exception {
+        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(1, getCommand(getProvisionScript(), "sleep 60")));
+        // Reset the labels
+        metaNectar.setNodes(metaNectar.getNodes());
+
+        MasterServer ms = provision();
+
+        LatchMasterServerListener terminatingError = new LatchMasterServerListener(1) {
+            public void onTerminatingError(MasterServer ms) {
+                countDown();
+            }
+        };
+
+        metaNectar.masterProvisioner.terminate(ms, false);
+
+        terminatingError.await(1, TimeUnit.MINUTES);
+
+        assertEquals(MasterServer.State.TerminatingError, ms.getState());
+        assertEquals(CommandMasterProvisioningService.CommandProvisioningError.class, ms.getError().getClass());
+    }
+
 
     private File terminatingFile;
 
@@ -152,7 +198,6 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     private void terminate(MasterServer ms) throws Exception {
         assertTrue(getTerminatingFile().exists());
 
-        CountDownLatch cdl = new CountDownLatch(2);
         TerminateListener tl = new TerminateListener(2);
 
         metaNectar.masterProvisioner.terminate(ms, false);
