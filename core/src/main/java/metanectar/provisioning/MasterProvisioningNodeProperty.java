@@ -19,10 +19,12 @@ import java.util.Map;
 
 /**
  * The master provisioning node property.
+ * <p>
+ * This property is only valid via the UI configuration for MetaNectar itself.
  *
  * @author Paul Sandoz
  */
-public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
+public class MasterProvisioningNodeProperty extends NodeProperty<MetaNectar> {
 
     /**
      * The maximum number of masters that can be provisioned for this node.
@@ -103,7 +105,7 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
 
         @Override
 		public String getDisplayName() {
-            return "Master provisioning";
+            return (MetaNectar.getInstance().getConfig().isMasterProvisioning()) ? "Master Provisioning" : null;
 		}
     }
 

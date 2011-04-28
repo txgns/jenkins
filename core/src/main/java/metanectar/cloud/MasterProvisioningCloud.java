@@ -9,6 +9,8 @@ import hudson.slaves.Cloud;
 import hudson.slaves.NodeProvisioner;
 import metanectar.model.MetaNectar;
 import metanectar.provisioning.MasterProvisioningNodeProperty;
+import metanectar.provisioning.SlaveMasterProvisioningNodeProperty;
+import metanectar.provisioning.SlaveMasterProvisioningNodePropertyTemplate;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.IOException;
@@ -27,23 +29,23 @@ public class MasterProvisioningCloud extends AbstractProvisioningCloud {
 
     private static final Logger LOGGER = Logger.getLogger(MasterProvisioningCloud.class.getName());
 
-    private final MasterProvisioningNodeProperty nodeProperty;
+    private SlaveMasterProvisioningNodePropertyTemplate template;
 
     private final Cloud cloud;
 
     @DataBoundConstructor
-    public MasterProvisioningCloud(MasterProvisioningNodeProperty nodeProperty, Cloud cloud) {
+    public MasterProvisioningCloud(SlaveMasterProvisioningNodePropertyTemplate template, Cloud cloud) {
         super("master-provisioning-" + cloud.name);
+        this.template = template;
         this.cloud = cloud;
-        this.nodeProperty = nodeProperty;
     }
 
     public Cloud getCloud() {
         return cloud;
     }
 
-    public MasterProvisioningNodeProperty getNodeProperty() {
-        return nodeProperty;
+    public SlaveMasterProvisioningNodePropertyTemplate getTemplate() {
+        return template;
     }
 
     @Override
@@ -85,7 +87,7 @@ public class MasterProvisioningCloud extends AbstractProvisioningCloud {
                 try {
                     if (n.getNodeProperties().get(MasterProvisioningNodeProperty.class) == null) {
                         LOGGER.info("Adding master provisioning node property to node " + n.getDisplayName());
-                        n.getNodeProperties().add(nodeProperty.clone());
+                        n.getNodeProperties().add(template.toSlaveProvisioningNodeProperty());
                     }
                     return n;
                 } catch (IOException e) {

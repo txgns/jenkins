@@ -11,6 +11,18 @@ import java.util.Map;
  */
 public class ConfigTest extends TestCase {
 
+    private Map<String, String> getDefaultProperties() {
+        Map<String, String> properties = Maps.newHashMap();
+        properties.put("metaNectar.endpoint", "http://localhost:8080");
+        properties.put("metaNectar.isMasterProvisioning", "true");
+        properties.put("metaNectar.master.provisioning.basePort", "8181");
+        properties.put("metaNectar.master.provisioning.homeLocation", "/tmp/masters");
+        properties.put("metaNectar.master.provisioning.timeOut", "10");
+        properties.put("metaNectar.master.provisioning.script.provision", "start");
+        properties.put("metaNectar.master.provisioning.script.terminate", "stop");
+        return properties;
+    }
+
     public void testValidProperties() throws Exception {
         try {
             System.setProperty(Config.METANECTAR_PROPERTIES_URL_SYSTEM_PROPERTY_NAME,
@@ -24,16 +36,8 @@ public class ConfigTest extends TestCase {
     }
 
     public void testValidPropertiesUsingSystemProperties() throws Exception {
-        Map<String, String> properties = Maps.newHashMap();
+        Map<String, String> properties = getDefaultProperties();
         try {
-            properties.put("metaNectar.endpoint", "http://localhost:8080");
-            properties.put("metaNectar.isMasterProvisioning", "true");
-            properties.put("metaNectar.master.provisioning.basePort", "8181");
-            properties.put("metaNectar.master.provisioning.homeLocation", "/tmp/masters");
-            properties.put("metaNectar.master.provisioning.timeOut", "10");
-            properties.put("metaNectar.master.provisioning.script.provision", "start");
-            properties.put("metaNectar.master.provisioning.script.terminate", "stop");
-
             for (Map.Entry<String, String> e : properties.entrySet()) {
                 System.setProperty(e.getKey(), e.getValue());
             }

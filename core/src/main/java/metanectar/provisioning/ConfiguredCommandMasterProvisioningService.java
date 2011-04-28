@@ -35,7 +35,7 @@ public class ConfiguredCommandMasterProvisioningService extends MasterProvisioni
 
     @DataBoundConstructor
     public ConfiguredCommandMasterProvisioningService() {
-        init(Config.getInstance());
+        init();
     }
 
     public ConfiguredCommandMasterProvisioningService(Config c) {
@@ -43,8 +43,12 @@ public class ConfiguredCommandMasterProvisioningService extends MasterProvisioni
     }
 
     private Object readResolve() {
-        init(Config.getInstance());
+        init();
         return this;
+    }
+
+    private void init() {
+        init(Config.getInstance());
     }
 
     private void init(Config c) {

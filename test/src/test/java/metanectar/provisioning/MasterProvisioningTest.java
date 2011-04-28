@@ -107,8 +107,8 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
 
         MyComputerListener cl = new MyComputerListener();
 
-        MasterProvisioningNodeProperty p = new MasterProvisioningNodeProperty(nodesPerMaster, new TestMasterProvisioningService(100));
-        MasterProvisioningCloud pc = new MasterProvisioningCloud(p, new TestSlaveCloud(this, 100));
+        SlaveMasterProvisioningNodePropertyTemplate tp = new SlaveMasterProvisioningNodePropertyTemplate(nodesPerMaster, new TestMasterProvisioningService(100));
+        MasterProvisioningCloud pc = new MasterProvisioningCloud(tp, new TestSlaveCloud(this, 100));
         metaNectar.clouds.add(pc);
 
         ProvisionListener pl = new ProvisionListener(2 * masters);

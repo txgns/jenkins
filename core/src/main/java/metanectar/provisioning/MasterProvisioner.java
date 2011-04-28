@@ -178,6 +178,8 @@ public class MasterProvisioner {
             return;
 
         for (Node n : masterLabel.getNodes()) {
+            // TODO should the offline cause be checked, should an attempt be made go online if not marked
+            // as temporarily offline?
             if (n.toComputer().isOnline()) {
 
                 // TODO check if masters are already provisioned, if so this means a re-provision.

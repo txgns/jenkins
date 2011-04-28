@@ -84,8 +84,8 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
     public void _testProvision(int masters) throws Exception {
         _testProvision(masters, new Configurable() {
             public void configure() throws Exception {
-                MasterProvisioningNodeProperty p = new MasterProvisioningNodeProperty(4, new TestMasterProvisioningService(100));
-                MasterProvisioningCloud pc = new MasterProvisioningCloud(p, new TestSlaveCloud(MasterProvisioningConnectionTest.this, 100));
+                SlaveMasterProvisioningNodePropertyTemplate tp = new SlaveMasterProvisioningNodePropertyTemplate(4, new TestMasterProvisioningService(100));
+                MasterProvisioningCloud pc = new MasterProvisioningCloud(tp, new TestSlaveCloud(MasterProvisioningConnectionTest.this, 100));
                 metaNectar.clouds.add(pc);
             }
         });

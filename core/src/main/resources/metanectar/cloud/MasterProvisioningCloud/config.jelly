@@ -2,13 +2,13 @@
          xmlns:t="/lib/hudson" xmlns:f="/lib/form">
 
     <f:section title="${%Master Provisioning}">
-        <f:property field="nodeProperty"/>
+        <f:property field="template"/>
     </f:section>
 
     <j:invokeStatic var="ds" className="metanectar.cloud.AbstractProvisioningCloud"
                     method="getApplicableDescriptors"/>
     <f:section title="${%Cloud}">
-        <f:dropdownDescriptorSelector descriptors="${ds}" field="cloud" title="${%Cloud}" />
+        <f:dropdownDescriptorSelector descriptors="${ds}" field="cloud" title="${%Cloud}"/>
     </f:section>
 
 </j:jelly>

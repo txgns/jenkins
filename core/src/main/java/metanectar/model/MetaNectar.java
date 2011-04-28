@@ -13,6 +13,7 @@ import hudson.views.StatusColumn;
 import metanectar.Config;
 import metanectar.model.views.MasterServerColumn;
 import metanectar.provisioning.MasterProvisioner;
+import metanectar.provisioning.MasterProvisioningNodeProperty;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 import org.jvnet.hudson.reactor.ReactorException;
 import org.kohsuke.stapler.QueryParameter;
@@ -47,6 +48,8 @@ public class MetaNectar extends Hudson {
     public static final String GRANT_PROPERTY = "grant";
 
     private transient AgentListener nectarAgentListener;
+
+    private transient Config config;
 
     public transient final MasterProvisioner masterProvisioner;
 
@@ -136,6 +139,16 @@ public class MetaNectar extends Hudson {
         this.masterProvisioner = new MasterProvisioner(this);
 
         configureNectarAgentListener(new AgentProtocolListener(this));
+
+        this.config = Config.getInstance();
+
+        if (!getConfig().isMasterProvisioning()) {
+            // If master provisioning is disabled then remove the master provisioning node property if present
+            MasterProvisioningNodeProperty p = getGlobalNodeProperties().get(MasterProvisioningNodeProperty.class);
+            if (p != null) {
+                 getGlobalNodeProperties().remove(p);
+            }
+        }
     }
 
     public void configureNectarAgentListener(MetaNectarAgentProtocol.Listener l) throws IOException {
@@ -223,6 +236,14 @@ public class MetaNectar extends Hudson {
 
     public MasterServer getMasterByOrganization(String organization) {
         return (MasterServer)getItem(organization);
+    }
+
+    public void setConfig(Config config) {
+        this.config = config;
+    }
+
+    public Config getConfig() {
+        return config;
     }
 
     /**
