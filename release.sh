@@ -39,6 +39,9 @@ case $id in
   ;;
 esac
 
+ssh maven@download.infradna.com mkdir /var/www/download.infradna.com/nectar/war/$id
+scp $war maven@download.infradna.com:/var/www/download.infradna.com/nectar/war/$id/jenkins-war-$id.war
+
 # TODO: where do we make it available?
 # TODO: make JNLP file available
 
