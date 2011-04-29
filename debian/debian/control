@@ -1,7 +1,7 @@
 Source: jenkins
 Section: devel
 Priority: extra
-Maintainer: Kohsuke Kawaguchi <kohsuke.kawaguchi@cloudbees.com>
+Maintainer: Kohsuke Kawaguchi <kkawaguchi@cloudbees.com>
 Build-Depends: debhelper (>= 5)
 Standards-Version: 3.7.2
 Homepage: http://nectar.cloudbees.com/

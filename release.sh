@@ -29,7 +29,7 @@ tag=hudson-$(show-pom-version pom.xml | sed -e "s/-SNAPSHOT//g" -e "s/\\./_/g")
 export MAVEN_OPTS="-Xmx512m -XX:MaxPermSize=256m"
 mvn -B -Dtag=$tag -DskipTests release:prepare || mvn -B -Dtag=$tag -DskipTests install release:prepare || true
 mvn release:perform
-war=$PWD/target/checkout/war/target/hudson.war
+war=$PWD/target/checkout/nectar-war/target/nectar.war
 
 id=$(show-pom-version target/checkout/pom.xml)
 case $id in
@@ -61,19 +61,19 @@ for arch in rpm opensuse; do
   gpg -a --detach-sign --yes --no-use-agent --batch --no-tty --passphrase-file ~/.gpg.passphrase $arch/repodata/repomd.xml
   cp infradna.com.key $arch/repodata/repomd.xml.key
   for dir in RPMS repodata; do
-    rsync -avz --delete-after $arch/$dir/ www-data@download.infradna.com:~/download.infradna.com/ichci/$arch/$dir
+    rsync -avz --delete-after $arch/$dir/ www-data@download.infradna.com:~/download.infradna.com/nectar/$arch/$dir
     true
   done
 done
 
 # generate the permalink redirection
 cat > target/.htaccess << EOF
-Redirect /ichci/latest/hudson.war        http://download.infradna.com/ichci/war/$id/hudson-war-${id}.war
-Redirect /ichci/latest/debian/hudson.deb http://download.infradna.com/ichci/debian/binary/hudson_${id}_all.deb
-Redirect /ichci/latest/redhat/hudson.rpm http://download.infradna.com/ichci/rpm/RPMS/noarch/hudson-${id}-1.1.noarch.rpm
+Redirect /nectar/latest/nectar.war        http://download.infradna.com/nectar/war/$id/jenkins-war-${id}.war
+Redirect /nectar/latest/debian/nectar.deb http://download.infradna.com/nectar/debian/binary/jenkins_${id}_all.deb
+Redirect /nectar/latest/redhat/nectar.rpm http://download.infradna.com/nectar/rpm/RPMS/noarch/jenkins-${id}-1.1.noarch.rpm
 EOF
 scp target/.htaccess www-data@infradna.com:/var/www/infradna.com/ichci/latest/.htaccess
 
-scp $ws/rpm/SOURCES/hudson.repo www-data@infradna.com:/var/www/download.infradna.com/ichci/rpm/
+scp $ws/rpm/SOURCES/jenkins.repo www-data@infradna.com:/var/www/download.infradna.com/nectar/rpm/
 
 echo success
