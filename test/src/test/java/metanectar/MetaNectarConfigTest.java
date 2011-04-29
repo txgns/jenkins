@@ -19,8 +19,10 @@ public class MetaNectarConfigTest extends MetaNectarTestCase {
         properties.put("metaNectar.master.provisioning.basePort", "8181");
         properties.put("metaNectar.master.provisioning.homeLocation", "/tmp/masters");
         properties.put("metaNectar.master.provisioning.timeOut", "10");
-        properties.put("metaNectar.master.provisioning.script.provision", "start");
-        properties.put("metaNectar.master.provisioning.script.terminate", "stop");
+        properties.put("metaNectar.master.provisioning.script.provision", "provision");
+        properties.put("metaNectar.master.provisioning.script.start", "start");
+        properties.put("metaNectar.master.provisioning.script.stop", "stop");
+        properties.put("metaNectar.master.provisioning.script.terminate", "terminate");
         return properties;
     }
 
