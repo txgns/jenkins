@@ -90,6 +90,10 @@ public class UpdateCenterConfigurationImpl extends UpdateCenterConfiguration {
         return context.getSocketFactory();
     }
 
+    public String getUpdateCenterUrl() {
+        return "http://nectar-updates.cloudbees.com/";
+    }
+
     @Initializer(after=InitMilestone.JOB_LOADED)
     public static void install() {
         Hudson.getInstance().getUpdateCenter().configure(new UpdateCenterConfigurationImpl());
