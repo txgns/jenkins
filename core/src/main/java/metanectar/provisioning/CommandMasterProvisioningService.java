@@ -15,6 +15,7 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Map;
+import java.util.Properties;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
@@ -24,7 +25,9 @@ import java.util.concurrent.TimeUnit;
  * A master provisioning service that executes commands to provision and terminate masters.
  * <p>
  * The command to provision a master must return a URL on stdout, if the command is successful.
- *
+ * <p>
+ * TODO change MasterProvisioningService to support provision, start, stop, terminate and
+ *      then change MasterProvisioner to execute multiple tasks
  * @author Paul Sandoz
  */
 public class CommandMasterProvisioningService extends MasterProvisioningService {
@@ -61,14 +64,21 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
 
     private final String provisionCommand;
 
+    private final String startCommand;
+
+    private final String stopCommand;
+
     private final String terminateCommand;
 
     @DataBoundConstructor
-    public CommandMasterProvisioningService(int basePort, String homeLocation, int timeOut, String provisionCommand, String terminateCommand) {
+    public CommandMasterProvisioningService(int basePort, String homeLocation, int timeOut,
+                                            String provisionCommand, String startCommand, String stopCommand, String terminateCommand) {
         this.basePort = basePort;
         this.homeLocation = homeLocation;
         this.timeOut = timeOut;
         this.provisionCommand = provisionCommand;
+        this.startCommand = startCommand;
+        this.stopCommand = stopCommand;
         this.terminateCommand = terminateCommand;
     }
 
@@ -86,6 +96,14 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
 
     public String getProvisionCommand() {
         return provisionCommand;
+    }
+
+    public String getStartCommand() {
+        return startCommand;
+    }
+
+    public String getStopCommand() {
+        return stopCommand;
     }
 
     public String getTerminateCommand() {
@@ -106,79 +124,91 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
                                     final int id, final String organization, final URL metaNectarEndpoint, final Map<String, Object> properties) throws Exception {
         final String home = getHome(organization);
 
-        final Map<String, String> variables = Maps.newHashMap();
-        variables.put(Variable.MASTER_PORT.toString(), Integer.toString(getPort(id)));
-        variables.put(Variable.MASTER_HOME.toString(), home);
-        variables.put(Variable.MASTER_METANECTAR_ENDPOINT.toString(), metaNectarEndpoint.toExternalForm());
-        variables.put(Variable.MASTER_GRANT_ID.toString(), (String)properties.get(MetaNectar.GRANT_PROPERTY));
+        final Map<String, String> provisionVariables = Maps.newHashMap();
+        provisionVariables.put(Variable.MASTER_PORT.toString(), Integer.toString(getPort(id)));
+        provisionVariables.put(Variable.MASTER_HOME.toString(), home);
+        provisionVariables.put(Variable.MASTER_METANECTAR_ENDPOINT.toString(), metaNectarEndpoint.toExternalForm());
+        provisionVariables.put(Variable.MASTER_GRANT_ID.toString(), (String)properties.get(MetaNectar.GRANT_PROPERTY));
+
+        final Map<String, String> startVariables = Maps.newHashMap();
+        startVariables.put(Variable.MASTER_HOME.toString(), home);
 
         return Computer.threadPoolForRemoting.submit(new Callable<Master>() {
             public Master call() throws Exception {
-                final HomeDirectoryProvisioner hdp = new HomeDirectoryProvisioner(listener, getFilePath(channel, home));
+                Master m;
 
-                final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                // provision command
+                {
+                    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-                listener.getLogger().println("Executing provisioning script with environment variables: " + variables);
-                final Proc proc = getLauncher(channel, listener).launch().
-                        envs(variables).
-                        cmds(Util.tokenize(getProvisionCommand())).
-                        stderr(listener.getLogger()).
-                        stdout(baos).
-                        start();
+                    listener.getLogger().println(String.format("Executing provisioning command \"%s\" with environment variables %s", getProvisionCommand(), provisionVariables));
+                    final Proc provisionProcess = getLauncher(channel, listener).launch().
+                            envs(provisionVariables).
+                            cmds(Util.tokenize(getProvisionCommand())).
+                            stderr(listener.getLogger()).
+                            stdout(baos).
+                            start();
 
-                final int result = proc.joinWithTimeout(timeOut, TimeUnit.SECONDS, listener);
+                    final int result = provisionProcess.joinWithTimeout(timeOut, TimeUnit.SECONDS, listener);
 
-                if (result != 0) {
-                    final String errorString = "Failed to provision master, received signal from provision command: " + result;
-                    listener.error(errorString);
-                    throw new CommandProvisioningError(errorString, result);
+                    if (result != 0) {
+                        throw commandError(listener, "Failed to provision master, received signal from provision command: " + result, result);
+                    }
+
+
+                    Properties properties = new Properties();
+                    try {
+                        properties.load(new ByteArrayInputStream(baos.toByteArray()));
+                    } catch (IOException e) {
+                        e.printStackTrace(listener.error("Error parsing provisioning command result into Java properties"));
+                        throw e;
+                    }
+
+                    listener.getLogger().println("Provisioning command succeeded and returned with the properties: " + properties);
+
+                    if (!properties.containsKey(Property.MASTER_ENDPOINT.toString())) {
+                        String msg = "The returned properties does not contain the required property \"" + Property.MASTER_ENDPOINT.toString() + "\"";
+                        listener.error(msg);
+                        throw new IOException(msg);
+                    }
+
+                    try {
+                        final URL endpoint = new URL(properties.getProperty(Property.MASTER_ENDPOINT.toString()));
+
+                        m = new Master(organization, endpoint);
+                    } catch (MalformedURLException e) {
+                        e.printStackTrace(listener.error(String.format("The property \"%s\" of value \"%s\" is not a valid", Property.MASTER_ENDPOINT.toString(), properties.get(Property.MASTER_ENDPOINT.toString()))));
+                        throw e;
+                    }
                 }
 
-
-                Map<String, String> properties;
-                try {
-                    properties = parseProperties(listener, new ByteArrayInputStream(baos.toByteArray()));
-                } catch (IOException e) {
-                    e.printStackTrace(listener.error("Error parsing provisioning script result into properties of the form \"<name>:<value>\" per line"));
-                    throw e;
+                // additional provisioning of home directory
+                {
+                    final HomeDirectoryProvisioner hdp = new HomeDirectoryProvisioner(listener, getFilePath(channel, home));
                 }
 
-                listener.getLogger().println("Provisioning script succeeded and returned with the properties: " + properties);
+                // start command
+                {
+                    listener.getLogger().println(String.format("Executing start command \"%s\" with environment variables %s", getStartCommand(), startVariables));
+                    final Proc startProcess = getLauncher(channel, listener).launch().
+                            envs(startVariables).
+                            cmds(Util.tokenize(getStartCommand())).
+                            stderr(listener.getLogger()).
+                            stdout(listener.getLogger()).
+                            start();
 
-                if (!properties.containsKey(Property.MASTER_ENDPOINT.toString())) {
-                    String msg = "The returned properties does not contain the required property \"" + Property.MASTER_ENDPOINT.toString() + "\"";
-                    listener.error(msg);
-                    throw new IOException(msg);
+                    final int result = startProcess.joinWithTimeout(timeOut, TimeUnit.SECONDS, listener);
+
+                    if (result != 0) {
+                        throw commandError(listener, "Failed to start master, received signal from start command: " + result, result);
+                    }
+
+                    listener.getLogger().println("Start command succeeded");
                 }
 
-                try {
-                    final URL endpoint = new URL(properties.get(Property.MASTER_ENDPOINT.toString()));
-
-                    return new Master(organization, endpoint);
-                } catch (MalformedURLException e) {
-                    e.printStackTrace(listener.error("The property \"" + Property.MASTER_ENDPOINT.toString() + "\" is not a valid URL: " + properties.get(Property.MASTER_ENDPOINT.toString())));
-                    throw e;
-                }
+                return m;
             }
         });
-    }
-
-    private Map<String, String> parseProperties(TaskListener listener, InputStream in) throws IOException {
-        final Map<String, String> properties = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
-
-        final BufferedReader r = new BufferedReader(new InputStreamReader(in));
-
-        String line;
-        while ((line = r.readLine()) != null) {
-            String[] nameValue = line.split(":", 2);
-            if (nameValue.length == 2) {
-                properties.put(nameValue[0], nameValue[1]);
-            } else if (nameValue.length == 1) {
-                properties.put(nameValue[0], "");
-            }
-        }
-
-        return properties;
     }
 
     @Override
@@ -190,28 +220,52 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
         return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
             public Void call() throws Exception {
 
-                listener.getLogger().println("Executing termination script with environment variables: " + variables);
+                // stop command
+                {
+                    listener.getLogger().println(String.format("Executing stop command \"%s\" with environment variables %s", getStopCommand(), variables));
+                    final Proc proc = getLauncher(channel, listener).launch().
+                            envs(variables).
+                            cmds(Util.tokenize(getStopCommand())).
+                            stderr(listener.getLogger()).
+                            stdout(listener.getLogger()).
+                            start();
 
-                final Proc proc = getLauncher(channel, listener).launch().
-                        envs(variables).
-                        cmds(Util.tokenize(getTerminateCommand())).
-                        stderr(listener.getLogger()).
-                        stdout(listener.getLogger()).
-                        start();
+                    final int result = proc.joinWithTimeout(timeOut, TimeUnit.SECONDS, listener);
 
-                final int result = proc.joinWithTimeout(timeOut, TimeUnit.SECONDS, listener);
+                    if (result != 0) {
+                        throw commandError(listener, "Failed to stop master, received signal from stop command: " + result, result);
+                    }
 
-                if (result != 0) {
-                    final String errorString = "Failed to terminate master, received signal from provision command: " + result;
-                    listener.error(errorString);
-                    throw new CommandProvisioningError(errorString, result);
+                    listener.getLogger().println("Stop command succeeded");
                 }
 
-                listener.getLogger().println("Termination script succeeded");
+                // terminate command
+                {
+                    listener.getLogger().println(String.format("Executing termination command \"%s\" with environment variables %s", getTerminateCommand(), variables));
+                    final Proc proc = getLauncher(channel, listener).launch().
+                            envs(variables).
+                            cmds(Util.tokenize(getTerminateCommand())).
+                            stderr(listener.getLogger()).
+                            stdout(listener.getLogger()).
+                            start();
+
+                    final int result = proc.joinWithTimeout(timeOut, TimeUnit.SECONDS, listener);
+
+                    if (result != 0) {
+                        throw commandError(listener, "Failed to terminate master, received signal from terminate command: " + result, result);
+                    }
+
+                    listener.getLogger().println("Termination command succeeded");
+                }
 
                 return null;
             }
         });
+    }
+
+    private CommandProvisioningError commandError(TaskListener listener, String message, int result) {
+        listener.error(message);
+        return new CommandProvisioningError(message, result);
     }
 
     private Launcher getLauncher(final VirtualChannel channel, final TaskListener listener) throws Exception {

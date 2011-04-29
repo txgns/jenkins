@@ -1,11 +1,7 @@
 #!/bin/bash
 
-if [ -f "${MASTER_HOME}.pid" ]
+if [ -d "${MASTER_HOME}" ]
 then
-  pid=`cat ${MASTER_HOME}.pid`
-  kill ${pid}
-
-  rm ${MASTER_HOME}.pid
   rm -fr ${MASTER_HOME}
 fi
 exit 0

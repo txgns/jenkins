@@ -18,8 +18,10 @@ public class ConfigTest extends TestCase {
         properties.put("metaNectar.master.provisioning.basePort", "8181");
         properties.put("metaNectar.master.provisioning.homeLocation", "/tmp/masters");
         properties.put("metaNectar.master.provisioning.timeOut", "10");
-        properties.put("metaNectar.master.provisioning.script.provision", "start");
-        properties.put("metaNectar.master.provisioning.script.terminate", "stop");
+        properties.put("metaNectar.master.provisioning.script.provision", "provision");
+        properties.put("metaNectar.master.provisioning.script.start", "start");
+        properties.put("metaNectar.master.provisioning.script.stop", "stop");
+        properties.put("metaNectar.master.provisioning.script.terminate", "terminate");
         return properties;
     }
 
@@ -76,8 +78,10 @@ public class ConfigTest extends TestCase {
         assertEquals(8181, c.getMasterProvisioningBasePort());
         assertEquals("/tmp/masters", c.getMasterProvisioningHomeLocation());
         assertEquals(10, c.getMasterProvisioningTimeOut());
-        assertEquals("start", c.getMasterProvisioningScriptProvision());
-        assertEquals("stop", c.getMasterProvisioningScriptTerminate());
+        assertEquals("provision", c.getMasterProvisioningScriptProvision());
+        assertEquals("start", c.getMasterProvisioningScriptStart());
+        assertEquals("stop", c.getMasterProvisioningScriptStop());
+        assertEquals("terminate", c.getMasterProvisioningScriptTerminate());
     }
 
     private void testNoProperties(final Config c) throws Exception {
@@ -102,6 +106,18 @@ public class ConfigTest extends TestCase {
         _testWithThrower(new Thrower() {
             public void run() throws Exception {
                 c.getMasterProvisioningScriptProvision();
+            }
+        }, IllegalStateException.class);
+
+        _testWithThrower(new Thrower() {
+            public void run() throws Exception {
+                c.getMasterProvisioningScriptStart();
+            }
+        }, IllegalStateException.class);
+
+        _testWithThrower(new Thrower() {
+            public void run() throws Exception {
+                c.getMasterProvisioningScriptStop();
             }
         }, IllegalStateException.class);
 

@@ -126,6 +126,24 @@ public class Config {
     }
 
     /**
+     * @return the property "metaNectar.master.provisioning.script.start" that is the name of the script to execute
+     *         when starting a master.
+     * @throws IllegalStateException if the property is not present.
+     */
+    public String getMasterProvisioningScriptStart() throws IllegalStateException {
+        return getProperty("metaNectar.master.provisioning.script.start");
+    }
+
+    /**
+     * @return the property "metaNectar.master.provisioning.script.stop" that is the name of the script to execute
+     *         when stopping a master.
+     * @throws IllegalStateException if the property is not present.
+     */
+    public String getMasterProvisioningScriptStop() throws IllegalStateException {
+        return getProperty("metaNectar.master.provisioning.script.stop");
+    }
+
+    /**
      * @return the property "metaNectar.master.provisioning.script.terminate" that is the name of the script to execute
      *         when terminating a master.
      * @throws IllegalStateException if the property is not present.

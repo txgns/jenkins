@@ -17,6 +17,14 @@
         <f:textbox/>
     </f:entry>
 
+    <f:entry title="Start command" field="startCommand">
+        <f:textbox/>
+    </f:entry>
+
+    <f:entry title="Stop command" field="stopCommand">
+        <f:textbox/>
+    </f:entry>
+
     <f:entry title="Terminate command" field="terminateCommand">
         <f:textbox/>
     </f:entry>

@@ -57,6 +57,8 @@ public class ConfiguredCommandMasterProvisioningService extends MasterProvisioni
                 c.getMasterProvisioningHomeLocation(),
                 c.getMasterProvisioningTimeOut(),
                 c.getMasterProvisioningScriptProvision(),
+                c.getMasterProvisioningScriptStart(),
+                c.getMasterProvisioningScriptStop(),
                 c.getMasterProvisioningScriptTerminate());
     }
 

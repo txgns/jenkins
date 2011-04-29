@@ -15,14 +15,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static metanectar.provisioning.LatchMasterServerListener.ProvisionListener;
 import static metanectar.provisioning.LatchMasterServerListener.TerminateListener;
 
 /**
- * TODO, these tests most likely only work on unix unless the rm command is available on windows.
+ * TODO, these tests most likely only work on unix unless commands are available on windows.
  *
  * @author Paul Sandoz
  */
@@ -61,12 +60,31 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         terminate(provision());
     }
 
-
     public void testProvisionCommandTimeOut() throws Exception {
-        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(1, getCommand("sleep 60", "sleep 60")));
+        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(1,
+                getCommand("sleep 60", getStartScript(), getStopScript(), getTerminateScript())));
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());
 
+        _testProvisionStartTimeOut();
+
+        assertFalse(getMasterHomeDir().exists());
+        assertFalse(new File(getMasterHomeDir(), "started").exists());
+    }
+
+    public void testStartCommandTimeOut() throws Exception {
+        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(1,
+                getCommand(getProvisionScript(), "sleep 60", getStopScript(), getTerminateScript())));
+        // Reset the labels
+        metaNectar.setNodes(metaNectar.getNodes());
+
+        _testProvisionStartTimeOut();
+
+        assertTrue(getMasterHomeDir().exists());
+        assertFalse(new File(getMasterHomeDir(), "started").exists());
+    }
+
+    private void _testProvisionStartTimeOut() throws Exception {
         LatchMasterServerListener provisioningError = new LatchMasterServerListener(1) {
             public void onProvisioningError(MasterServer ms, Node n) {
                 countDown();
@@ -84,11 +102,31 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         assertEquals(CommandMasterProvisioningService.CommandProvisioningError.class, ms.getError().getClass());
     }
 
-    public void testTerminateCommandTimeOut() throws Exception {
-        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(1, getCommand(getProvisionScript(), "sleep 60")));
+    public void testStopCommandTimeOut() throws Exception {
+        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(1,
+                getCommand(getProvisionScript(), getStartScript(), "sleep 60", getTerminateScript())));
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());
 
+        _testStopTerminateTimeOut();
+
+        assertTrue(getMasterHomeDir().exists());
+        assertTrue(new File(getMasterHomeDir(), "started").exists());
+    }
+
+    public void testTerminateCommandTimeOut() throws Exception {
+        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(1,
+                getCommand(getProvisionScript(), getStartScript(), getStopScript(), "sleep 60")));
+        // Reset the labels
+        metaNectar.setNodes(metaNectar.getNodes());
+
+        _testStopTerminateTimeOut();
+
+        assertTrue(getMasterHomeDir().exists());
+        assertFalse(new File(getMasterHomeDir(), "started").exists());
+    }
+
+    private void _testStopTerminateTimeOut() throws Exception {
         MasterServer ms = provision();
 
         LatchMasterServerListener terminatingError = new LatchMasterServerListener(1) {
@@ -126,6 +164,20 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         return homeDir;
     }
 
+    private String getMasterName() {
+        return "org1";
+    }
+
+    private File masterHomeDir;
+
+    private File getMasterHomeDir() throws IOException {
+        if (masterHomeDir == null) {
+            masterHomeDir = new File(getHomeDir(), getMasterName());
+            masterHomeDir.deleteOnExit();
+        }
+
+        return masterHomeDir;
+    }
 
     private ConfiguredCommandMasterProvisioningService getConfigCommand() throws IOException {
         Map<String, String> properties = Maps.newHashMap();
@@ -135,7 +187,9 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         properties.put("metaNectar.master.provisioning.homeLocation", getHomeDir().toString());
         properties.put("metaNectar.master.provisioning.timeOut", "2");
         properties.put("metaNectar.master.provisioning.script.provision", getProvisionScript());
-        properties.put("metaNectar.master.provisioning.script.terminate", getTermianteScript());
+        properties.put("metaNectar.master.provisioning.script.start", getStartScript());
+        properties.put("metaNectar.master.provisioning.script.stop", getStopScript());
+        properties.put("metaNectar.master.provisioning.script.terminate", getTerminateScript());
 
         Properties ps = new Properties();
         ps.putAll(properties);
@@ -145,21 +199,34 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     private CommandMasterProvisioningService getDefaultCommand() throws IOException {
         return getCommand(
                 getProvisionScript(),
-                getTermianteScript());
+                getStartScript(),
+                getStopScript(),
+                getTerminateScript());
     }
 
-    private CommandMasterProvisioningService getCommand(String provisionCommand, String terminateCommand) throws IOException {
+    private CommandMasterProvisioningService getCommand(String provisionCommand, String startCommand,
+                                                        String stopCommand, String terminateCommand) throws IOException {
         return new CommandMasterProvisioningService(8080, getHomeDir().toString(), 2,
                 provisionCommand,
+                startCommand,
+                stopCommand,
                 terminateCommand);
     }
 
-    private String getProvisionScript() {
-        return "echo \"master_endpoint:" + getTestUrl() + "\"";
+    private String getProvisionScript() throws IOException {
+        return String.format("/bin/sh -c \"mkdir -p '%s'; echo 'MASTER_ENDPOINT=%s'\"", getMasterHomeDir().toString(), getTestUrl());
     }
 
-    private String getTermianteScript() throws IOException {
-        return "rm " + getTerminatingFile().toString();
+    private String getStartScript() throws IOException {
+        return "touch " + getMasterHomeDir().toString() + "/started";
+    }
+
+    private String getStopScript() throws IOException {
+        return "rm " + getMasterHomeDir().toString() + "/started";
+    }
+
+    private String getTerminateScript() throws IOException {
+        return "rm -fr " + getMasterHomeDir().toString();
     }
 
     private MasterServer provision() throws Exception {
@@ -167,7 +234,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
 
         Map<String, Object> properties = new HashMap<String, Object>();
         properties.put(MetaNectar.GRANT_PROPERTY, "grant");
-        MasterServer ms = metaNectar.createMasterServer("org1");
+        MasterServer ms = metaNectar.createMasterServer(getMasterName());
         metaNectar.masterProvisioner.provision(ms, new URL("http://test/"), properties);
 
         pl.await(1, TimeUnit.MINUTES);
@@ -178,10 +245,9 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         assertNotNull(port);
         assertEquals(8080, Integer.valueOf(port) + ms.getId());
 
-        File homeFile = new File(getHomeDir(), "org1");
         String home = params.get(CommandMasterProvisioningService.Variable.MASTER_HOME.toString());
         assertNotNull(home);
-        assertEquals(home, homeFile.toString());
+        assertEquals(home, getMasterHomeDir().toString());
 
         String metaNectarEndpoint = params.get(CommandMasterProvisioningService.Variable.MASTER_METANECTAR_ENDPOINT.toString());
         assertNotNull(metaNectarEndpoint);
@@ -191,20 +257,20 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         assertNotNull(grantId);
         assertEquals(grantId, "grant");
 
-        assertTrue(homeFile.exists());
+        assertTrue(getMasterHomeDir().exists());
+        assertTrue(new File(getMasterHomeDir(), "started").exists());
+
         return ms;
     }
 
     private void terminate(MasterServer ms) throws Exception {
-        assertTrue(getTerminatingFile().exists());
-
         TerminateListener tl = new TerminateListener(2);
 
         metaNectar.masterProvisioner.terminate(ms, false);
 
         tl.await(1, TimeUnit.MINUTES);
 
-        assertFalse(getTerminatingFile().exists());
+        assertFalse(getMasterHomeDir().exists());
     }
 
     private String getTestUrl() {
