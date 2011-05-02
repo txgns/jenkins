@@ -25,9 +25,9 @@ cd "$ws"
 # if left-over hudson.war for Debian build from the last time, delete it.
 rm hudson.war || true
 
-tag=hudson-$(show-pom-version pom.xml | sed -e "s/-SNAPSHOT//g" -e "s/\\./_/g")
+tag=nectar-$(show-pom-version pom.xml | sed -e "s/-SNAPSHOT//g" -e "s/\\./_/g")
 export MAVEN_OPTS="-Xmx512m -XX:MaxPermSize=256m"
-mvn -B -Dtag=$tag -DskipTests release:prepare || mvn -B -Dtag=$tag -DskipTests install release:prepare || true
+mvn -B -Dtag=$tag -DskipTests release:prepare -DpreparationGoals="clean install -DskipTests"
 mvn release:perform
 war=$PWD/target/checkout/nectar-war/target/nectar.war
 
