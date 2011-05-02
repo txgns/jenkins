@@ -72,12 +72,12 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
         }
 
         public void onOnline(Computer c, TaskListener listener) throws IOException, InterruptedException {
-            if (MetaNectar.getInstance().masterProvisioner != null)
+            if (MetaNectar.getInstance().masterProvisioner != null && c.getNode() != MetaNectar.getInstance())
                 online.add(c.getNode());
         }
 
         public void onOffline(Computer c) {
-            if (MetaNectar.getInstance().masterProvisioner != null)
+            if (MetaNectar.getInstance().masterProvisioner != null && c.getNode() != MetaNectar.getInstance())
                 online.remove(c.getNode());
         }
     }
