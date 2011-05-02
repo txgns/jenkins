@@ -28,6 +28,7 @@ import com.thoughtworks.xstream.core.JVM;
 import hudson.license.LicenseManager;
 import hudson.license.RegistrationHandler;
 import hudson.model.Hudson;
+import hudson.model.ManagementLink;
 import hudson.model.User;
 import hudson.triggers.SafeTimerTask;
 import hudson.triggers.Trigger;
@@ -223,12 +224,17 @@ public class WebAppMain implements ServletContextListener {
                 public void run() {
                     try {
                         Hudson theInstance = createHudson(home, context);
-                        RegistrationHandler rh = new RegistrationHandler(context);
-                        // is this licenseKey valid for this installation?
-                        if (!LicenseManager.getInstance().isExpired() || Main.isUnitTest)
-                            context.setAttribute(APP, theInstance);
-                        else
-                            context.setAttribute(APP, rh);
+                        // Comment out license checking for now, makes it easier for development purposes
+                        // TODO revert back later with a way to support a development mode where a
+                        // license is automatically registered.
+//                        RegistrationHandler rh = new RegistrationHandler(context);
+//                        // is this licenseKey valid for this installation?
+//                        if (!LicenseManager.getInstance().isExpired() || Main.isUnitTest)
+//                            context.setAttribute(APP, theInstance);
+//                        else
+//                            context.setAttribute(APP, rh);
+                        ManagementLink.all().remove(theInstance.getLicense());
+                        context.setAttribute(APP, theInstance);
 
                         // trigger the loading of changelogs in the background,
                         // but give the system 10 seconds so that the first page
