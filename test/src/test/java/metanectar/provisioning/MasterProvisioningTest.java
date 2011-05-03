@@ -1,6 +1,5 @@
 package metanectar.provisioning;
 
-import hudson.Extension;
 import hudson.model.Computer;
 import hudson.model.Node;
 import hudson.model.TaskListener;
@@ -20,8 +19,8 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import static metanectar.provisioning.LatchMasterServerListener.ProvisionListener;
-import static metanectar.provisioning.LatchMasterServerListener.TerminateListener;
+import static metanectar.provisioning.LatchMasterServerListener.ProvisionAndStartListener;
+import static metanectar.provisioning.LatchMasterServerListener.StopAndTerminateListener;
 
 /**
  * @author Paul Sandoz
@@ -42,25 +41,40 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
                 public Master call() throws Exception {
                     Thread.sleep(delay);
 
-                    System.out.println("launching master");
+                    System.out.println("provisioning master");
 
                     return new Master(organization, metaNectarEndpoint);
                 }
             });
         }
 
+        public Future<?> start(VirtualChannel channel, TaskListener listener,
+                                        String name) throws Exception {
+            return getFuture("starting master");
+        }
+
+        public Future<?> stop(VirtualChannel channel, TaskListener listener,
+                                        String name) throws Exception {
+            return getFuture("stopping master");
+        }
+
         public Future<?> terminate(VirtualChannel channel, TaskListener listener,
                                    String organization, boolean clean) throws IOException, InterruptedException {
+            return getFuture("terminating master");
+        }
+
+        private Future<?> getFuture(final String s) {
             return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
                 public Void call() throws Exception {
                     Thread.sleep(delay);
 
-                    System.out.println("deleting master");
+                    System.out.println(s);
 
                     return null;
                 }
             });
         }
+
     }
 
     public static class MyComputerListener extends ComputerListener {
@@ -107,11 +121,11 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
 
         MyComputerListener cl = new MyComputerListener();
 
-        SlaveMasterProvisioningNodePropertyTemplate tp = new SlaveMasterProvisioningNodePropertyTemplate(nodesPerMaster, new TestMasterProvisioningService(100));
+        SlaveMasterProvisioningNodePropertyTemplate tp = new SlaveMasterProvisioningNodePropertyTemplate(nodesPerMaster, new Service(100));
         MasterProvisioningCloud pc = new MasterProvisioningCloud(tp, new TestSlaveCloud(this, 100));
         metaNectar.clouds.add(pc);
 
-        ProvisionListener pl = new ProvisionListener(2 * masters);
+        ProvisionAndStartListener pl = new ProvisionAndStartListener(4 * masters);
 
         Map<String, Object> properties = new HashMap<String, Object>();
         properties.put("key", "value");
@@ -156,7 +170,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
     private void _testDelete(int masters, int nodesPerMaster) throws Exception {
         int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
 
-        TerminateListener tl = new TerminateListener(2 * masters);
+        StopAndTerminateListener tl = new StopAndTerminateListener(4 * masters);
 
         for (int i = 0; i < masters; i++) {
             metaNectar.masterProvisioner.terminate(metaNectar.getMasterByOrganization("org" + i), true);
@@ -184,7 +198,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());
 
-        ProvisionListener pl = new ProvisionListener(2 * masters);
+        ProvisionAndStartListener pl = new ProvisionAndStartListener(4 * masters);
 
         Map<String, Object> properties = new HashMap<String, Object>();
         properties.put("key", "value");
@@ -211,7 +225,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
     private void _testDeleteOnMetaNectarNode(int masters, int nodesPerMaster) throws Exception {
         int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
 
-        TerminateListener tl = new TerminateListener(2 * masters);
+        StopAndTerminateListener tl = new StopAndTerminateListener(4 * masters);
 
         for (int i = 0; i < masters; i++) {
             metaNectar.masterProvisioner.terminate(metaNectar.getMasterByOrganization("org" + i), true);
@@ -303,7 +317,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
     }
 
     private MasterServer provisionedMaster(String name) throws Exception {
-        ProvisionListener pl = new ProvisionListener(2);
+        ProvisionAndStartListener pl = new ProvisionAndStartListener(4);
 
         Map<String, Object> properties = new HashMap<String, Object>();
         properties.put("key", "value");
@@ -315,7 +329,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
     }
 
     private void terminateMaster(MasterServer ms) throws Exception {
-        TerminateListener tl = new TerminateListener(2);
+        StopAndTerminateListener tl = new StopAndTerminateListener(4);
 
         metaNectar.masterProvisioner.terminate(ms, true);
         metaNectar.getItems().remove(ms);

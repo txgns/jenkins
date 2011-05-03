@@ -46,6 +46,6 @@ public class MasterProvisioningNoResourcesTest extends AbstractMasterProvisionin
 
         connected.await(1, TimeUnit.MINUTES);
 
-        assertEquals(MasterServer.State.Connectable, ms.getState());
+        assertEquals(MasterServer.State.Approved, ms.getState());
     }
 }

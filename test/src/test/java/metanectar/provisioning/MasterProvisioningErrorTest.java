@@ -39,6 +39,16 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTest 
             });
         }
 
+        public Future<?> start(VirtualChannel channel, TaskListener listener,
+                                        String name) throws Exception {
+            return getFuture("starting master");
+        }
+
+        public Future<?> stop(VirtualChannel channel, TaskListener listener,
+                                        String name) throws Exception {
+            return getFuture("stopping master");
+        }
+
         public Future<?> terminate(VirtualChannel channel, TaskListener listener,
                                    String organization, boolean clean) throws IOException, InterruptedException {
             return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
@@ -49,6 +59,19 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTest 
                 }
             });
         }
+
+        private Future<?> getFuture(final String s) {
+            return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
+                public Void call() throws Exception {
+                    Thread.sleep(delay);
+
+                    System.out.println(s);
+
+                    return null;
+                }
+            });
+        }
+
     }
 
     public void testProvisionWithError() throws Exception {
@@ -57,7 +80,7 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTest 
         MasterServer ms = metaNectar.createMasterServer("org");
 
         LatchMasterServerListener provisioningError = new LatchMasterServerListener(1) {
-            public void onProvisioningError(MasterServer ms, Node n) {
+            public void onProvisioningError(MasterServer ms) {
                 countDown();
             }
         };

@@ -104,21 +104,30 @@ public class TestMasterServer {
         }
     }
 
-    public TestMasterServer(URL metaNectarEndpoint, String organization, Map<String, Object> properties) throws IOException {
-
+    public TestMasterServer(final URL metaNectarEndpoint, final String organization, final Map<String, Object> properties) throws IOException {
         final HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/", new HttpHandler() {
             public void handle(HttpExchange httpExchange) throws IOException {
-                if (httpExchange.getRequestMethod().equalsIgnoreCase("POST") && httpExchange.getRequestURI().getPath().equals("/stop")) {
-                    stop();
+                if (httpExchange.getRequestMethod().equalsIgnoreCase("POST")) {
+                    if (httpExchange.getRequestURI().getPath().equals("/stop")) {
+                        stop();
 
-                    httpExchange.sendResponseHeaders(200, 0);
-                    OutputStream out = httpExchange.getResponseBody();
-                    out.write("Stopping".getBytes());
-                    out.close();
-                    httpExchange.close();
+                        httpExchange.sendResponseHeaders(200, 0);
+                        OutputStream out = httpExchange.getResponseBody();
+                        out.write("Stopping".getBytes());
+                        out.close();
+                        httpExchange.close();
 
-                    server.stop(0);
+                        server.stop(0);
+                    } else if (httpExchange.getRequestURI().getPath().equals("/start")) {
+                        start();
+
+                        httpExchange.sendResponseHeaders(200, 0);
+                        OutputStream out = httpExchange.getResponseBody();
+                        out.write("Starting".getBytes());
+                        out.close();
+                        httpExchange.close();
+                    }
                 } else {
                     Headers responseHeaders = httpExchange.getResponseHeaders();
                     responseHeaders.add("X-Jenkins", "");

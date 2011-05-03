@@ -14,30 +14,11 @@ import java.util.logging.Logger;
  * @author Paul Sandoz
  */
 public abstract class MasterServerListener implements ExtensionPoint {
-    private static final Logger LOGGER = Logger.getLogger(MasterServerListener.class.getName());
+    public abstract void onStateChange(MasterServer ms);
 
-    public void onCreated(MasterServer ms) {}
+    public abstract void onConnected(MasterServer ms);
 
-    public void onProvisioning(MasterServer ms) {}
-
-    public void onProvisioningErrorNoResources(MasterServer ms) {}
-
-    public void onProvisioningError(MasterServer ms, Node n) {}
-
-    public void onProvisioned(MasterServer ms) {}
-
-    public void onApproved(MasterServer ms) {}
-
-    public void onConnected(MasterServer ms) {}
-
-    public void onDisconnected(MasterServer ms) {}
-
-    public void onTerminating(MasterServer ms) {}
-
-    public void onTerminatingError(MasterServer ms) {}
-
-    public void onTerminated(MasterServer ms) {}
-
+    public abstract void onDisconnected(MasterServer ms);
 
     public static ExtensionList<MasterServerListener> all() {
         return Hudson.getInstance().getExtensionList(MasterServerListener.class);

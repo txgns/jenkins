@@ -1,27 +1,15 @@
 package metanectar.provisioning;
 
-import com.google.common.collect.Maps;
-import hudson.*;
-import hudson.model.Computer;
+import hudson.Extension;
 import hudson.model.Descriptor;
 import hudson.model.TaskListener;
-import hudson.remoting.LocalChannel;
 import hudson.remoting.VirtualChannel;
 import metanectar.Config;
-import metanectar.model.MetaNectar;
-import metanectar.provisioning.HomeDirectoryProvisioner;
-import metanectar.provisioning.Master;
-import metanectar.provisioning.MasterProvisioningService;
 import org.kohsuke.stapler.DataBoundConstructor;
 
-import java.io.*;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Map;
-import java.util.TreeMap;
-import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 /**
  * A configured master provisioning service that executes commands to provision and terminate masters.
@@ -29,7 +17,6 @@ import java.util.concurrent.TimeUnit;
  * @author Paul Sandoz
  */
 public class ConfiguredCommandMasterProvisioningService extends MasterProvisioningService {
-
     // Delegate instead of extend so information will not get serialized
     private transient CommandMasterProvisioningService s;
 
@@ -65,6 +52,16 @@ public class ConfiguredCommandMasterProvisioningService extends MasterProvisioni
     @Override
     public Future<Master> provision(VirtualChannel channel, TaskListener listener, int id, String organization, URL metaNectarEndpoint, Map<String, Object> properties) throws Exception {
         return s.provision(channel, listener, id, organization, metaNectarEndpoint, properties);
+    }
+
+    @Override
+    public Future<?> start(VirtualChannel channel, TaskListener listener, String name) throws Exception {
+        return s.start(channel, listener, name);
+    }
+
+    @Override
+    public Future<?> stop(VirtualChannel channel, TaskListener listener, String name) throws Exception {
+        return s.stop(channel, listener, name);
     }
 
     @Override

@@ -14,8 +14,8 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static metanectar.provisioning.LatchMasterServerListener.ProvisionListener;
-import static metanectar.provisioning.LatchMasterServerListener.TerminateListener;
+import static metanectar.provisioning.LatchMasterServerListener.ProvisionAndStartListener;
+import static metanectar.provisioning.LatchMasterServerListener.StopAndTerminateListener;
 
 
 /**
@@ -118,7 +118,7 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
 
         c.configure();
 
-        ProvisionListener pl = new ProvisionListener(2 * masters);
+        ProvisionAndStartListener pl = new ProvisionAndStartListener(4 * masters);
 
         for (int i = 0; i < masters; i++) {
             MasterServer ms = metaNectar.createMasterServer("org" + i);
@@ -161,7 +161,7 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
     }
 
     private void _testDelete(int masters) throws Exception {
-        TerminateListener tl = new TerminateListener(2 * masters);
+        StopAndTerminateListener tl = new StopAndTerminateListener(4 * masters);
 
         for (int i = 0; i < masters; i++) {
             metaNectar.masterProvisioner.terminate(metaNectar.getMasterByOrganization("org" + i), true);

@@ -3,6 +3,7 @@ package metanectar.provisioning.task;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 
 /**
  * @author Paul Sandoz
@@ -16,7 +17,7 @@ public class TaskQueue<T extends Task> {
     }
 
     public void process() {
-        for (Iterator<T> itr = queue.iterator(); itr.hasNext();) {
+        for (ListIterator<T> itr = queue.listIterator(); itr.hasNext();) {
             final T t = itr.next();
 
             if (t.isDone()) {
@@ -32,7 +33,7 @@ public class TaskQueue<T extends Task> {
                 if (next != null) {
                     try {
                         next.start();
-                        add(t);
+                        itr.add(next);
                     } catch (Exception e) {
                         // Ignore
                     }

@@ -68,42 +68,41 @@ public class MetaNectar extends Hudson {
             final MasterServer server = metaNectar.getMasterByOrganization(organization);
 
             if (server == null) {
-                throw new GeneralSecurityException("The master " + organization + " does not exist");
+                throw new IllegalStateException("The master " + organization + " does not exist");
             }
 
             if (server.isTerminating()) {
-                throw new GeneralSecurityException("The master " + organization + " is terminating");
+                throw new IllegalStateException("The master " + organization + " is terminating");
             }
 
             if (server.isApproved()) {
                 if (server.getIdentity().equals(identity.getPublicKey())) {
                     LOGGER.info("Master is identified and approved: " + organization + " " + address);
-                } else {
-                    throw new GracefulConnectionRefusalException("The master " + organization + " identity does not match");
+                    return;
                 }
-                return;
+
+                throw new GeneralSecurityException("The master " + organization + " identity does not match that which was previously approved");
             }
 
-            // Check if there is a grant for automatic registration
             if (properties.containsKey(GRANT_PROPERTY)) {
+                // Check if there is a grant for automatic registration
                 final String receivedGrant = properties.get(GRANT_PROPERTY);
 
-                if (server.getGrantId() != null) {
-                    if (server.getGrantId().equals(receivedGrant)) {
-                        server.setApprovedState((RSAPublicKey) identity.getPublicKey(), address);
-                        LOGGER.info("Valid grant received. Master is identified and approved: " + organization + " " + address);
-                        return;
-                    } else {
-                        // Grant is not the same that was issued
-                        throw new GracefulConnectionRefusalException("Invalid grant for master " + organization);
-                    }
-                } else {
-                    throw new IllegalStateException("The master " + organization + " has no grant");
+                if (receivedGrant.equals(server.getGrantId())) {
+                    server.setApprovedState((RSAPublicKey) identity.getPublicKey(), address);
+                    LOGGER.info("Valid grant received. Master is identified and approved: " + organization + " " + address);
+                    return;
                 }
+
+                GeneralSecurityException e = new GeneralSecurityException("Invalid grant for master " + organization + ": received " + receivedGrant + " expected " + server.getGrantId());
+                server.setApprovalErrorState(e);
+                throw e;
             }
 
             LOGGER.info("Master is not approved: "+ organization + " " + address);
-            throw new GracefulConnectionRefusalException("This master is not approved by MetaNectar");
+            GracefulConnectionRefusalException e = new GracefulConnectionRefusalException("This master is not approved by MetaNectar");
+            server.setApprovalErrorState(e);
+            throw e;
         }
 
         public void onConnectedTo(Channel channel, X509Certificate identity, String organization) throws IOException {

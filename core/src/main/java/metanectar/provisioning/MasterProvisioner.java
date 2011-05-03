@@ -147,7 +147,7 @@ public class MasterProvisioner {
                     }
 
                     final int id = getFreeId(n, provisioned.get(n));
-                    final MasterProvisionTask mpt = new MasterProvisionTask(pmr.ms, pmr.metaNectarEndpoint, pmr.properties, n, id);
+                    final MasterProvisionThenStartTask mpt = new MasterProvisionThenStartTask(pmr.ms, pmr.metaNectarEndpoint, pmr.properties, n, id);
                     try {
                         mpt.start();
                         masterServerTaskQueue.getQueue().add(mpt);
@@ -272,7 +272,7 @@ public class MasterProvisioner {
                 continue;
             }
 
-            final MasterTerminateTask mtt = new MasterTerminateTask(tmr.ms);
+            final MasterStopThenTerminateTask mtt = new MasterStopThenTerminateTask(tmr.ms);
             try {
                 mtt.start();
                 masterServerTaskQueue.getQueue().add(mtt);

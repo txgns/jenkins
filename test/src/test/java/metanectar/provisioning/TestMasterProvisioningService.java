@@ -35,18 +35,56 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
     }
 
     public Future<Master> provision(final VirtualChannel channel, TaskListener listener,
-                                    int id, final String organization, final URL metaNectarEndpoint, final Map<String, Object> properties) throws IOException, InterruptedException {
+                                    int id, final String name, final URL metaNectarEndpoint, final Map<String, Object> properties) throws IOException, InterruptedException {
         return Computer.threadPoolForRemoting.submit(new Callable<Master>() {
             public Master call() throws Exception {
-                System.out.println("Launching master " + organization);
+                System.out.println("Launching master " + name);
 
                 Thread.sleep(delay);
 
-                final URL endpoint = channel.call(new TestMasterServerCallable(metaNectarEndpoint, organization, properties));
+                final URL endpoint = channel.call(new TestMasterServerCallable(metaNectarEndpoint, name, properties));
 
-                System.out.println("Launched master " + organization + ": " + endpoint);
-                provisioned.put(organization, endpoint);
-                return new Master(organization, endpoint);
+                Thread.sleep(delay);
+
+                System.out.println("Launched master " + name + ": " + endpoint);
+                provisioned.put(name, endpoint);
+                return new Master(name, endpoint);
+            }
+        });
+    }
+
+    public Future<?> start(VirtualChannel channel, TaskListener listener,
+                                    final String name) throws Exception {
+        return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
+            public Void call() throws Exception {
+                URL endpoint = provisioned.get(name);
+
+                URL start = new URL(endpoint.toExternalForm() + "/start");
+                HttpURLConnection c = (HttpURLConnection)start.openConnection();
+                c.setDoOutput(true);
+                c.setRequestMethod("POST");
+                IOUtils.toString(c.getInputStream());
+                c.getResponseCode();
+
+                return null;
+            }
+        });
+    }
+
+    public Future<?> stop(VirtualChannel channel, TaskListener listener,
+                                    final String name) throws Exception {
+        return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
+            public Void call() throws Exception {
+                URL endpoint = provisioned.get(name);
+
+                URL stop = new URL(endpoint.toExternalForm() + "/stop");
+                HttpURLConnection c = (HttpURLConnection)stop.openConnection();
+                c.setDoOutput(true);
+                c.setRequestMethod("POST");
+                IOUtils.toString(c.getInputStream());
+                c.getResponseCode();
+
+                return null;
             }
         });
     }
@@ -55,14 +93,7 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
                                final String organization, boolean clean) throws IOException, InterruptedException {
         return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
             public Void call() throws Exception {
-                URL endpoint = provisioned.get(organization);
-
-                URL stop = new URL(endpoint.toExternalForm() + "/stop");
-                HttpURLConnection c = (HttpURLConnection)stop.openConnection();
-                c.setDoOutput(true);
-                c.setRequestMethod("POST");
-                IOUtils.toString(c.getInputStream());
-                c.getResponseCode();
+                Thread.sleep(delay);
 
                 return null;
             }
@@ -83,7 +114,7 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
         public URL call() throws Exception {
             TestMasterServer masterServer = new TestMasterServer(metaNectarEndpoint, organization, properties);
             masterServer.setRetryInterval(500);
-            return masterServer.start();
+            return masterServer.endpoint;
         }
     }
 }

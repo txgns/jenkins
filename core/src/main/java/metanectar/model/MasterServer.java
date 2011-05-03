@@ -51,7 +51,14 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         ProvisioningErrorNoResources,
         ProvisioningError,
         Provisioned,
-        Connectable,
+        Starting,
+        StartingError,
+        Started,
+        Approved,
+        ApprovalError,
+        Stopping,
+        StoppingError,
+        Stopped,
         PreTerminating,
         Terminating,
         TerminatingError,
@@ -200,7 +207,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         setState(Created);
         this.grantId = grantId;
         save();
-        fireOnCreated();
+        fireOnStateChange();
 
         taskListener.getLogger().println("Created");
         taskListener.getLogger().println(toString());
@@ -220,24 +227,19 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         this.node = node;
         this.id = id;
         save();
-        fireOnProvisioning();
+        fireOnStateChange();
 
         taskListener.getLogger().println("Provisioning");
         taskListener.getLogger().println(toString());
     }
 
     public void setProvisionCompletedState(Node node, URL endpoint) throws IOException {
-        // Potentially may go from the provisioning state to the disconnected state
-        // if the master communicates with nectar before the periodic timer executes
-        // to process the provisioning event
-        if (this.state == Provisioning) {
-            setState(Provisioned);
-            this.nodeName = node.getNodeName();
-            this.node = node;
-            this.endpoint = endpoint;
-            save();
-            fireOnProvisioned();
-        }
+        setState(Provisioned);
+        this.nodeName = node.getNodeName();
+        this.node = node;
+        this.endpoint = endpoint;
+        save();
+        fireOnStateChange();
 
         taskListener.getLogger().println("Provisioned");
         taskListener.getLogger().println(toString());
@@ -250,7 +252,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         this.node = node;
         this.id = 0;
         save();
-        fireOnProvisioningError();
+        fireOnStateChange();
 
         taskListener.getLogger().println("Provision Error");
         taskListener.getLogger().println(toString());
@@ -261,23 +263,68 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         if (state != ProvisioningErrorNoResources) {
             setState(ProvisioningErrorNoResources);
             save();
-            fireOnProvisioningErrorNoResources();
+            fireOnStateChange();
 
             taskListener.getLogger().println("Provision Error No Resources");
             taskListener.getLogger().println(toString());
         }
     }
 
+    public void setStartingState() throws IOException {
+        setState(Starting);
+        save();
+        fireOnStateChange();
+
+        taskListener.getLogger().println("Starting");
+        taskListener.getLogger().println(toString());
+    }
+
+    public void setStartingErrorState(Throwable error) throws IOException {
+        setState(StartingError);
+        this.error = error;
+        save();
+        fireOnStateChange();
+
+        taskListener.getLogger().println("Starting Error");
+        taskListener.getLogger().println(toString());
+        error.printStackTrace(taskListener.error("Starting Error"));
+    }
+
+    public void setStartedState() throws IOException {
+        // Potentially may go from the starting state to the approved state
+        // if the master communicates with MetaNectar before the periodic timer executes
+        // to process the completion of the start task
+        if (this.state == Starting) {
+            setState(Started);
+            save();
+            fireOnStateChange();
+        }
+
+        taskListener.getLogger().println("Started");
+        taskListener.getLogger().println(toString());
+    }
+
     public void setApprovedState(RSAPublicKey pk, URL endpoint) throws IOException {
-        setState(Connectable);
+        setState(Approved);
         this.identity = pk.getEncoded();
         this.endpoint = endpoint;
         this.approved = true;
         save();
-        fireOnApproved();
+        fireOnStateChange();
 
         taskListener.getLogger().println("Approved");
         taskListener.getLogger().println(toString());
+    }
+
+    public void setApprovalErrorState(Throwable error) throws IOException {
+        setState(ApprovalError);
+        this.error = error;
+        save();
+        fireOnStateChange();
+
+        taskListener.getLogger().println("Approval Error");
+        taskListener.getLogger().println(toString());
+        error.printStackTrace(taskListener.error("Approval Error"));
     }
 
     public void setConnectedState(Channel channel) throws IOException {
@@ -291,6 +338,35 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
                 channel.export(SlaveManager.class, new MetaNectarSlaveManager()));
 
         taskListener.getLogger().println("Connected");
+        taskListener.getLogger().println(toString());
+    }
+
+    public void setStoppingState() throws IOException {
+        setState(Stopping);
+        save();
+        fireOnStateChange();
+
+        taskListener.getLogger().println("Stopping");
+        taskListener.getLogger().println(toString());
+    }
+
+    public void setStoppingErrorState(Throwable error) throws IOException {
+        setState(StoppingError);
+        this.error = error;
+        save();
+        fireOnStateChange();
+
+        taskListener.getLogger().println("Stopping Error");
+        taskListener.getLogger().println(toString());
+        error.printStackTrace(taskListener.error("Stopping Error"));
+    }
+
+    public void setStoppedState() throws IOException {
+        setState(Stopped);
+        save();
+        fireOnStateChange();
+
+        taskListener.getLogger().println("Stopped");
         taskListener.getLogger().println(toString());
     }
 
@@ -309,7 +385,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
         setState(Terminating);
         save();
-        fireOnTerminating();
+        fireOnStateChange();
 
         taskListener.getLogger().println("Terminating");
         taskListener.getLogger().println(toString());
@@ -322,7 +398,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         this.endpoint = null;
         this.id = 0;
         save();
-        fireOnTerminated();
+        fireOnStateChange();
 
         taskListener.getLogger().println("Terminated");
         taskListener.getLogger().println(toString());
@@ -332,7 +408,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         setState(TerminatingError);
         this.error = error;
         save();
-        fireOnTerminatingError();
+        fireOnStateChange();
 
         taskListener.getLogger().println("Terminating Error");
         taskListener.getLogger().println(toString());
@@ -347,50 +423,10 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
     // Event firing
 
-    private final void fireOnCreated() {
+    private final void fireOnStateChange() {
         fire (new Lambda() {
             public void f(MasterServerListener msl) {
-                msl.onCreated(MasterServer.this);
-            }
-        });
-    }
-
-    private final void fireOnProvisioning() {
-        fire (new Lambda() {
-            public void f(MasterServerListener msl) {
-                msl.onProvisioning(MasterServer.this);
-            }
-        });
-    }
-
-    final void fireOnProvisioningErrorNoResources() {
-        fire (new Lambda() {
-            public void f(MasterServerListener msl) {
-                msl.onProvisioningErrorNoResources(MasterServer.this);
-            }
-        });
-    }
-
-    private final void fireOnProvisioningError() {
-        fire (new Lambda() {
-            public void f(MasterServerListener msl) {
-                msl.onProvisioningError(MasterServer.this, MasterServer.this.getNode());
-            }
-        });
-    }
-
-    private final void fireOnProvisioned() {
-        fire (new Lambda() {
-            public void f(MasterServerListener msl) {
-                msl.onProvisioned(MasterServer.this);
-            }
-        });
-    }
-
-    private final void fireOnApproved() {
-        fire (new Lambda() {
-            public void f(MasterServerListener msl) {
-                msl.onApproved(MasterServer.this);
+                msl.onStateChange(MasterServer.this);
             }
         });
     }
@@ -410,31 +446,6 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
             }
         });
     }
-
-    private final void fireOnTerminating() {
-        fire (new Lambda() {
-            public void f(MasterServerListener msl) {
-                msl.onTerminating(MasterServer.this);
-            }
-        });
-    }
-
-    private final void fireOnTerminatingError() {
-        fire (new Lambda() {
-            public void f(MasterServerListener msl) {
-                msl.onTerminatingError(MasterServer.this);
-            }
-        });
-    }
-
-    private final void fireOnTerminated() {
-        fire (new Lambda() {
-            public void f(MasterServerListener msl) {
-                msl.onTerminated(MasterServer.this);
-            }
-        });
-    }
-
 
     private interface Lambda {
         void f(MasterServerListener msl);
@@ -543,7 +554,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         switch (state) {
             case ProvisioningError:
             case Provisioned:
-            case Connectable:
+            case Approved:
             case TerminatingError:
                 return true;
 
@@ -620,6 +631,8 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         if (state.ordinal() < Terminating.ordinal()) {
             setDisconnectStateCallback();
         } else {
+            this.error = error;
+
             fireOnDisconnected();
 
             taskListener.getLogger().println("Disconnected Error");

@@ -42,12 +42,12 @@ public class MasterProvisionTask extends MasterServerTask<Master> {
                     node.toComputer().getChannel(), ms.getTaskListener(),
                     id, ms.getName(), metaNectarEndpoint, properties);
 
-            LOGGER.info("Provision started for master " + ms.getName() + " on node " + node.getNodeName());
+            LOGGER.info("Provisioning master " + ms.getName() + " on node " + node.getNodeName());
 
             // Set the provision started state on the master server
             ms.setProvisionStartedState(node, id);
         } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Provision starting error for master " + ms.getName() + " on node " + node.getNodeName(), e);
+            LOGGER.log(Level.WARNING, "Provisioning error for master " + ms.getName() + " on node " + node.getNodeName(), e);
 
             ms.setProvisionErrorState(node, e);
             throw e;
@@ -58,13 +58,13 @@ public class MasterProvisionTask extends MasterServerTask<Master> {
         try {
             final Master m = future.get();
 
-            LOGGER.info("Provision completed for master " + ms.getName() + " on node " + node.getNodeName());
+            LOGGER.info("Provisioning completed for master " + ms.getName() + " on node " + node.getNodeName());
 
             // Set the provision completed state on the master server
             ms.setProvisionCompletedState(node, m.endpoint);
         } catch (Exception e) {
             final Throwable cause = (e instanceof ExecutionException) ? e.getCause() : e;
-            LOGGER.log(Level.WARNING, "Provision completion error for master " + ms.getName() + " on node " + node.getNodeName(), cause);
+            LOGGER.log(Level.WARNING, "Provisioning completion error for master " + ms.getName() + " on node " + node.getNodeName(), cause);
 
             ms.setProvisionErrorState(node, cause);
             throw e;
