@@ -52,8 +52,6 @@ public abstract class AbstractMasterServerListener extends MasterServerListener 
             case Stopped:
                 onStopped(ms);
                 break;
-            case PreTerminating:
-                break;
             case Terminating:
                 onTerminating(ms);
                 break;

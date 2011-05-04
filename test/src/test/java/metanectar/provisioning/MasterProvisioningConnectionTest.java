@@ -164,7 +164,7 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
         StopAndTerminateListener tl = new StopAndTerminateListener(4 * masters);
 
         for (int i = 0; i < masters; i++) {
-            metaNectar.masterProvisioner.terminate(metaNectar.getMasterByOrganization("org" + i), true);
+            metaNectar.masterProvisioner.stopAndTerminate(metaNectar.getMasterByOrganization("org" + i), true);
         }
 
         tl.await(1, TimeUnit.MINUTES);

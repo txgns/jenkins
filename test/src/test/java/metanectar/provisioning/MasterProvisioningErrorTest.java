@@ -1,16 +1,13 @@
 package metanectar.provisioning;
 
 import hudson.model.Computer;
-import hudson.model.Node;
 import hudson.model.TaskListener;
 import hudson.remoting.VirtualChannel;
 import metanectar.model.MasterServer;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -147,7 +144,7 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTest 
             }
         };
 
-        metaNectar.masterProvisioner.terminate(ms, false);
+        metaNectar.masterProvisioner.stopAndTerminate(ms, false);
         provisioningError.await(1, TimeUnit.MINUTES);
         assertEquals(MasterServer.State.TerminatingError, ms.getState());
         assertEquals(Exception.class, ms.getError().getClass());

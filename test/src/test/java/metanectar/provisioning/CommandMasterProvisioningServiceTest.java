@@ -2,7 +2,6 @@ package metanectar.provisioning;
 
 import com.google.common.collect.Maps;
 import hudson.model.Computer;
-import hudson.model.Node;
 import hudson.slaves.DumbSlave;
 import metanectar.Config;
 import metanectar.model.MasterServer;
@@ -96,7 +95,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         Map<String, Object> properties = new HashMap<String, Object>();
         properties.put(MetaNectar.GRANT_PROPERTY, "grant");
         MasterServer ms = metaNectar.createMasterServer("org1");
-        metaNectar.masterProvisioner.provision(ms, new URL("http://test/"), properties);
+        metaNectar.masterProvisioner.provisionAndStart(ms, new URL("http://test/"), properties);
 
         error.await(1, TimeUnit.MINUTES);
 
@@ -145,7 +144,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
             }
         };
 
-        metaNectar.masterProvisioner.terminate(ms, false);
+        metaNectar.masterProvisioner.stopAndTerminate(ms, false);
 
         error.await(1, TimeUnit.MINUTES);
 
@@ -245,7 +244,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         Map<String, Object> properties = new HashMap<String, Object>();
         properties.put(MetaNectar.GRANT_PROPERTY, "grant");
         MasterServer ms = metaNectar.createMasterServer(getMasterName());
-        metaNectar.masterProvisioner.provision(ms, new URL("http://test/"), properties);
+        metaNectar.masterProvisioner.provisionAndStart(ms, new URL("http://test/"), properties);
 
         pl.await(1, TimeUnit.MINUTES);
 
@@ -276,7 +275,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     private void terminate(MasterServer ms) throws Exception {
         StopAndTerminateListener tl = new StopAndTerminateListener(4);
 
-        metaNectar.masterProvisioner.terminate(ms, false);
+        metaNectar.masterProvisioner.stopAndTerminate(ms, false);
 
         tl.await(1, TimeUnit.MINUTES);
 

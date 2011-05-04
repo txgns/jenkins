@@ -54,12 +54,11 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         Starting,
         StartingError,
         Started,
-        Approved,
         ApprovalError,
+        Approved,
         Stopping,
         StoppingError,
         Stopped,
-        PreTerminating,
         Terminating,
         TerminatingError,
         Terminated
@@ -370,14 +369,6 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         taskListener.getLogger().println(toString());
     }
 
-    public void setPreTerminateState() throws IOException {
-        setState(PreTerminating);
-        save();
-
-        taskListener.getLogger().println("PreTerminating");
-        taskListener.getLogger().println(toString());
-    }
-
     public void setTerminateStartedState() throws IOException {
         if (isOnline()) {
             this.channel.close();
@@ -555,6 +546,9 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
             case ProvisioningError:
             case Provisioned:
             case Approved:
+            case ApprovalError:
+            case Started:
+            case StartingError:
             case TerminatingError:
                 return true;
 
@@ -575,7 +569,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     public boolean isTerminating() {
-        return state.ordinal() > PreTerminating.ordinal();
+        return state.ordinal() > Stopped.ordinal();
     }
 
     //
@@ -650,7 +644,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     //
 
     public void terminate(boolean clean) throws IOException {
-        MetaNectar.getInstance().masterProvisioner.terminate(this, clean);
+        MetaNectar.getInstance().masterProvisioner.stopAndTerminate(this, clean);
     }
 
     public HttpResponse doDoTerminate() throws Exception  {

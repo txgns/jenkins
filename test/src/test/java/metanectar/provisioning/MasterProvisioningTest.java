@@ -131,7 +131,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
         properties.put("key", "value");
         for (int i = 0; i < masters; i++) {
             MasterServer ms = metaNectar.createMasterServer("org" + i);
-            metaNectar.masterProvisioner.provision(ms, new URL("http://test/"), properties);
+            metaNectar.masterProvisioner.provisionAndStart(ms, new URL("http://test/"), properties);
         }
 
         pl.await(1, TimeUnit.MINUTES);
@@ -173,7 +173,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
         StopAndTerminateListener tl = new StopAndTerminateListener(4 * masters);
 
         for (int i = 0; i < masters; i++) {
-            metaNectar.masterProvisioner.terminate(metaNectar.getMasterByOrganization("org" + i), true);
+            metaNectar.masterProvisioner.stopAndTerminate(metaNectar.getMasterByOrganization("org" + i), true);
         }
 
         tl.await(1, TimeUnit.MINUTES);
@@ -204,7 +204,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
         properties.put("key", "value");
         for (int i = 0; i < masters; i++) {
             MasterServer ms = metaNectar.createMasterServer("org" + i);
-            metaNectar.masterProvisioner.provision(ms, new URL("http://test/"), properties);
+            metaNectar.masterProvisioner.provisionAndStart(ms, new URL("http://test/"), properties);
         }
 
         pl.await(1, TimeUnit.MINUTES);
@@ -228,7 +228,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
         StopAndTerminateListener tl = new StopAndTerminateListener(4 * masters);
 
         for (int i = 0; i < masters; i++) {
-            metaNectar.masterProvisioner.terminate(metaNectar.getMasterByOrganization("org" + i), true);
+            metaNectar.masterProvisioner.stopAndTerminate(metaNectar.getMasterByOrganization("org" + i), true);
         }
 
         tl.await(1, TimeUnit.MINUTES);
@@ -322,7 +322,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
         Map<String, Object> properties = new HashMap<String, Object>();
         properties.put("key", "value");
         MasterServer ms = metaNectar.createMasterServer(name);
-        metaNectar.masterProvisioner.provision(ms, new URL("http://test/"), properties);
+        metaNectar.masterProvisioner.provisionAndStart(ms, new URL("http://test/"), properties);
 
         pl.await(1, TimeUnit.MINUTES);
         return ms;
@@ -331,7 +331,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
     private void terminateMaster(MasterServer ms) throws Exception {
         StopAndTerminateListener tl = new StopAndTerminateListener(4);
 
-        metaNectar.masterProvisioner.terminate(ms, true);
+        metaNectar.masterProvisioner.stopAndTerminate(ms, true);
         metaNectar.getItems().remove(ms);
 
         tl.await(1, TimeUnit.MINUTES);

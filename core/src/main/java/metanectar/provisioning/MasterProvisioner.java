@@ -2,7 +2,6 @@ package metanectar.provisioning;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Iterators;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import hudson.Extension;
 import hudson.model.Label;
@@ -18,6 +17,7 @@ import metanectar.provisioning.task.TaskQueue;
 import java.io.IOException;
 import java.net.URL;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -62,14 +62,42 @@ public class MasterProvisioner {
         return MetaNectar.getInstance().getLabel(MASTER_LABEL_ATOM_STRING);
     }
 
-    public void provision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
+    public void provisionAndStart(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
+        // TODO check state to see if can perform action
+
         ms.setPreProvisionState();
-        pendingPlannedMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties));
+        pendingPlannedMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties, true));
     }
 
-    public void terminate(MasterServer ms, boolean clean) throws IOException {
-        ms.setPreTerminateState();
-        pendingTerminateMasterRequests.add(new TerminateMasterRequest(ms, clean));
+    public void stopAndTerminate(MasterServer ms, boolean clean) {
+        // TODO check state to see if can perform action
+
+        masterServerTaskQueue.start(new MasterStopThenTerminateTask(ms));
+    }
+
+    public void provision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
+        // TODO check state to see if can perform action
+
+        ms.setPreProvisionState();
+        pendingPlannedMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties, false));
+    }
+
+    public void start(MasterServer ms) {
+        // TODO check state to see if can perform action
+
+        masterServerTaskQueue.start(new MasterStartTask(ms));
+    }
+
+    public void stop(MasterServer ms) {
+        // TODO check state to see if can perform action
+
+        masterServerTaskQueue.start(new MasterStopTask(ms));
+    }
+
+    public void terminate(MasterServer ms) {
+        // TODO check state to see if can perform action
+
+        masterServerTaskQueue.start(new MasterTerminateTask(ms));
     }
 
     private void process() throws Exception {
@@ -86,7 +114,7 @@ public class MasterProvisioner {
         nodeTaskQueue.process();
 
         Multimap<Node, MasterServer> provisioned = provision();
-        terminate(provisioned);
+        terminateNodes(provisioned);
     }
 
     // Provisioning
@@ -95,17 +123,19 @@ public class MasterProvisioner {
         public final MasterServer ms;
         public final URL metaNectarEndpoint;
         public final Map<String, Object> properties;
+        public final boolean start;
 
-        public PlannedMasterRequest(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) {
+        public PlannedMasterRequest(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties, boolean start) {
             this.ms = ms;
             this.metaNectarEndpoint = metaNectarEndpoint;
             this.properties = properties;
+            this.start = start;
         }
     }
 
     private final MasterServerTaskQueue masterServerTaskQueue = new MasterServerTaskQueue();
 
-    private final List<PlannedMasterRequest> pendingPlannedMasterRequests = Collections.synchronizedList(new ArrayList<PlannedMasterRequest>());
+    private final ConcurrentLinkedQueue<PlannedMasterRequest> pendingPlannedMasterRequests = new ConcurrentLinkedQueue<PlannedMasterRequest>();
 
     private final TaskQueue<NodeProvisionTask> nodeTaskQueue = new TaskQueue<NodeProvisionTask>();
 
@@ -115,7 +145,6 @@ public class MasterProvisioner {
         provisionFromCloud();
         return provisioned;
     }
-
 
     private void provisionMasterRequests(Multimap<Node, MasterServer> provisioned) throws Exception {
         // Check masters nodes to see if a new master can be provisioned on an existing masters node
@@ -134,9 +163,7 @@ public class MasterProvisioner {
                 if (freeSlots < 0)
                     continue;
 
-                // Create a copy of the requests to iterate over rather than synchronizing the loop
-                final List<PlannedMasterRequest> copyOfPendingPlannedMasterRequests = synchronizedCopy(pendingPlannedMasterRequests);
-                for (Iterator<PlannedMasterRequest> itr = Iterators.limit(copyOfPendingPlannedMasterRequests.iterator(), freeSlots); itr.hasNext();) {
+                for (Iterator<PlannedMasterRequest> itr = Iterators.limit(pendingPlannedMasterRequests.iterator(), freeSlots); itr.hasNext();) {
                     final PlannedMasterRequest pmr = itr.next();
 
                     // Ignore request if advanced from the pre-provisioning state
@@ -147,14 +174,16 @@ public class MasterProvisioner {
                     }
 
                     final int id = getFreeId(n, provisioned.get(n));
-                    final MasterProvisionThenStartTask mpt = new MasterProvisionThenStartTask(pmr.ms, pmr.metaNectarEndpoint, pmr.properties, n, id);
+                    final MasterProvisionTask mpt = (pmr.start)
+                            ? new MasterProvisionThenStartTask(pmr.ms, pmr.metaNectarEndpoint, pmr.properties, n, id)
+                            : new MasterProvisionTask(pmr.ms, pmr.metaNectarEndpoint, pmr.properties, n, id);
                     try {
                         mpt.start();
                         masterServerTaskQueue.getQueue().add(mpt);
                     } catch (Exception e) {
                         // Ignore
                     } finally {
-                        pendingPlannedMasterRequests.remove(pmr);
+                        itr.remove();
                     }
                 }
             }
@@ -240,50 +269,6 @@ public class MasterProvisioner {
 
     // Terminating
 
-    private static final class TerminateMasterRequest {
-        public final MasterServer ms;
-        public final boolean clean;
-
-        public TerminateMasterRequest(MasterServer ms, boolean clean) {
-            this.ms = ms;
-            this.clean = clean;
-        }
-    }
-
-    private final List<TerminateMasterRequest> pendingTerminateMasterRequests = Collections.synchronizedList(new ArrayList<TerminateMasterRequest>());
-
-    void terminate(Multimap<Node, MasterServer> provisioned) throws Exception {
-        terminateMasterRequests();
-        terminateNodes(provisioned);
-    }
-
-    private void terminateMasterRequests() throws Exception {
-        // Create a copy of the requests to iterate over rather than synchronizing the loop
-        final List<TerminateMasterRequest> copyOfPendingTerminateMasterRequests = synchronizedCopy(pendingTerminateMasterRequests);
-
-        // Process pending terminate master requests
-        for (final TerminateMasterRequest tmr : copyOfPendingTerminateMasterRequests) {
-            final MasterServer ms = tmr.ms;
-
-            // Ignore request if in the process of terminating or terminated
-            if (ms.getState() == MasterServer.State.Terminating ||
-                    ms.getState() == MasterServer.State.Terminated) {
-                pendingTerminateMasterRequests.remove(tmr);
-                continue;
-            }
-
-            final MasterStopThenTerminateTask mtt = new MasterStopThenTerminateTask(tmr.ms);
-            try {
-                mtt.start();
-                masterServerTaskQueue.getQueue().add(mtt);
-            } catch (Exception e) {
-                // Ignore
-            } finally {
-                pendingTerminateMasterRequests.remove(tmr);
-            }
-        }
-    }
-
     private void terminateNodes(Multimap<Node, MasterServer> provisioned) throws Exception {
         // If there are no pending requests to provision masters or provision masters nodes
         // then check if nodes with no provisioned masters can be terminated
@@ -337,11 +322,5 @@ public class MasterProvisioner {
         }
 
         return masters;
-    }
-
-    private <T> List<T> synchronizedCopy(List<T> l) {
-        synchronized (l) {
-            return Lists.newArrayList(l);
-        }
     }
 }

@@ -341,7 +341,7 @@ public class MetaNectar extends Hudson {
     public void provisionMaster(MasterServer server) throws IOException {
         Map<String, Object> properties = new HashMap<String, Object>();
         properties.put(GRANT_PROPERTY, server.getGrantId());
-        masterProvisioner.provision(server, getMetaNectarPortUrl(), properties);
+        masterProvisioner.provisionAndStart(server, getMetaNectarPortUrl(), properties);
     }
 
     //
