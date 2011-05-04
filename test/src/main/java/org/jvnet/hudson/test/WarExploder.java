@@ -71,13 +71,13 @@ final class WarExploder {
         File d = new File(".").getAbsoluteFile();
 
         // just in case we were started from hudson instead of from hudson/main/...
-        if (new File(d, "main/war/target/meta-nectar").exists()) {
-            return new File(d, "main/war/target/meta-nectar");
+        if (new File(d, "main/war/target/metanectar").exists()) {
+            return new File(d, "main/war/target/metanectar");
         }
 
         for( ; d!=null; d=d.getParentFile()) {
             if(new File(d,".jenkins").exists()) {
-                File dir = new File(d,"war/target/meta-nectar");
+                File dir = new File(d,"war/target/metanectar");
                 if(dir.exists()) {
                     System.out.println("Using jenkins.war resources from "+dir);
                     return dir;
@@ -92,11 +92,11 @@ final class WarExploder {
             throw new AssertionError("jenkins.war is not in the classpath.");
         File war = Which.jarFile(Class.forName("executable.Executable"));
 
-        File explodeDir = new File("./target/jenkins-for-test").getAbsoluteFile();
+        File explodeDir = new File("./target/metanectar-for-test").getAbsoluteFile();
         File timestamp = new File(explodeDir,".timestamp");
 
         if(!timestamp.exists() || (timestamp.lastModified()!=war.lastModified())) {
-            System.out.println("Exploding jenkins.war at "+war);
+            System.out.println("Exploding metanectar.war at "+war);
             new FilePath(explodeDir).deleteRecursive();
             new FilePath(war).unzip(new FilePath(explodeDir));
             if(!explodeDir.exists())    // this is supposed to be impossible, but I'm investigating HUDSON-2605
@@ -104,7 +104,7 @@ final class WarExploder {
             new FileOutputStream(timestamp).close();
             timestamp.setLastModified(war.lastModified());
         } else {
-            System.out.println("Picking up existing exploded jenkins.war at "+explodeDir.getAbsolutePath());
+            System.out.println("Picking up existing exploded metanectar.war at "+explodeDir.getAbsolutePath());
         }
 
         return explodeDir;
