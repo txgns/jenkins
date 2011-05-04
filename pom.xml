@@ -535,6 +535,9 @@ THE SOFTWARE.
         <defaultGoal>install</defaultGoal>
       </build>
       <properties>
+        <hudson.sign.alias>jenkins</hudson.sign.alias>
+        <hudson.sign.keystore>../dummy.keystore</hudson.sign.keystore>
+        <hudson.sign.storepass>jenkins</hudson.sign.storepass>
         <skipTests>true</skipTests>
       </properties>
     </profile>
