@@ -3,12 +3,18 @@
   <modelVersion>4.0.0</modelVersion>
   
   <groupId>com.cloudbees.metanectar.script</groupId>
-  <artifactId>pom</artifactId>
+  <artifactId>scripts</artifactId>
   <version>1.0</version>
   <packaging>pom</packaging>
   
-  <name>Dependencies for test scripts</name>
-  
+  <name>Local test scripts and env</name>
+
+  <properties>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <project.build.outputEncoding>UTF-8</project.build.outputEncoding>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>org.jenkins-ci.main</groupId>
@@ -29,7 +35,69 @@
       <type>hpi</type>
     </dependency>
   </dependencies>
-  
+
+  <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <targetPath>${project.build.directory}</targetPath>
+      </resource>
+      <resource>
+        <directory>src/filtered/resources</directory>
+        <targetPath>${project.build.directory}</targetPath>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
+    <plugins>
+      <plugin>
+        <artifactId>maven-clean-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>post-clean</phase>
+            <goals>
+              <goal>clean</goal>
+            </goals>
+            <configuration>
+              <excludeDefaultDirectories>true</excludeDefaultDirectories>
+              <filesets>
+                <fileset>
+                  <directory>${basedir}/work</directory>
+                </fileset>
+              </filesets>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>resources</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}</outputDirectory>
+              <excludeTransitive>true</excludeTransitive>
+              <stripVersion>true</stripVersion>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+    </plugins>
+  </build>
+
   <repositories>
     <repository>
       <id>m.g.o-public</id>
@@ -42,7 +110,7 @@
       </snapshots>
     </repository>
     <repository>
-      <id>repository-cloudbees.forge.cloudbees.com-release</id>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
       <url>https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
       <releases>
         <enabled>true</enabled>
