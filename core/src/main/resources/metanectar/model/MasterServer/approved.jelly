@@ -27,17 +27,7 @@ THE SOFTWARE.
 -->
 <j:jelly xmlns:j="jelly:core" xmlns:x="jelly:xml" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-    <l:side-panel>
-        <l:tasks>
-            <j:set var="url" value="${h.getNearestAncestorUrl(request,it)}"/>
-            <l:task icon="images/24x24/up.gif" href="${rootURL}/" title="${%Back to Dashboard}"/>
-            <l:task icon="images/24x24/search.gif" href="${url}/" title="${%Status}"/>
-          <div id="ajax-sidepanel">
-            <st:include page="sidepanel-ajax.jelly"/>
-          </div>
-        </l:tasks>
-    </l:side-panel>
-  <script type="text/javascript">
-new Ajax.PeriodicalUpdater('ajax-sidepanel', './sidepanel-ajax')
-  </script>
+  <l:ajax>
+    <span>[titanic]I'm the king of the world![/titanic]</span>
+  </l:ajax>
 </j:jelly>

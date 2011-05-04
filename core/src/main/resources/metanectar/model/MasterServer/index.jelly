@@ -26,40 +26,36 @@ THE SOFTWARE.
   <l:layout title="${it.displayName}">
     <st:include page="sidepanel.jelly" />
     <l:main-panel>
-    <h1>
-      <img src="${imagesURL}/48x48/${it.icon}" width="48" height="48" alt=""/>
-      <st:nbsp />
-      <a href="${it.serverUrl}">${it.displayName}</a>
+    <h1 id="ajax-title">
+      <st:include page="title.jelly" />
     </h1>
+      <t:editableDescription permission="${it.CONFIGURE}"/>
 
-    <p>
-        ${it.toString()}
-    </p>
+    <div id="ajax-status">
+      <st:include page="status.jelly" />
+    </div>
+      <script type="text/javascript">
+    new Ajax.PeriodicalUpdater('ajax-title', './title')
+    new Ajax.PeriodicalUpdater('ajax-status', './status')
+      </script>
 
-    <t:editableDescription permission="${it.CONFIGURE}"/>
+      <j:if test="${it.offline and it.offlineCause!=null}">
+          <form method="post" action="pollOffline">
+            <f:submit value="Check"  />
+          </form>
+        <st:include it="${it.offlineCause}" page="cause.jelly" />
+      </j:if>
 
-
-    <j:if test="${it.node != null}">
-        <p>Provisioned on node: <a class="${item.className}" href="${rootURL}/${it.node.searchUrl}">${it.node.displayName}</a></p>
-    </j:if>
-
-    <j:if test="${it.offline and it.offlineCause!=null}">
-        <form method="post" action="pollOffline">
-          <f:submit value="Check"  />
-        </form>
-      <st:include it="${it.offlineCause}" page="cause.jelly" />
-    </j:if>
-
-    <j:if test="${it.online}">
-        <form method="post" action="disconnect">
-          <f:submit value="Disconnect"  />
-        </form>
-        <h1>${%Thread Dump}</h1>
-        <j:forEach var="t" items="${it.getThreadDump().entrySet()}">
-          <h2>${t.key}</h2>
-          <pre>${t.value}</pre>
-        </j:forEach>
-    </j:if>
+      <j:if test="${it.online}">
+          <form method="post" action="disconnect">
+            <f:submit value="Disconnect"  />
+          </form>
+          <h1>${%Thread Dump}</h1>
+          <j:forEach var="t" items="${it.getThreadDump().entrySet()}">
+            <h2>${t.key}</h2>
+            <pre>${t.value}</pre>
+          </j:forEach>
+      </j:if>
 
     </l:main-panel>
   </l:layout>

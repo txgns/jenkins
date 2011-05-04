@@ -689,6 +689,26 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         HttpResponses.redirectViaContextPath(getUrl()).generateResponse(req, rsp, node);
     }
 
+    /**
+     * Returns {@code true} if the page elements should be refreshed by AJAX.
+     * @return {@code true} if the page elements should be refreshed by AJAX.
+     */
+    public boolean isAjaxPageRefresh() {
+        return true; //TODO make decision
+    }
+
+    /**
+     * Returns the number of seconds before the next AJAX refresh.
+     * @return the number of seconds before the next AJAX refresh.
+     */
+    public int getPageRefreshDelay() {
+        return isAjaxPageRefresh() ? 1 : 0;
+    }
+
+    public String getStatePage() {
+        return state.name().toLowerCase();
+    }
+
     @Extension
     public static class DescriptorImpl extends TopLevelItemDescriptor {
         @Override
