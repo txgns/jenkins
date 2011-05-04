@@ -131,4 +131,34 @@
     </repository>
   </repositories>
 
+  <profiles>
+    <profile>
+      <id>demo</id>
+      <build>
+        <defaultGoal>verify</defaultGoal>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>1.2</version>
+            <executions>
+              <execution>
+                <phase>integration-test</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>/bin/sh</executable>
+                  <arguments>
+                    <argument>${project.build.directory}/run.sh</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
 </project>

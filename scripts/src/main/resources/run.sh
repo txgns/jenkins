@@ -13,5 +13,5 @@ java "-DMETANECTAR_PROPERTIES_URL=${METANECTAR_PROPERTIES_URL}" \
   -Dmetanectar.provisioning.MasterProvisioner.initialDelay=10000 \
   -Dmetanectar.provisioning.MasterProvisioner.recurrencePeriod=5000 \
   "-DJENKINS_HOME=${JENKINS_HOME}" \
-   -jar "${CURDIR}/${WORK}/metanectar-war.war" $*
+   -jar "${WORK}/metanectar-war.war" $*
 cd "${CURDIR}"
