@@ -72,7 +72,7 @@ THE SOFTWARE.
   <head>
     ${h.checkPermission(it,permission)}
 
-    <title>${h.appendIfNotNull(title, ' [Jenkins]', 'Jenkins')}</title>
+    <title>${h.appendIfNotNull(title, ' [DEV@cloud Private Edition]', 'DEV@cloud Private Edition')}</title>
     <link rel="stylesheet" href="${resURL}/css/style.css" type="text/css" />
     <link rel="stylesheet" href="${resURL}/css/color.css" type="text/css" />
     <j:if test="${attrs.css!=null}">
@@ -246,7 +246,7 @@ THE SOFTWARE.
           ${%Page generated}:
           <i:formatDate value="${h.getCurrentTime()}" type="both" dateStyle="medium" timeStyle="medium"/>
         </span>
-        <a href="http://nectar.cloudbees.com/">Nectar from CloudBees ver. ${h.version}</a>
+        <a href="http://nectar.cloudbees.com/">DEV@cloud Private Edition from CloudBees ver. ${h.version}</a>
         <j:set var="lic" value="${app.license}" />
         <span style="padding-left:2em; ${lic.expired?'color:red':null}">
           ${lic.footerString}

@@ -31,10 +31,10 @@ THE SOFTWARE.
     <l:side-panel />
     <l:main-panel>
       <h1 style="margin-top:4em">
-        ${%Please wait while Jenkins is getting ready to work}<span id="progress">...</span>
+        ${%Please wait while DEV@cloud Private Edition is getting ready to work}<span id="progress">...</span>
       </h1>
       <p style="color:gray">
-        ${%Your browser will reload automatically when Jenkins is ready.}
+        ${%Your browser will reload automatically when DEV@cloud Private Edition is ready.}
       </p>
 
       <script>applySafeRedirector(window.location.href)</script>

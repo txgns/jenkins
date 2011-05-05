@@ -11,5 +11,5 @@ Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends}, daemon, adduser, psmisc, java2-runtime
 Conflicts: hudson
 Replaces: hudson
-Description: Nectar from CloudBees
- Nectar is a commercial value-added distribution of Hudson Continuous Integration Server.
+Description: DEV@cloud Private Edition
+ DEV@cloud Private Edition is a TODO WRITE THIS BLURB.

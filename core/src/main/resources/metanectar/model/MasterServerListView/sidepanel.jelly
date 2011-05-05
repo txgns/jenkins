@@ -47,7 +47,7 @@ THE SOFTWARE.
                     permission="${it.itemCreatePermission}" it="${app}"/>
 
 
-            <l:task icon="images/24x24/setting.gif" href="${rootURL}/manage" title="${%Manage Jenkins}"
+            <l:task icon="images/24x24/setting.gif" href="${rootURL}/manage" title="${%Manage DEV@cloud Private Edition}"
                     permission="${app.ADMINISTER}" it="${app}"/>
 
             <!--
