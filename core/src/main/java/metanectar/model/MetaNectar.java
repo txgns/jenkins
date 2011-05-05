@@ -74,12 +74,13 @@ public class MetaNectar extends Hudson {
                 throw new IllegalStateException("The master " + organization + " does not exist");
             }
 
-            if (server.isTerminating()) {
-                throw new IllegalStateException("The master " + organization + " is terminating");
+            if (!server.isApprovable()) {
+                throw new IllegalStateException("The master " + organization + " is not in an approvable state: " + server.getState().name());
             }
 
             if (server.isApproved()) {
                 if (server.getIdentity().equals(identity.getPublicKey())) {
+                    server.setReapprovedState();
                     LOGGER.info("Master is identified and approved: " + organization + " " + address);
                     return;
                 }

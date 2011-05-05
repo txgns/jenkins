@@ -24,7 +24,7 @@ THE SOFTWARE.
 
 <st:compress xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
              xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-  <l:layout title="${%Provision Masters}">
+  <l:layout title="${%Provision Master}">
     <st:include page="sidepanel.jelly"/>
     <l:main-panel>
       <h1><img src="${imagesURL}/32x32/computer.png"/> ${%Provision Master}</h1>

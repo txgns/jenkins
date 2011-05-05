@@ -44,15 +44,6 @@ THE SOFTWARE.
           <f:textarea name="description" value="${it.description}"/>
         </f:entry>
 
-        <f:entry title="${%Server URL}" field="serverUrl">
-          <f:textbox />
-        </f:entry>
-
-        <!-- additional entries from derived classes -->
-        <!--
-        <st:include page="configure-entries.jelly" />
-        -->
-
         <j:if test="${h.hasPermission(it,it.CONFIGURE)}">
           <f:block>
             <f:submit value="${%Save}" />

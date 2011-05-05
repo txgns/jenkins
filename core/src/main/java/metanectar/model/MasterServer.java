@@ -28,6 +28,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static metanectar.model.MasterServer.State.*;
+import static metanectar.model.MasterServer.State.Approved;
 
 /**
  * Representation of remote Master server inside MetaNectar.
@@ -236,9 +237,10 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         return (TopLevelItemDescriptor) Hudson.getInstance().getDescriptorOrDie(getClass());
     }
 
+
     // Methods for modifying state
 
-    public void setCreatedState() throws IOException {
+    public synchronized void setCreatedState() throws IOException {
         setState(Created);
         save();
         fireOnStateChange();
@@ -247,7 +249,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         taskListener.getLogger().println(toString());
     }
 
-    public void setPreProvisionState() throws IOException {
+    public synchronized void setPreProvisionState() throws IOException {
         setState(PreProvisioning);
         this.grantId = createGrant();
         save();
@@ -260,7 +262,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         return UUID.randomUUID().toString();
     }
 
-    public void setProvisionStartedState(Node node, int id) throws IOException {
+    public synchronized void setProvisionStartedState(Node node, int id) throws IOException {
         setState(Provisioning);
         this.nodeName = node.getNodeName();
         this.node = node;
@@ -272,7 +274,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         taskListener.getLogger().println(toString());
     }
 
-    public void setProvisionCompletedState(Node node, URL endpoint) throws IOException {
+    public synchronized void setProvisionCompletedState(Node node, URL endpoint) throws IOException {
         setState(Provisioned);
         this.nodeName = node.getNodeName();
         this.node = node;
@@ -284,7 +286,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         taskListener.getLogger().println(toString());
     }
 
-    public void setProvisionErrorState(Node node, Throwable error) throws IOException {
+    public synchronized void setProvisionErrorState(Node node, Throwable error) throws IOException {
         setState(ProvisioningError);
         this.error = error;
         this.nodeName = node.getNodeName();
@@ -298,7 +300,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         error.printStackTrace(taskListener.error("Provision Error"));
     }
 
-    public void setProvisionErrorNoResourcesState() throws IOException {
+    public synchronized void setProvisionErrorNoResourcesState() throws IOException {
         if (state != ProvisioningErrorNoResources) {
             setState(ProvisioningErrorNoResources);
             save();
@@ -309,7 +311,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         }
     }
 
-    public void setStartingState() throws IOException {
+    public synchronized void setStartingState() throws IOException {
         setState(Starting);
         save();
         fireOnStateChange();
@@ -318,7 +320,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         taskListener.getLogger().println(toString());
     }
 
-    public void setStartingErrorState(Throwable error) throws IOException {
+    public synchronized void setStartingErrorState(Throwable error) throws IOException {
         setState(StartingError);
         this.error = error;
         save();
@@ -329,7 +331,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         error.printStackTrace(taskListener.error("Starting Error"));
     }
 
-    public void setStartedState() throws IOException {
+    public synchronized void setStartedState() throws IOException {
         // Potentially may go from the starting state to the approved state
         // if the master communicates with MetaNectar before the periodic timer executes
         // to process the completion of the start task
@@ -343,7 +345,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         taskListener.getLogger().println(toString());
     }
 
-    public void setApprovedState(RSAPublicKey pk, URL endpoint) throws IOException {
+    public synchronized void setApprovedState(RSAPublicKey pk, URL endpoint) throws IOException {
         setState(Approved);
         this.identity = pk.getEncoded();
         this.endpoint = endpoint;
@@ -355,7 +357,22 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         taskListener.getLogger().println(toString());
     }
 
-    public void setApprovalErrorState(Throwable error) throws IOException {
+    public synchronized void setReapprovedState() throws IOException {
+        if (state == State.Approved)
+            return;
+
+        if (identity == null || endpoint == null || approved == false)
+            throw new IllegalStateException();
+
+        setState(Approved);
+        save();
+        fireOnStateChange();
+
+        taskListener.getLogger().println("Approved");
+        taskListener.getLogger().println(toString());
+    }
+
+    public synchronized void setApprovalErrorState(Throwable error) throws IOException {
         setState(ApprovalError);
         this.error = error;
         save();
@@ -366,7 +383,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         error.printStackTrace(taskListener.error("Approval Error"));
     }
 
-    public void setConnectedState(Channel channel) throws IOException {
+    public synchronized void setConnectedState(Channel channel) throws IOException {
         if (!setChannel(channel))
             return;
 
@@ -380,7 +397,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         taskListener.getLogger().println(toString());
     }
 
-    public void setStoppingState() throws IOException {
+    public synchronized void setStoppingState() throws IOException {
         setState(Stopping);
         save();
         fireOnStateChange();
@@ -389,7 +406,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         taskListener.getLogger().println(toString());
     }
 
-    public void setStoppingErrorState(Throwable error) throws IOException {
+    public synchronized void setStoppingErrorState(Throwable error) throws IOException {
         setState(StoppingError);
         this.error = error;
         save();
@@ -400,7 +417,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         error.printStackTrace(taskListener.error("Stopping Error"));
     }
 
-    public void setStoppedState() throws IOException {
+    public synchronized void setStoppedState() throws IOException {
         setState(Stopped);
         save();
         fireOnStateChange();
@@ -409,7 +426,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         taskListener.getLogger().println(toString());
     }
 
-    public void setTerminateStartedState() throws IOException {
+    public synchronized void setTerminateStartedState() throws IOException {
         if (isOnline()) {
             this.channel.close();
         }
@@ -422,7 +439,18 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         taskListener.getLogger().println(toString());
     }
 
-    public void setTerminateCompletedState() throws IOException {
+    public synchronized void setTerminateErrorState(Throwable error) throws IOException {
+        setState(TerminatingError);
+        this.error = error;
+        save();
+        fireOnStateChange();
+
+        taskListener.getLogger().println("Terminating Error");
+        taskListener.getLogger().println(toString());
+        error.printStackTrace(taskListener.error("Terminating Error"));
+    }
+
+    public synchronized void setTerminateCompletedState() throws IOException {
         setState(Terminated);
         this.grantId = null;
         this.approved = false;
@@ -436,17 +464,6 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
         taskListener.getLogger().println("Terminated");
         taskListener.getLogger().println(toString());
-    }
-
-    public void setTerminateErrorState(Throwable error) throws IOException {
-        setState(TerminatingError);
-        this.error = error;
-        save();
-        fireOnStateChange();
-
-        taskListener.getLogger().println("Terminating Error");
-        taskListener.getLogger().println(toString());
-        error.printStackTrace(taskListener.error("Terminating Error"));
     }
 
     private void setState(State state) {
@@ -495,11 +512,24 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         }
     }
 
+
     // State querying
+
+    public boolean isApprovable() {
+        switch (state) {
+            case Starting:
+            case Started:
+            case Approved:
+                return true;
+            default:
+                return false;
+        }
+    }
 
     public boolean isTerminating() {
         return state.ordinal() > Stopped.ordinal();
     }
+
 
     // Actions
 
@@ -541,43 +571,44 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         }
     }
 
-    public void provisionAndStartAction() throws IOException, IllegalStateException  {
+    public synchronized void provisionAndStartAction() throws IOException, IllegalStateException  {
         preConditionAction(Action.Provision);
 
         Map<String, Object> properties = new HashMap<String, Object>();
         MetaNectar.getInstance().masterProvisioner.provisionAndStart(this, MetaNectar.getInstance().getMetaNectarPortUrl(), properties);
     }
 
-    public void stopAndTerminateAction(boolean clean) throws IllegalStateException {
+    public synchronized void stopAndTerminateAction(boolean clean) throws IllegalStateException {
         preConditionAction(Action.Stop);
 
         MetaNectar.getInstance().masterProvisioner.stopAndTerminate(this, clean);
     }
 
-    public void provisionAction() throws IOException, IllegalStateException  {
+    public synchronized void provisionAction() throws IOException, IllegalStateException  {
         preConditionAction(Action.Provision);
 
         Map<String, Object> properties = new HashMap<String, Object>();
         MetaNectar.getInstance().masterProvisioner.provision(this, MetaNectar.getInstance().getMetaNectarPortUrl(), properties);
     }
 
-    public void startAction() throws IllegalStateException {
+    public synchronized void startAction() throws IllegalStateException {
         preConditionAction(Action.Start);
 
         MetaNectar.getInstance().masterProvisioner.start(this);
     }
 
-    public void stopAction() throws IllegalStateException {
+    public synchronized void stopAction() throws IllegalStateException {
         preConditionAction(Action.Stop);
 
         MetaNectar.getInstance().masterProvisioner.stop(this);
     }
 
-    public void terminateAction(boolean clean) throws IllegalStateException {
+    public synchronized void terminateAction(boolean clean) throws IllegalStateException {
         preConditionAction(Action.Terminate);
 
         MetaNectar.getInstance().masterProvisioner.terminate(this, clean);
     }
+
 
     // Methods for accessing state
 
@@ -668,7 +699,8 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         }
     }
 
-    //
+
+    // Channel methods
 
     private boolean setChannel(Channel channel) throws IOException, IllegalStateException {
         // update the data structure atomically to prevent others from seeing a channel that's not properly initialized yet
@@ -732,11 +764,6 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
 
-    public Map<String,String> getThreadDump() throws IOException, InterruptedException {
-        return RemotingDiagnostics.getThreadDump(getChannel());
-    }
-
-
     // UI actions
 
     public HttpResponse doProvisionAction() throws Exception {
@@ -783,7 +810,20 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         }
     }
 
-    //
+
+    // Configuration
+
+    public synchronized void doConfigSubmit(StaplerRequest req,
+            StaplerResponse rsp) throws IOException, ServletException, Descriptor.FormException {
+        checkPermission(CONFIGURE);
+
+        description = req.getParameter("description");
+        save();
+
+        rsp.sendRedirect(".");
+    }
+
+    // Test stuff
 
     public HttpResponse doDisconnect() throws Exception {
         requirePOST();
@@ -795,13 +835,13 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         return HttpResponses.redirectToDot();
     }
 
-    public synchronized void doConfigSubmit(StaplerRequest req,
-            StaplerResponse rsp) throws IOException, ServletException, Descriptor.FormException {
-        checkPermission(CONFIGURE);
 
-        description = req.getParameter("description");
-        save();
+    public Map<String,String> getThreadDump() throws IOException, InterruptedException {
+        return RemotingDiagnostics.getThreadDump(getChannel());
     }
+
+
+    //
 
     public void generateResponse(StaplerRequest req, StaplerResponse rsp, Object node) throws IOException, ServletException {
         HttpResponses.redirectViaContextPath(getUrl()).generateResponse(req, rsp, node);

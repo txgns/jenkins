@@ -33,8 +33,6 @@ THE SOFTWARE.
         ${it.toString()}
     </p>
 
-
-
     <j:if test="${it.node != null}">
         <p>Provisioned on node: <a class="${item.className}" href="${rootURL}/${it.node.searchUrl}">${it.node.displayName}</a></p>
     </j:if>

@@ -22,41 +22,44 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -->
 
-<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt" xmlns:p="/lib/hudson/project">
-  <l:layout title="${it.displayName}">
-    <st:include page="sidepanel.jelly" />
-    <l:main-panel>
-    <h1 id="ajax-title">
-      <st:include page="title.jelly" />
-    </h1>
-      <t:editableDescription permission="${it.CONFIGURE}"/>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
+         xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt" xmlns:p="/lib/hudson/project">
+    <l:layout title="${it.displayName}">
+        <st:include page="sidepanel.jelly"/>
+        <l:main-panel>
+            <h1 id="ajax-title">
+                <st:include page="title.jelly"/>
+            </h1>
 
-    <div id="ajax-status">
-      <st:include page="status.jelly" />
-    </div>
-      <script type="text/javascript">
-    new Ajax.PeriodicalUpdater('ajax-title', './title')
-    new Ajax.PeriodicalUpdater('ajax-status', './status')
-      </script>
+            <t:editableDescription permission="${it.CONFIGURE}"/>
 
-      <j:if test="${it.offline and it.offlineCause!=null}">
-          <form method="post" action="pollOffline">
-            <f:submit value="Check"  />
-          </form>
-        <st:include it="${it.offlineCause}" page="cause.jelly" />
-      </j:if>
+            <div id="ajax-status">
+                <st:include page="status.jelly"/>
+            </div>
 
-      <j:if test="${it.online}">
-          <form method="post" action="disconnect">
-            <f:submit value="Disconnect"  />
-          </form>
-          <h1>${%Thread Dump}</h1>
-          <j:forEach var="t" items="${it.getThreadDump().entrySet()}">
-            <h2>${t.key}</h2>
-            <pre>${t.value}</pre>
-          </j:forEach>
-      </j:if>
+            <script type="text/javascript">
+                new Ajax.PeriodicalUpdater('ajax-title', './title')
+                new Ajax.PeriodicalUpdater('ajax-status', './status')
+            </script>
 
-    </l:main-panel>
-  </l:layout>
+            <j:if test="${it.offline and it.offlineCause!=null}">
+                <form method="post" action="pollOffline">
+                    <f:submit value="Check"/>
+                </form>
+                <st:include it="${it.offlineCause}" page="cause.jelly"/>
+            </j:if>
+
+            <j:if test="${it.online}">
+                <form method="post" action="disconnect">
+                    <f:submit value="Disconnect"/>
+                </form>
+                <h1>${%Thread Dump}</h1>
+                <j:forEach var="t" items="${it.getThreadDump().entrySet()}">
+                    <h2>${t.key}</h2>
+                    <pre>${t.value}</pre>
+                </j:forEach>
+            </j:if>
+
+        </l:main-panel>
+    </l:layout>
 </j:jelly>

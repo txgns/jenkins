@@ -32,12 +32,16 @@ THE SOFTWARE.
             <j:set var="url" value="${h.getNearestAncestorUrl(request,it)}"/>
             <l:task icon="images/24x24/up.gif" href="${rootURL}/" title="${%Back to Dashboard}"/>
             <l:task icon="images/24x24/search.gif" href="${url}/" title="${%Status}"/>
-          <div id="ajax-sidepanel">
-            <st:include page="sidepanel-ajax.jelly"/>
-          </div>
+            <div id="ajax-sidepanel">
+                <st:include page="sidepanel-ajax.jelly"/>
+            </div>
+            <l:isAdmin>
+                <l:task icon="images/24x24/setting.gif" href="configure" title="${%Configure}"/>
+                <!-- TODO console log and server log -->
+            </l:isAdmin>
         </l:tasks>
     </l:side-panel>
-  <script type="text/javascript">
-new Ajax.PeriodicalUpdater('ajax-sidepanel', './sidepanel-ajax')
-  </script>
+    <script type="text/javascript">
+        new Ajax.PeriodicalUpdater('ajax-sidepanel', './sidepanel-ajax')
+    </script>
 </j:jelly>
