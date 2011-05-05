@@ -4,10 +4,12 @@ import com.cloudbees.commons.metanectar.agent.AgentListener;
 import com.cloudbees.commons.metanectar.agent.AgentStatusListener;
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol.GracefulConnectionRefusalException;
+import hudson.Extension;
 import hudson.PluginManager;
 import hudson.model.*;
 import hudson.remoting.Channel;
 import hudson.util.AdministrativeError;
+import hudson.util.AlternativeUiTextProvider;
 import hudson.util.FormValidation;
 import hudson.views.StatusColumn;
 import metanectar.Config;
@@ -335,5 +337,20 @@ public class MetaNectar extends Hudson {
 
     public static MetaNectar getInstance() {
         return (MetaNectar)Hudson.getInstance();
+    }
+
+    @Extension
+    public static class PronounProvider extends AlternativeUiTextProvider {
+
+        @Override
+        public <T> String getText( Message<T> text, T context )
+        {
+            if (context instanceof MasterServer) {
+                if (AbstractItem.PRONOUN.equals( text )) {
+                    return Messages.Master_Pronoun();
+                }
+            }
+            return null;
+        }
     }
 }

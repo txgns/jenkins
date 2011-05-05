@@ -76,9 +76,9 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
      * Actions that can be performed on a master.
      */
     public static enum Action {
-        Provision("edit-delete.gif"),
-        Start("edit-delete.gif"),
-        Stop("edit-delete.gif"),
+        Provision("new-computer.png"),
+        Start("start-computer.png"),
+        Stop("stop-computer.png"),
         Terminate("edit-delete.gif"),
         Delete("edit-delete.gif");
 
