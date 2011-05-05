@@ -137,7 +137,7 @@ THE SOFTWARE.
                 </macrodef>
 
                 <resolvePlugin groupId="com.infradna.hudson.plugins" artifactId="infradna-backup" version="1.2" />
-                <resolvePlugin groupId="com.cloudbees.nectar" artifactId="nectar-vmware" version="1.0" />
+                <resolvePlugin groupId="com.cloudbees.nectar" artifactId="nectar-vmware" version="1.2" />
               </tasks>
             </configuration>
           </execution>
