@@ -150,7 +150,7 @@ public class TestMasterServer {
         this.organization = organization;
 
         Map<String, String> protocolProperties = new HashMap<String, String>();
-        protocolProperties.put(MetaNectar.GRANT_PROPERTY, (String)properties.get(MetaNectar.GRANT_PROPERTY));
+        protocolProperties.put(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID, (String)properties.get(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID));
         MetaNectarAgentProtocol.Outbound p = new MetaNectarAgentProtocol.Outbound(
                 MetaNectarAgentProtocol.getInstanceIdentityCertificate(id, endpoint.toExternalForm()),
                 id.getPrivate(),

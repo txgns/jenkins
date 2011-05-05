@@ -10,6 +10,7 @@ import hudson.tasks.Mailer;
 import metanectar.model.MasterServer;
 import metanectar.model.MetaNectar;
 import metanectar.model.MetaNectarPortRootAction;
+import metanectar.provisioning.MasterProvisioningService;
 import metanectar.test.MetaNectarTestCase;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 import org.xml.sax.SAXException;
@@ -118,9 +119,11 @@ public class MasterConnectionTest extends MetaNectarTestCase {
         Client client = new Client();
 
         MasterServer ms = metaNectar.createMasterServer("org");
+        ms.setPreProvisionState();
+        ms.setProvisionCompletedState(metaNectar, metaNectar.getMetaNectarPortUrl());
 
         Map<String, String> properties = new HashMap<String, String>();
-        properties.put(MetaNectar.GRANT_PROPERTY, ms.getGrantId());
+        properties.put(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID, ms.getGrantId());
         MetaNectarAgentProtocol.Outbound p = new MetaNectarAgentProtocol.Outbound(
                 MetaNectarAgentProtocol.getInstanceIdentityCertificate(id, metaNectar), id.getPrivate(),
                 "org",
@@ -148,6 +151,38 @@ public class MasterConnectionTest extends MetaNectarTestCase {
         // verify that we can talk to each other
         client.channel.setProperty("client","hello");
         assertEquals("hello", ms.getChannel().waitForRemoteProperty("client"));
+    }
+
+    public void testConnectionWithoutGrant() throws Exception {
+        CountDownLatch onEventCdl = new CountDownLatch(1);
+        metaNectar.configureNectarAgentListener(new TestAgentProtocolListener(new MetaNectar.AgentProtocolListener(metaNectar), onEventCdl, onEventCdl));
+
+        Client client = new Client();
+
+        MasterServer ms = metaNectar.createMasterServer("org");
+        ms.setPreProvisionState();
+        ms.setProvisionCompletedState(metaNectar, metaNectar.getMetaNectarPortUrl());
+
+        Map<String, String> properties = new HashMap<String, String>();
+        MetaNectarAgentProtocol.Outbound p = new MetaNectarAgentProtocol.Outbound(
+                MetaNectarAgentProtocol.getInstanceIdentityCertificate(id, metaNectar), id.getPrivate(),
+                "org",
+                properties,
+                client, null);
+
+        Agent agent = new Agent(new AgentStatusListener.LoggerListener(LOGGER), null, p);
+        InetSocketAddress serverAddress = new InetSocketAddress("localhost", metaNectar.getNectarAgentListener().getPort());
+
+
+        Exception e = null;
+        try {
+            agent.connectOnce(serverAddress);
+        } catch (Exception _e) {
+            e = _e;
+        }
+
+        assertNotNull(e);
+        assertTrue(e instanceof MetaNectarAgentProtocol.GracefulConnectionRefusalException);
     }
 
     public void testMetaNectarPort() throws IOException, SAXException {

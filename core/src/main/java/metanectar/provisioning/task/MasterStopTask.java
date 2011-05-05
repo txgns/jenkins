@@ -15,7 +15,7 @@ public class MasterStopTask extends MasterServerTask {
     private static final Logger LOGGER = Logger.getLogger(MasterStopTask.class.getName());
 
     public MasterStopTask(MasterServer ms) {
-        super(ms);
+        super(ms, MasterServer.Action.Stop);
     }
 
     public void start() throws Exception {

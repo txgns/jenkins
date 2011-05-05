@@ -88,7 +88,7 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTest 
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());
 
-        metaNectar.provisionMaster(ms);
+        ms.provisionAndStartAction();
         provisioningError.await(1, TimeUnit.MINUTES);
 
         assertEquals(MasterServer.State.ProvisioningError, ms.getState());
@@ -135,7 +135,7 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTest 
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());
 
-        metaNectar.provisionMaster(ms);
+        ms.provisionAndStartAction();
         connected.await(1, TimeUnit.MINUTES);
 
         LatchMasterServerListener provisioningError = new LatchMasterServerListener(1) {
@@ -144,7 +144,7 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTest 
             }
         };
 
-        metaNectar.masterProvisioner.stopAndTerminate(ms, false);
+        ms.stopAndTerminateAction(false);
         provisioningError.await(1, TimeUnit.MINUTES);
         assertEquals(MasterServer.State.TerminatingError, ms.getState());
         assertEquals(Exception.class, ms.getError().getClass());

@@ -2,6 +2,7 @@ package metanectar.model;
 
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import com.google.common.base.Objects;
+import com.google.common.collect.ImmutableSet;
 import hudson.Extension;
 import hudson.model.*;
 import hudson.remoting.Channel;
@@ -22,10 +23,7 @@ import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -42,26 +40,64 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
     /**
      * The states of the master.
-     * <p>
      */
     public static enum State {
-        Created,
-        PreProvisioning,
-        Provisioning,
-        ProvisioningErrorNoResources,
-        ProvisioningError,
-        Provisioned,
-        Starting,
-        StartingError,
-        Started,
-        ApprovalError,
-        Approved,
-        Stopping,
-        StoppingError,
-        Stopped,
-        Terminating,
-        TerminatingError,
-        Terminated
+        Created(Action.Provision),
+        PreProvisioning(),
+        Provisioning(),
+        ProvisioningErrorNoResources(),   // TODO cancel
+        ProvisioningError(Action.Provision, Action.Terminate),
+        Provisioned(Action.Start, Action.Terminate),
+        Starting(),
+        StartingError(Action.Start, Action.Stop),
+        Started(Action.Stop),
+        ApprovalError(Action.Stop),
+        Approved(Action.Stop),
+        Stopping(),
+        StoppingError(Action.Stop, Action.Terminate),
+        Stopped(Action.Start, Action.Terminate),
+        Terminating(),
+        TerminatingError(Action.Terminate, Action.Delete),
+        Terminated(Action.Provision, Action.Delete);
+
+        public ImmutableSet<Action> actions;
+
+        State(Action... actions) {
+            this.actions = new ImmutableSet.Builder<Action>().add(actions).build();
+        }
+
+        public boolean canDo(Action a) {
+            return actions.contains(a);
+        }
+    }
+
+    /**
+     * Actions that can be performed on a master.
+     */
+    public static enum Action {
+        Provision("edit-delete.gif"),
+        Start("edit-delete.gif"),
+        Stop("edit-delete.gif"),
+        Terminate("edit-delete.gif"),
+        Delete("edit-delete.gif");
+
+        public final String icon;
+
+        public final String displayName;
+
+        public final String href;
+
+        Action(String icon) {
+            this.icon = icon;
+            this.displayName = name();
+            this.href = name().toLowerCase();
+        }
+
+        Action(String icon, String displayName) {
+            this.icon = icon;
+            this.displayName = displayName;
+            this.href = name().toLowerCase();
+        }
     }
 
     /**
@@ -202,9 +238,8 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
     // Methods for modifying state
 
-    public void setCreatedState(String grantId) throws IOException {
+    public void setCreatedState() throws IOException {
         setState(Created);
-        this.grantId = grantId;
         save();
         fireOnStateChange();
 
@@ -214,10 +249,15 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
     public void setPreProvisionState() throws IOException {
         setState(PreProvisioning);
+        this.grantId = createGrant();
         save();
 
         taskListener.getLogger().println("PreProvisioning");
         taskListener.getLogger().println(toString());
+    }
+
+    private String createGrant() {
+        return UUID.randomUUID().toString();
     }
 
     public void setProvisionStartedState(Node node, int id) throws IOException {
@@ -384,10 +424,13 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
     public void setTerminateCompletedState() throws IOException {
         setState(Terminated);
-        this.node = null;
+        this.grantId = null;
+        this.approved = false;
         this.nodeName = null;
-        this.endpoint = null;
+        this.node = null;
         this.id = 0;
+        this.endpoint = null;
+        this.identity = null;
         save();
         fireOnStateChange();
 
@@ -415,7 +458,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     // Event firing
 
     private final void fireOnStateChange() {
-        fire (new Lambda() {
+        fire (new FireLambda() {
             public void f(MasterServerListener msl) {
                 msl.onStateChange(MasterServer.this);
             }
@@ -423,7 +466,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     private final void fireOnConnected() {
-        fire (new Lambda() {
+        fire (new FireLambda() {
             public void f(MasterServerListener msl) {
                 msl.onConnected(MasterServer.this);
             }
@@ -431,18 +474,18 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     private final void fireOnDisconnected() {
-        fire (new Lambda() {
+        fire (new FireLambda() {
             public void f(MasterServerListener msl) {
                 msl.onDisconnected(MasterServer.this);
             }
         });
     }
 
-    private interface Lambda {
+    private interface FireLambda {
         void f(MasterServerListener msl);
     }
 
-    private void fire(Lambda l) {
+    private void fire(FireLambda l) {
         for (MasterServerListener msl : MasterServerListener.all()) {
             try {
                 l.f(msl);
@@ -450,6 +493,90 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
                 LOGGER.log(Level.SEVERE, "Exception when firing event", e);
             }
         }
+    }
+
+    // State querying
+
+    public boolean isTerminating() {
+        return state.ordinal() > Stopped.ordinal();
+    }
+
+    // Actions
+
+    public Set<Action> getActionSet() {
+        return ImmutableSet.copyOf(Action.values());
+    }
+
+    public ImmutableSet<Action> getValidActionSet() {
+        return getState().actions;
+    }
+
+    public boolean canDoAction(Action a) {
+        return state.canDo(a);
+    }
+
+    public boolean canProvisionAction() {
+        return canDoAction(Action.Provision);
+    }
+
+    public boolean canStartAction() {
+        return canDoAction(Action.Start);
+    }
+
+    public boolean canStopAction() {
+        return canDoAction(Action.Stop);
+    }
+
+    public boolean canTerminateAction() {
+        return canDoAction(Action.Terminate);
+    }
+
+    public boolean canDeleteAction() {
+        return canDoAction(Action.Delete);
+    }
+
+    private void preConditionAction(Action a) throws IllegalStateException {
+        if (!canDoAction(a)) {
+            throw new IllegalStateException(String.format("Action \"%s\" cannot be performed when in state \"\"", a.name(), getState().name()));
+        }
+    }
+
+    public void provisionAndStartAction() throws IOException, IllegalStateException  {
+        preConditionAction(Action.Provision);
+
+        Map<String, Object> properties = new HashMap<String, Object>();
+        MetaNectar.getInstance().masterProvisioner.provisionAndStart(this, MetaNectar.getInstance().getMetaNectarPortUrl(), properties);
+    }
+
+    public void stopAndTerminateAction(boolean clean) throws IllegalStateException {
+        preConditionAction(Action.Stop);
+
+        MetaNectar.getInstance().masterProvisioner.stopAndTerminate(this, clean);
+    }
+
+    public void provisionAction() throws IOException, IllegalStateException  {
+        preConditionAction(Action.Provision);
+
+        Map<String, Object> properties = new HashMap<String, Object>();
+        MetaNectar.getInstance().masterProvisioner.provision(this, MetaNectar.getInstance().getMetaNectarPortUrl(), properties);
+    }
+
+    public void startAction() throws IllegalStateException {
+        preConditionAction(Action.Start);
+
+        MetaNectar.getInstance().masterProvisioner.start(this);
+    }
+
+    public void stopAction() throws IllegalStateException {
+        preConditionAction(Action.Stop);
+
+        MetaNectar.getInstance().masterProvisioner.stop(this);
+    }
+
+    public void terminateAction(boolean clean) throws IllegalStateException {
+        preConditionAction(Action.Terminate);
+
+        MetaNectar.getInstance().masterProvisioner.terminate(this, clean);
     }
 
     // Methods for accessing state
@@ -541,37 +668,6 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         }
     }
 
-    public boolean canTerminate() {
-        switch (state) {
-            case ProvisioningError:
-            case Provisioned:
-            case Approved:
-            case ApprovalError:
-            case Started:
-            case StartingError:
-            case TerminatingError:
-                return true;
-
-            default:
-                return false;
-        }
-    }
-
-    public boolean canDelete() {
-        switch (state) {
-            case TerminatingError:
-            case Terminated:
-                return true;
-
-            default:
-                return false;
-        }
-    }
-
-    public boolean isTerminating() {
-        return state.ordinal() > Stopped.ordinal();
-    }
-
     //
 
     private boolean setChannel(Channel channel) throws IOException, IllegalStateException {
@@ -641,25 +737,53 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
 
-    //
+    // UI actions
 
-    public void terminate(boolean clean) throws IOException {
-        MetaNectar.getInstance().masterProvisioner.stopAndTerminate(this, clean);
+    public HttpResponse doProvisionAction() throws Exception {
+        return new DoActionLambda() {
+            public void f() throws Exception {
+                provisionAction();
+            }
+        }.doAction();
     }
 
-    public HttpResponse doDoTerminate() throws Exception  {
-        requirePOST();
+    public HttpResponse doStartAction() throws Exception {
+        return new DoActionLambda() {
+            public void f() {
+                startAction();
+            }
+        }.doAction();
+    }
 
-        if (!canTerminate()) {
-            // TODO better error
-            throw new IOException("Cannot terminate");
+    public HttpResponse doStopAction() throws Exception {
+        return new DoActionLambda() {
+            public void f() {
+                stopAction();
+            }
+        }.doAction();
+    }
+
+    public HttpResponse doTerminateAction() throws Exception {
+        return new DoActionLambda() {
+            public void f() {
+                terminateAction(false);
+            }
+        }.doAction();
+    }
+
+    private abstract class DoActionLambda {
+        abstract void f() throws Exception;
+
+        HttpResponse doAction() throws Exception {
+            requirePOST();
+
+            f();
+
+            return HttpResponses.redirectToDot();
         }
-
-        terminate(false);
-
-        return HttpResponses.redirectToDot();
-
     }
+
+    //
 
     public HttpResponse doDisconnect() throws Exception {
         requirePOST();

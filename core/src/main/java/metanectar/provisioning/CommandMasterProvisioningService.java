@@ -126,13 +126,13 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
         final String home = getHome(name);
 
         final Map<String, String> provisionVariables = Maps.newHashMap();
-        provisionVariables.put(Variable.MASTER_PORT.toString(), Integer.toString(getPort(id)));
-        provisionVariables.put(Variable.MASTER_HOME.toString(), home);
-        provisionVariables.put(Variable.MASTER_METANECTAR_ENDPOINT.toString(), metaNectarEndpoint.toExternalForm());
-        provisionVariables.put(Variable.MASTER_GRANT_ID.toString(), (String)properties.get(MetaNectar.GRANT_PROPERTY));
+        provisionVariables.put(Variable.MASTER_PORT.name(), Integer.toString(getPort(id)));
+        provisionVariables.put(Variable.MASTER_HOME.name(), home);
+        provisionVariables.put(Variable.MASTER_METANECTAR_ENDPOINT.name(), metaNectarEndpoint.toExternalForm());
+        provisionVariables.put(Variable.MASTER_GRANT_ID.name(), (String)properties.get(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID));
 
         final Map<String, String> startVariables = Maps.newHashMap();
-        startVariables.put(Variable.MASTER_HOME.toString(), home);
+        startVariables.put(Variable.MASTER_HOME.name(), home);
 
         return Computer.threadPoolForRemoting.submit(new Callable<Master>() {
             public Master call() throws Exception {
@@ -189,7 +189,7 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
     public Future<?> start(final VirtualChannel channel, final TaskListener listener,
                                     final String name) throws Exception {
         final Map<String, String> startVariables = Maps.newHashMap();
-        startVariables.put(Variable.MASTER_HOME.toString(), getHome(name));
+        startVariables.put(Variable.MASTER_HOME.name(), getHome(name));
 
         return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
             public Void call() throws Exception {
@@ -216,7 +216,7 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
     public Future<?> stop(final VirtualChannel channel, final TaskListener listener,
                                     final String name) throws Exception {
         final Map<String, String> variables = Maps.newHashMap();
-        variables.put(Variable.MASTER_HOME.toString(), getHome(name));
+        variables.put(Variable.MASTER_HOME.name(), getHome(name));
 
         return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
             public Void call() throws Exception {
@@ -244,7 +244,7 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
     public Future<?> terminate(final VirtualChannel channel, final TaskListener listener,
                                final String name, final boolean clean) throws Exception {
         final Map<String, String> variables = Maps.newHashMap();
-        variables.put(Variable.MASTER_HOME.toString(), getHome(name));
+        variables.put(Variable.MASTER_HOME.name(), getHome(name));
 
         return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
             public Void call() throws Exception {

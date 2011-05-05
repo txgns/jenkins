@@ -14,6 +14,7 @@ import metanectar.Config;
 import metanectar.model.views.MasterServerColumn;
 import metanectar.provisioning.MasterProvisioner;
 import metanectar.provisioning.MasterProvisioningNodeProperty;
+import metanectar.provisioning.MasterProvisioningService;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 import org.jvnet.hudson.reactor.ReactorException;
 import org.kohsuke.stapler.QueryParameter;
@@ -24,12 +25,16 @@ import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import java.io.File;
 import java.io.IOException;
-import java.net.*;
+import java.net.BindException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.security.GeneralSecurityException;
 import java.security.PublicKey;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import static hudson.Util.fixEmpty;
@@ -44,8 +49,6 @@ import static hudson.Util.fixEmpty;
  */
 public class MetaNectar extends Hudson {
     private static final Logger LOGGER = Logger.getLogger(MetaNectar.class.getName());
-
-    public static final String GRANT_PROPERTY = "grant";
 
     private transient AgentListener nectarAgentListener;
 
@@ -84,11 +87,11 @@ public class MetaNectar extends Hudson {
                 throw new GeneralSecurityException("The master " + organization + " identity does not match that which was previously approved");
             }
 
-            if (properties.containsKey(GRANT_PROPERTY)) {
+            if (properties.containsKey(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID)) {
                 // Check if there is a grant for automatic registration
-                final String receivedGrant = properties.get(GRANT_PROPERTY);
+                final String receivedGrant = properties.get(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID);
 
-                if (receivedGrant.equals(server.getGrantId())) {
+                if (server.getGrantId().equals(receivedGrant)) {
                     server.setApprovedState((RSAPublicKey) identity.getPublicKey(), address);
                     LOGGER.info("Valid grant received. Master is identified and approved: " + organization + " " + address);
                     return;
@@ -263,19 +266,12 @@ public class MetaNectar extends Hudson {
         }
     }
 
-    /**
-     * Create a grant for a master to be provisioned automatically.
-     */
-    private String createGrantForMaster() {
-        return UUID.randomUUID().toString();
-    }
-
     public MasterServer createMasterServer(String organization) throws IOException {
         checkOrganizationName(organization);
 
         final MasterServer server = createProject(MasterServer.class, organization);
 
-        server.setCreatedState(createGrantForMaster());
+        server.setCreatedState();
         return server;
     }
 
@@ -319,7 +315,7 @@ public class MetaNectar extends Hudson {
     public MasterServer doProvisionMasterServer(String organization) throws IOException {
         final MasterServer server = createMasterServer(organization);
 
-        provisionMaster(server);
+        server.provisionAndStartAction();
 
         return server;
     }
@@ -332,16 +328,6 @@ public class MetaNectar extends Hudson {
         final MasterServer server = createMasterServer(organization);
 
         return server;
-    }
-
-    /**
-     * Provision a new master and issue a grant for automatic approval.
-     *
-     */
-    public void provisionMaster(MasterServer server) throws IOException {
-        Map<String, Object> properties = new HashMap<String, Object>();
-        properties.put(GRANT_PROPERTY, server.getGrantId());
-        masterProvisioner.provisionAndStart(server, getMetaNectarPortUrl(), properties);
     }
 
     //

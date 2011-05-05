@@ -122,7 +122,7 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
 
         for (int i = 0; i < masters; i++) {
             MasterServer ms = metaNectar.createMasterServer("org" + i);
-            metaNectar.provisionMaster(ms);
+            ms.provisionAndStartAction();
         }
 
         // Wait for masters to be provisioned
@@ -164,7 +164,7 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
         StopAndTerminateListener tl = new StopAndTerminateListener(4 * masters);
 
         for (int i = 0; i < masters; i++) {
-            metaNectar.masterProvisioner.stopAndTerminate(metaNectar.getMasterByOrganization("org" + i), true);
+            metaNectar.getMasterByOrganization("org" + i).stopAndTerminateAction(true);
         }
 
         tl.await(1, TimeUnit.MINUTES);

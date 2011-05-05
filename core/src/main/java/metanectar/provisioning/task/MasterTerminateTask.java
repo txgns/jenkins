@@ -15,7 +15,7 @@ public class MasterTerminateTask extends MasterServerTask {
     private static final Logger LOGGER = Logger.getLogger(MasterTerminateTask.class.getName());
 
     public MasterTerminateTask(MasterServer ms) {
-        super(ms);
+        super(ms, MasterServer.Action.Terminate);
     }
 
     public void start() throws Exception {

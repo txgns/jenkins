@@ -31,7 +31,7 @@ public class MasterProvisioningNoResourcesTest extends AbstractMasterProvisionin
         };
 
         // Try to provision when there are no resources
-        metaNectar.provisionMaster(ms);
+        ms.provisionAndStartAction();
 
         noResources.await(1, TimeUnit.MINUTES);
 

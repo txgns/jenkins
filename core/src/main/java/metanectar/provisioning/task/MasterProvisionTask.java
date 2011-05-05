@@ -2,10 +2,13 @@ package metanectar.provisioning.task;
 
 import hudson.model.Node;
 import metanectar.model.MasterServer;
+import metanectar.model.MetaNectar;
 import metanectar.provisioning.Master;
 import metanectar.provisioning.MasterProvisioningNodeProperty;
+import metanectar.provisioning.MasterProvisioningService;
 
 import java.net.URL;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
@@ -26,7 +29,7 @@ public class MasterProvisionTask extends MasterServerTask<Master> {
     private final int id;
 
     public MasterProvisionTask(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties, Node node, int id) {
-        super(ms);
+        super(ms, MasterServer.Action.Provision);
 
         this.metaNectarEndpoint = metaNectarEndpoint;
         this.properties = properties;
@@ -38,9 +41,12 @@ public class MasterProvisionTask extends MasterServerTask<Master> {
         try {
             final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(node);
 
+            Map<String, Object> provisionProperties = new HashMap<String, Object>(properties);
+            provisionProperties.put(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID, ms.getGrantId());
+
             this.future = p.getProvisioningService().provision(
                     node.toComputer().getChannel(), ms.getTaskListener(),
-                    id, ms.getName(), metaNectarEndpoint, properties);
+                    id, ms.getName(), metaNectarEndpoint, provisionProperties);
 
             LOGGER.info("Provisioning master " + ms.getName() + " on node " + node.getNodeName());
 

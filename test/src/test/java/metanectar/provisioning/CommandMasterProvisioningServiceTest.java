@@ -92,10 +92,8 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     }
 
     private void _testProvisionStartTimeOut(LatchMasterServerListener error, MasterServer.State state) throws Exception {
-        Map<String, Object> properties = new HashMap<String, Object>();
-        properties.put(MetaNectar.GRANT_PROPERTY, "grant");
         MasterServer ms = metaNectar.createMasterServer("org1");
-        metaNectar.masterProvisioner.provisionAndStart(ms, new URL("http://test/"), properties);
+        ms.provisionAndStartAction();
 
         error.await(1, TimeUnit.MINUTES);
 
@@ -144,7 +142,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
             }
         };
 
-        metaNectar.masterProvisioner.stopAndTerminate(ms, false);
+        ms.stopAndTerminateAction(false);
 
         error.await(1, TimeUnit.MINUTES);
 
@@ -241,10 +239,8 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     private MasterServer provision() throws Exception {
         ProvisionAndStartListener pl = new ProvisionAndStartListener(4);
 
-        Map<String, Object> properties = new HashMap<String, Object>();
-        properties.put(MetaNectar.GRANT_PROPERTY, "grant");
         MasterServer ms = metaNectar.createMasterServer(getMasterName());
-        metaNectar.masterProvisioner.provisionAndStart(ms, new URL("http://test/"), properties);
+        ms.provisionAndStartAction();
 
         pl.await(1, TimeUnit.MINUTES);
 
@@ -260,11 +256,11 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
 
         String metaNectarEndpoint = params.get(CommandMasterProvisioningService.Variable.MASTER_METANECTAR_ENDPOINT.toString());
         assertNotNull(metaNectarEndpoint);
-        assertEquals(metaNectarEndpoint, new URL("http://test/").toExternalForm());
+        assertEquals(metaNectar.getMetaNectarPortUrl().toExternalForm(), metaNectarEndpoint);
 
         String grantId = params.get(CommandMasterProvisioningService.Variable.MASTER_GRANT_ID.toString());
         assertNotNull(grantId);
-        assertEquals(grantId, "grant");
+        assertEquals(ms.getGrantId(), grantId);
 
         assertTrue(getMasterHomeDir().exists());
         assertTrue(new File(getMasterHomeDir(), "started").exists());
@@ -275,7 +271,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     private void terminate(MasterServer ms) throws Exception {
         StopAndTerminateListener tl = new StopAndTerminateListener(4);
 
-        metaNectar.masterProvisioner.stopAndTerminate(ms, false);
+        ms.stopAndTerminateAction(false);
 
         tl.await(1, TimeUnit.MINUTES);
 

@@ -29,13 +29,15 @@ THE SOFTWARE.
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
   <l:ajax>
     <l:isAdmin>
-      <j:if test="${it.canTerminate()}">
-        <l:task icon="images/24x24/edit-delete.gif" href="terminate" title="${%Terminate Server}"/>
-      </j:if>
-      <j:if test="${it.canDelete()}">
-        <l:task icon="images/24x24/edit-delete.gif" href="delete" title="${%Delete Server}"/>
-      </j:if>
+
+      <j:forEach var="action" items="${it.actionSet}">
+        <l:task icon="images/24x24/${action.icon}" href="${action.href}" title="${action.displayName}" enabled="${it.canDoAction(action)}"/>
+      </j:forEach>
+
       <l:task icon="images/24x24/setting.gif" href="configure" title="${%Configure}"/>
     </l:isAdmin>
+
+    <!-- TODO console log and server log -->
+
   </l:ajax>
 </j:jelly>

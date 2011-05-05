@@ -18,7 +18,7 @@ public class MasterStartTask extends MasterServerTask {
     private static final Logger LOGGER = Logger.getLogger(MasterStartTask.class.getName());
 
     public MasterStartTask(MasterServer ms) {
-        super(ms);
+        super(ms, MasterServer.Action.Start);
     }
 
     public void start() throws Exception {

@@ -63,40 +63,28 @@ public class MasterProvisioner {
     }
 
     public void provisionAndStart(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
-        // TODO check state to see if can perform action
-
         ms.setPreProvisionState();
         pendingPlannedMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties, true));
     }
 
     public void stopAndTerminate(MasterServer ms, boolean clean) {
-        // TODO check state to see if can perform action
-
         masterServerTaskQueue.start(new MasterStopThenTerminateTask(ms));
     }
 
     public void provision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
-        // TODO check state to see if can perform action
-
         ms.setPreProvisionState();
         pendingPlannedMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties, false));
     }
 
     public void start(MasterServer ms) {
-        // TODO check state to see if can perform action
-
         masterServerTaskQueue.start(new MasterStartTask(ms));
     }
 
     public void stop(MasterServer ms) {
-        // TODO check state to see if can perform action
-
         masterServerTaskQueue.start(new MasterStopTask(ms));
     }
 
-    public void terminate(MasterServer ms) {
-        // TODO check state to see if can perform action
-
+    public void terminate(MasterServer ms, boolean clean) {
         masterServerTaskQueue.start(new MasterTerminateTask(ms));
     }
 

@@ -20,6 +20,8 @@ import java.util.concurrent.Future;
  */
 public abstract class MasterProvisioningService extends AbstractDescribableImpl<MasterProvisioningService> implements ExtensionPoint {
 
+    public static final String PROPERTY_PROVISION_GRANT_ID = "grant";
+
     /**
      * Provision a master.
      *

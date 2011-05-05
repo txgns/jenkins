@@ -127,11 +127,9 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
 
         ProvisionAndStartListener pl = new ProvisionAndStartListener(4 * masters);
 
-        Map<String, Object> properties = new HashMap<String, Object>();
-        properties.put("key", "value");
         for (int i = 0; i < masters; i++) {
             MasterServer ms = metaNectar.createMasterServer("org" + i);
-            metaNectar.masterProvisioner.provisionAndStart(ms, new URL("http://test/"), properties);
+            ms.provisionAndStartAction();
         }
 
         pl.await(1, TimeUnit.MINUTES);
@@ -173,7 +171,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
         StopAndTerminateListener tl = new StopAndTerminateListener(4 * masters);
 
         for (int i = 0; i < masters; i++) {
-            metaNectar.masterProvisioner.stopAndTerminate(metaNectar.getMasterByOrganization("org" + i), true);
+            metaNectar.getMasterByOrganization("org" + i).stopAndTerminateAction(true);
         }
 
         tl.await(1, TimeUnit.MINUTES);
@@ -200,11 +198,9 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
 
         ProvisionAndStartListener pl = new ProvisionAndStartListener(4 * masters);
 
-        Map<String, Object> properties = new HashMap<String, Object>();
-        properties.put("key", "value");
         for (int i = 0; i < masters; i++) {
             MasterServer ms = metaNectar.createMasterServer("org" + i);
-            metaNectar.masterProvisioner.provisionAndStart(ms, new URL("http://test/"), properties);
+            ms.provisionAndStartAction();
         }
 
         pl.await(1, TimeUnit.MINUTES);
@@ -228,7 +224,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
         StopAndTerminateListener tl = new StopAndTerminateListener(4 * masters);
 
         for (int i = 0; i < masters; i++) {
-            metaNectar.masterProvisioner.stopAndTerminate(metaNectar.getMasterByOrganization("org" + i), true);
+            metaNectar.getMasterByOrganization("org" + i).stopAndTerminateAction(true);
         }
 
         tl.await(1, TimeUnit.MINUTES);
@@ -268,7 +264,6 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
         ms1 = provisionedMaster("1");
         assertEquals(1, ms1.getId());
     }
-
 
     public void testOrdinal4() throws Exception {
         config();
@@ -319,10 +314,8 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
     private MasterServer provisionedMaster(String name) throws Exception {
         ProvisionAndStartListener pl = new ProvisionAndStartListener(4);
 
-        Map<String, Object> properties = new HashMap<String, Object>();
-        properties.put("key", "value");
         MasterServer ms = metaNectar.createMasterServer(name);
-        metaNectar.masterProvisioner.provisionAndStart(ms, new URL("http://test/"), properties);
+        ms.provisionAndStartAction();
 
         pl.await(1, TimeUnit.MINUTES);
         return ms;
@@ -331,7 +324,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
     private void terminateMaster(MasterServer ms) throws Exception {
         StopAndTerminateListener tl = new StopAndTerminateListener(4);
 
-        metaNectar.masterProvisioner.stopAndTerminate(ms, true);
+        ms.stopAndTerminateAction(true);
         metaNectar.getItems().remove(ms);
 
         tl.await(1, TimeUnit.MINUTES);
