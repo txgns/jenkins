@@ -1,10 +1,10 @@
 /*
  * The MIT License
  * 
- * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi,
+ * Copyright (c) 2004-2011, Sun Microsystems, Inc., Kohsuke Kawaguchi,
  * Brian Westrich, Erik Ramfelt, Ertan Deniz, Jean-Baptiste Quenot,
  * Luca Domenico Milanesio, R. Tyler Ballance, Stephen Connolly, Tom Huybrechts,
- * id:cactusman, Yahoo! Inc.
+ * id:cactusman, Yahoo! Inc., Andrew Bayer
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -70,6 +70,8 @@ import hudson.tasks.Publisher;
 import hudson.triggers.SCMTrigger;
 import hudson.triggers.Trigger;
 import hudson.triggers.TriggerDescriptor;
+import hudson.util.AlternativeUiTextProvider;
+import hudson.util.AlternativeUiTextProvider.Message;
 import hudson.util.DescribableList;
 import hudson.util.EditDistance;
 import hudson.util.FormValidation;
@@ -350,7 +352,16 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      */
     @Override
     public String getPronoun() {
-        return Messages.AbstractProject_Pronoun();
+        return AlternativeUiTextProvider.get(PRONOUN, this,Messages.AbstractProject_Pronoun());
+    }
+
+    /**
+     * Gets the human readable display name to be rendered in the "Build Now" link.
+     *
+     * @since 1.401
+     */
+    public String getBuildNowText() {
+        return AlternativeUiTextProvider.get(BUILD_NOW_TEXT,this,Messages.AbstractProject_BuildNow());
     }
 
     /**
@@ -623,7 +634,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
 
         Set<AbstractProject> upstream = Collections.emptySet();
         if(req.getParameter("pseudoUpstreamTrigger")!=null) {
-            upstream = new HashSet<AbstractProject>(Items.fromNameList(req.getParameter("upstreamProjects"),AbstractProject.class));
+            upstream = new HashSet<AbstractProject>(Items.fromNameList(getParent(),req.getParameter("upstreamProjects"),AbstractProject.class));
         }
 
         // dependency setting might have been changed by the user, so rebuild.
@@ -641,7 +652,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
                 // does 'p' include us in its BuildTrigger? 
                 DescribableList<Publisher,Descriptor<Publisher>> pl = p.getPublishersList();
                 BuildTrigger trigger = pl.get(BuildTrigger.class);
-                List<AbstractProject> newChildProjects = trigger == null ? new ArrayList<AbstractProject>():trigger.getChildProjects();
+                List<AbstractProject> newChildProjects = trigger == null ? new ArrayList<AbstractProject>():trigger.getChildProjects(p);
                 if(isUpstream) {
                     if(!newChildProjects.contains(this))
                         newChildProjects.add(this);
@@ -669,13 +680,13 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
                         pl.removeAll(BuildTrigger.class);
                         Set<AbstractProject> combinedChildren = new HashSet<AbstractProject>();
                         for (BuildTrigger bt : existingList)
-                            combinedChildren.addAll(bt.getChildProjects());
+                            combinedChildren.addAll(bt.getChildProjects(p));
                         existing = new BuildTrigger(new ArrayList<AbstractProject>(combinedChildren),existingList.get(0).getThreshold());
                         pl.add(existing);
                         break;
                     }
 
-                    if(existing!=null && existing.hasSame(newChildProjects))
+                    if(existing!=null && existing.hasSame(p,newChildProjects))
                         continue;   // no need to touch
                     pl.replace(new BuildTrigger(newChildProjects,
                         existing==null?Result.SUCCESS:existing.getThreshold()));
@@ -1429,7 +1440,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         for (AbstractProject<?,?> ap : getUpstreamProjects()) {
             BuildTrigger buildTrigger = ap.getPublishersList().get(BuildTrigger.class);
             if (buildTrigger != null)
-                if (buildTrigger.getChildProjects().contains(this))
+                if (buildTrigger.getChildProjects(ap).contains(this))
                     result.add(ap);
         }        
         return result;
@@ -1826,7 +1837,20 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
             return FormValidation.ok();
         }
 
-       public AutoCompletionCandidates doAutoCompleteAssignedLabelString(@QueryParameter String value) {
+        public AutoCompletionCandidates doAutoCompleteUpstreamProjects(@QueryParameter String value) {
+            AutoCompletionCandidates candidates = new AutoCompletionCandidates();
+            List<Job> jobs = Hudson.getInstance().getItems(Job.class);
+            for (Job job: jobs) {
+                if (job.getFullName().startsWith(value)) {
+                    if (job.hasPermission(Item.READ)) {
+                        candidates.add(job.getFullName());
+                    }
+                }
+            }
+            return candidates;
+        }
+
+        public AutoCompletionCandidates doAutoCompleteAssignedLabelString(@QueryParameter String value) {
             AutoCompletionCandidates c = new AutoCompletionCandidates();
             Set<Label> labels = Hudson.getInstance().getLabels();
             List<String> queries = new AutoCompleteSeeder(value).getSeeds();
@@ -1909,6 +1933,11 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      * Permission to abort a build. For now, let's make it the same as {@link #BUILD}
      */
     public static final Permission ABORT = BUILD;
+
+    /**
+     * Replaceable "Build Now" text.
+     */
+    public static final Message<AbstractProject> BUILD_NOW_TEXT = new Message<AbstractProject>();
 
     /**
      * Used for CLI binding.
