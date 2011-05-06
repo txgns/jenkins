@@ -27,8 +27,35 @@ THE SOFTWARE.
 -->
 <j:jelly xmlns:j="jelly:core" xmlns:x="jelly:xml" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-  <l:ajax>
-      <p>${it}</p>
-    <st:include page="status-${it.statePage}.jelly" optional="true"/>
-  </l:ajax>
+    <p><img src="${imagesURL}/24x24/blue.gif"/> Provisioned on node <a class="${item.className}" href="${rootURL}/${it.node.searchUrl}">${it.node.displayName}</a></p>
+    <p><img src="${imagesURL}/24x24/blue.gif"/> Started</p>
+    <p><img src="${imagesURL}/24x24/blue.gif"/> Approved</p>
+
+    <j:choose>
+        <j:when test="${it.online}">
+            <p><img src="${imagesURL}/24x24/blue.gif"/> Connected</p>
+        </j:when>
+        <j:otherwise>
+            <p><img src="${imagesURL}/24x24/red.gif"/> Disconnected</p>
+        </j:otherwise>
+    </j:choose>
+
+    <j:choose>
+        <j:when test="${it.online}">
+            <form method="post" action="disconnect">
+                <f:submit value="Disconnect"/>
+            </form>
+            <h1>${%Thread Dump}</h1>
+            <j:forEach var="t" items="${it.getThreadDump().entrySet()}">
+                <h2>${t.key}</h2>
+                <pre>${t.value}</pre>
+            </j:forEach>
+        </j:when>
+        <j:otherwise>
+            <j:if test="${it.offline and it.error!=null}">
+                <p>${it.error}</p>
+            </j:if>
+        </j:otherwise>
+    </j:choose>
+
 </j:jelly>

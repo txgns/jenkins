@@ -749,8 +749,8 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     private void setDisconnectStateCallback(Throwable error) throws IOException {
-        // Ignore the error if in the process of terminating
-        if (state.ordinal() < Terminating.ordinal()) {
+        // Ignore the error if already disconnected due to state change
+        if (state.ordinal() > Approved.ordinal()) {
             setDisconnectStateCallback();
         } else {
             this.error = error;

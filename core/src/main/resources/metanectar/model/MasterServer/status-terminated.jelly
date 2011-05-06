@@ -27,7 +27,5 @@ THE SOFTWARE.
 -->
 <j:jelly xmlns:j="jelly:core" xmlns:x="jelly:xml" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-  <l:ajax>
-    <span>[titanic]I'm the king of the world![/titanic]</span>
-  </l:ajax>
+    <p><img src="${imagesURL}/24x24/blue.gif"/> Terminated</p>
 </j:jelly>
