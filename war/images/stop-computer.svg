@@ -17,7 +17,7 @@
    inkscape:version="0.48.1 r9760"
    sodipodi:docname="stop-computer.svg"
    version="1.1"
-   inkscape:export-filename="/Users/stephenc/src/meta-nectar/war/images/stop-computer.png"
+   inkscape:export-filename="/Users/stephenc/src/meta-nectar/war/src/main/webapp/images/24x24/stop-computer.png"
    inkscape:export-xdpi="45"
    inkscape:export-ydpi="45">
   <defs
@@ -1547,7 +1547,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
         <dc:date>2005-03-08</dc:date>
         <dc:creator>
           <cc:Agent>
