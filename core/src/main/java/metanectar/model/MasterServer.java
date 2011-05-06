@@ -79,8 +79,8 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         Provision("new-computer.png"),
         Start("start-computer.png"),
         Stop("stop-computer.png"),
-        Terminate("edit-delete.gif"),
-        Delete("edit-delete.gif");
+        Terminate("edit-delete.png"),
+        Delete("edit-delete.png");
 
         public final String icon;
 

@@ -28,7 +28,6 @@ THE SOFTWARE.
 <j:jelly xmlns:j="jelly:core" xmlns:x="jelly:xml" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
   <l:ajax>
-      <p>${it}</p>
     <st:include page="status-${it.statePage}.jelly" optional="true"/>
   </l:ajax>
 </j:jelly>

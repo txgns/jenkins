@@ -27,5 +27,5 @@ THE SOFTWARE.
 -->
 <j:jelly xmlns:j="jelly:core" xmlns:x="jelly:xml" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-    <p><img src="${imagesURL}/24x24/red.gif"/> Terminating error</p>
+    <p><img src="${imagesURL}/24x24/red.png"/> Terminating error</p>
 </j:jelly>

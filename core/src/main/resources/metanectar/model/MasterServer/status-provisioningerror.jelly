@@ -27,5 +27,5 @@ THE SOFTWARE.
 -->
 <j:jelly xmlns:j="jelly:core" xmlns:x="jelly:xml" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-    <p><img src="${imagesURL}/24x24/red.gif"/> Provisioning error on node <a class="${item.className}" href="${rootURL}/${it.node.searchUrl}">${it.node.displayName}</a></p>
+    <p><img src="${imagesURL}/24x24/red.png"/> Provisioning error on node <a class="${item.className}" href="${rootURL}/${it.node.searchUrl}">${it.node.displayName}</a></p>
 </j:jelly>
