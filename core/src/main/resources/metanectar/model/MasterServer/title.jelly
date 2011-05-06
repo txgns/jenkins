@@ -27,9 +27,21 @@ THE SOFTWARE.
 -->
 <j:jelly xmlns:j="jelly:core" xmlns:x="jelly:xml" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-  <l:ajax>
-    <img src="${imagesURL}/48x48/${it.icon}" width="48" height="48" alt=""/>
-    <st:nbsp />
-    <a href="${it.serverUrl}">${it.displayName}</a>
-  </l:ajax>
+    <l:ajax>
+        <img src="${imagesURL}/48x48/${it.icon}" width="48" height="48" alt=""/>
+        <st:nbsp/>
+
+        <j:choose>
+            <j:when test="${it.endpoint!=null}">
+                <a href="${it.endpoint}">${it.displayName}</a> (<a href="${it.endpoint}">${it.endpoint}</a>)
+            </j:when>
+            <j:otherwise>
+                ${it.displayName}
+            </j:otherwise>
+        </j:choose>
+
+        <st:nbsp/>
+
+
+    </l:ajax>
 </j:jelly>
