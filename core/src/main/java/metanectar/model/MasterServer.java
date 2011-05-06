@@ -4,6 +4,8 @@ import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableSet;
 import hudson.Extension;
+import hudson.Util;
+import hudson.console.AnnotatedLargeText;
 import hudson.model.*;
 import hudson.remoting.Channel;
 import hudson.util.RemotingDiagnostics;
@@ -19,6 +21,7 @@ import javax.servlet.ServletException;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.interfaces.RSAPublicKey;
@@ -201,9 +204,26 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         channelLock = new Object();
     }
 
+
+    // Logging
+
     private File getLogFile() {
         return new File(getRootDir(),"log.txt");
     }
+
+    public String getLog() throws IOException {
+        return Util.loadFile(getLogFile());
+    }
+
+    public AnnotatedLargeText<TopLevelItem> getLogText() {
+        return new AnnotatedLargeText<TopLevelItem>(getLogFile(), Charset.defaultCharset(), false, this);
+    }
+
+    public void doProgressiveLog( StaplerRequest req, StaplerResponse rsp) throws IOException {
+        getLogText().doProgressText(req,rsp);
+    }
+
+    //
 
     public String toString() {
         final RSAPublicKey key = getIdentity();

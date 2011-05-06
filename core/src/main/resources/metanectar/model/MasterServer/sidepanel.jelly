@@ -37,7 +37,7 @@ THE SOFTWARE.
             </div>
             <l:isAdmin>
                 <l:task icon="images/24x24/setting.gif" href="configure" title="${%Configure}"/>
-                <!-- TODO console log and server log -->
+                <l:task icon="images/24x24/clipboard.gif" href="log" title="${%Log}" />
             </l:isAdmin>
         </l:tasks>
     </l:side-panel>
