@@ -9,6 +9,7 @@ import hudson.Util;
 import hudson.console.AnnotatedLargeText;
 import hudson.model.*;
 import hudson.remoting.Channel;
+import hudson.util.DescribableList;
 import hudson.util.RemotingDiagnostics;
 import hudson.util.StreamTaskListener;
 import hudson.util.io.ReopenableFileOutputStream;
@@ -143,6 +144,10 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
      * Only the node name is serialized.
      */
     private transient volatile Node node;
+
+    private volatile DescribableList<MasterServerProperty<?>,MasterServerPropertyDescriptor> properties =
+            new PropertyList(this);
+
 
     /**
      * A unique number that is always less than or equal to the total number of masters
@@ -900,6 +905,31 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         return state.name().toLowerCase();
     }
 
+    /**
+     * Gets the view properties configured for this view.
+     * @since 1.406
+     */
+    public DescribableList<MasterServerProperty<?>,MasterServerPropertyDescriptor> getProperties() {
+        return properties;
+    }
+
+    public List<hudson.model.Action> getPropertyActions() {
+        ArrayList<hudson.model.Action> result = new ArrayList<hudson.model.Action>();
+        for (MasterServerProperty<?> prop: properties) {
+            result.addAll(prop.getMasterServerActions(this));
+        }
+        return result;
+    }
+
+    private Object readResolve() {
+        if (properties == null) {
+            properties = new PropertyList(this);
+        } else {
+            properties.setOwner(this);
+        }
+        return this;
+    }
+
     @Extension
     public static class DescriptorImpl extends TopLevelItemDescriptor {
         @Override
@@ -913,5 +943,23 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         }
     }
 
+    public static class PropertyList extends DescribableList<MasterServerProperty<?>,MasterServerPropertyDescriptor> {
+        private PropertyList(MasterServer owner) {
+            super(owner);
+        }
+
+        public PropertyList() {// needed for XStream deserialization
+        }
+
+        public MasterServer getOwner() {
+            return (MasterServer)owner;
+        }
+
+        @Override
+        protected void onModified() throws IOException {
+            for (MasterServerProperty p : this)
+                p.setOwner(getOwner());
+        }
+    }
     private static final Logger LOGGER = Logger.getLogger(MasterServer.class.getName());
 }

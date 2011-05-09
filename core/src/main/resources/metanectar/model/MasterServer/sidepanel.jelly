@@ -39,6 +39,9 @@ THE SOFTWARE.
                 <l:task icon="images/24x24/setting.gif" href="configure" title="${%Configure}"/>
                 <l:task icon="images/24x24/clipboard.gif" href="log" title="${%Log}" />
             </l:isAdmin>
+          <j:forEach var="action" items="${it.propertyActions}">
+            <l:task icon="${action.iconFileName}" href="${action.urlName}" title="${action.displayName}" />
+          </j:forEach>
         </l:tasks>
     </l:side-panel>
     <script type="text/javascript">
