@@ -1,6 +1,7 @@
 package metanectar.model;
 
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
+import com.google.common.base.Function;
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableSet;
 import hudson.Extension;
@@ -546,10 +547,22 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         }
     }
 
+    public boolean isProvisioned() {
+        return state.ordinal() >= Provisioned.ordinal() && state.ordinal() < Terminated.ordinal();
+    }
+
     public boolean isTerminating() {
         return state.ordinal() > Stopped.ordinal();
     }
 
+    /**
+     * Query the master state using a synchronized block.
+     *
+     * @param f the function to query the master state.
+     */
+    public synchronized void query(Function<MasterServer, Void> f) {
+        f.apply(this);
+    }
 
     // Actions
 

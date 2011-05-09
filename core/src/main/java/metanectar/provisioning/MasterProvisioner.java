@@ -303,7 +303,7 @@ public class MasterProvisioner {
     public static Multimap<Node, MasterServer> getProvisionedMasters(MetaNectar mn) {
         Multimap<Node, MasterServer> masters = HashMultimap.create();
 
-        for (MasterServer ms : mn.getItems(MasterServer.class)) {
+        for (MasterServer ms : mn.getMasters()) {
             if (ms.getNode() != null) {
                 masters.put(ms.getNode(), ms);
             }

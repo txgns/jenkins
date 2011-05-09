@@ -36,6 +36,7 @@ import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -232,8 +233,12 @@ public class MetaNectar extends Hudson {
         return Messages.MetaNectar_DisplayName();
     }
 
+    public List<MasterServer> getMasters() {
+        return getItems(MasterServer.class);
+    }
+
     public MasterServer getMasterByIdentity(PublicKey identity) {
-        for (MasterServer js : getItems(MasterServer.class))
+        for (MasterServer js : getMasters())
             if (js.getIdentity().equals(identity))
                 return js;
         return null;

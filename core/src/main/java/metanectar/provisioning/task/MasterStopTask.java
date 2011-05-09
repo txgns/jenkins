@@ -30,7 +30,7 @@ public class MasterStopTask extends MasterServerTask {
 
             LOGGER.info("Stopping master " + ms.getName() + " on node " + node.getNodeName());
 
-            // Set the provision started state on the master server
+            // Set the stopping state on the master server
             ms.setStoppingState();
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Stopping error for master " + ms.getName() + " on node " + node.getNodeName(), e);
@@ -48,7 +48,7 @@ public class MasterStopTask extends MasterServerTask {
 
             LOGGER.info("Stopping completed for master " + ms.getName() + " on node " + node.getNodeName());
 
-            // Set the provision completed state on the master server
+            // Set the stopped state on the master server
             ms.setStoppedState();
         } catch (Exception e) {
             final Throwable cause = (e instanceof ExecutionException) ? e.getCause() : e;
