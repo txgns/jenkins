@@ -2,6 +2,7 @@
     This script auguments the missing license information in our dependencies.
 */
 complete {
+/*
     // license constants
     def apacheLicense = license("The Apache Software License, Version 2.0","http://www.apache.org/licenses/LICENSE-2.0.txt")
     def cddl = license("CDDL","http://www.sun.com/cddl/")
@@ -100,4 +101,5 @@ complete {
     match("*:jna-posix") {
         accept("GNU Lesser General Public License Version 2.1")
     }
+*/
 }
