@@ -128,8 +128,6 @@ THE SOFTWARE.
             <f:descriptorRadioList title="${%Security Realm}" varName="realm"
                                    instance="${it.securityRealm}"
                                    descriptors="${h.securityRealmDescriptors}"/>
-          </table>
-          <table style="width:100%">
             <f:descriptorRadioList title="${%Authorization}" varName="authorization"
                                    instance="${it.authorizationStrategy}"
                                    descriptors="${h.authorizationStrategyDescriptors}"/>
