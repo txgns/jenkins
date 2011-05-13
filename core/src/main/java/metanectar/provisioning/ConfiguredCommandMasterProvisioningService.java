@@ -73,7 +73,7 @@ public class ConfiguredCommandMasterProvisioningService extends MasterProvisioni
     @Extension
     public static class DescriptorImpl extends Descriptor<MasterProvisioningService> {
         public String getDisplayName() {
-            return "Pre-configured Provisioning Service";
+            return "Configured Command Provisioning Service";
         }
     }
 
