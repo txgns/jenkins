@@ -2,7 +2,7 @@ package metanectar.provisioning;
 
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
 import hudson.remoting.Channel;
-import metanectar.cloud.MasterProvisioningCloud;
+import metanectar.cloud.MasterProvisioningCloudProxy;
 import metanectar.model.MasterServer;
 import metanectar.model.MetaNectar;
 
@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import static metanectar.provisioning.LatchMasterProvisioningCloudListener.TerminateListener;
 import static metanectar.provisioning.LatchMasterServerListener.ProvisionAndStartListener;
 import static metanectar.provisioning.LatchMasterServerListener.StopAndTerminateListener;
 
@@ -85,7 +86,7 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
         _testProvision(masters, new Configurable() {
             public void configure() throws Exception {
                 SlaveMasterProvisioningNodePropertyTemplate tp = new SlaveMasterProvisioningNodePropertyTemplate(4, new TestMasterProvisioningService(100));
-                MasterProvisioningCloud pc = new MasterProvisioningCloud(tp, new TestSlaveCloud(MasterProvisioningConnectionTest.this, 100));
+                MasterProvisioningCloudProxy pc = new MasterProvisioningCloudProxy(tp, new TestSlaveCloud(MasterProvisioningConnectionTest.this, 100));
                 metaNectar.clouds.add(pc);
             }
         });
@@ -161,14 +162,16 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
     }
 
     private void _testDelete(int masters) throws Exception {
-        StopAndTerminateListener tl = new StopAndTerminateListener(4 * masters);
+        int nodes = masters / 4 + Math.min(masters % 4, 1);
+
+        TerminateListener cloudTl = new TerminateListener(nodes);
+        StopAndTerminateListener masterTl = new StopAndTerminateListener(4 * masters);
 
         for (int i = 0; i < masters; i++) {
             metaNectar.getMasterByOrganization("org" + i).stopAndTerminateAction(true);
         }
 
-        tl.await(1, TimeUnit.MINUTES);
-
+        masterTl.await(1, TimeUnit.MINUTES);
 
         assertEquals(masters, metaNectar.getItems(MasterServer.class).size());
         for (MasterServer ms : metaNectar.getItems(MasterServer.class)) {
@@ -176,10 +179,9 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
             assertNull(ms.getChannel());
         }
 
-        // TODO when node terminate is implemented need to assert that there are no nodes
-//        assertEquals(nodes, MyComputerListener.get().online.size());
-//        assertEquals(nodes, metaNectar.masterProvisioner.masterLabel.getNodes().size());
+        cloudTl.await(1, TimeUnit.MINUTES);
 
+        assertEquals(0, metaNectar.masterProvisioner.getLabel().getNodes().size());
         assertEquals(0, MasterProvisioner.getProvisionedMasters(metaNectar).size());
     }
 

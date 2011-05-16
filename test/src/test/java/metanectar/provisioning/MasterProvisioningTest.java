@@ -4,21 +4,19 @@ import hudson.model.Computer;
 import hudson.model.Node;
 import hudson.model.TaskListener;
 import hudson.remoting.VirtualChannel;
-import hudson.slaves.ComputerListener;
-import metanectar.cloud.MasterProvisioningCloud;
+import hudson.slaves.Cloud;
+import metanectar.cloud.MasterProvisioningCloudListener;
+import metanectar.cloud.MasterProvisioningCloudProxy;
 import metanectar.model.MasterServer;
-import metanectar.model.MetaNectar;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import static metanectar.provisioning.LatchMasterProvisioningCloudListener.TerminateListener;
 import static metanectar.provisioning.LatchMasterServerListener.ProvisionAndStartListener;
 import static metanectar.provisioning.LatchMasterServerListener.StopAndTerminateListener;
 
@@ -77,22 +75,15 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
 
     }
 
-    public static class MyComputerListener extends ComputerListener {
+    public static class ProvisionListener extends MasterProvisioningCloudListener {
+        int provisioned;
 
-        Set<Node> online = new HashSet<Node>();
-
-        public MyComputerListener() {
-            ComputerListener.all().add(0, this);
+        public ProvisionListener() {
+            MasterProvisioningCloudListener.all().add(0, this);
         }
 
-        public void onOnline(Computer c, TaskListener listener) throws IOException, InterruptedException {
-            if (MetaNectar.getInstance().masterProvisioner != null && c.getNode() != MetaNectar.getInstance())
-                online.add(c.getNode());
-        }
-
-        public void onOffline(Computer c) {
-            if (MetaNectar.getInstance().masterProvisioner != null && c.getNode() != MetaNectar.getInstance())
-                online.remove(c.getNode());
+        public void onProvisioned(Cloud c, Node n) {
+            provisioned++;
         }
     }
 
@@ -119,10 +110,10 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
     private void _testProvision(int masters, int nodesPerMaster) throws Exception {
         int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
 
-        MyComputerListener cl = new MyComputerListener();
+        ProvisionListener cl = new ProvisionListener();
 
         SlaveMasterProvisioningNodePropertyTemplate tp = new SlaveMasterProvisioningNodePropertyTemplate(nodesPerMaster, new Service(100));
-        MasterProvisioningCloud pc = new MasterProvisioningCloud(tp, new TestSlaveCloud(this, 100));
+        MasterProvisioningCloudProxy pc = new MasterProvisioningCloudProxy(tp, new TestSlaveCloud(this, 100));
         metaNectar.clouds.add(pc);
 
         ProvisionAndStartListener pl = new ProvisionAndStartListener(4 * masters);
@@ -134,7 +125,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
 
         pl.await(1, TimeUnit.MINUTES);
 
-        assertEquals(nodes, cl.online.size());
+        assertEquals(nodes, cl.provisioned);
         assertEquals(nodes, metaNectar.masterProvisioner.getLabel().getNodes().size());
         assertEquals(masters, MasterProvisioner.getProvisionedMasters(metaNectar).size());
     }
@@ -168,18 +159,18 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
     private void _testDelete(int masters, int nodesPerMaster) throws Exception {
         int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
 
-        StopAndTerminateListener tl = new StopAndTerminateListener(4 * masters);
+        TerminateListener cloudTl = new TerminateListener(nodes);
+        StopAndTerminateListener masterTl = new StopAndTerminateListener(4 * masters);
 
         for (int i = 0; i < masters; i++) {
             metaNectar.getMasterByOrganization("org" + i).stopAndTerminateAction(true);
         }
 
-        tl.await(1, TimeUnit.MINUTES);
+        masterTl.await(1, TimeUnit.MINUTES);
 
-        // TODO when node terminate is implemented need to assert that there are no nodes
-//        assertEquals(nodes, MyComputerListener.get().online.size());
-//        assertEquals(nodes, metaNectar.masterProvisioner.masterLabel.getNodes().size());
+        cloudTl.await(1, TimeUnit.MINUTES);
 
+        assertEquals(0, metaNectar.masterProvisioner.getLabel().getNodes().size());
         assertEquals(0, MasterProvisioner.getProvisionedMasters(metaNectar).size());
     }
 

@@ -6,7 +6,7 @@
     </f:section>
 
     <j:invokeStatic var="ds" className="metanectar.cloud.AbstractProvisioningCloud"
-                    method="getApplicableDescriptors"/>
+                    method="getMasterProvisioningDescriptors"/>
     <f:section title="${%Cloud}">
         <f:dropdownDescriptorSelector descriptors="${ds}" field="cloud" title="${%Cloud}"/>
     </f:section>

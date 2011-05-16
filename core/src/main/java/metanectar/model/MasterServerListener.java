@@ -14,10 +14,25 @@ import java.util.logging.Logger;
  * @author Paul Sandoz
  */
 public abstract class MasterServerListener implements ExtensionPoint {
+    /**
+     * Called when the state of the master changes.
+     *
+     * @param ms the master.
+     */
     public abstract void onStateChange(MasterServer ms);
 
+    /**
+     * Called when the master is connected.
+     *
+     * @param ms the master.
+     */
     public abstract void onConnected(MasterServer ms);
 
+    /**
+     * Called when the master is disconnected.
+     *
+     * @param ms the master.
+     */
     public abstract void onDisconnected(MasterServer ms);
 
     public static ExtensionList<MasterServerListener> all() {

@@ -4,11 +4,10 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Multimap;
 import hudson.Extension;
-import hudson.model.Label;
-import hudson.model.LoadStatistics;
-import hudson.model.Node;
-import hudson.model.PeriodicWork;
+import hudson.model.*;
 import hudson.slaves.Cloud;
+import metanectar.cloud.CloudTerminatingRetentionStrategy;
+import metanectar.cloud.MasterProvisioningCloudListener;
 import metanectar.model.MasterServer;
 import metanectar.model.MetaNectar;
 import metanectar.provisioning.task.*;
@@ -60,6 +59,10 @@ public class MasterProvisioner {
     public Label getLabel() {
         // TODO make configurable
         return MetaNectar.getInstance().getLabel(MASTER_LABEL_ATOM_STRING);
+    }
+
+    public boolean hasPendingRequests() {
+        return !pendingPlannedMasterRequests.isEmpty();
     }
 
     public void provisionAndStart(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
@@ -199,7 +202,6 @@ public class MasterProvisioner {
                         }
                     }
 
-                    /// TODO listener for provisioning nodes, or is there an existing listener that can be reused?
                     break;
                 }
             }
@@ -263,8 +265,24 @@ public class MasterProvisioner {
         if (pendingPlannedMasterRequests.isEmpty() && nodeTaskQueue.getQueue().isEmpty()) {
             // Reap nodes with no provisioned masters
             for (Node n : masterLabel.getNodes()) {
-                if (!provisioned.containsKey(n)) {
-                    // TODO how do we determine if this node can be terminated, e.g. was provisioned from the Cloud
+                if (!masterServerTaskQueue.pendingTasksOnNode(n) && !provisioned.containsKey(n)) {
+                    final Computer c = n.toComputer();
+
+                    if (c.getRetentionStrategy() instanceof CloudTerminatingRetentionStrategy) {
+                        final CloudTerminatingRetentionStrategy rs = (CloudTerminatingRetentionStrategy)c.getRetentionStrategy();
+
+                        try {
+                            rs.terminate(n);
+
+                            LOGGER.info("Terminate completed for node " + n.getNodeName());
+
+                            MasterProvisioningCloudListener.fireOnTerminated(n);
+                        } catch (Exception e) {
+                            LOGGER.log(Level.WARNING, "Terminate error for node " + n.getNodeName());
+
+                            MasterProvisioningCloudListener.fireOnTerminatingError(n, e);
+                        }
+                    }
                 }
             }
         }

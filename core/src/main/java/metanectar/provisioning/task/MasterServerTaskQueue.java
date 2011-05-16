@@ -22,4 +22,14 @@ public class MasterServerTaskQueue extends TaskQueue<MasterServerTask> {
 
         return l;
     }
+
+    public boolean pendingTasksOnNode(Node n) {
+        for (MasterServerTask ms : getQueue()) {
+            if (ms.getMasterServer().getNode() == n) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

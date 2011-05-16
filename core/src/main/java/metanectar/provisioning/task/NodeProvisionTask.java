@@ -3,6 +3,8 @@ package metanectar.provisioning.task;
 import hudson.model.Node;
 import hudson.slaves.Cloud;
 import hudson.slaves.NodeProvisioner;
+import metanectar.cloud.MasterProvisioningCloud;
+import metanectar.cloud.MasterProvisioningCloudListener;
 import metanectar.model.MetaNectar;
 
 import java.util.concurrent.ExecutionException;
@@ -31,19 +33,23 @@ public class NodeProvisionTask extends FutureTask<Node, Task> {
 
     public void start() throws Exception {
         LOGGER.info("Provision started for node " + pn.displayName + " on cloud " + c.name);
+
+        MasterProvisioningCloudListener.fireOnProvisioning(c);
     }
 
     public Task end() throws Exception {
         try {
-            mn.addNode(pn.future.get());
+            final Node n = pn.future.get();
+            mn.addNode(n);
 
-            // TODO listener node provision
             LOGGER.info("Provision completed for node " + pn.displayName + " on cloud " + c.name + ". There are now " + mn.getComputers().length + " computer(s)");
+
+            MasterProvisioningCloudListener.fireOnProvisioned(c, n);
         } catch (Exception e) {
             final Throwable cause = (e instanceof ExecutionException) ? e.getCause() : e;
             LOGGER.log(Level.WARNING, "Provisioned completion error for node " + pn.displayName + " on cloud " + c.name, cause);
 
-            // TODO listener for node provision error
+            MasterProvisioningCloudListener.fireOnProvisioningError(c, e);
             throw e;
         }
 

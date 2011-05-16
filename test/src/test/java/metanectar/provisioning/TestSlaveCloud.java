@@ -7,6 +7,8 @@ import hudson.model.Node;
 import hudson.slaves.Cloud;
 import hudson.slaves.DumbSlave;
 import hudson.slaves.NodeProvisioner;
+import metanectar.cloud.CloudTerminatingRetentionStrategy;
+import metanectar.cloud.MasterProvisioningCloud;
 import metanectar.test.MetaNectarTestCase;
 
 import java.util.ArrayList;
@@ -19,7 +21,7 @@ import java.util.concurrent.Callable;
  *
  * @author Paul Sandoz
  */
-class TestSlaveCloud extends Cloud {
+class TestSlaveCloud extends Cloud implements MasterProvisioningCloud {
     private final transient MetaNectarTestCase mtc;
 
     private final int delay;
@@ -43,6 +45,7 @@ class TestSlaveCloud extends Cloud {
                             System.out.println("launching slave");
 
                             DumbSlave slave = mtc.createSlave();
+                            slave.setRetentionStrategy(new CloudTerminatingRetentionStrategy.RemoveNode());
 
                             Computer computer = slave.toComputer();
                             computer.connect(false).get();

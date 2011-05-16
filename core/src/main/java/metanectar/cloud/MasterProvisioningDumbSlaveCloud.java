@@ -4,8 +4,6 @@ import hudson.Extension;
 import hudson.model.*;
 import hudson.slaves.*;
 import hudson.util.DescribableList;
-import metanectar.model.MetaNectar;
-import metanectar.provisioning.MasterProvisioningNodeProperty;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.IOException;
@@ -20,7 +18,7 @@ import java.util.concurrent.Callable;
  *
  * @author Paul Sandoz
  */
-public class MasterProvisioningDumbSlaveCloud extends Cloud {
+public class MasterProvisioningDumbSlaveCloud extends Cloud implements MasterProvisioningCloud {
     private final int delay;
 
     private  String nodeDescription;
@@ -51,7 +49,7 @@ public class MasterProvisioningDumbSlaveCloud extends Cloud {
         this.mode = mode;
         this.labelString = labelString;
         this.launcher = launcher;
-        this.retentionStrategy = retentionStrategy;
+        this.retentionStrategy = new CloudTerminatingRetentionStrategy.RemoveNode();
         this.nodeProperties.replaceBy(nodeProperties);
 
         this.delay = 1000;
