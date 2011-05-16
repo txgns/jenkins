@@ -45,6 +45,7 @@ THE SOFTWARE.
     <module>test</module>
     <module>cli</module>
     <module>scripts</module>
+    <module>plugins</module>
   </modules>
   
   <scm>
