@@ -31,7 +31,7 @@
   <dependencies>
     <dependency>
       <groupId>com.cloudbees.metanectar</groupId>
-      <artifactId>jenkins-war</artifactId>
+      <artifactId>metanectar-war</artifactId>
       <type>war</type>
       <version>1.400.2-SNAPSHOT</version>
       <scope>test</scope>
