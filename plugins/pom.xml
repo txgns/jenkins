@@ -99,9 +99,10 @@
       <plugin>
         <groupId>org.jenkins-ci.tools</groupId>
         <artifactId>maven-hpi-plugin</artifactId>
-        <version>1.64</version>
+        <version>1.68</version>
         <extensions>true</extensions>
         <configuration>
+          <jenkinsCoreId>com.cloudbees.metanectar:jenkins-core</jenkinsCoreId>
           <showDeprecation>true</showDeprecation>
         </configuration>
       </plugin>
