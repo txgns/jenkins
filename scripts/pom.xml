@@ -1,18 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
+
   <parent>
     <groupId>com.cloudbees.metanectar</groupId>
     <artifactId>pom</artifactId>
     <version>1.400.2-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
-
   <artifactId>scripts</artifactId>
   <packaging>pom</packaging>
-  
-  <name>Local test scripts and env</name>
-
   <properties>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <project.build.outputEncoding>UTF-8</project.build.outputEncoding>
@@ -39,6 +36,8 @@
       <type>hpi</type>
     </dependency>
   </dependencies>
+
+  <name>Local test scripts and env</name>
 
   <build>
     <resources>

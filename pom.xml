@@ -24,20 +24,16 @@ THE SOFTWARE.
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
+
   <parent>
     <groupId>org.jenkins-ci</groupId>
     <artifactId>jenkins</artifactId>
     <version>1.16</version>
   </parent>
-  
   <groupId>com.cloudbees.metanectar</groupId>
   <artifactId>pom</artifactId>
   <version>1.400.2-SNAPSHOT</version>
   <packaging>pom</packaging>
-  
-  <name>Jenkins main module</name>
-  <description>The module that constitutes the main metanectar.war</description>
-  
   <modules>
     <module>remoting</module>
     <module>core</module>
@@ -47,11 +43,142 @@ THE SOFTWARE.
     <module>scripts</module>
     <module>plugins</module>
   </modules>
+  <properties>
+    <mavenVersion>3.0.2</mavenVersion>
+    <maven.version>${mavenVersion}</maven.version>
+    <aetherVersion>1.9</aetherVersion>
+    <sisuInjectVersion>1.4.3.1</sisuInjectVersion>
+    <wagonVersion>1.0-beta-7</wagonVersion>
+    <!-- *.html files are in UTF-8, and *.properties are in iso-8859-1, so this configuration is acturally incorrect,
+    but this suppresses a warning from Maven, and as long as we don't do filtering we should be OK. -->
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.apache.maven</groupId>
+        <artifactId>maven-core</artifactId>
+        <version>${mavenVersion}</version>
+      </dependency>    
+      <dependency>
+        <groupId>org.apache.maven</groupId>
+        <artifactId>maven-compat</artifactId>
+        <version>${mavenVersion}</version>
+      </dependency>      
+      <dependency>
+        <groupId>org.apache.maven</groupId>
+        <artifactId>maven-aether-provider</artifactId>
+        <version>${mavenVersion}</version>
+      </dependency>      
+      <dependency>
+        <groupId>org.apache.maven</groupId>
+        <artifactId>maven-embedder</artifactId>
+        <version>${mavenVersion}</version>
+      </dependency>   
+      <dependency>
+        <groupId>org.sonatype.aether</groupId>
+        <artifactId>aether-api</artifactId>
+        <version>${aetherVersion}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.sonatype.aether</groupId>
+        <artifactId>aether-impl</artifactId>
+        <version>${aetherVersion}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.sonatype.aether</groupId>
+        <artifactId>aether-spi</artifactId>
+        <version>${aetherVersion}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.sonatype.aether</groupId>
+        <artifactId>aether-util</artifactId>
+        <version>${aetherVersion}</version>
+      </dependency>                                   
+      <dependency>
+        <groupId>org.sonatype.aether</groupId>
+        <artifactId>aether-connector-wagon</artifactId>
+        <version>${aetherVersion}</version>
+      </dependency>      
+      <dependency>
+        <groupId>org.apache.maven.wagon</groupId>
+        <artifactId>wagon-http-lightweight</artifactId>
+        <version>${wagonVersion}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.maven.wagon</groupId>
+        <artifactId>wagon-file</artifactId>
+        <version>${wagonVersion}</version>
+      </dependency>    
   
-  <scm>
-    <connection>scm:git:ssh://git@git.cloudbees.com/cloudbees/hudson.git</connection>
-    <developerConnection>scm:git:ssh://git@git.cloudbees.com/cloudbees/hudson.git</developerConnection>
-  </scm>
+      <dependency>
+        <groupId>org.apache.maven.wagon</groupId>
+        <artifactId>wagon-provider-api</artifactId>
+        <version>${wagonVersion}</version>
+      </dependency>      
+      <dependency>
+        <groupId>org.sonatype.sisu</groupId>
+        <artifactId>sisu-inject-plexus</artifactId>
+        <version>${sisuInjectVersion}</version>
+      </dependency>  
+      
+      <dependency>
+        <groupId>org.sonatype.sisu</groupId>
+        <artifactId>sisu-inject-bean</artifactId>
+        <version>${sisuInjectVersion}</version>
+      </dependency>      
+      
+      <dependency>
+        <groupId>org.codehaus.plexus</groupId>
+        <artifactId>plexus-classworlds</artifactId>
+        <version>2.3</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.ant</groupId>
+        <artifactId>ant</artifactId>
+        <version>1.8.0</version>
+      </dependency>    
+      
+      <dependency>
+        <groupId>commons-io</groupId>
+        <artifactId>commons-io</artifactId>
+        <version>1.4</version>
+      </dependency>
+      
+      <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>4.8.1</version>
+      </dependency>  
+    </dependencies>
+  </dependencyManagement>
+  <dependencies>
+    <dependency>
+      <!-- for JRE requirement check annotation -->
+      <groupId>org.jvnet</groupId>
+      <artifactId>animal-sniffer-annotation</artifactId>
+      <version>1.0</version>
+      <optional>true</optional><!-- no need to have this at runtime -->
+    </dependency>
+    <dependency>
+      <groupId>org.jvnet.hudson</groupId>
+      <artifactId>test-annotations</artifactId>
+      <version>1.0</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <name>Jenkins main module</name>
+  <description>The module that constitutes the main metanectar.war</description>
+
+  <licenses>
+    <license>
+      <name>The MIT license</name>
+      <url>http://www.opensource.org/licenses/mit-license.php</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
 
   <build>
     <defaultGoal>install</defaultGoal>
@@ -286,132 +413,62 @@ THE SOFTWARE.
     </extensions>
   </build>
 
-  <dependencies>
-    <dependency>
-      <!-- for JRE requirement check annotation -->
-      <groupId>org.jvnet</groupId>
-      <artifactId>animal-sniffer-annotation</artifactId>
-      <version>1.0</version>
-      <optional>true</optional><!-- no need to have this at runtime -->
-    </dependency>
-    <dependency>
-      <groupId>org.jvnet.hudson</groupId>
-      <artifactId>test-annotations</artifactId>
-      <version>1.0</version>
-      <scope>test</scope>
-    </dependency>
-  </dependencies>
-  
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>org.apache.maven</groupId>
-        <artifactId>maven-core</artifactId>
-        <version>${mavenVersion}</version>
-      </dependency>    
-      <dependency>
-        <groupId>org.apache.maven</groupId>
-        <artifactId>maven-compat</artifactId>
-        <version>${mavenVersion}</version>
-      </dependency>      
-      <dependency>
-        <groupId>org.apache.maven</groupId>
-        <artifactId>maven-aether-provider</artifactId>
-        <version>${mavenVersion}</version>
-      </dependency>      
-      <dependency>
-        <groupId>org.apache.maven</groupId>
-        <artifactId>maven-embedder</artifactId>
-        <version>${mavenVersion}</version>
-      </dependency>   
-      <dependency>
-        <groupId>org.sonatype.aether</groupId>
-        <artifactId>aether-api</artifactId>
-        <version>${aetherVersion}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.sonatype.aether</groupId>
-        <artifactId>aether-impl</artifactId>
-        <version>${aetherVersion}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.sonatype.aether</groupId>
-        <artifactId>aether-spi</artifactId>
-        <version>${aetherVersion}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.sonatype.aether</groupId>
-        <artifactId>aether-util</artifactId>
-        <version>${aetherVersion}</version>
-      </dependency>                                   
-      <dependency>
-        <groupId>org.sonatype.aether</groupId>
-        <artifactId>aether-connector-wagon</artifactId>
-        <version>${aetherVersion}</version>
-      </dependency>      
-      <dependency>
-        <groupId>org.apache.maven.wagon</groupId>
-        <artifactId>wagon-http-lightweight</artifactId>
-        <version>${wagonVersion}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.maven.wagon</groupId>
-        <artifactId>wagon-file</artifactId>
-        <version>${wagonVersion}</version>
-      </dependency>    
-  
-      <dependency>
-        <groupId>org.apache.maven.wagon</groupId>
-        <artifactId>wagon-provider-api</artifactId>
-        <version>${wagonVersion}</version>
-      </dependency>      
-      <dependency>
-        <groupId>org.sonatype.sisu</groupId>
-        <artifactId>sisu-inject-plexus</artifactId>
-        <version>${sisuInjectVersion}</version>
-      </dependency>  
-      
-      <dependency>
-        <groupId>org.sonatype.sisu</groupId>
-        <artifactId>sisu-inject-bean</artifactId>
-        <version>${sisuInjectVersion}</version>
-      </dependency>      
-      
-      <dependency>
-        <groupId>org.codehaus.plexus</groupId>
-        <artifactId>plexus-classworlds</artifactId>
-        <version>2.3</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.ant</groupId>
-        <artifactId>ant</artifactId>
-        <version>1.8.0</version>
-      </dependency>    
-      
-      <dependency>
-        <groupId>commons-io</groupId>
-        <artifactId>commons-io</artifactId>
-        <version>1.4</version>
-      </dependency>
-      
-      <dependency>
-        <groupId>junit</groupId>
-        <artifactId>junit</artifactId>
-        <version>4.8.1</version>
-      </dependency>  
-    </dependencies>
-  </dependencyManagement>
+  <scm>
+    <connection>scm:git:ssh://git@git.cloudbees.com/cloudbees/hudson.git</connection>
+    <developerConnection>scm:git:ssh://git@git.cloudbees.com/cloudbees/hudson.git</developerConnection>
+  </scm>
 
-  <properties>
-    <mavenVersion>3.0.2</mavenVersion>
-    <maven.version>${mavenVersion}</maven.version>
-    <aetherVersion>1.9</aetherVersion>
-    <sisuInjectVersion>1.4.3.1</sisuInjectVersion>
-    <wagonVersion>1.0-beta-7</wagonVersion>
-    <!-- *.html files are in UTF-8, and *.properties are in iso-8859-1, so this configuration is acturally incorrect,
-    but this suppresses a warning from Maven, and as long as we don't do filtering we should be OK. -->
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
+  <repositories>
+    <repository>
+      <id>m.g.o-public</id>
+      <url>http://maven.glassfish.org/content/groups/public/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>maven.infradna.com</id>
+      <url>http://maven.infradna.com/releases</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+    </repository>
+  </repositories>
+
+  <pluginRepositories>
+    <pluginRepository>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>https://repository-cloudbees.forge.cloudbees.com/private-release</url>
+    </pluginRepository>
+    <pluginRepository>
+      <id>m.g.o-public</id>
+      <url>http://maven.glassfish.org/content/groups/public/</url>
+    </pluginRepository>
+  </pluginRepositories>
+
+  <distributionManagement>
+    <repository>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>dav:https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
+    </repository>
+    <snapshotRepository>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>dav:https://repository-cloudbees.forge.cloudbees.com/private-snapshot/</url>
+    </snapshotRepository>
+  </distributionManagement>
 
   <profiles>
     <profile>
@@ -560,64 +617,4 @@ THE SOFTWARE.
       </properties>
     </profile>
   </profiles>
-  
-  <repositories>
-    <repository>
-      <id>m.g.o-public</id>
-      <url>http://maven.glassfish.org/content/groups/public/</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </repository>
-    <repository>
-      <id>maven.infradna.com</id>
-      <url>http://maven.infradna.com/releases</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </repository>
-    <repository>
-      <id>repository-cloudbees.forge.cloudbees.com</id>
-      <url>https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-    </repository>
-  </repositories>
-
-  <pluginRepositories>
-    <pluginRepository>
-      <id>repository-cloudbees.forge.cloudbees.com</id>
-      <url>https://repository-cloudbees.forge.cloudbees.com/private-release</url>
-    </pluginRepository>
-    <pluginRepository>
-      <id>m.g.o-public</id>
-      <url>http://maven.glassfish.org/content/groups/public/</url>
-    </pluginRepository>
-  </pluginRepositories>
-
-  <licenses>
-    <license>
-      <name>The MIT license</name>
-      <url>http://www.opensource.org/licenses/mit-license.php</url>
-      <distribution>repo</distribution>
-    </license>
-  </licenses>
-
-  <distributionManagement>
-    <repository>
-      <id>repository-cloudbees.forge.cloudbees.com</id>
-      <url>dav:https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
-    </repository>
-    <snapshotRepository>
-      <id>repository-cloudbees.forge.cloudbees.com</id>
-      <url>dav:https://repository-cloudbees.forge.cloudbees.com/private-snapshot/</url>
-    </snapshotRepository>
-  </distributionManagement>
 </project>
