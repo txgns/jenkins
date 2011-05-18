@@ -44,8 +44,6 @@ import static metanectar.model.MasterServer.State.Approved;
  */
 public class MasterServer extends AbstractItem implements TopLevelItem, HttpResponse {
 
-    private MetaNectarSlaveManager slaveManager;
-
     /**
      * The states of the master.
      */
@@ -178,6 +176,9 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     private transient /* final */ Object channelLock = new Object();
 
     private transient volatile Channel channel;
+
+    private transient MetaNectarSlaveManager slaveManager;
+
 
     /**
      * Perpetually writable log file.
