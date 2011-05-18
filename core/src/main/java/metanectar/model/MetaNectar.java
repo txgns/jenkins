@@ -4,15 +4,19 @@ import com.cloudbees.commons.metanectar.agent.AgentListener;
 import com.cloudbees.commons.metanectar.agent.AgentStatusListener;
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol.GracefulConnectionRefusalException;
+import com.google.common.collect.Lists;
+import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.PluginManager;
 import hudson.model.*;
 import hudson.remoting.Channel;
+import hudson.slaves.ComputerConnector;
 import hudson.util.AdministrativeError;
 import hudson.util.AlternativeUiTextProvider;
 import hudson.util.FormValidation;
 import hudson.views.StatusColumn;
 import metanectar.Config;
+import metanectar.MetaNectarExtensionPoint;
 import metanectar.model.views.MasterServerColumn;
 import metanectar.provisioning.MasterProvisioner;
 import metanectar.provisioning.MasterProvisioningNodeProperty;
@@ -34,10 +38,7 @@ import java.security.GeneralSecurityException;
 import java.security.PublicKey;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Logger;
 
 import static hudson.Util.fixEmpty;
@@ -339,6 +340,33 @@ public class MetaNectar extends Hudson {
     }
 
     //
+
+    /**
+     * Obtain the list of descriptors for a describable class whose sub-classes are assignable
+     * to {@link MetaNectarExtensionPoint}.
+     *
+     * @param describableClass the describable class
+     * @param <T> the describable type
+     * @param <D> the descriptor type
+     * @return the sub-list of descriptors
+     */
+    public static <T extends Describable<T>, D extends Descriptor<T>> List<D> allWithMetaNectarExtensions(Class<T> describableClass) {
+        return allWithMetaNectarExtensions(describableClass, MetaNectarExtensionPoint.class);
+    }
+
+    private static <T extends Describable<T>, D extends Descriptor<T>> List<D> allWithMetaNectarExtensions(Class<T> describableClass, Class assignableTo) {
+        final DescriptorExtensionList<T, D> unfiltered = MetaNectar.getInstance().getDescriptorList(describableClass);
+
+        final List<D> filtered = new ArrayList<D>(unfiltered.size());
+
+        for (D d : unfiltered) {
+            if (assignableTo.isAssignableFrom(d.clazz)) {
+                filtered.add(d);
+            }
+        }
+
+        return filtered;
+    }
 
     public static MetaNectar getInstance() {
         return (MetaNectar)Hudson.getInstance();

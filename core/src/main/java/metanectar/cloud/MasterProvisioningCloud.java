@@ -1,6 +1,7 @@
 package metanectar.cloud;
 
 import hudson.slaves.Cloud;
+import metanectar.MetaNectarExtensionPoint;
 
 /**
  * A marker interface to signal a {@link Cloud} implementation is associated with master provisioning
@@ -8,4 +9,4 @@ import hudson.slaves.Cloud;
  *
  * @author Paul Sandoz
  */
-public interface MasterProvisioningCloud { }
+public interface MasterProvisioningCloud extends MetaNectarExtensionPoint { }

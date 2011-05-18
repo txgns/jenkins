@@ -6,7 +6,7 @@ import com.google.common.collect.Multimap;
 import hudson.Extension;
 import hudson.model.*;
 import hudson.slaves.Cloud;
-import metanectar.cloud.CloudTerminatingRetentionStrategy;
+import metanectar.cloud.NodeTerminatingRetentionStrategy;
 import metanectar.cloud.MasterProvisioningCloudListener;
 import metanectar.model.MasterServer;
 import metanectar.model.MetaNectar;
@@ -188,10 +188,13 @@ public class MasterProvisioner {
         // If there are still pending requests and no pending nodes
         if (pendingPlannedMasterRequests.size() > 0 && nodeTaskQueue.getQueue().isEmpty()) {
             // Check clouds to see if a new masters node can be provisioned
-            Collection<PlannedNode> pns = null;
+            Collection<PlannedNode> pns = Collections.emptySet();
             for (Cloud c : masterLabel.getClouds()) {
                 pns = c.provision(masterLabel, 1);
-                if (pns.size() > 0) {
+                if (pns == null)
+                    pns = Collections.emptySet();
+
+                if (!pns.isEmpty()) {
                     for (PlannedNode pn : pns) {
                         try {
                             NodeProvisionTask npt = new NodeProvisionTask(mn, c, pn);
@@ -206,7 +209,7 @@ public class MasterProvisioner {
                 }
             }
 
-            if (pns == null) {
+            if (pns.isEmpty()) {
                 for (PlannedMasterRequest pmr : pendingPlannedMasterRequests) {
                     pmr.ms.setProvisionErrorNoResourcesState();
                     LOGGER.log(Level.WARNING, "No resources to provision master " + pmr.ms.getName());
@@ -268,8 +271,8 @@ public class MasterProvisioner {
                 if (!masterServerTaskQueue.pendingTasksOnNode(n) && !provisioned.containsKey(n)) {
                     final Computer c = n.toComputer();
 
-                    if (c.getRetentionStrategy() instanceof CloudTerminatingRetentionStrategy) {
-                        final CloudTerminatingRetentionStrategy rs = (CloudTerminatingRetentionStrategy)c.getRetentionStrategy();
+                    if (c.getRetentionStrategy() instanceof NodeTerminatingRetentionStrategy) {
+                        final NodeTerminatingRetentionStrategy rs = (NodeTerminatingRetentionStrategy)c.getRetentionStrategy();
 
                         try {
                             rs.terminate(n);

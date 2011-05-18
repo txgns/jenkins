@@ -7,7 +7,7 @@ import hudson.model.Node;
 import hudson.slaves.Cloud;
 import hudson.slaves.DumbSlave;
 import hudson.slaves.NodeProvisioner;
-import metanectar.cloud.CloudTerminatingRetentionStrategy;
+import metanectar.cloud.NodeTerminatingRetentionStrategy;
 import metanectar.cloud.MasterProvisioningCloud;
 import metanectar.test.MetaNectarTestCase;
 
@@ -45,7 +45,7 @@ class TestSlaveCloud extends Cloud implements MasterProvisioningCloud {
                             System.out.println("launching slave");
 
                             DumbSlave slave = mtc.createSlave();
-                            slave.setRetentionStrategy(new CloudTerminatingRetentionStrategy.RemoveNode());
+                            slave.setRetentionStrategy(new NodeTerminatingRetentionStrategy.RemoveNode());
 
                             Computer computer = slave.toComputer();
                             computer.connect(false).get();

@@ -49,7 +49,7 @@ public class MasterProvisioningDumbSlaveCloud extends Cloud implements MasterPro
         this.mode = mode;
         this.labelString = labelString;
         this.launcher = launcher;
-        this.retentionStrategy = new CloudTerminatingRetentionStrategy.RemoveNode();
+        this.retentionStrategy = new NodeTerminatingRetentionStrategy.RemoveNode();
         this.nodeProperties.replaceBy(nodeProperties);
 
         this.delay = 1000;

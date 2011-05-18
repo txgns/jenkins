@@ -16,9 +16,9 @@ import java.util.logging.Logger;
  *
  * @author Paul Sandoz
  */
-public abstract class CloudTerminatingRetentionStrategy<N extends Node, C extends Computer> extends RetentionStrategy<C> {
+public abstract class NodeTerminatingRetentionStrategy<N extends Node, C extends Computer> extends RetentionStrategy<C> {
 
-    private static final Logger LOGGER = Logger.getLogger(CloudTerminatingRetentionStrategy.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(NodeTerminatingRetentionStrategy.class.getName());
 
     @Override
     public void start(C c) {
@@ -38,7 +38,7 @@ public abstract class CloudTerminatingRetentionStrategy<N extends Node, C extend
      */
     public abstract void terminate(N n) throws Exception;
 
-    public static class RemoveNode extends CloudTerminatingRetentionStrategy {
+    public static class RemoveNode extends NodeTerminatingRetentionStrategy {
         @Override
         public void terminate(Node node) throws Exception {
             MetaNectar.getInstance().removeNode(node);
