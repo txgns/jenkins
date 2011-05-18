@@ -44,6 +44,8 @@ import static metanectar.model.MasterServer.State.Approved;
  */
 public class MasterServer extends AbstractItem implements TopLevelItem, HttpResponse {
 
+    private MetaNectarSlaveManager slaveManager;
+
     /**
      * The states of the master.
      */
@@ -416,8 +418,9 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         this.error = null;
         fireOnConnected();
 
+        slaveManager = new MetaNectarSlaveManager();
         channel.setProperty(SlaveManager.class.getName(),
-                channel.export(SlaveManager.class, new MetaNectarSlaveManager()));
+                channel.export(SlaveManager.class, slaveManager));
 
         taskListener.getLogger().println("Connected");
         taskListener.getLogger().println(toString());

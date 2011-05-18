@@ -32,9 +32,15 @@
     <dependency>
       <groupId>com.cloudbees.nectar.plugins</groupId>
       <artifactId>cloudbees-metanectar-plugin</artifactId>
-      <version>1.4</version>
+      <version>1.6</version>
       <type>hpi</type>
     </dependency>
+    <!--<dependency>-->
+      <!--<groupId>com.cloudbees.plugins</groupId>-->
+      <!--<artifactId>cloudbees-slave-provisioning-plugin</artifactId>-->
+      <!--<version>0.1-SNAPSHOT</version>-->
+      <!--<type>hpi</type>-->
+    <!--</dependency>-->
   </dependencies>
 
   <name>Local test scripts and env</name>
