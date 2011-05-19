@@ -1,72 +1,79 @@
 package metanectar.property;
 
 import com.google.common.collect.Maps;
+import com.google.common.primitives.Primitives;
 
 import java.net.URL;
 import java.util.Map;
 
 /**
+ * Convert a string to an instance of a type.
+ *
  * @author Paul Sandoz
  */
 public final class StringConverter {
 
-    static final Map<Class, Converter> converterMap = createConvertorMap();
+    static final Map<Class, StringToType> stringToTypeMap = createStringToTypeMap();
 
     private StringConverter() {
     }
 
-    public static Object convert(Class type, String value) throws StringConversionException {
-        final Converter sc = converterMap.get(type);
+    public static <T> T valueOf(Class<T> type, String value) throws StringConverterException {
+        type = Primitives.wrap(type);
+        final StringToType sc = stringToTypeMap.get(type);
         if (sc == null) {
-            throw new StringConversionException(String.format("The string \"%s\" could not be converted to an instance of the type %s. There is no registered converter for the type.", value, type.getName()));
+            throw new StringConverterException(String.format("The string \"%s\" could not be converted to an instance of the type %s. There is no registered converter for the type.", value, type.getName()));
         }
 
-        Object oValue = null;
         try {
-            return sc.fromString(value);
+            return type.cast(sc.valueOf(value));
         } catch (Exception e) {
-            throw new StringConversionException(String.format("The string \"%s\" could not be converted to an instance of the type %s", value, type.getName()), e);
+            throw new StringConverterException(String.format("The string \"%s\" could not be converted to an instance of the type %s", value, type.getName()), e);
         }
     }
 
-    public static class StringConversionException extends Exception {
-        public StringConversionException(String s) {
+    public static class StringConverterException extends RuntimeException {
+        public StringConverterException(String s) {
             super(s);
         }
 
-        public StringConversionException(String s, Throwable throwable) {
+        public StringConverterException(String s, Throwable throwable) {
             super(s, throwable);
         }
     }
 
-    private static Map<Class, Converter> createConvertorMap() {
-        final Map<Class, Converter> converterMap = Maps.newHashMap();
+    private static Map<Class, StringToType> createStringToTypeMap() {
+        final Map<Class, StringToType> stringToTypeMap = Maps.newHashMap();
 
-        converterMap.put(String.class, new Converter<String>() {
-            public String fromString(String s) {
+        stringToTypeMap.put(String.class, new StringToType<String>() {
+            public String valueOf(String s) {
                 return s;
             }
         });
 
-        converterMap.put(int.class, new Converter<Integer>() {
-            public Integer fromString(String s) {
-                if (s == null) return 0;
+        stringToTypeMap.put(Boolean.class, new StringToType<Boolean>() {
+            public Boolean valueOf(String s) {
+                return Boolean.valueOf(s);
+            }
+        });
+
+        stringToTypeMap.put(Integer.class, new StringToType<Integer>() {
+            public Integer valueOf(String s) {
                 return Integer.valueOf(s);
             }
         });
-        converterMap.put(Integer.class, converterMap.get(int.class));
 
-        converterMap.put(URL.class, new Converter<URL>() {
-            public URL fromString(String s) throws Exception{
+        stringToTypeMap.put(URL.class, new StringToType<URL>() {
+            public URL valueOf(String s) throws Exception {
                 return new URL(s);
             }
         });
 
-        return converterMap;
+        return stringToTypeMap;
     }
 
-    private interface Converter<T> {
-        T fromString(String s) throws Exception;
+    private interface StringToType<T> {
+        T valueOf(String s) throws Exception;
     }
 
 }

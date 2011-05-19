@@ -446,6 +446,16 @@ THE SOFTWARE.
         <enabled>true</enabled>
       </releases>
     </repository>
+    <repository>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>https://repository-cloudbees.forge.cloudbees.com/snapshot</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
   </repositories>
 
   <pluginRepositories>

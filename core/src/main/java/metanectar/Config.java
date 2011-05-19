@@ -1,6 +1,9 @@
 package metanectar;
 
 import com.google.common.collect.Maps;
+import metanectar.property.DefaultValue;
+import metanectar.property.PropertiesToBeanMapper;
+import metanectar.property.Property;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -8,6 +11,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Map;
 import java.util.Properties;
+import java.util.WeakHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -29,46 +33,85 @@ public class Config {
 
     private static final String METANECTAR_PROPERTIES_URL = System.getProperty(METANECTAR_PROPERTIES_URL_SYSTEM_PROPERTY_NAME);
 
-    private final Map<String, String> properties = Maps.newConcurrentMap();
+    private final Properties properties;
+
+    private final PropertiesToBeanMapper binder;
+
+    private final Map<Class, Object> bindCache = Maps.newConcurrentMap();
 
     public Config() {
         this(METANECTAR_PROPERTIES_URL);
     }
 
     public Config(String propertiesUrl) {
-        load(propertiesUrl);
+        this(load(propertiesUrl));
     }
 
-    public Config(Properties ps) {
-        load(ps);
+    public Config(Properties properties) {
+        this.properties = properties;
+        this.binder = new PropertiesToBeanMapper(properties);
     }
 
     private static class SingletonHolder {
-      public static final Config INSTANCE = new Config();
+        public static final Config INSTANCE = new Config();
     }
 
     public static Config getInstance() {
-      return SingletonHolder.INSTANCE;
+        return SingletonHolder.INSTANCE;
     }
 
-    private void load(String propertiesUrl) {
+    private static Properties load(String propertiesUrl) {
+        final Properties ps = new Properties();
+
         if (propertiesUrl == null) {
-            return;
+            return ps;
         }
 
         try {
-            Properties ps = new Properties();
             ps.load(new URL(propertiesUrl).openStream());
-            load(ps);
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error loading properties file \"" + propertiesUrl + "\"", e);
         }
+
+        return ps;
     }
 
-    private void load(Properties ps) {
-        for (Map.Entry e : ps.entrySet()) {
-            properties.put((String)e.getKey(), (String)e.getValue());
+
+    public static class MetaNectarProperties {
+        private URL endpoint;
+
+        public URL getEndpoint() {
+            return endpoint;
         }
+
+        @Property("metaNectar.endpoint")
+        public void setEndpoint(URL endpoint) {
+            this.endpoint = endpoint;
+        }
+    }
+
+    public static class MetaNectarProvisioningProperties {
+        private boolean isMasterProvisioning;
+
+        public boolean isMasterProvisioning() {
+            return isMasterProvisioning;
+        }
+
+        @Property("metaNectar.isMasterProvisioning") @DefaultValue("false")
+        public void setMasterProvisioning(boolean masterProvisioning) {
+            isMasterProvisioning = masterProvisioning;
+        }
+    }
+
+    public <T> T getBean(Class<T> c) {
+        if (bindCache.containsKey(c)) {
+            return (T)bindCache.get(c);
+        }
+
+        T t = binder.mapTo(c);
+        bindCache.put(t.getClass(), t);
+
+        return t;
     }
 
     /**
@@ -77,7 +120,7 @@ public class Config {
      * @throws IllegalStateException if the property is not present.
      */
     public URL getEndpoint() throws MalformedURLException, IllegalStateException {
-        return new URL(getProperty("metaNectar.endpoint"));
+        return getBean(MetaNectarProperties.class).endpoint;
     }
 
     /**
@@ -85,71 +128,7 @@ public class Config {
      *         provisioning, otherwise false.
      */
     public boolean isMasterProvisioning() {
-        return Boolean.valueOf(getProperty("metaNectar.isMasterProvisioning", "false"));
-    }
-
-    /**
-     * @return the property "metaNectar.master.provisioning.basePort" that is the base port to use as the initial
-     *         port for the first provisioned master. The default value is 9090.
-     * @throws NumberFormatException if the property value is not an integer.
-     */
-    public int getMasterProvisioningBasePort() throws NumberFormatException {
-        return Integer.valueOf(getProperty("metaNectar.master.provisioning.basePort", "9090"));
-    }
-
-    /**
-     * @return the property "metaNectar.master.provisioning.homeLocation" that is the location where master home
-     *         directories of provisioned masters will be created.
-     * @throws IllegalStateException if the property is not present.
-     */
-    public String getMasterProvisioningHomeLocation() throws IllegalStateException {
-        return getProperty("metaNectar.master.provisioning.homeLocation");
-    }
-
-    /**
-     * @return the property "metaNectar.master.provisioning.timeOut" that is the time out value to use for any
-     *         asynchronous master provisioning operations. The default value is 60 seconds, if the property is
-     *         not present.
-     * @throws NumberFormatException if the property value is not an integer.
-     */
-    public int getMasterProvisioningTimeOut() throws NumberFormatException {
-        return Integer.valueOf(getProperty("metaNectar.master.provisioning.timeOut", "60"));
-    }
-
-    /**
-     * @return the property "metaNectar.master.provisioning.script.provision" that is the name of the script to execute
-     *         when provisioning a master.
-     * @throws IllegalStateException if the property is not present.
-     */
-    public String getMasterProvisioningScriptProvision() throws IllegalStateException {
-        return getProperty("metaNectar.master.provisioning.script.provision");
-    }
-
-    /**
-     * @return the property "metaNectar.master.provisioning.script.start" that is the name of the script to execute
-     *         when starting a master.
-     * @throws IllegalStateException if the property is not present.
-     */
-    public String getMasterProvisioningScriptStart() throws IllegalStateException {
-        return getProperty("metaNectar.master.provisioning.script.start");
-    }
-
-    /**
-     * @return the property "metaNectar.master.provisioning.script.stop" that is the name of the script to execute
-     *         when stopping a master.
-     * @throws IllegalStateException if the property is not present.
-     */
-    public String getMasterProvisioningScriptStop() throws IllegalStateException {
-        return getProperty("metaNectar.master.provisioning.script.stop");
-    }
-
-    /**
-     * @return the property "metaNectar.master.provisioning.script.terminate" that is the name of the script to execute
-     *         when terminating a master.
-     * @throws IllegalStateException if the property is not present.
-     */
-    public String getMasterProvisioningScriptTerminate() throws IllegalStateException {
-        return getProperty("metaNectar.master.provisioning.script.terminate");
+        return getBean(MetaNectarProvisioningProperties.class).isMasterProvisioning;
     }
 
     private String getProperty(String name) throws IllegalStateException {
@@ -157,7 +136,7 @@ public class Config {
     }
 
     private String getProperty(String name, String defaultValue) throws IllegalStateException {
-        String value = properties.get(name);
+        String value = properties.getProperty(name);
 
         if (value == null) {
             value = System.getProperty(name);

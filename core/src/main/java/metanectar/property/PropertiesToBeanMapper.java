@@ -1,12 +1,9 @@
 package metanectar.property;
 
-import com.google.common.collect.Maps;
-
 import java.beans.*;
+import java.beans.IntrospectionException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.URL;
-import java.util.Map;
 import java.util.Properties;
 
 /**
@@ -20,42 +17,111 @@ public class PropertiesToBeanMapper {
         this.properties = properties;
     }
 
-    public <T> T mapTo(Class<T> ct) throws IllegalAccessException, InstantiationException, IntrospectionException {
-        return mapTo(ct.newInstance());
+    public <T> T mapTo(Class<T> ct) throws PropertyMappingException {
+
+        try {
+            return mapTo(ct.newInstance());
+        } catch (PropertyMappingException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new PropertyMappingException(e);
+        }
     }
 
-    public <T> T mapTo(final T t) throws IntrospectionException {
-        final BeanInfo bi = Introspector.getBeanInfo(t.getClass());
+    public <T> T mapTo(final T t) throws PropertyMappingException {
+        final BeanInfo bi = getBeanInfo(t.getClass());
 
         for (final PropertyDescriptor pd : bi.getPropertyDescriptors()) {
             final Method writeMethod = pd.getWriteMethod();
 
-            if (!writeMethod.isAnnotationPresent(Property.class))
+            if (writeMethod == null || !writeMethod.isAnnotationPresent(Property.class))
                 continue;
 
             final Property p = writeMethod.getAnnotation(Property.class);
             final Class type = pd.getPropertyType();
 
-            if (p.value() == null || p.value().isEmpty()) {
-                // TODO error
+            if (p.value().isEmpty()) {
+                throw onError(writeMethod, "The declared @Property(\"\") MUST not be an empty string");
             }
 
-            String value = properties.getProperty(p.value());
+            if (writeMethod.isAnnotationPresent(DefaultValue.class)) {
+                final DefaultValue dv = writeMethod.getAnnotation(DefaultValue.class);
+
+            }
+
+            String value = getProperty(p.value());
             if (value == null) {
-                // TODO required or default value
+                final DefaultValue dv = writeMethod.getAnnotation(DefaultValue.class);
+                if (dv != null) {
+                    value = dv.value();
+                } else {
+                    // TODO optional
+                    throw onError(writeMethod, String.format("The required @Property(\"%s\") is not present in the properties %s", p.value(), properties));
+                }
             }
 
             try {
-                writeMethod.invoke(t, StringConverter.convert(type, value));
+                // TODO optional
+                writeMethod.invoke(t, StringConverter.valueOf(type, value));
             } catch (IllegalAccessException e) {
-                // TODO
+                throw onError(writeMethod, e.getMessage(), e);
             } catch (InvocationTargetException e) {
-                // TODO
-            } catch (StringConverter.StringConversionException e) {
-                // TODO
+                throw onError(writeMethod, "Error setting property", e);
+            } catch (StringConverter.StringConverterException e) {
+                throw onError(writeMethod, "Error converting string to instance of property type", e);
             }
         }
 
         return t;
+    }
+
+    private String getProperty(String name) {
+        String value = properties.getProperty(name);
+        if (value != null)
+            return value;
+
+        return System.getProperty(name);
+    }
+
+    private PropertyMappingException onError(Class bean, String message, Throwable cause) {
+        return new PropertyMappingException(String.format("Error processing property bean %s. %s",
+                bean.getName(), message), cause);
+    }
+
+    private PropertyMappingException onError(Method writeMethod, String message) {
+        return new PropertyMappingException(String.format("Error processing property bean method %s#%s. %s",
+                writeMethod.getDeclaringClass().getName(),
+                writeMethod.getName(),
+                message));
+    }
+
+    private PropertyMappingException onError(Method writeMethod, String message, Throwable cause) {
+        return new PropertyMappingException(String.format("Error processing property bean method %s#%s. %s",
+                writeMethod.getDeclaringClass().getName(),
+                writeMethod.getName(),
+                message),
+                cause);
+    }
+
+    private BeanInfo getBeanInfo(Class c) throws PropertyMappingException {
+        try {
+            return Introspector.getBeanInfo(c);
+        } catch (IntrospectionException e) {
+            throw onError(c, "Bean introspection error", e);
+        }
+    }
+
+    public static class PropertyMappingException extends RuntimeException {
+        public PropertyMappingException(String s) {
+            super(s);
+        }
+
+        public PropertyMappingException(Throwable throwable) {
+            super(throwable);
+        }
+
+        public PropertyMappingException(String s, Throwable throwable) {
+            super(s, throwable);
+        }
     }
 }

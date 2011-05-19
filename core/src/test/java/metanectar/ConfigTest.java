@@ -2,6 +2,7 @@ package metanectar;
 
 import com.google.common.collect.Maps;
 import junit.framework.TestCase;
+import metanectar.property.PropertiesToBeanMapper;
 
 import java.net.URL;
 import java.util.Map;
@@ -75,13 +76,6 @@ public class ConfigTest extends TestCase {
     private void testProperties(final Config c) throws Exception{
         assertEquals(new URL("http://localhost:8080"), c.getEndpoint());
         assertTrue(c.isMasterProvisioning());
-        assertEquals(8181, c.getMasterProvisioningBasePort());
-        assertEquals("/tmp/masters", c.getMasterProvisioningHomeLocation());
-        assertEquals(10, c.getMasterProvisioningTimeOut());
-        assertEquals("provision", c.getMasterProvisioningScriptProvision());
-        assertEquals("start", c.getMasterProvisioningScriptStart());
-        assertEquals("stop", c.getMasterProvisioningScriptStop());
-        assertEquals("terminate", c.getMasterProvisioningScriptTerminate());
     }
 
     private void testNoProperties(final Config c) throws Exception {
@@ -89,43 +83,10 @@ public class ConfigTest extends TestCase {
             public void run() throws Exception {
                 c.getEndpoint();
             }
-        }, IllegalStateException.class);
+        }, PropertiesToBeanMapper.PropertyMappingException.class);
+
 
         assertFalse(c.isMasterProvisioning());
-
-        assertEquals(9090, c.getMasterProvisioningBasePort());
-
-        _testWithThrower(new Thrower() {
-            public void run() throws Exception {
-                c.getMasterProvisioningHomeLocation();
-            }
-        }, IllegalStateException.class);
-
-        assertEquals(60, c.getMasterProvisioningTimeOut());
-
-        _testWithThrower(new Thrower() {
-            public void run() throws Exception {
-                c.getMasterProvisioningScriptProvision();
-            }
-        }, IllegalStateException.class);
-
-        _testWithThrower(new Thrower() {
-            public void run() throws Exception {
-                c.getMasterProvisioningScriptStart();
-            }
-        }, IllegalStateException.class);
-
-        _testWithThrower(new Thrower() {
-            public void run() throws Exception {
-                c.getMasterProvisioningScriptStop();
-            }
-        }, IllegalStateException.class);
-
-        _testWithThrower(new Thrower() {
-            public void run() throws Exception {
-                c.getMasterProvisioningScriptTerminate();
-            }
-        }, IllegalStateException.class);
     }
 
 
