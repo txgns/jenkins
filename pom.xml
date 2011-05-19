@@ -447,7 +447,7 @@ THE SOFTWARE.
       </releases>
     </repository>
     <repository>
-      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <id>snapshot-repository-cloudbees.forge.cloudbees.com</id>
       <url>https://repository-cloudbees.forge.cloudbees.com/snapshot</url>
       <releases>
         <enabled>false</enabled>
