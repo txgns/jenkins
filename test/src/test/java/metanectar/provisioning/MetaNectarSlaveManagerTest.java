@@ -1,8 +1,8 @@
 package metanectar.provisioning;
 
+import com.cloudbees.commons.metanectar.provisioning.ComputerLauncherFactory;
+import com.cloudbees.commons.metanectar.provisioning.FutureComputerLauncherFactory;
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
-import com.cloudbees.commons.metanectar.provisioning.ProvisioningActivity;
-import com.cloudbees.commons.metanectar.provisioning.ProvisioningResult;
 import hudson.model.Hudson;
 import hudson.model.Hudson.MasterComputer;
 import hudson.model.Label;
@@ -90,11 +90,11 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
         assertTrue(proxy.canProvision(fooOrBar));
 
         StreamTaskListener stl = new StreamTaskListener(new OutputStreamWriter(System.out));
-        final ProvisioningActivity pip = proxy.provision(fooOrBar, stl, 1);
-        System.out.println("J: Waiting for the provisioning of " + pip.displayName);
-        final ProvisioningResult r = pip.future.get();
+        final FutureComputerLauncherFactory pip = proxy.provision(fooOrBar, stl, 1);
+        System.out.println("J: Waiting for the provisioning of " + pip.getDisplayName());
+        final ComputerLauncherFactory r = pip.get();
         System.out.println("J: Result obtained");
-        final ComputerLauncher l = r.getLauncher();
+        final ComputerLauncher l = r.getOrCreateLauncher();
         System.out.println(l);
 
         DumbSlave slave = new DumbSlave("slave1", "dummy",
@@ -121,10 +121,10 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
             return Collections.singleton(new LabelAtom("foo"));
         }
 
-        public ProvisioningActivity provision(Label label, final TaskListener listener, int numOfExecutors) throws IOException, InterruptedException {
+        public FutureComputerLauncherFactory provision(Label label, final TaskListener listener, int numOfExecutors) throws IOException, InterruptedException {
             listener.getLogger().println("MN: Started provisioning");
-            final Future<ProvisioningResult> task = MasterComputer.threadPoolForRemoting.submit(new Callable<ProvisioningResult>() {
-                public ProvisioningResult call() throws Exception {
+            final Future<ComputerLauncherFactory> task = MasterComputer.threadPoolForRemoting.submit(new Callable<ComputerLauncherFactory>() {
+                public ComputerLauncherFactory call() throws Exception {
                     Thread.sleep(3000);
                     listener.getLogger().println("MN: Still provisioning");
                     Thread.sleep(3000);
@@ -133,11 +133,12 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
                 }
             });
 
-            return new ProvisioningActivity("slave"+(n++), 1, new RemoteFuture<ProvisioningResult>(task));
+            return new FutureComputerLauncherFactory("slave"+(n++), 1, new RemoteFuture<ComputerLauncherFactory>(task));
         }
 
-        private static class ResultImpl extends ProvisioningResult {
-            public ComputerLauncher getLauncher() throws IOException, InterruptedException {
+        private static class ResultImpl extends ComputerLauncherFactory {
+
+            public ComputerLauncher getOrCreateLauncher() throws IOException, InterruptedException {
                 try {
                     return new CommandLauncher(
                             String.format("\"%s/bin/java\" -jar \"%s\"",
