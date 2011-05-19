@@ -1,7 +1,7 @@
 package metanectar.provisioning;
 
-import com.cloudbees.commons.metanectar.provisioning.ProvisioningActivity;
-import com.cloudbees.commons.metanectar.provisioning.ProvisioningResult;
+import com.cloudbees.commons.metanectar.provisioning.ComputerLauncherFactory;
+import com.cloudbees.commons.metanectar.provisioning.FutureComputerLauncherFactory;
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import hudson.model.Hudson;
 import hudson.model.Label;
@@ -40,10 +40,10 @@ public class MetaNectarSlaveManager implements SlaveManager {
         return Collections.singleton(new LabelAtom("foo"));
     }
 
-    public ProvisioningActivity provision(Label label, final TaskListener listener, int numOfExecutors) throws IOException, InterruptedException {
+    public FutureComputerLauncherFactory provision(Label label, final TaskListener listener, int numOfExecutors) throws IOException, InterruptedException {
         listener.getLogger().println("MN: Started provisioning");
-        final Future<ProvisioningResult> task = Hudson.MasterComputer.threadPoolForRemoting.submit(new Callable<ProvisioningResult>() {
-            public ProvisioningResult call() throws Exception {
+        final Future<ComputerLauncherFactory> task = Hudson.MasterComputer.threadPoolForRemoting.submit(new Callable<ComputerLauncherFactory>() {
+            public ComputerLauncherFactory call() throws Exception {
                 Thread.sleep(3000);
                 listener.getLogger().println("MN: Still provisioning");
                 Thread.sleep(3000);
@@ -52,11 +52,11 @@ public class MetaNectarSlaveManager implements SlaveManager {
             }
         });
 
-        return new ProvisioningActivity("slave"+(n++), 1, new RemoteFuture<ProvisioningResult>(task));
+        return new FutureComputerLauncherFactory("slave"+(n++), 1, new RemoteFuture<ComputerLauncherFactory>(task));
     }
 
-    private static class ResultImpl extends ProvisioningResult {
-        public ComputerLauncher getLauncher() throws IOException, InterruptedException {
+    private static class ResultImpl extends ComputerLauncherFactory {
+        public ComputerLauncher getOrCreateLauncher() throws IOException, InterruptedException {
             try {
                 return new CommandLauncher(
                         String.format("\"%s/bin/java\" -jar \"%s\"",
