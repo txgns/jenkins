@@ -31,8 +31,15 @@ THE SOFTWARE.
     <version>1.400.2-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
+
   <artifactId>remoting</artifactId>
   <packaging>jar</packaging>
+
+  <name>Jenkins remoting layer</name>
+  <description>
+    Contains the bootstrap code to bridge separate JVMs into a single semi-shared space.
+    Reusable outside Jenkins.
+  </description>
 
   <dependencies>
     <!-- test dependencies -->
@@ -67,12 +74,6 @@ THE SOFTWARE.
       <scope>test</scope>
     </dependency>
   </dependencies>
-
-  <name>Jenkins remoting layer</name>
-  <description>
-    Contains the bootstrap code to bridge separate JVMs into a single semi-shared space.
-    Reusable outside Jenkins.
-  </description>
 
   <build>
     <plugins>

@@ -7,10 +7,60 @@
     <artifactId>jenkins</artifactId>
     <version>1.16</version>
   </parent>
+
   <groupId>com.cloudbees.metanectar</groupId>
   <artifactId>plugin</artifactId>
   <version>1.400.2-SNAPSHOT</version>
   <packaging>pom</packaging>
+
+  <name>Jenkins plugin POM</name>
+
+  <issueManagement>
+    <system>JIRA</system>
+    <url>http://issues.jenkins-ci.org/</url>
+  </issueManagement>
+  <distributionManagement>
+    <repository>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>dav:https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
+    </repository>
+    <snapshotRepository>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>dav:https://repository-cloudbees.forge.cloudbees.com/private-snapshot/</url>
+    </snapshotRepository>
+  </distributionManagement>
+
+  <repositories>
+    <repository>
+      <id>m.g.o-public</id>
+      <url>http://maven.glassfish.org/content/groups/public/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+    </repository>
+  </repositories>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>m.g.o-public</id>
+      <url>http://maven.glassfish.org/content/groups/public/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </pluginRepository>
+  </pluginRepositories>
 
   <dependencyManagement>
     <dependencies>
@@ -64,8 +114,6 @@
       <scope>provided</scope>
     </dependency>
   </dependencies>
-
-  <name>Jenkins plugin POM</name>
 <!--dependencyManagement>
        <dependencies>
        <dependency>
@@ -220,53 +268,5 @@
     </extensions>
   </build>
 
-  <issueManagement>
-    <system>JIRA</system>
-    <url>http://issues.jenkins-ci.org/</url>
-  </issueManagement>
-
-  <repositories>
-    <repository>
-      <id>m.g.o-public</id>
-      <url>http://maven.glassfish.org/content/groups/public/</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </repository>
-    <repository>
-      <id>repository-cloudbees.forge.cloudbees.com</id>
-      <url>https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-    </repository>
-  </repositories>
-
-  <pluginRepositories>
-    <pluginRepository>
-      <id>m.g.o-public</id>
-      <url>http://maven.glassfish.org/content/groups/public/</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </pluginRepository>
-  </pluginRepositories>
-
-  <distributionManagement>
-    <repository>
-      <id>repository-cloudbees.forge.cloudbees.com</id>
-      <url>dav:https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
-    </repository>
-    <snapshotRepository>
-      <id>repository-cloudbees.forge.cloudbees.com</id>
-      <url>dav:https://repository-cloudbees.forge.cloudbees.com/private-snapshot/</url>
-    </snapshotRepository>
-  </distributionManagement>
 
 </project>

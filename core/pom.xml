@@ -32,8 +32,15 @@ THE SOFTWARE.
     <version>1.400.2-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
+
   <artifactId>jenkins-core</artifactId>
   <packaging>stapler-jar</packaging>
+
+  <name>Jenkins core</name>
+  <description>
+    Contains the core Jenkins code and view files to render HTML.
+  </description>
+
   <properties>
     <staplerFork>true</staplerFork>
   </properties>
@@ -545,11 +552,6 @@ THE SOFTWARE.
       <systemPath>/usr/local/yjp/lib/yjp.jar</systemPath>
     </dependency-->
   </dependencies>
-
-  <name>Jenkins core</name>
-  <description>
-    Contains the core Jenkins code and view files to render HTML.
-  </description>
 
   <build>
     <plugins>

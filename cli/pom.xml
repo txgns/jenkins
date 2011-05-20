@@ -7,7 +7,10 @@
     <groupId>com.cloudbees.metanectar</groupId>
     <version>1.400.2-SNAPSHOT</version>
   </parent>
+
   <artifactId>cli</artifactId>
+
+  <name>Jenkins CLI</name>
 
   <dependencies>
     <dependency>
@@ -27,8 +30,6 @@
       <version>1.10</version>
     </dependency>
   </dependencies>
-
-  <name>Jenkins CLI</name>
 
   <build>
     <plugins>
@@ -69,5 +70,6 @@
       </plugin>
     </plugins>
   </build>
+
 
 </project>

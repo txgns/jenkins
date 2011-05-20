@@ -30,10 +30,22 @@ THE SOFTWARE.
     <artifactId>jenkins</artifactId>
     <version>1.16</version>
   </parent>
+
   <groupId>com.cloudbees.metanectar</groupId>
   <artifactId>pom</artifactId>
   <version>1.400.2-SNAPSHOT</version>
   <packaging>pom</packaging>
+
+  <name>Jenkins main module</name>
+  <description>The module that constitutes the main metanectar.war</description>
+  <licenses>
+    <license>
+      <name>The MIT license</name>
+      <url>http://www.opensource.org/licenses/mit-license.php</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
   <modules>
     <module>remoting</module>
     <module>core</module>
@@ -43,6 +55,22 @@ THE SOFTWARE.
     <module>scripts</module>
     <module>plugins</module>
   </modules>
+
+  <scm>
+    <connection>scm:git:ssh://git@git.cloudbees.com/cloudbees/hudson.git</connection>
+    <developerConnection>scm:git:ssh://git@git.cloudbees.com/cloudbees/hudson.git</developerConnection>
+  </scm>
+  <distributionManagement>
+    <repository>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>dav:https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
+    </repository>
+    <snapshotRepository>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>dav:https://repository-cloudbees.forge.cloudbees.com/private-snapshot/</url>
+    </snapshotRepository>
+  </distributionManagement>
+
   <properties>
     <mavenVersion>3.0.2</mavenVersion>
     <maven.version>${mavenVersion}</maven.version>
@@ -53,6 +81,57 @@ THE SOFTWARE.
     but this suppresses a warning from Maven, and as long as we don't do filtering we should be OK. -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
+
+  <repositories>
+    <repository>
+      <id>m.g.o-public</id>
+      <url>http://maven.glassfish.org/content/groups/public/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>maven.infradna.com</id>
+      <url>http://maven.infradna.com/releases</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+    </repository>
+    <repository>
+      <id>snapshot-repository-cloudbees.forge.cloudbees.com</id>
+      <url>https://repository-cloudbees.forge.cloudbees.com/snapshot</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+        <updatePolicy>always</updatePolicy>
+      </snapshots>
+    </repository>
+  </repositories>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>https://repository-cloudbees.forge.cloudbees.com/private-release</url>
+    </pluginRepository>
+    <pluginRepository>
+      <id>m.g.o-public</id>
+      <url>http://maven.glassfish.org/content/groups/public/</url>
+    </pluginRepository>
+  </pluginRepositories>
 
   <dependencyManagement>
     <dependencies>
@@ -168,17 +247,6 @@ THE SOFTWARE.
       <scope>test</scope>
     </dependency>
   </dependencies>
-
-  <name>Jenkins main module</name>
-  <description>The module that constitutes the main metanectar.war</description>
-
-  <licenses>
-    <license>
-      <name>The MIT license</name>
-      <url>http://www.opensource.org/licenses/mit-license.php</url>
-      <distribution>repo</distribution>
-    </license>
-  </licenses>
 
   <build>
     <defaultGoal>install</defaultGoal>
@@ -412,74 +480,6 @@ THE SOFTWARE.
 -->
     </extensions>
   </build>
-
-  <scm>
-    <connection>scm:git:ssh://git@git.cloudbees.com/cloudbees/hudson.git</connection>
-    <developerConnection>scm:git:ssh://git@git.cloudbees.com/cloudbees/hudson.git</developerConnection>
-  </scm>
-
-  <repositories>
-    <repository>
-      <id>m.g.o-public</id>
-      <url>http://maven.glassfish.org/content/groups/public/</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </repository>
-    <repository>
-      <id>maven.infradna.com</id>
-      <url>http://maven.infradna.com/releases</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </repository>
-    <repository>
-      <id>repository-cloudbees.forge.cloudbees.com</id>
-      <url>https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-    </repository>
-    <repository>
-      <id>snapshot-repository-cloudbees.forge.cloudbees.com</id>
-      <url>https://repository-cloudbees.forge.cloudbees.com/snapshot</url>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <snapshots>
-        <enabled>true</enabled>
-        <updatePolicy>always</updatePolicy>
-      </snapshots>
-    </repository>
-  </repositories>
-
-  <pluginRepositories>
-    <pluginRepository>
-      <id>repository-cloudbees.forge.cloudbees.com</id>
-      <url>https://repository-cloudbees.forge.cloudbees.com/private-release</url>
-    </pluginRepository>
-    <pluginRepository>
-      <id>m.g.o-public</id>
-      <url>http://maven.glassfish.org/content/groups/public/</url>
-    </pluginRepository>
-  </pluginRepositories>
-
-  <distributionManagement>
-    <repository>
-      <id>repository-cloudbees.forge.cloudbees.com</id>
-      <url>dav:https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
-    </repository>
-    <snapshotRepository>
-      <id>repository-cloudbees.forge.cloudbees.com</id>
-      <url>dav:https://repository-cloudbees.forge.cloudbees.com/private-snapshot/</url>
-    </snapshotRepository>
-  </distributionManagement>
 
   <profiles>
     <profile>

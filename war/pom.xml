@@ -31,8 +31,16 @@ THE SOFTWARE.
     <version>1.400.2-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
+
   <artifactId>metanectar-war</artifactId>
   <packaging>war</packaging>
+
+  <name>MetaNectar war</name>
+  <description>
+    Creates a war file. Also includes additional static web resources, such as images, CSS, JavaScript, and
+    some HTML files.
+  </description>
+
   <properties>
     <JENKINS_HOME>${basedir}/work</JENKINS_HOME>
     <contextPath>/</contextPath><!-- context path during test -->
@@ -88,12 +96,6 @@ THE SOFTWARE.
       <systemPath>/usr/local/yjp/lib/yjp.jar</systemPath>
     </dependency-->
   </dependencies>
-
-  <name>MetaNectar war</name>
-  <description>
-    Creates a war file. Also includes additional static web resources, such as images, CSS, JavaScript, and
-    some HTML files.
-  </description>
 
   <build>
     <finalName>metanectar</finalName>

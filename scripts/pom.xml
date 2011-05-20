@@ -8,13 +8,50 @@
     <version>1.400.2-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
+
   <artifactId>scripts</artifactId>
   <packaging>pom</packaging>
+
+  <name>Local test scripts and env</name>
+
   <properties>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <project.build.outputEncoding>UTF-8</project.build.outputEncoding>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
+
+  <repositories>
+    <repository>
+      <id>m.g.o-public</id>
+      <url>http://maven.glassfish.org/content/groups/public/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>snapshot-repository-cloudbees.forge.cloudbees.com</id>
+      <url>https://repository-cloudbees.forge.cloudbees.com/snapshot/</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
 
   <dependencies>
     <dependency>
@@ -35,15 +72,13 @@
       <version>1.7</version>
       <type>hpi</type>
     </dependency>
-    <!--<dependency>-->
-      <!--<groupId>com.cloudbees.plugins</groupId>-->
-      <!--<artifactId>cloudbees-slave-provisioning-plugin</artifactId>-->
-      <!--<version>0.1-SNAPSHOT</version>-->
-      <!--<type>hpi</type>-->
-    <!--</dependency>-->
+    <dependency>
+      <groupId>com.cloudbees.plugins</groupId>
+      <artifactId>cloudbees-slave-provisioning-plugin</artifactId>
+      <version>0.1-SNAPSHOT</version>
+      <type>hpi</type>
+    </dependency>
   </dependencies>
-
-  <name>Local test scripts and env</name>
 
   <build>
     <resources>
@@ -106,39 +141,6 @@
 
     </plugins>
   </build>
-
-  <repositories>
-    <repository>
-      <id>m.g.o-public</id>
-      <url>http://maven.glassfish.org/content/groups/public/</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </repository>
-    <repository>
-      <id>repository-cloudbees.forge.cloudbees.com</id>
-      <url>https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </repository>
-    <repository>
-      <id>snapshot-repository-cloudbees.forge.cloudbees.com</id>
-      <url>https://repository-cloudbees.forge.cloudbees.com/snapshot/</url>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-    </repository>
-  </repositories>
 
   <profiles>
     <profile>

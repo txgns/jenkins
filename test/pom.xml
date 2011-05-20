@@ -31,9 +31,16 @@ THE SOFTWARE.
     <groupId>com.cloudbees.metanectar</groupId>
     <version>1.400.2-SNAPSHOT</version>
   </parent>
+
   <groupId>com.cloudbees.metanectar</groupId>
   <artifactId>jenkins-test-harness</artifactId>
   <packaging>stapler-jar</packaging>
+
+  <name>Test harness for Jenkins and plugins</name>
+  <description>
+    Unit test harness (src/main) and Unit tests for Jenkins core (src/test)
+  </description>
+
   <properties>
     <concurrency>1</concurrency> <!-- -1 means # of processors in the system -->
     <mavenDebug>false</mavenDebug>
@@ -123,11 +130,6 @@ THE SOFTWARE.
       <scope>test</scope>
     </dependency>
   </dependencies>
-
-  <name>Test harness for Jenkins and plugins</name>
-  <description>
-    Unit test harness (src/main) and Unit tests for Jenkins core (src/test)
-  </description>
 
   <build>
     <plugins>
