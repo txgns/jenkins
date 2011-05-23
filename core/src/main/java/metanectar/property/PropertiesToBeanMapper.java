@@ -44,24 +44,21 @@ public class PropertiesToBeanMapper {
                 throw onError(writeMethod, "The declared @Property(\"\") MUST not be an empty string");
             }
 
-            if (writeMethod.isAnnotationPresent(DefaultValue.class)) {
-                final DefaultValue dv = writeMethod.getAnnotation(DefaultValue.class);
-
-            }
+            final boolean isOptional = writeMethod.isAnnotationPresent(Optional.class);
 
             String value = getProperty(p.value());
             if (value == null) {
                 final DefaultValue dv = writeMethod.getAnnotation(DefaultValue.class);
                 if (dv != null) {
                     value = dv.value();
+                } else if (isOptional) {
+                    continue;
                 } else {
-                    // TODO optional
                     throw onError(writeMethod, String.format("The required @Property(\"%s\") is not present in the properties %s", p.value(), properties));
                 }
             }
 
             try {
-                // TODO optional
                 writeMethod.invoke(t, StringConverter.valueOf(type, value));
             } catch (IllegalAccessException e) {
                 throw onError(writeMethod, e.getMessage(), e);

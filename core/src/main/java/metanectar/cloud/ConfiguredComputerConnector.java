@@ -6,6 +6,7 @@ import hudson.slaves.ComputerConnectorDescriptor;
 import metanectar.Config;
 import metanectar.MetaNectarExtensionPoint;
 import metanectar.property.DefaultValue;
+import metanectar.property.Optional;
 import metanectar.property.Property;
 import org.kohsuke.stapler.DataBoundConstructor;
 
@@ -26,7 +27,7 @@ public class ConfiguredComputerConnector extends SSHConnector implements MetaNec
 
         private String jvmOptions;
 
-        @Property("metaNectar.master.ssh.key.private")
+        @Property("metaNectar.master.ssh.key.private") @Optional
         public void setKey(String key) {
             this.key = key;
         }
@@ -36,7 +37,7 @@ public class ConfiguredComputerConnector extends SSHConnector implements MetaNec
             this.userName = userName;
         }
 
-        @Property("metaNectar.master.ssh.password")
+        @Property("metaNectar.master.ssh.password") @Optional
         public void setUserPassword(String userPassword) {
             this.userPassword = userPassword;
         }
@@ -46,17 +47,13 @@ public class ConfiguredComputerConnector extends SSHConnector implements MetaNec
             this.port = port;
         }
 
-        @Property("metaNectar.master.ssh.jvmOptions")
+        @Property("metaNectar.master.ssh.jvmOptions") @Optional
         public void setJvmOptions(String jvmOptions) {
             this.jvmOptions = jvmOptions;
         }
     }
 
     @DataBoundConstructor
-    public ConfiguredComputerConnector(int port, String username, String password, String privatekey, String jvmOptions) {
-        super(port, username, password, privatekey, jvmOptions);
-    }
-
     public ConfiguredComputerConnector() {
         this(Config.getInstance().getBean(Properties.class));
     }

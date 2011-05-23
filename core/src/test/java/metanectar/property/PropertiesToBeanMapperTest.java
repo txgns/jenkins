@@ -237,6 +237,36 @@ public class PropertiesToBeanMapperTest extends TestCase {
 
     //
 
+    public static class BeanWithOptionalProperty {
+        private String optionalValue;
+
+        private String optionalAndDefaultValue;
+
+        @Property("optional") @Optional
+        public void setOptionalValue(String optionalValue) {
+            this.optionalValue = optionalValue;
+        }
+
+        @Property("optionalAndDefault") @Optional @DefaultValue("")
+        public void setOptionalAndDefaultValue(String optionalAndDefaultValue) {
+            this.optionalAndDefaultValue = optionalAndDefaultValue;
+        }
+    }
+
+    public void testOptionalProperty() {
+        Properties p = new Properties();
+
+        PropertiesToBeanMapper m = new PropertiesToBeanMapper(p);
+
+        BeanWithOptionalProperty b = m.mapTo(BeanWithOptionalProperty.class);
+
+        assertNull(b.optionalValue);
+        assertNotNull(b.optionalAndDefaultValue);
+        assertTrue(b.optionalAndDefaultValue.isEmpty());
+    }
+
+    //
+
     public static class BeanWithInvocationError {
         private String string;
 
