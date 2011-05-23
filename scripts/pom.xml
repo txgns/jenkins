@@ -69,7 +69,7 @@
     <dependency>
       <groupId>com.cloudbees.nectar.plugins</groupId>
       <artifactId>cloudbees-metanectar-plugin</artifactId>
-      <version>1.7</version>
+      <version>1.8</version>
       <type>hpi</type>
     </dependency>
 <!--

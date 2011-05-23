@@ -2,16 +2,13 @@ package metanectar;
 
 import com.google.common.collect.Maps;
 import metanectar.property.DefaultValue;
+import metanectar.property.Optional;
 import metanectar.property.PropertiesToBeanMapper;
 import metanectar.property.Property;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Map;
 import java.util.Properties;
-import java.util.WeakHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -93,6 +90,8 @@ public class Config {
     public static class MetaNectarProvisioningProperties {
         private boolean isMasterProvisioning;
 
+        private String remoteFS;
+
         public boolean isMasterProvisioning() {
             return isMasterProvisioning;
         }
@@ -100,6 +99,11 @@ public class Config {
         @Property("metaNectar.isMasterProvisioning") @DefaultValue("false")
         public void setMasterProvisioning(boolean masterProvisioning) {
             isMasterProvisioning = masterProvisioning;
+        }
+
+        @Property("metaNectar.master.node.remoteFS") @Optional
+        public void setRemoteFS(String remoteFS) {
+            this.remoteFS = remoteFS;
         }
     }
 
@@ -116,10 +120,8 @@ public class Config {
 
     /**
      * @return the property "metaNectar.endpoint" that is the URL endpoint of MetaNectar
-     * @throws MalformedURLException if the property is not a valid URL
-     * @throws IllegalStateException if the property is not present.
      */
-    public URL getEndpoint() throws MalformedURLException, IllegalStateException {
+    public URL getEndpoint() {
         return getBean(MetaNectarProperties.class).endpoint;
     }
 
@@ -129,6 +131,14 @@ public class Config {
      */
     public boolean isMasterProvisioning() {
         return getBean(MetaNectarProvisioningProperties.class).isMasterProvisioning;
+    }
+
+    /**
+     * @return the property "metaNectar.master.node.remoteFS" that is the remote file system location on the master
+     * node that may be used by MetaNectar when establishing a connection, otherwise null if not set.
+     */
+    public String getRemoteFS() {
+        return getBean(MetaNectarProvisioningProperties.class).remoteFS;
     }
 
     private String getProperty(String name) throws IllegalStateException {
