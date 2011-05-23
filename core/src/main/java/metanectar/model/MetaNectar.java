@@ -172,7 +172,7 @@ public class MetaNectar extends Hudson {
                 "MetaNectar",
                 Collections.<String, String>emptyMap(),
                 l,
-                null);
+                Hudson.getInstance().getPluginManager().uberClassLoader);
 
         try {
             nectarAgentListener = new AgentListener(asl, 0, Collections.singletonList(p));
