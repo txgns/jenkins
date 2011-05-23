@@ -1037,6 +1037,11 @@ public class Channel implements VirtualChannel, IChannel {
                     }
                 }
                 ois.close();
+            } catch (ClassCastException e) {
+                logger.log(Level.SEVERE, "Class cast error in channel "+name,e);
+                IOException ioe = new IOException(e.getMessage());
+                ioe.initCause(e);
+                terminate(ioe);
             } catch (IOException e) {
                 logger.log(Level.SEVERE, "I/O error in channel "+name,e);
                 terminate(e);
