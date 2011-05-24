@@ -2603,7 +2603,7 @@ public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProx
             clouds.rebuildHetero(req,json, Cloud.all(), "cloud");
 
             JSONObject np = json.getJSONObject("globalNodeProperties");
-            if (np != null) {
+            if (!np.isNullObject()) {
                 globalNodeProperties.rebuild(req, np, NodeProperty.for_(this));
             }
 
