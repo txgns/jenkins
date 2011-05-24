@@ -1,8 +1,6 @@
 package metanectar.provisioning;
 
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Iterators;
-import com.google.common.collect.Multimap;
+import com.google.common.collect.*;
 import hudson.Extension;
 import hudson.model.*;
 import hudson.slaves.Cloud;
@@ -131,13 +129,13 @@ public class MasterProvisioner {
     private final TaskQueue<NodeProvisionTask> nodeTaskQueue = new TaskQueue<NodeProvisionTask>();
 
     private Multimap<Node, MasterServer> provision() throws Exception {
-        final Multimap<Node, MasterServer> provisioned = MasterProvisioner.getProvisionedMasters(mn);
+        final ListMultimap<Node, MasterServer> provisioned = MasterProvisioner.getProvisionedMasters(mn);
         provisionMasterRequests(provisioned);
         provisionFromCloud();
         return provisioned;
     }
 
-    private void provisionMasterRequests(Multimap<Node, MasterServer> provisioned) throws Exception {
+    private void provisionMasterRequests(ListMultimap<Node, MasterServer> provisioned) throws Exception {
         // Check masters nodes to see if a new master can be provisioned on an existing masters node
         if (pendingPlannedMasterRequests.isEmpty())
             return;
@@ -150,8 +148,8 @@ public class MasterProvisioner {
                 // TODO check if masters are already provisioned, if so this means a re-provision.
                 //
                 final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(n);
-                final int freeSlots = p.getMaxMasters() - (provisioned.get(n).size() + masterServerTaskQueue.getProvisioning(n).size());
-                if (freeSlots < 0)
+                final int freeSlots = p.getMaxMasters() - provisioned.get(n).size();
+                if (freeSlots < 1)
                     continue;
 
                 for (Iterator<PlannedMasterRequest> itr = Iterators.limit(pendingPlannedMasterRequests.iterator(), freeSlots); itr.hasNext();) {
@@ -164,7 +162,7 @@ public class MasterProvisioner {
                         continue;
                     }
 
-                    final int id = getFreeId(n, provisioned.get(n));
+                    final int id = getFreeId(provisioned.get(n));
                     final MasterProvisionTask mpt = (pmr.start)
                             ? new MasterProvisionThenStartTask(pmr.ms, pmr.metaNectarEndpoint, pmr.properties, n, id)
                             : new MasterProvisionTask(pmr.ms, pmr.metaNectarEndpoint, pmr.properties, n, id);
@@ -174,6 +172,7 @@ public class MasterProvisioner {
                     } catch (Exception e) {
                         // Ignore
                     } finally {
+                        provisioned.put(n, pmr.ms);
                         itr.remove();
                     }
                 }
@@ -216,13 +215,6 @@ public class MasterProvisioner {
                 }
             }
         }
-    }
-
-    private int getFreeId(Node n, Collection<MasterServer> provisioned) {
-        final List<MasterServer> l = masterServerTaskQueue.getProvisioning(n);
-        l.addAll(provisioned);
-
-        return getFreeId(l);
     }
 
     private int getFreeId(final List<MasterServer> provisioned) {
@@ -268,7 +260,7 @@ public class MasterProvisioner {
         if (pendingPlannedMasterRequests.isEmpty() && nodeTaskQueue.getQueue().isEmpty()) {
             // Reap nodes with no provisioned masters
             for (Node n : masterLabel.getNodes()) {
-                if (!masterServerTaskQueue.pendingTasksOnNode(n) && !provisioned.containsKey(n)) {
+                if (!provisioned.containsKey(n)) {
                     final Computer c = n.toComputer();
 
                     if (c.getRetentionStrategy() instanceof NodeTerminatingRetentionStrategy) {
@@ -321,8 +313,8 @@ public class MasterProvisioner {
         }
     }
 
-    public static Multimap<Node, MasterServer> getProvisionedMasters(MetaNectar mn) {
-        Multimap<Node, MasterServer> masters = HashMultimap.create();
+    public static ListMultimap<Node, MasterServer> getProvisionedMasters(MetaNectar mn) {
+        ListMultimap<Node, MasterServer> masters = ArrayListMultimap.create();
 
         for (MasterServer ms : mn.getMasters()) {
             if (ms.getNode() != null) {
