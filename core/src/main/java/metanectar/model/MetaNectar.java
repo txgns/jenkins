@@ -4,18 +4,17 @@ import com.cloudbees.commons.metanectar.agent.AgentListener;
 import com.cloudbees.commons.metanectar.agent.AgentStatusListener;
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol.GracefulConnectionRefusalException;
-import com.google.common.collect.Lists;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.PluginManager;
 import hudson.model.*;
 import hudson.remoting.Channel;
-import hudson.slaves.ComputerConnector;
 import hudson.util.AdministrativeError;
 import hudson.util.AlternativeUiTextProvider;
 import hudson.util.FormValidation;
 import hudson.views.StatusColumn;
 import metanectar.Config;
+import metanectar.ExtensionFilter;
 import metanectar.MetaNectarExtensionPoint;
 import metanectar.model.views.MasterServerColumn;
 import metanectar.provisioning.MasterProvisioner;
@@ -71,25 +70,25 @@ public class MetaNectar extends Hudson {
             return new URL(metaNectar.getRootUrl());
         }
 
-        public void onConnectingTo(URL address, X509Certificate identity, String organization, Map<String, String> properties) throws GeneralSecurityException, IOException {
-            final MasterServer server = metaNectar.getMasterByOrganization(organization);
+        public void onConnectingTo(URL address, X509Certificate identity, String name, Map<String, String> properties) throws GeneralSecurityException, IOException {
+            final MasterServer server = metaNectar.getMasterByName(name);
 
             if (server == null) {
-                throw new IllegalStateException("The master " + organization + " does not exist");
+                throw new IllegalStateException("The master " + name + " does not exist");
             }
 
             if (!server.isApprovable()) {
-                throw new IllegalStateException("The master " + organization + " is not in an approvable state: " + server.getState().name());
+                throw new IllegalStateException("The master " + name + " is not in an approvable state: " + server.getState().name());
             }
 
             if (server.isApproved()) {
                 if (server.getIdentity().equals(identity.getPublicKey())) {
                     server.setReapprovedState();
-                    LOGGER.info("Master is identified and approved: " + organization + " " + address);
+                    LOGGER.info("Master is identified and approved: " + name + " " + address);
                     return;
                 }
 
-                throw new GeneralSecurityException("The master " + organization + " identity does not match that which was previously approved");
+                throw new GeneralSecurityException("The master " + name + " identity does not match that which was previously approved");
             }
 
             if (properties.containsKey(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID)) {
@@ -98,23 +97,23 @@ public class MetaNectar extends Hudson {
 
                 if (server.getGrantId().equals(receivedGrant)) {
                     server.setApprovedState((RSAPublicKey) identity.getPublicKey(), address);
-                    LOGGER.info("Valid grant received. Master is identified and approved: " + organization + " " + address);
+                    LOGGER.info("Valid grant received. Master is identified and approved: " + name + " " + address);
                     return;
                 }
 
-                GeneralSecurityException e = new GeneralSecurityException("Invalid grant for master " + organization + ": received " + receivedGrant + " expected " + server.getGrantId());
+                GeneralSecurityException e = new GeneralSecurityException("Invalid grant for master " + name + ": received " + receivedGrant + " expected " + server.getGrantId());
                 server.setApprovalErrorState(e);
                 throw e;
             }
 
-            LOGGER.info("Master is not approved: "+ organization + " " + address);
+            LOGGER.info("Master is not approved: "+ name + " " + address);
             GracefulConnectionRefusalException e = new GracefulConnectionRefusalException("This master is not approved by MetaNectar");
             server.setApprovalErrorState(e);
             throw e;
         }
 
-        public void onConnectedTo(Channel channel, X509Certificate identity, String organization) throws IOException {
-            final MasterServer server = metaNectar.getMasterByOrganization(organization);
+        public void onConnectedTo(Channel channel, X509Certificate identity, String name) throws IOException {
+            final MasterServer server = metaNectar.getMasterByName(name);
 
             if (server != null) {
                 server.setConnectedState(channel);
@@ -142,6 +141,8 @@ public class MetaNectar extends Hudson {
 
     public MetaNectar(File root, ServletContext context, PluginManager pluginManager) throws IOException, InterruptedException, ReactorException {
         super(root, context, pluginManager);
+
+        ExtensionFilter.defaultFilter(this);
 
         this.masterProvisioner = new MasterProvisioner(this);
 
@@ -245,8 +246,8 @@ public class MetaNectar extends Hudson {
         return null;
     }
 
-    public MasterServer getMasterByOrganization(String organization) {
-        return (MasterServer)getItem(organization);
+    public MasterServer getMasterByName(String name) {
+        return (MasterServer)getItem(name);
     }
 
     public void setConfig(Config config) {
@@ -275,54 +276,33 @@ public class MetaNectar extends Hudson {
         }
     }
 
-    public MasterServer createMasterServer(String organization) throws IOException {
-        checkOrganizationName(organization);
 
-        final MasterServer server = createProject(MasterServer.class, organization);
+    // Master creation
+
+    public MasterServer createMasterServer(String name) throws IOException {
+        checkMasterName(name);
+
+        final MasterServer server = createProject(MasterServer.class, name);
 
         server.setCreatedState();
         return server;
     }
 
-    private void checkOrganizationName(String name) {
+    private void checkMasterName(String name) {
         checkPermission(Item.CREATE);
 
         checkGoodName(name);
         name = name.trim();
         if (getItem(name) != null)
-            throw new Failure("Organization " + name + "already exists");
-    }
-
-    @Override
-    public synchronized void doConfigSubmit(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, Descriptor.FormException {
-        super.doConfigSubmit(req, rsp);
-        // Override and trim the labels in case master provisioning on MetaNectar configuration was added or removed.
-        trimLabels();
-    }
-
-    public FormValidation doCheckOrganizationName(@QueryParameter String value) {
-        // this method can be used to check if a file exists anywhere in the file system,
-        // so it should be protected.
-        checkPermission(Item.CREATE);
-
-        if(fixEmpty(value)==null)
-            return FormValidation.ok();
-
-        try {
-            checkOrganizationName(value);
-
-            return FormValidation.ok();
-        } catch (Failure e) {
-            return FormValidation.error(e.getMessage());
-        }
+            throw new Failure("Master " + name + "already exists");
     }
 
     /**
      * Provision a new master and issue a grant for automatic approval.
      *
      */
-    public MasterServer doProvisionMasterServer(String organization) throws IOException {
-        final MasterServer server = createMasterServer(organization);
+    public MasterServer doProvisionMasterServer(String name) throws IOException {
+        final MasterServer server = createMasterServer(name);
 
         server.provisionAndStartAction();
 
@@ -333,11 +313,22 @@ public class MetaNectar extends Hudson {
      * Attach to a new master and issue a grant for automatic approval.
      *
      */
-    public MasterServer doAttachMasterServer(String organization) throws IOException {
-        final MasterServer server = createMasterServer(organization);
+    public MasterServer doAttachMasterServer(String name) throws IOException {
+        final MasterServer server = createMasterServer(name);
 
         return server;
     }
+
+
+    // Global configuration
+
+    @Override
+    public synchronized void doConfigSubmit(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, Descriptor.FormException {
+        super.doConfigSubmit(req, rsp);
+        // Override and trim the labels in case master provisioning on MetaNectar configuration was added or removed.
+        trimLabels();
+    }
+
 
     //
 
@@ -376,8 +367,7 @@ public class MetaNectar extends Hudson {
     public static class PronounProvider extends AlternativeUiTextProvider {
 
         @Override
-        public <T> String getText( Message<T> text, T context )
-        {
+        public <T> String getText( Message<T> text, T context ) {
             if (context instanceof MasterServer) {
                 if (AbstractItem.PRONOUN.equals( text )) {
                     return Messages.Master_Pronoun();

@@ -2,6 +2,9 @@ package metanectar.cloud;
 
 import hudson.model.Descriptor;
 import hudson.slaves.Cloud;
+import hudson.slaves.ComputerConnector;
+import metanectar.MetaNectarExtensionPoint;
+import metanectar.model.MetaNectar;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,7 +14,7 @@ import java.util.List;
  *
  * @author Paul Sandoz
  */
-public abstract class AbstractProvisioningCloud extends Cloud {
+public abstract class AbstractProvisioningCloud extends Cloud implements MetaNectarExtensionPoint {
 
     protected AbstractProvisioningCloud(String name) {
         super(name);
@@ -34,7 +37,7 @@ public abstract class AbstractProvisioningCloud extends Cloud {
      * @return all the cloud-based descriptors that are assignable to MasterProvisioningCloud, and are
      * thus associated with master provisioning.
      */
-    public static List<Descriptor<Cloud>> getMasterProvisioningDescriptors() {
+    public static List<Descriptor<Cloud>> getMasterProvisioningCloudDescriptors() {
         List<Descriptor<Cloud>> r = new ArrayList<Descriptor<Cloud>>();
         for (Descriptor<Cloud> d : Cloud.all()) {
             if (MasterProvisioningCloud.class.isAssignableFrom(d.clazz)) {
@@ -48,7 +51,7 @@ public abstract class AbstractProvisioningCloud extends Cloud {
      * @return all the cloud-based descriptors that are not assignable to MasterProvisioningCloud,
      * and are thus associated with slave provisioning.
      */
-    public static List<Descriptor<Cloud>> getSlaveProvisioningDescriptors() {
+    public static List<Descriptor<Cloud>> getSlaveProvisioningCloudDescriptors() {
         List<Descriptor<Cloud>> r = new ArrayList<Descriptor<Cloud>>();
         for (Descriptor<Cloud> d : Cloud.all()) {
             if (!MasterProvisioningCloud.class.isAssignableFrom(d.clazz)) {
@@ -58,4 +61,7 @@ public abstract class AbstractProvisioningCloud extends Cloud {
         return r;
     }
 
+    public static List<Descriptor<ComputerConnector>> getMasterProvisioningComputerConnectors() {
+        return MetaNectar.allWithMetaNectarExtensions(ComputerConnector.class);
+    }
 }

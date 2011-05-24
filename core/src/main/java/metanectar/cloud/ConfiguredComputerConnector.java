@@ -5,6 +5,7 @@ import hudson.plugins.sshslaves.SSHConnector;
 import hudson.slaves.ComputerConnectorDescriptor;
 import metanectar.Config;
 import metanectar.MetaNectarExtensionPoint;
+import metanectar.model.MetaNectar;
 import metanectar.property.DefaultValue;
 import metanectar.property.Optional;
 import metanectar.property.Property;
@@ -55,7 +56,7 @@ public class ConfiguredComputerConnector extends SSHConnector implements MetaNec
 
     @DataBoundConstructor
     public ConfiguredComputerConnector() {
-        this(Config.getInstance().getBean(Properties.class));
+        this(MetaNectar.getInstance().getConfig().getBean(Properties.class));
     }
 
     private ConfiguredComputerConnector(Properties p) {

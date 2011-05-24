@@ -163,7 +163,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
         StopAndTerminateListener masterTl = new StopAndTerminateListener(4 * masters);
 
         for (int i = 0; i < masters; i++) {
-            metaNectar.getMasterByOrganization("org" + i).stopAndTerminateAction(true);
+            metaNectar.getMasterByName("org" + i).stopAndTerminateAction(true);
         }
 
         masterTl.await(1, TimeUnit.MINUTES);
@@ -215,7 +215,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
         StopAndTerminateListener tl = new StopAndTerminateListener(4 * masters);
 
         for (int i = 0; i < masters; i++) {
-            metaNectar.getMasterByOrganization("org" + i).stopAndTerminateAction(true);
+            metaNectar.getMasterByName("org" + i).stopAndTerminateAction(true);
         }
 
         tl.await(1, TimeUnit.MINUTES);

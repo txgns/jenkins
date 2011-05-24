@@ -101,7 +101,7 @@ public class Config {
             isMasterProvisioning = masterProvisioning;
         }
 
-        @Property("metaNectar.master.node.remoteFS") @Optional
+        @Property("metaNectar.master.node.remoteFS") @DefaultValue("/tmp/node")
         public void setRemoteFS(String remoteFS) {
             this.remoteFS = remoteFS;
         }
