@@ -173,8 +173,6 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
     // connected state
 
-    private transient /* final */ Object channelLock = new Object();
-
     private transient volatile Channel channel;
 
     private transient MetaNectarSlaveManager slaveManager;
@@ -210,7 +208,6 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     private void init() {
         log = new ReopenableFileOutputStream(getLogFile());
         taskListener = new StreamTaskListener(log);
-        channelLock = new Object();
     }
 
 
@@ -745,27 +742,22 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     // Channel methods
 
     private boolean setChannel(Channel channel) throws IOException, IllegalStateException {
-        // update the data structure atomically to prevent others from seeing a channel that's not properly initialized yet
-        synchronized (channelLock) {
-            if(this.channel != null) {
-                // check again. we used to have this entire method in a big sycnhronization block,
-                // but Channel constructor blocks for an external process to do the connection
-                // if CommandLauncher is used, and that cannot be interrupted because it blocks at InputStream.
-                // so if the process hangs, it hangs the thread in a lock, and since Hudson will try to relaunch,
-                // we'll end up queuing the lot of threads in a pseudo deadlock.
-                // This implementation prevents that by avoiding a lock. HUDSON-1705 is likely a manifestation of this.
-                channel.close();
-                LOGGER.warning("Already connected");
-                return false;
-            }
+        if (this.channel != null) {
+            // TODO we need to check if the existing channel is still alive or not,
+            // if not use the new channel, otherwise close the channel
 
-            this.channel = channel;
+            channel.close();
+            LOGGER.warning("Already connected");
+            return false;
         }
+
+        this.channel = channel;
 
         this.channel.addListener(new Channel.Listener() {
             @Override
             public void onClosed(Channel c, IOException cause) {
                 MasterServer.this.channel = null;
+                MasterServer.this.slaveManager = null;
 
                 // Orderly shutdown will have null exception
                 try {
