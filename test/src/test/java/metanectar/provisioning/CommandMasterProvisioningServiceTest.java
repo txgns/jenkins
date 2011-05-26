@@ -5,12 +5,10 @@ import hudson.model.Computer;
 import hudson.slaves.DumbSlave;
 import metanectar.Config;
 import metanectar.model.MasterServer;
-import metanectar.model.MetaNectar;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
@@ -24,7 +22,7 @@ import static metanectar.provisioning.LatchMasterServerListener.StopAndTerminate
  *
  * @author Paul Sandoz
  */
-public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisioningTest {
+public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisioningTestCase {
     public void testConfigProvisionLocally() throws Exception {
         metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(1, getConfigCommand()));
         // Reset the labels

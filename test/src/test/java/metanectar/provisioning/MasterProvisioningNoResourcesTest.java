@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author Paul Sandoz
  */
-public class MasterProvisioningNoResourcesTest extends AbstractMasterProvisioningTest {
+public class MasterProvisioningNoResourcesTest extends AbstractMasterProvisioningTestCase {
 
     public void testProvisionOneMasterOnMetaNectar() throws Exception {
         new WebClient().goTo("/");

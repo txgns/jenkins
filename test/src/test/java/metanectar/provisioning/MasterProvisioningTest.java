@@ -1,19 +1,11 @@
 package metanectar.provisioning;
 
-import hudson.model.Computer;
 import hudson.model.Node;
-import hudson.model.TaskListener;
-import hudson.remoting.VirtualChannel;
 import hudson.slaves.Cloud;
 import metanectar.cloud.MasterProvisioningCloudListener;
 import metanectar.cloud.MasterProvisioningCloudProxy;
 import metanectar.model.MasterServer;
 
-import java.io.IOException;
-import java.net.URL;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static metanectar.provisioning.LatchMasterProvisioningCloudListener.TerminateListener;
@@ -23,57 +15,7 @@ import static metanectar.provisioning.LatchMasterServerListener.StopAndTerminate
 /**
  * @author Paul Sandoz
  */
-public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
-
-    public static class Service extends MasterProvisioningService {
-
-        private final int delay;
-
-        Service(int delay) {
-            this.delay = delay;
-        }
-
-        public Future<Master> provision(VirtualChannel channel, TaskListener listener,
-                                        int id, final String organization, final URL metaNectarEndpoint, Map<String, Object> properties) throws IOException, InterruptedException {
-            return Computer.threadPoolForRemoting.submit(new Callable<Master>() {
-                public Master call() throws Exception {
-                    Thread.sleep(delay);
-
-                    System.out.println("provisioning master");
-
-                    return new Master(organization, metaNectarEndpoint);
-                }
-            });
-        }
-
-        public Future<?> start(VirtualChannel channel, TaskListener listener,
-                                        String name) throws Exception {
-            return getFuture("starting master");
-        }
-
-        public Future<?> stop(VirtualChannel channel, TaskListener listener,
-                                        String name) throws Exception {
-            return getFuture("stopping master");
-        }
-
-        public Future<?> terminate(VirtualChannel channel, TaskListener listener,
-                                   String organization, boolean clean) throws IOException, InterruptedException {
-            return getFuture("terminating master");
-        }
-
-        private Future<?> getFuture(final String s) {
-            return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
-                public Void call() throws Exception {
-                    Thread.sleep(delay);
-
-                    System.out.println(s);
-
-                    return null;
-                }
-            });
-        }
-
-    }
+public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
 
     public static class ProvisionListener extends MasterProvisioningCloudListener {
         int provisioned;
@@ -112,7 +54,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
 
         ProvisionListener cl = new ProvisionListener();
 
-        SlaveMasterProvisioningNodePropertyTemplate tp = new SlaveMasterProvisioningNodePropertyTemplate(nodesPerMaster, new Service(100));
+        SlaveMasterProvisioningNodePropertyTemplate tp = new SlaveMasterProvisioningNodePropertyTemplate(nodesPerMaster, new DummyMasterProvisioningService(100));
         MasterProvisioningCloudProxy pc = new MasterProvisioningCloudProxy(tp, new TestSlaveCloud(this, 100));
         metaNectar.clouds.add(pc);
 
@@ -182,8 +124,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
     private void _testProvisionOnMetaNectarNode(int masters, int nodesPerMaster) throws Exception {
         int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
 
-        Service s = new Service(100);
-        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(nodesPerMaster, s));
+        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(nodesPerMaster, new DummyMasterProvisioningService(100)));
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());
 
@@ -225,100 +166,73 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTest {
 
 
     public void testOrdinal1() throws Exception {
-        config();
+        configureDummyMasterProvisioningOnMetaNectar();
 
-        MasterServer ms0 = provisionedMaster("0");
+        MasterServer ms0 = provisionAndStartMaster("0");
         assertEquals(0, ms0.getId());
 
-        terminateMaster(ms0);
+        terminateAndDeleteMaster(ms0);
 
-        ms0 = provisionedMaster("0");
+        ms0 = provisionAndStartMaster("0");
         assertEquals(0, ms0.getId());
     }
 
     public void testOrdinal2() throws Exception {
-        config();
+        configureDummyMasterProvisioningOnMetaNectar();
 
-        MasterServer ms0 = provisionedMaster("0");
+        MasterServer ms0 = provisionAndStartMaster("0");
         assertEquals(0, ms0.getId());
 
-        MasterServer ms1 = provisionedMaster("1");
+        MasterServer ms1 = provisionAndStartMaster("1");
         assertEquals(1, ms1.getId());
 
-        terminateMaster(ms0);
+        terminateAndDeleteMaster(ms0);
 
-        ms0 = provisionedMaster("0");
+        ms0 = provisionAndStartMaster("0");
         assertEquals(0, ms0.getId());
 
-        terminateMaster(ms1);
+        terminateAndDeleteMaster(ms1);
 
-        ms1 = provisionedMaster("1");
+        ms1 = provisionAndStartMaster("1");
         assertEquals(1, ms1.getId());
     }
 
     public void testOrdinal4() throws Exception {
-        config();
+        configureDummyMasterProvisioningOnMetaNectar();
 
-        MasterServer ms0 = provisionedMaster("0");
+        MasterServer ms0 = provisionAndStartMaster("0");
         assertEquals(0, ms0.getId());
 
-        MasterServer ms1 = provisionedMaster("1");
+        MasterServer ms1 = provisionAndStartMaster("1");
         assertEquals(1, ms1.getId());
 
-        MasterServer ms2 = provisionedMaster("2");
+        MasterServer ms2 = provisionAndStartMaster("2");
         assertEquals(2, ms2.getId());
 
-        MasterServer ms3 = provisionedMaster("3");
+        MasterServer ms3 = provisionAndStartMaster("3");
         assertEquals(3, ms3.getId());
 
-        terminateMaster(ms1);
-        terminateMaster(ms2);
+        terminateAndDeleteMaster(ms1);
+        terminateAndDeleteMaster(ms2);
 
-        ms1 = provisionedMaster("1");
+        ms1 = provisionAndStartMaster("1");
         assertEquals(1, ms1.getId());
 
-        ms2 = provisionedMaster("2");
+        ms2 = provisionAndStartMaster("2");
         assertEquals(2, ms2.getId());
 
-        terminateMaster(ms0);
-        terminateMaster(ms1);
-        terminateMaster(ms2);
+        terminateAndDeleteMaster(ms0);
+        terminateAndDeleteMaster(ms1);
+        terminateAndDeleteMaster(ms2);
 
-        ms0 = provisionedMaster("0");
+        ms0 = provisionAndStartMaster("0");
         assertEquals(0, ms0.getId());
 
-        ms1 = provisionedMaster("1");
+        ms1 = provisionAndStartMaster("1");
         assertEquals(1, ms1.getId());
 
-        ms2 = provisionedMaster("2");
+        ms2 = provisionAndStartMaster("2");
         assertEquals(2, ms2.getId());
 
-    }
-
-    private void config() throws Exception {
-        Service s = new Service(100);
-        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(10, s));
-        // Reset the labels
-        metaNectar.setNodes(metaNectar.getNodes());
-    }
-
-    private MasterServer provisionedMaster(String name) throws Exception {
-        ProvisionAndStartListener pl = new ProvisionAndStartListener(4);
-
-        MasterServer ms = metaNectar.createMasterServer(name);
-        ms.provisionAndStartAction();
-
-        pl.await(1, TimeUnit.MINUTES);
-        return ms;
-    }
-
-    private void terminateMaster(MasterServer ms) throws Exception {
-        StopAndTerminateListener tl = new StopAndTerminateListener(4);
-
-        ms.stopAndTerminateAction(true);
-        metaNectar.getItems().remove(ms);
-
-        tl.await(1, TimeUnit.MINUTES);
-        ms.delete();
     }
 }

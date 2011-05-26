@@ -73,7 +73,6 @@ public class Config {
         return ps;
     }
 
-
     public static class MetaNectarProperties {
         private URL endpoint;
 
@@ -104,6 +103,30 @@ public class Config {
         @Property("metaNectar.master.node.remoteFS") @DefaultValue("/tmp/node")
         public void setRemoteFS(String remoteFS) {
             this.remoteFS = remoteFS;
+        }
+    }
+
+    public static class ProxyProperties {
+        private String reload;
+
+        private String baseEndpoint;
+
+        public String getReload() {
+            return reload;
+        }
+
+        @Property("metaNectar.proxy.script.reload") @Optional
+        public void setReload(String reload) {
+            this.reload = reload;
+        }
+
+        public String getBaseEndpoint() {
+            return baseEndpoint;
+        }
+
+        @Property("metaNectar.proxy.url") @Optional
+        public void setBaseEndpoint(String baseEndpoint) {
+            this.baseEndpoint = baseEndpoint;
         }
     }
 

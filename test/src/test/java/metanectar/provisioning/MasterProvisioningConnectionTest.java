@@ -22,7 +22,7 @@ import static metanectar.provisioning.LatchMasterServerListener.StopAndTerminate
 /**
  * @author Paul Sandoz
  */
-public class MasterProvisioningConnectionTest extends AbstractMasterProvisioningTest {
+public class MasterProvisioningConnectionTest extends AbstractMasterProvisioningTestCase {
 
     private class TestAgentProtocolListener extends MetaNectarAgentProtocol.Listener {
 

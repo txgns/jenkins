@@ -20,6 +20,7 @@ import metanectar.model.views.MasterServerColumn;
 import metanectar.provisioning.MasterProvisioner;
 import metanectar.provisioning.MasterProvisioningNodeProperty;
 import metanectar.provisioning.MasterProvisioningService;
+import metanectar.proxy.ReverseProxyProdder;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 import org.jvnet.hudson.reactor.ReactorException;
 import org.kohsuke.stapler.QueryParameter;
@@ -140,6 +141,10 @@ public class MetaNectar extends Hudson {
     }
 
     public MetaNectar(File root, ServletContext context, PluginManager pluginManager) throws IOException, InterruptedException, ReactorException {
+        this(root, context, pluginManager, Config.getInstance());
+    }
+
+    public MetaNectar(File root, ServletContext context, PluginManager pluginManager, Config config) throws IOException, InterruptedException, ReactorException {
         super(root, context, pluginManager);
 
         ExtensionFilter.defaultFilter(this);
@@ -148,7 +153,7 @@ public class MetaNectar extends Hudson {
 
         configureNectarAgentListener(new AgentProtocolListener(this));
 
-        this.config = Config.getInstance();
+        this.config = config;
 
         if (!getConfig().isMasterProvisioning()) {
             // If master provisioning is disabled then remove the master provisioning node property if present
@@ -156,6 +161,12 @@ public class MetaNectar extends Hudson {
             if (p != null) {
                  getGlobalNodeProperties().remove(p);
             }
+        }
+
+        // Set up reverse proxy prodding if reload script is configured
+        Config.ProxyProperties pp = getConfig().getBean(Config.ProxyProperties.class);
+        if (pp.getReload() != null) {
+            MasterServerListener.all().add(0, new ReverseProxyProdder(this, pp.getReload()));
         }
     }
 

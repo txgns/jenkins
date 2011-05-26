@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author Paul Sandoz
  */
-public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTest {
+public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTestCase {
 
     public static class ErrorProvisioningService extends MasterProvisioningService {
 

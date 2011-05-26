@@ -26,6 +26,7 @@
 package metanectar.test;
 
 import hudson.model.Hudson;
+import metanectar.Config;
 import metanectar.model.MetaNectar;
 import org.jvnet.hudson.test.HudsonTestCase;
 import org.jvnet.hudson.test.TestPluginManager;
@@ -45,13 +46,21 @@ public class MetaNectarTestCase extends HudsonTestCase {
     protected MetaNectarTestCase() {
     }
 
+    private Config config;
+
+    protected void setConfig(Config config) {
+        this.config = config;
+    }
+
     public MetaNectar metaNectar;
 
     protected Hudson newHudson() throws Exception {
         File home = homeLoader.allocate();
         for (Recipe.Runner r : recipes)
             r.decorateHome(this,home);
-        metaNectar = new MetaNectar(home, createWebServer(), useLocalPluginManager ? null : TestPluginManager.INSTANCE);
+        metaNectar = new MetaNectar(home, createWebServer(),
+                useLocalPluginManager ? null : TestPluginManager.INSTANCE,
+                config == null ? Config.getInstance() : config);
         metaNectar.setRootUrl(getURL().toExternalForm());
         return metaNectar;
     }
