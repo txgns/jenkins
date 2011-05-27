@@ -247,7 +247,8 @@ public class MetaNectar extends Hudson {
     }
 
     public List<MasterServer> getMasters() {
-        return getItems(MasterServer.class);
+        // TODO make this more efficient by caching the masters and modifying when creating/deleting
+        return getAllItems(MasterServer.class);
     }
 
     public MasterServer getMasterByIdentity(PublicKey identity) {
@@ -258,7 +259,7 @@ public class MetaNectar extends Hudson {
     }
 
     public MasterServer getMasterByName(String idName) {
-        for (MasterServer ms : getAllItems(MasterServer.class)) {
+        for (MasterServer ms : getMasters()) {
             if (ms.getIdName().equals(idName)) {
                 return ms;
             }
