@@ -332,6 +332,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         setState(PreProvisioning);
         this.grantId = createGrant();
         save();
+        fireOnStateChange();
 
         taskListener.getLogger().println("PreProvisioning");
         taskListener.getLogger().println(toString());

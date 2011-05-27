@@ -8,6 +8,7 @@ import hudson.model.TaskListener;
 import hudson.util.StreamTaskListener;
 import metanectar.model.AbstractMasterServerListener;
 import metanectar.model.MasterServer;
+import metanectar.model.MasterServerListener;
 import metanectar.model.MetaNectar;
 
 import java.util.concurrent.Callable;
@@ -21,7 +22,7 @@ import java.util.concurrent.locks.Lock;
  *
  * @author Paul Sandoz
  */
-public class ReverseProxyProdder extends AbstractMasterServerListener {
+public class ReverseProxyProdder extends MasterServerListener {
 
     private final MetaNectar mn;
 
@@ -50,11 +51,8 @@ public class ReverseProxyProdder extends AbstractMasterServerListener {
         return actualProdCount;
     }
 
-    public void onProvisioned(MasterServer ms) {
-        prod();
-    }
-
-    public void onTerminated(MasterServer ms) {
+    @Override
+    public void onStateChange(MasterServer ms) {
         prod();
     }
 

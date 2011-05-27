@@ -49,21 +49,26 @@ public class ReverseProxyProdderTest extends AbstractMasterProvisioningTestCase 
     }
 
     public void testMultiple() throws Exception {
-        configureDummyMasterProvisioningOnMetaNectar(100);
+        int n = 100;
+        configureDummyMasterProvisioningOnMetaNectar(n);
 
         ReverseProxyProdder rpp = MasterServerListener.all().get(ReverseProxyProdder.class);
 
-        List<MasterServer> l = provisionAndStartMasters("o", 100);
+        List<MasterServer> l = provisionAndStartMasters("o", n);
+
+        for (MasterServer ms : l) {
+            assertEquals(MasterServer.State.Started, ms.getState());
+        }
 
         int i = rpp.getActualProdCount();
         assertTrue(i < rpp.getRequestedProdCount());
-        assertEquals(100, rpp.getRequestedProdCount());
+        assertEquals(n * 6, rpp.getRequestedProdCount());
 
         terminateAndDeleteMasters(l);
 
         assertTrue(i < rpp.getActualProdCount());
         assertTrue(rpp.getActualProdCount() < rpp.getRequestedProdCount());
-        assertEquals(200, rpp.getRequestedProdCount());
+        assertEquals(n * 6 + n * 4, rpp.getRequestedProdCount());
     }
 
 }

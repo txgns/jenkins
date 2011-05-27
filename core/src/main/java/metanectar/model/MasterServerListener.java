@@ -26,14 +26,14 @@ public abstract class MasterServerListener implements ExtensionPoint {
      *
      * @param ms the master.
      */
-    public abstract void onConnected(MasterServer ms);
+    public void onConnected(MasterServer ms) {}
 
     /**
      * Called when the master is disconnected.
      *
      * @param ms the master.
      */
-    public abstract void onDisconnected(MasterServer ms);
+    public void onDisconnected(MasterServer ms) {}
 
     public static ExtensionList<MasterServerListener> all() {
         return Hudson.getInstance().getExtensionList(MasterServerListener.class);

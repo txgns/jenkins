@@ -62,14 +62,6 @@ public class MasterProvisioner {
                     break;
             }
         }
-
-        @Override
-        public void onConnected(MasterServer ms) {
-        }
-
-        @Override
-        public void onDisconnected(MasterServer ms) {
-        }
     }
 
     public MasterProvisioner(MetaNectar mn) {
@@ -97,12 +89,12 @@ public class MasterProvisioner {
     }
 
     public boolean hasPendingRequests() {
-        return !pendingPlannedMasterRequests.isEmpty();
+        return !pendingMasterRequests.isEmpty();
     }
 
     public void provisionAndStart(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
         ms.setPreProvisionState();
-        pendingPlannedMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties, true));
+        pendingMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties, true));
     }
 
     public void stopAndTerminate(MasterServer ms, boolean clean) {
@@ -111,7 +103,7 @@ public class MasterProvisioner {
 
     public void provision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
         ms.setPreProvisionState();
-        pendingPlannedMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties, false));
+        pendingMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties, false));
     }
 
     public void start(MasterServer ms) {
@@ -139,6 +131,11 @@ public class MasterProvisioner {
         // Process node tasks
         nodeTaskQueue.process();
 
+        // Take a copy of the planned master requests to ignore any requests added while processing
+        // TODO this could be achieve by a forwarding queue impl that forwards all modification requests to the delegate
+        // but defers read requests to the copy
+        currentMasterRequests = Lists.newArrayList(pendingMasterRequests);
+
         provision();
         terminateNodes();
     }
@@ -159,11 +156,13 @@ public class MasterProvisioner {
         }
     }
 
+    private final TaskQueue<NodeProvisionTask> nodeTaskQueue = new TaskQueue<NodeProvisionTask>();
+
     private final MasterServerTaskQueue masterServerTaskQueue = new MasterServerTaskQueue();
 
-    private final ConcurrentLinkedQueue<PlannedMasterRequest> pendingPlannedMasterRequests = new ConcurrentLinkedQueue<PlannedMasterRequest>();
+    private final ConcurrentLinkedQueue<PlannedMasterRequest> pendingMasterRequests = new ConcurrentLinkedQueue<PlannedMasterRequest>();
 
-    private final TaskQueue<NodeProvisionTask> nodeTaskQueue = new TaskQueue<NodeProvisionTask>();
+    private Collection<PlannedMasterRequest> currentMasterRequests;
 
     private void provision() throws Exception {
         provisionMasterRequests();
@@ -172,7 +171,7 @@ public class MasterProvisioner {
 
     private void provisionMasterRequests() throws Exception {
         // Check masters nodes to see if a new master can be provisioned on an existing masters node
-        if (pendingPlannedMasterRequests.isEmpty())
+        if (currentMasterRequests.isEmpty())
             return;
 
         for (Node n : masterLabel.getNodes()) {
@@ -187,13 +186,14 @@ public class MasterProvisioner {
                 if (freeSlots < 1)
                     continue;
 
-                for (Iterator<PlannedMasterRequest> itr = Iterators.limit(pendingPlannedMasterRequests.iterator(), freeSlots); itr.hasNext();) {
+                for (Iterator<PlannedMasterRequest> itr = Iterators.limit(currentMasterRequests.iterator(), freeSlots); itr.hasNext();) {
                     final PlannedMasterRequest pmr = itr.next();
 
                     // Ignore request if advanced from the pre-provisioning state
                     if (pmr.ms.getState().ordinal() > MasterServer.State.PreProvisioning.ordinal() &&
                             pmr.ms.getState() != MasterServer.State.ProvisioningErrorNoResources) {
-                        pendingPlannedMasterRequests.remove(pmr);
+                        currentMasterRequests.remove(pmr);
+                        pendingMasterRequests.remove(pmr);
                         continue;
                     }
 
@@ -207,6 +207,7 @@ public class MasterProvisioner {
                     } catch (Exception e) {
                         // Ignore
                     } finally {
+                        pendingMasterRequests.remove(pmr);
                         itr.remove();
                     }
                 }
@@ -219,7 +220,7 @@ public class MasterProvisioner {
         // Need to be careful provisioning more nodes in such cases.
 
         // If there are still pending requests and no pending nodes
-        if (pendingPlannedMasterRequests.size() > 0 && nodeTaskQueue.getQueue().isEmpty()) {
+        if (currentMasterRequests.size() > 0 && nodeTaskQueue.getQueue().isEmpty()) {
             // Check clouds to see if a new masters node can be provisioned
             Collection<PlannedNode> pns = Collections.emptySet();
             for (Cloud c : masterLabel.getClouds()) {
@@ -243,7 +244,7 @@ public class MasterProvisioner {
             }
 
             if (pns.isEmpty()) {
-                for (PlannedMasterRequest pmr : pendingPlannedMasterRequests) {
+                for (PlannedMasterRequest pmr : currentMasterRequests) {
                     pmr.ms.setProvisionErrorNoResourcesState();
                     LOGGER.log(Level.WARNING, "No resources to provision master " + pmr.ms.getName());
                 }
@@ -257,7 +258,7 @@ public class MasterProvisioner {
     private void terminateNodes() throws Exception {
         // If there are no pending requests to provision masters or provision masters nodes
         // then check if nodes with no provisioned masters can be terminated
-        if (pendingPlannedMasterRequests.isEmpty() && nodeTaskQueue.getQueue().isEmpty()) {
+        if (pendingMasterRequests.isEmpty() && nodeTaskQueue.getQueue().isEmpty()) {
             // Reap nodes with no provisioned masters
             for (Node n : masterLabel.getNodes()) {
                 if (!nodesWithMasters.containsKey(n) || nodesWithMasters.get(n).isEmpty()) {
