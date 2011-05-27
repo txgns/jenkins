@@ -15,6 +15,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
+import java.util.logging.Logger;
 
 /**
  * A listener that prods the reserve proxy to reload it's routes when a master is
@@ -23,6 +24,7 @@ import java.util.concurrent.locks.Lock;
  * @author Paul Sandoz
  */
 public class ReverseProxyProdder extends MasterServerListener {
+    private static final Logger LOGGER = Logger.getLogger(ReverseProxyProdder.class.getName());
 
     private final MetaNectar mn;
 
@@ -78,7 +80,7 @@ public class ReverseProxyProdder extends MasterServerListener {
             public Void call() throws Exception {
                 final TaskListener listener = StreamTaskListener.fromStdout();
 
-                listener.getLogger().println(String.format("Executing reverse proxy reload command \"%s\"", reload));
+                LOGGER.info(String.format("Executing reverse proxy reload command \"%s\"", reload));
                 final Proc reloadProcess = mn.createLauncher(listener).launch().
                         cmds(Util.tokenize(reload)).
                         stderr(listener.getLogger()).
@@ -88,9 +90,7 @@ public class ReverseProxyProdder extends MasterServerListener {
                 final int result = reloadProcess.joinWithTimeout(60, TimeUnit.SECONDS, listener);
 
                 if (result != 0) {
-                    listener.error("Failed to execute reverse proxy reload command, received signal: " + result);
-                } else {
-                    listener.getLogger().println("Reverse proxy reload command succeeded");
+                    LOGGER.info("Failed to execute reverse proxy reload command, received signal: " + result);
                 }
 
                 synchronized (lock) {

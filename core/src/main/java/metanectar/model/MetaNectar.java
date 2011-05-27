@@ -166,6 +166,7 @@ public class MetaNectar extends Hudson {
         // Set up reverse proxy prodding if reload script is configured
         Config.ProxyProperties pp = getConfig().getBean(Config.ProxyProperties.class);
         if (pp.getReload() != null) {
+            LOGGER.info("Configuring reverse proxy prodder");
             MasterServerListener.all().add(0, new ReverseProxyProdder(this, pp.getReload()));
         }
     }

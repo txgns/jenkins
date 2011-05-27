@@ -66,8 +66,9 @@ public class Config {
 
         try {
             ps.load(new URL(propertiesUrl).openStream());
+            LOGGER.info("Loaded properties from "+ propertiesUrl + ": " + ps);
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error loading properties file \"" + propertiesUrl + "\"", e);
+            LOGGER.log(Level.SEVERE, "Error loading properties from \"" + propertiesUrl + "\"", e);
         }
 
         return ps;
