@@ -1,11 +1,13 @@
 package metanectar.provisioning;
 
+import com.google.common.collect.Lists;
 import hudson.model.Node;
 import hudson.slaves.Cloud;
 import metanectar.cloud.MasterProvisioningCloudListener;
 import metanectar.cloud.MasterProvisioningCloudProxy;
 import metanectar.model.MasterServer;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static metanectar.provisioning.LatchMasterProvisioningCloudListener.TerminateListener;
@@ -49,7 +51,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
         _testProvision(8, 4);
     }
 
-    private void _testProvision(int masters, int nodesPerMaster) throws Exception {
+    private List<MasterServer> _testProvision(int masters, int nodesPerMaster) throws Exception {
         int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
 
         ProvisionListener cl = new ProvisionListener();
@@ -60,8 +62,10 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
 
         ProvisionAndStartListener pl = new ProvisionAndStartListener(4 * masters);
 
+        List<MasterServer> l = Lists.newArrayList();
         for (int i = 0; i < masters; i++) {
             MasterServer ms = metaNectar.createMasterServer("org" + i);
+            l.add(ms);
             ms.provisionAndStartAction();
         }
 
@@ -69,7 +73,8 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
 
         assertEquals(nodes, cl.provisioned);
         assertEquals(nodes, metaNectar.masterProvisioner.getLabel().getNodes().size());
-        assertEquals(masters, MasterProvisioner.getProvisionedMasters(metaNectar).size());
+        assertEquals(masters, metaNectar.masterProvisioner.getProvisionedMasters().size());
+        return l;
     }
 
 
@@ -94,18 +99,18 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
     }
 
     private void _testDelete(int masters) throws Exception {
-        _testProvision(masters, 4);
-        _testDelete(masters, 4);
+        _testDelete(_testProvision(masters, 4), 4);
     }
 
-    private void _testDelete(int masters, int nodesPerMaster) throws Exception {
-        int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
+    private void _testDelete(List<MasterServer> masters, int nodesPerMaster) throws Exception {
+        int nodes = masters.size() / nodesPerMaster + Math.min(masters.size() % nodesPerMaster, 1);
 
         TerminateListener cloudTl = new TerminateListener(nodes);
-        StopAndTerminateListener masterTl = new StopAndTerminateListener(4 * masters);
+        StopAndTerminateListener masterTl = new StopAndTerminateListener(4 * masters.size());
 
-        for (int i = 0; i < masters; i++) {
-            metaNectar.getMasterByName("org" + i).stopAndTerminateAction(true);
+        for (MasterServer mn : masters) {
+            assertEquals(mn, metaNectar.getMasterByName(mn.getIdName()));
+            mn.stopAndTerminateAction(true);
         }
 
         masterTl.await(1, TimeUnit.MINUTES);
@@ -113,7 +118,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
         cloudTl.await(1, TimeUnit.MINUTES);
 
         assertEquals(0, metaNectar.masterProvisioner.getLabel().getNodes().size());
-        assertEquals(0, MasterProvisioner.getProvisionedMasters(metaNectar).size());
+        assertEquals(0, metaNectar.masterProvisioner.getProvisionedMasters().size());
     }
 
 
@@ -121,7 +126,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
         _testProvisionOnMetaNectarNode(1, 4);
     }
 
-    private void _testProvisionOnMetaNectarNode(int masters, int nodesPerMaster) throws Exception {
+    private List<MasterServer> _testProvisionOnMetaNectarNode(int masters, int nodesPerMaster) throws Exception {
         int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
 
         metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(nodesPerMaster, new DummyMasterProvisioningService(100)));
@@ -130,15 +135,19 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
 
         ProvisionAndStartListener pl = new ProvisionAndStartListener(4 * masters);
 
+        List<MasterServer> l = Lists.newArrayList();
         for (int i = 0; i < masters; i++) {
             MasterServer ms = metaNectar.createMasterServer("org" + i);
+            l.add(ms);
             ms.provisionAndStartAction();
         }
 
         pl.await(1, TimeUnit.MINUTES);
 
         assertEquals(nodes, metaNectar.masterProvisioner.getLabel().getNodes().size());
-        assertEquals(masters, MasterProvisioner.getProvisionedMasters(metaNectar).size());
+        assertEquals(masters, metaNectar.masterProvisioner.getProvisionedMasters().size());
+
+        return l;
     }
 
     public void testDeleteOneMasterOnMetaNectarNode() throws Exception {
@@ -146,22 +155,22 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
     }
 
     private void _testDeleteOnMetaNectarNode(int masters) throws Exception {
-        _testProvisionOnMetaNectarNode(masters, 4);
-        _testDeleteOnMetaNectarNode(masters, 4);
+        _testDeleteOnMetaNectarNode(_testProvisionOnMetaNectarNode(masters, 4), 4);
     }
 
-    private void _testDeleteOnMetaNectarNode(int masters, int nodesPerMaster) throws Exception {
-        int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
+    private void _testDeleteOnMetaNectarNode(List<MasterServer> masters, int nodesPerMaster) throws Exception {
+        int nodes = masters.size() / nodesPerMaster + Math.min(masters.size() % nodesPerMaster, 1);
 
-        StopAndTerminateListener tl = new StopAndTerminateListener(4 * masters);
+        StopAndTerminateListener tl = new StopAndTerminateListener(4 * masters.size());
 
-        for (int i = 0; i < masters; i++) {
-            metaNectar.getMasterByName("org" + i).stopAndTerminateAction(true);
+        for (MasterServer mn : masters) {
+            assertEquals(mn, metaNectar.getMasterByName(mn.getIdName()));
+            mn.stopAndTerminateAction(true);
         }
 
         tl.await(1, TimeUnit.MINUTES);
 
-        assertEquals(0, MasterProvisioner.getProvisionedMasters(metaNectar).size());
+        assertEquals(0, metaNectar.masterProvisioner.getProvisionedMasters().size());
     }
 
 
@@ -169,70 +178,70 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
         configureDummyMasterProvisioningOnMetaNectar();
 
         MasterServer ms0 = provisionAndStartMaster("0");
-        assertEquals(0, ms0.getId());
+        assertEquals(0, ms0.getNodeId());
 
         terminateAndDeleteMaster(ms0);
 
         ms0 = provisionAndStartMaster("0");
-        assertEquals(0, ms0.getId());
+        assertEquals(0, ms0.getNodeId());
     }
 
     public void testOrdinal2() throws Exception {
         configureDummyMasterProvisioningOnMetaNectar();
 
         MasterServer ms0 = provisionAndStartMaster("0");
-        assertEquals(0, ms0.getId());
+        assertEquals(0, ms0.getNodeId());
 
         MasterServer ms1 = provisionAndStartMaster("1");
-        assertEquals(1, ms1.getId());
+        assertEquals(1, ms1.getNodeId());
 
         terminateAndDeleteMaster(ms0);
 
         ms0 = provisionAndStartMaster("0");
-        assertEquals(0, ms0.getId());
+        assertEquals(0, ms0.getNodeId());
 
         terminateAndDeleteMaster(ms1);
 
         ms1 = provisionAndStartMaster("1");
-        assertEquals(1, ms1.getId());
+        assertEquals(1, ms1.getNodeId());
     }
 
     public void testOrdinal4() throws Exception {
         configureDummyMasterProvisioningOnMetaNectar();
 
         MasterServer ms0 = provisionAndStartMaster("0");
-        assertEquals(0, ms0.getId());
+        assertEquals(0, ms0.getNodeId());
 
         MasterServer ms1 = provisionAndStartMaster("1");
-        assertEquals(1, ms1.getId());
+        assertEquals(1, ms1.getNodeId());
 
         MasterServer ms2 = provisionAndStartMaster("2");
-        assertEquals(2, ms2.getId());
+        assertEquals(2, ms2.getNodeId());
 
         MasterServer ms3 = provisionAndStartMaster("3");
-        assertEquals(3, ms3.getId());
+        assertEquals(3, ms3.getNodeId());
 
         terminateAndDeleteMaster(ms1);
         terminateAndDeleteMaster(ms2);
 
         ms1 = provisionAndStartMaster("1");
-        assertEquals(1, ms1.getId());
+        assertEquals(1, ms1.getNodeId());
 
         ms2 = provisionAndStartMaster("2");
-        assertEquals(2, ms2.getId());
+        assertEquals(2, ms2.getNodeId());
 
         terminateAndDeleteMaster(ms0);
         terminateAndDeleteMaster(ms1);
         terminateAndDeleteMaster(ms2);
 
         ms0 = provisionAndStartMaster("0");
-        assertEquals(0, ms0.getId());
+        assertEquals(0, ms0.getNodeId());
 
         ms1 = provisionAndStartMaster("1");
-        assertEquals(1, ms1.getId());
+        assertEquals(1, ms1.getNodeId());
 
         ms2 = provisionAndStartMaster("2");
-        assertEquals(2, ms2.getId());
+        assertEquals(2, ms2.getNodeId());
 
     }
 }

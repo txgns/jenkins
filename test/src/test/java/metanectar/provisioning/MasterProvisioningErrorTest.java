@@ -93,6 +93,7 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTestC
 
         assertEquals(MasterServer.State.ProvisioningError, ms.getState());
         assertEquals(Exception.class, ms.getError().getClass());
+        assertEquals(1, metaNectar.masterProvisioner.getProvisionedMasters().size());
     }
 
 
@@ -148,5 +149,6 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTestC
         provisioningError.await(1, TimeUnit.MINUTES);
         assertEquals(MasterServer.State.TerminatingError, ms.getState());
         assertEquals(Exception.class, ms.getError().getClass());
+        assertEquals(1, metaNectar.masterProvisioner.getProvisionedMasters().size());
     }
 }

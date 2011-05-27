@@ -17,6 +17,7 @@ import metanectar.Config;
 import metanectar.ExtensionFilter;
 import metanectar.MetaNectarExtensionPoint;
 import metanectar.model.views.MasterServerColumn;
+import metanectar.provisioning.IdentifierFinder;
 import metanectar.provisioning.MasterProvisioner;
 import metanectar.provisioning.MasterProvisioningNodeProperty;
 import metanectar.provisioning.MasterProvisioningService;
@@ -115,7 +116,6 @@ public class MetaNectar extends Hudson {
 
         public void onConnectedTo(Channel channel, X509Certificate identity, String name) throws IOException {
             final MasterServer server = metaNectar.getMasterByName(name);
-
             if (server != null) {
                 server.setConnectedState(channel);
                 return;
@@ -257,8 +257,14 @@ public class MetaNectar extends Hudson {
         return null;
     }
 
-    public MasterServer getMasterByName(String name) {
-        return (MasterServer)getItem(name);
+    public MasterServer getMasterByName(String idName) {
+        for (MasterServer ms : getAllItems(MasterServer.class)) {
+            if (ms.getIdName().equals(idName)) {
+                return ms;
+            }
+        }
+
+        return null;
     }
 
     public void setConfig(Config config) {
@@ -293,10 +299,14 @@ public class MetaNectar extends Hudson {
     public MasterServer createMasterServer(String name) throws IOException {
         checkMasterName(name);
 
-        final MasterServer server = createProject(MasterServer.class, name);
+        synchronized (this) {
+            int id = MasterServer.MASTER_SERVER_IDENTIFIER_FINDER.getUnusedIdentifier(getAllItems(MasterServer.class));
 
-        server.setCreatedState();
-        return server;
+            final MasterServer server = createProject(MasterServer.class, name);
+
+            server.setCreatedState(id);
+            return server;
+        }
     }
 
     private void checkMasterName(String name) {

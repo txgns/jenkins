@@ -1,6 +1,7 @@
 package metanectar.provisioning;
 
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
+import com.google.common.collect.Lists;
 import hudson.remoting.Channel;
 import metanectar.cloud.MasterProvisioningCloudProxy;
 import metanectar.model.MasterServer;
@@ -10,6 +11,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
 import java.security.cert.X509Certificate;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -82,8 +84,8 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
         _testProvision(8);
     }
 
-    public void _testProvision(int masters) throws Exception {
-        _testProvision(masters, new Configurable() {
+    public List<MasterServer> _testProvision(int masters) throws Exception {
+        return _testProvision(masters, new Configurable() {
             public void configure() throws Exception {
                 SlaveMasterProvisioningNodePropertyTemplate tp = new SlaveMasterProvisioningNodePropertyTemplate(4, new TestMasterProvisioningService(100));
                 MasterProvisioningCloudProxy pc = new MasterProvisioningCloudProxy(tp, new TestSlaveCloud(MasterProvisioningConnectionTest.this, 100));
@@ -96,22 +98,22 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
         _testProvisionOnMetaNectar(1);
     }
 
-    public void _testProvisionOnMetaNectar(int masters) throws Exception {
-        _testProvision(masters, new Configurable() {
+    public MasterServer _testProvisionOnMetaNectar(int masters) throws Exception {
+        return _testProvision(masters, new Configurable() {
             public void configure() throws Exception {
                 TestMasterProvisioningService s = new TestMasterProvisioningService(100);
                 metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(4, s));
                 // Reset the labels
                 metaNectar.setNodes(metaNectar.getNodes());
             }
-        });
+        }).get(0);
     }
 
     interface Configurable {
         void configure() throws Exception;
     }
 
-    public void _testProvision(int masters, Configurable c) throws Exception {
+    public List<MasterServer> _testProvision(int masters, Configurable c) throws Exception {
         new WebClient().goTo("/");
 
         CountDownLatch onEventCdl = new CountDownLatch(masters);
@@ -121,8 +123,10 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
 
         ProvisionAndStartListener pl = new ProvisionAndStartListener(4 * masters);
 
+        List<MasterServer> l = Lists.newArrayList();
         for (int i = 0; i < masters; i++) {
             MasterServer ms = metaNectar.createMasterServer("org" + i);
+            l.add(ms);
             ms.provisionAndStartAction();
         }
 
@@ -132,11 +136,14 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
         // Wait for masters to be connected
         onEventCdl.await(1, TimeUnit.MINUTES);
 
-        assertEquals(masters, metaNectar.getItems(MasterServer.class).size());
-        for (MasterServer ms : metaNectar.getItems(MasterServer.class)) {
-            assertTrue(ms.isApproved());
-            assertNotNull(ms.getChannel());
+        assertEquals(masters, metaNectar.getAllItems(MasterServer.class).size());
+        for (MasterServer mn : metaNectar.getAllItems(MasterServer.class)) {
+            assertEquals(mn, metaNectar.getMasterByName(mn.getIdName()));
+            assertTrue(mn.isApproved());
+            assertNotNull(mn.getChannel());
         }
+
+        return l;
     }
 
 
@@ -157,24 +164,23 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
     }
 
     private void _testProvisionAndDelete(int masters) throws Exception {
-        _testProvision(masters);
-        _testDelete(masters);
+        _testDelete(_testProvision(masters));
     }
 
-    private void _testDelete(int masters) throws Exception {
-        int nodes = masters / 4 + Math.min(masters % 4, 1);
+    private void _testDelete(List<MasterServer> masters) throws Exception {
+        int nodes = masters.size() / 4 + Math.min(masters.size() % 4, 1);
 
         TerminateListener cloudTl = new TerminateListener(nodes);
-        StopAndTerminateListener masterTl = new StopAndTerminateListener(4 * masters);
+        StopAndTerminateListener masterTl = new StopAndTerminateListener(4 * masters.size());
 
-        for (int i = 0; i < masters; i++) {
-            metaNectar.getMasterByName("org" + i).stopAndTerminateAction(true);
+        for (MasterServer mn : masters) {
+            mn.stopAndTerminateAction(true);
         }
 
         masterTl.await(1, TimeUnit.MINUTES);
 
-        assertEquals(masters, metaNectar.getItems(MasterServer.class).size());
-        for (MasterServer ms : metaNectar.getItems(MasterServer.class)) {
+        assertEquals(masters.size(), metaNectar.getAllItems(MasterServer.class).size());
+        for (MasterServer ms : metaNectar.getAllItems(MasterServer.class)) {
             assertEquals(MasterServer.State.Terminated, ms.getState());
             assertNull(ms.getChannel());
         }
@@ -182,7 +188,7 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
         cloudTl.await(1, TimeUnit.MINUTES);
 
         assertEquals(0, metaNectar.masterProvisioner.getLabel().getNodes().size());
-        assertEquals(0, MasterProvisioner.getProvisionedMasters(metaNectar).size());
+        assertEquals(0, metaNectar.masterProvisioner.getProvisionedMasters().size());
     }
 
 }

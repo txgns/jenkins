@@ -46,7 +46,7 @@ public class MasterProvisionTask extends MasterServerTask<Master> {
 
             this.future = p.getProvisioningService().provision(
                     node.toComputer().getChannel(), ms.getTaskListener(),
-                    id, ms.getName(), metaNectarEndpoint, provisionProperties);
+                    id, ms.getIdName(), metaNectarEndpoint, provisionProperties);
 
             LOGGER.info("Provisioning master " + ms.getName() + " on node " + node.getNodeName());
 
@@ -67,7 +67,7 @@ public class MasterProvisionTask extends MasterServerTask<Master> {
             LOGGER.info("Provisioning completed for master " + ms.getName() + " on node " + node.getNodeName());
 
             // Set the provision completed state on the master server
-            ms.setProvisionCompletedState(node, m.endpoint);
+            ms.setProvisionCompletedState(m.endpoint);
         } catch (Exception e) {
             final Throwable cause = (e instanceof ExecutionException) ? e.getCause() : e;
             LOGGER.log(Level.WARNING, "Provisioning completion error for master " + ms.getName() + " on node " + node.getNodeName(), cause);

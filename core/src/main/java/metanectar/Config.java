@@ -109,7 +109,7 @@ public class Config {
     public static class ProxyProperties {
         private String reload;
 
-        private String baseEndpoint;
+        private URL baseEndpoint;
 
         public String getReload() {
             return reload;
@@ -120,12 +120,12 @@ public class Config {
             this.reload = reload;
         }
 
-        public String getBaseEndpoint() {
+        public URL getBaseEndpoint() {
             return baseEndpoint;
         }
 
         @Property("metaNectar.proxy.url") @Optional
-        public void setBaseEndpoint(String baseEndpoint) {
+        public void setBaseEndpoint(URL baseEndpoint) {
             this.baseEndpoint = baseEndpoint;
         }
     }

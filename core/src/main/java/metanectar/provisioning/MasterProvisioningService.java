@@ -45,7 +45,7 @@ public abstract class MasterProvisioningService extends AbstractDescribableImpl<
      *
      * @param channel
      * @param listener the task listener to log information
-     * @param name the name of the master.
+     * @param name the unique name of the master.
      * @return a future, when done starting is complete or there is an error.
      * @throws Exception
      */
@@ -57,7 +57,7 @@ public abstract class MasterProvisioningService extends AbstractDescribableImpl<
      *
      * @param channel
      * @param listener the task listener to log information
-     * @param name the name of the master.
+     * @param name unique the name of the master.
      * @return a future, when done stopping is complete or there is an error.
      * @throws Exception
      */
@@ -69,7 +69,7 @@ public abstract class MasterProvisioningService extends AbstractDescribableImpl<
      *
      * @param channel the channel on which remote execution can be performed to terminate a provisioned masters.
      * @param listener the task listener to log information
-     * @param name the name of the master.
+     * @param name the unique name of the master.
      * @param clean if true then any local resources, such as home and workspace directories, will be cleaned up.
      * @return a future, when done termination is complete or there is an error.
      * @throws Exception

@@ -29,7 +29,7 @@ public class MasterStartTask extends MasterServerTask {
 
             this.future = p.getProvisioningService().start(
                     node.toComputer().getChannel(), ms.getTaskListener(),
-                    ms.getName());
+                    ms.getIdName());
 
             LOGGER.info("Starting master " + ms.getName() + " on node " + node.getNodeName());
 

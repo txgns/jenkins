@@ -7,6 +7,7 @@ import hudson.slaves.Cloud;
 import metanectar.cloud.NodeTerminatingRetentionStrategy;
 import metanectar.cloud.MasterProvisioningCloudListener;
 import metanectar.model.MasterServer;
+import metanectar.model.MasterServerListener;
 import metanectar.model.MetaNectar;
 import metanectar.provisioning.task.*;
 import metanectar.provisioning.task.TaskQueue;
@@ -29,10 +30,6 @@ import static hudson.slaves.NodeProvisioner.PlannedNode;
  * to provision the master on that Node's channel.
  * If no Nodes can provision (because they have reached capacity) then a node with the specific label will be
  * provisioned from the Cloud.
- * <p>
- * TODO
- * - how to manage failures
- * - make provision requests idempotent?
  *
  * @author Paul Sandoz
  */
@@ -46,12 +43,52 @@ public class MasterProvisioner {
 
     private Label masterLabel;
 
-    // TODO check is a master is already provisioned or to be provisioned
+    private final ListMultimap<Node, MasterServer> nodesWithMasters = ArrayListMultimap.create();
 
-    // TODO check if cannot provision a master because there are no nodes/clouds configured
+    private class NodeUpdateListener extends MasterServerListener {
+        @Override
+        public void onStateChange(final MasterServer ms) {
+            switch (ms.getState())  {
+                case Provisioning:
+                case ProvisioningError:
+                    final Node n = ms.getNode();
+                    if (!nodesWithMasters.containsEntry(n, ms)) {
+                        nodesWithMasters.put(n, ms);
+                    }
+                    break;
+
+                case Terminated:
+                    nodesWithMasters.values().remove(ms);
+                    break;
+            }
+        }
+
+        @Override
+        public void onConnected(MasterServer ms) {
+        }
+
+        @Override
+        public void onDisconnected(MasterServer ms) {
+        }
+    }
 
     public MasterProvisioner(MetaNectar mn) {
         this.mn = mn;
+
+        // TODO normalize states
+
+        // Re-create node with masters map
+        for (MasterServer ms : mn.getAllItems(MasterServer.class)) {
+            if (ms.getNode() != null) {
+                nodesWithMasters.put(ms.getNode(), ms);
+            }
+        }
+
+        MasterServerListener.all().add(0, new NodeUpdateListener());
+    }
+
+    public ListMultimap<Node, MasterServer> getProvisionedMasters() {
+        return Multimaps.unmodifiableListMultimap(nodesWithMasters);
     }
 
     public Label getLabel() {
@@ -102,8 +139,8 @@ public class MasterProvisioner {
         // Process node tasks
         nodeTaskQueue.process();
 
-        Multimap<Node, MasterServer> provisioned = provision();
-        terminateNodes(provisioned);
+        provision();
+        terminateNodes();
     }
 
     // Provisioning
@@ -128,14 +165,12 @@ public class MasterProvisioner {
 
     private final TaskQueue<NodeProvisionTask> nodeTaskQueue = new TaskQueue<NodeProvisionTask>();
 
-    private Multimap<Node, MasterServer> provision() throws Exception {
-        final ListMultimap<Node, MasterServer> provisioned = MasterProvisioner.getProvisionedMasters(mn);
-        provisionMasterRequests(provisioned);
+    private void provision() throws Exception {
+        provisionMasterRequests();
         provisionFromCloud();
-        return provisioned;
     }
 
-    private void provisionMasterRequests(ListMultimap<Node, MasterServer> provisioned) throws Exception {
+    private void provisionMasterRequests() throws Exception {
         // Check masters nodes to see if a new master can be provisioned on an existing masters node
         if (pendingPlannedMasterRequests.isEmpty())
             return;
@@ -148,7 +183,7 @@ public class MasterProvisioner {
                 // TODO check if masters are already provisioned, if so this means a re-provision.
                 //
                 final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(n);
-                final int freeSlots = p.getMaxMasters() - provisioned.get(n).size();
+                final int freeSlots = p.getMaxMasters() - nodesWithMasters.get(n).size();
                 if (freeSlots < 1)
                     continue;
 
@@ -162,7 +197,7 @@ public class MasterProvisioner {
                         continue;
                     }
 
-                    final int id = getFreeId(provisioned.get(n));
+                    final int id = MasterServer.NODE_IDENTIFIER_FINDER.getUnusedIdentifier(nodesWithMasters.get(n));
                     final MasterProvisionTask mpt = (pmr.start)
                             ? new MasterProvisionThenStartTask(pmr.ms, pmr.metaNectarEndpoint, pmr.properties, n, id)
                             : new MasterProvisionTask(pmr.ms, pmr.metaNectarEndpoint, pmr.properties, n, id);
@@ -172,7 +207,6 @@ public class MasterProvisioner {
                     } catch (Exception e) {
                         // Ignore
                     } finally {
-                        provisioned.put(n, pmr.ms);
                         itr.remove();
                     }
                 }
@@ -217,50 +251,16 @@ public class MasterProvisioner {
         }
     }
 
-    private int getFreeId(final List<MasterServer> provisioned) {
-        // Empty
-        if (provisioned.isEmpty())
-            return 0;
-
-        // One Element
-        if (provisioned.size() == 1) {
-            final MasterServer ms = provisioned.get(0);
-            return (ms.getId() > 0) ? 0 : ms.getId() + 1;
-        }
-
-        // Multiple elements, sort by ordinal then find a gap in the
-        // intervals
-        Collections.sort(provisioned, new Comparator<MasterServer>() {
-            public int compare(MasterServer ms1, MasterServer ms2) {
-                return ms1.getId() - ms2.getId();
-            }
-        });
-
-        final Iterator<MasterServer> msi = provisioned.iterator();
-        MasterServer start = msi.next();
-        MasterServer end = null;
-        while (msi.hasNext()) {
-            end = msi.next();
-
-            if (end.getId() - start.getId() > 1) {
-                return start.getId() + 1;
-            }
-
-            start = end;
-        }
-
-        return end.getId() + 1;
-    }
 
     // Terminating
 
-    private void terminateNodes(Multimap<Node, MasterServer> provisioned) throws Exception {
+    private void terminateNodes() throws Exception {
         // If there are no pending requests to provision masters or provision masters nodes
         // then check if nodes with no provisioned masters can be terminated
         if (pendingPlannedMasterRequests.isEmpty() && nodeTaskQueue.getQueue().isEmpty()) {
             // Reap nodes with no provisioned masters
             for (Node n : masterLabel.getNodes()) {
-                if (!provisioned.containsKey(n)) {
+                if (!nodesWithMasters.containsKey(n) || nodesWithMasters.get(n).isEmpty()) {
                     final Computer c = n.toComputer();
 
                     if (c.getRetentionStrategy() instanceof NodeTerminatingRetentionStrategy) {
@@ -311,17 +311,5 @@ public class MasterProvisioner {
                 LOGGER.log(Level.SEVERE, "Error when master provisioning or terminating", e);
             }
         }
-    }
-
-    public static ListMultimap<Node, MasterServer> getProvisionedMasters(MetaNectar mn) {
-        ListMultimap<Node, MasterServer> masters = ArrayListMultimap.create();
-
-        for (MasterServer ms : mn.getMasters()) {
-            if (ms.getNode() != null) {
-                masters.put(ms.getNode(), ms);
-            }
-        }
-
-        return masters;
     }
 }

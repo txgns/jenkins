@@ -149,6 +149,8 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     }
 
 
+    private MasterServer ms;
+
     private File terminatingFile;
 
     private File getTerminatingFile() throws IOException {
@@ -170,14 +172,18 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     }
 
     private String getMasterName() {
-        return "org1";
+        return "org";
+    }
+
+    private String getMasterIdName() {
+        return MasterServer.createIdName(0, getMasterName());
     }
 
     private File masterHomeDir;
 
     private File getMasterHomeDir() throws IOException {
         if (masterHomeDir == null) {
-            masterHomeDir = new File(getHomeDir(), getMasterName());
+            masterHomeDir = new File(getHomeDir(), getMasterIdName());
             masterHomeDir.deleteOnExit();
         }
 
@@ -237,16 +243,16 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     private MasterServer provision() throws Exception {
         ProvisionAndStartListener pl = new ProvisionAndStartListener(4);
 
-        MasterServer ms = metaNectar.createMasterServer(getMasterName());
+        ms = metaNectar.createMasterServer(getMasterName());
         ms.provisionAndStartAction();
 
         pl.await(1, TimeUnit.MINUTES);
 
-        Map<String, String> params = getParams(ms.getEndpoint());
+        Map<String, String> params = getParams(ms.getLocalEndpoint());
 
         String port = params.get(CommandMasterProvisioningService.Variable.MASTER_PORT.toString());
         assertNotNull(port);
-        assertEquals(8080, Integer.valueOf(port) + ms.getId());
+        assertEquals(8080, Integer.valueOf(port) + ms.getNodeId());
 
         String home = params.get(CommandMasterProvisioningService.Variable.MASTER_HOME.toString());
         assertNotNull(home);

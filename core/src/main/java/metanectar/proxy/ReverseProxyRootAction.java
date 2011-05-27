@@ -98,7 +98,7 @@ public class ReverseProxyRootAction implements UnprotectedRootAction {
         final Function<MasterServer, Void> f = new Function<MasterServer, Void>() {
             public Void apply(final MasterServer master) {
                 if (master.isProvisioned()) {
-                    masters.add(new Master(master.getName(), master.getState().name(), master.getEndpoint().toExternalForm()));
+                    masters.add(new Master(master.getIdPathName(), master.getState().name(), master.getLocalEndpoint().toExternalForm()));
                 }
                 return null;
             }

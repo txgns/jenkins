@@ -4,7 +4,6 @@ import com.cloudbees.commons.metanectar.agent.Agent;
 import com.cloudbees.commons.metanectar.agent.AgentStatusListener;
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
 import com.gargoylesoftware.htmlunit.Page;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import hudson.remoting.Channel;
 import hudson.tasks.Mailer;
 import metanectar.model.MasterServer;
@@ -20,7 +19,6 @@ import java.net.InetSocketAddress;
 import java.net.URL;
 import java.security.GeneralSecurityException;
 import java.security.cert.X509Certificate;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -120,7 +118,8 @@ public class MasterConnectionTest extends MetaNectarTestCase {
 
         MasterServer ms = metaNectar.createMasterServer("org");
         ms.setPreProvisionState();
-        ms.setProvisionCompletedState(metaNectar, metaNectar.getMetaNectarPortUrl());
+        ms.setProvisionStartedState(metaNectar, 0);
+        ms.setProvisionCompletedState(metaNectar.getMetaNectarPortUrl());
 
         Map<String, String> properties = new HashMap<String, String>();
         properties.put(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID, ms.getGrantId());
@@ -136,7 +135,7 @@ public class MasterConnectionTest extends MetaNectarTestCase {
         agent.connectOnce(serverAddress);
 
         assertNotNull(ms.getIdentity());
-        assertNotNull(ms.getEndpoint());
+        assertNotNull(ms.getLocalEndpoint());
 
         // this should create an unapproved Jenkins instance on the server
         ms = metaNectar.getMasterByIdentity(id.getPublic());
@@ -161,7 +160,8 @@ public class MasterConnectionTest extends MetaNectarTestCase {
 
         MasterServer ms = metaNectar.createMasterServer("org");
         ms.setPreProvisionState();
-        ms.setProvisionCompletedState(metaNectar, metaNectar.getMetaNectarPortUrl());
+        ms.setProvisionStartedState(metaNectar, 0);
+        ms.setProvisionCompletedState(metaNectar.getMetaNectarPortUrl());
 
         Map<String, String> properties = new HashMap<String, String>();
         MetaNectarAgentProtocol.Outbound p = new MetaNectarAgentProtocol.Outbound(
