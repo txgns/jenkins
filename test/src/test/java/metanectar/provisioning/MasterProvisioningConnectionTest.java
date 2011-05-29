@@ -87,7 +87,7 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
     public List<MasterServer> _testProvision(int masters) throws Exception {
         return _testProvision(masters, new Configurable() {
             public void configure() throws Exception {
-                SlaveMasterProvisioningNodePropertyTemplate tp = new SlaveMasterProvisioningNodePropertyTemplate(4, new TestMasterProvisioningService(100));
+                MasterProvisioningNodePropertyTemplate tp = new MasterProvisioningNodePropertyTemplate(4, new TestMasterProvisioningService(100));
                 MasterProvisioningCloudProxy pc = new MasterProvisioningCloudProxy(tp, new TestSlaveCloud(MasterProvisioningConnectionTest.this, 100));
                 metaNectar.clouds.add(pc);
             }
@@ -102,7 +102,7 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
         return _testProvision(masters, new Configurable() {
             public void configure() throws Exception {
                 TestMasterProvisioningService s = new TestMasterProvisioningService(100);
-                metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(4, s));
+                metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(4, s));
                 // Reset the labels
                 metaNectar.setNodes(metaNectar.getNodes());
             }

@@ -94,7 +94,7 @@ public abstract class AbstractMasterProvisioningTestCase extends MetaNectarTestC
     }
 
     public void configureDummyMasterProvisioningOnMetaNectar(int n) throws Exception {
-        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(n, new DummyMasterProvisioningService(100)));
+        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(n, new DummyMasterProvisioningService(100)));
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());
     }

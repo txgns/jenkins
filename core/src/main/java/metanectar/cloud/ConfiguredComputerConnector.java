@@ -17,50 +17,13 @@ import org.kohsuke.stapler.DataBoundConstructor;
  */
 public class ConfiguredComputerConnector extends SSHConnector implements MetaNectarExtensionPoint {
 
-    public static class Properties {
-        private String key;
-
-        private String userName;
-
-        private String userPassword;
-
-        private int port;
-
-        private String jvmOptions;
-
-        @Property("metaNectar.master.ssh.key.private") @Optional
-        public void setKey(String key) {
-            this.key = key;
-        }
-
-        @Property("metaNectar.master.ssh.username")
-        public void setUserName(String userName) {
-            this.userName = userName;
-        }
-
-        @Property("metaNectar.master.ssh.password") @Optional
-        public void setUserPassword(String userPassword) {
-            this.userPassword = userPassword;
-        }
-
-        @Property("metaNectar.master.ssh.port") @DefaultValue("22")
-        public void setPort(int port) {
-            this.port = port;
-        }
-
-        @Property("metaNectar.master.ssh.jvmOptions") @Optional
-        public void setJvmOptions(String jvmOptions) {
-            this.jvmOptions = jvmOptions;
-        }
-    }
-
     @DataBoundConstructor
     public ConfiguredComputerConnector() {
-        this(MetaNectar.getInstance().getConfig().getBean(Properties.class));
+        this(MetaNectar.getInstance().getConfig().getBean(Config.SSHConnectionProperties.class));
     }
 
-    private ConfiguredComputerConnector(Properties p) {
-        super(p.port, p.userName, p.userPassword, p.key, p.jvmOptions);
+    private ConfiguredComputerConnector(Config.SSHConnectionProperties p) {
+        super(p.getPort(), p.getUserName(), p.getUserPassword(), p.getKey(), p.getJvmOptions());
     }
 
     @Extension

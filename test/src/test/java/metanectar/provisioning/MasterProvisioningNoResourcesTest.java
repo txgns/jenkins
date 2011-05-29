@@ -40,7 +40,7 @@ public class MasterProvisioningNoResourcesTest extends AbstractMasterProvisionin
 
         // Add provisioning resources
         TestMasterProvisioningService s = new TestMasterProvisioningService(100);
-        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(4, s));
+        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(4, s));
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());
 

@@ -1,13 +1,4 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
          xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
 
-    <j:if test="${app.config.isMasterProvisioning()}">
-
-        <f:entry title="${%Maximum number of provisioned masters}" field="maxMasters">
-            <f:textbox default="1"/>
-        </f:entry>
-
-        <f:dropdownDescriptorSelector title="${%Master Provisioning service}" field="provisioningService"/>
-    </j:if>
-
 </j:jelly>

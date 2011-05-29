@@ -9,7 +9,7 @@ import hudson.slaves.Cloud;
 import hudson.slaves.NodeProvisioner;
 import metanectar.model.MetaNectar;
 import metanectar.provisioning.MasterProvisioningNodeProperty;
-import metanectar.provisioning.SlaveMasterProvisioningNodePropertyTemplate;
+import metanectar.provisioning.MasterProvisioningNodePropertyTemplate;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.IOException;
@@ -31,12 +31,12 @@ public class MasterProvisioningCloudProxy extends AbstractProvisioningCloud {
 
     private static final Logger LOGGER = Logger.getLogger(MasterProvisioningCloudProxy.class.getName());
 
-    private SlaveMasterProvisioningNodePropertyTemplate template;
+    private MasterProvisioningNodePropertyTemplate template;
 
     private final Cloud cloud;
 
     @DataBoundConstructor
-    public MasterProvisioningCloudProxy(SlaveMasterProvisioningNodePropertyTemplate template, Cloud cloud) {
+    public MasterProvisioningCloudProxy(MasterProvisioningNodePropertyTemplate template, Cloud cloud) {
         super("master-provisioning-" + cloud.name);
         this.template = template;
         this.cloud = cloud;
@@ -46,7 +46,7 @@ public class MasterProvisioningCloudProxy extends AbstractProvisioningCloud {
         return cloud;
     }
 
-    public SlaveMasterProvisioningNodePropertyTemplate getTemplate() {
+    public MasterProvisioningNodePropertyTemplate getTemplate() {
         return template;
     }
 
@@ -89,7 +89,7 @@ public class MasterProvisioningCloudProxy extends AbstractProvisioningCloud {
                 try {
                     if (n.getNodeProperties().get(MasterProvisioningNodeProperty.class) == null) {
                         LOGGER.info("Adding master provisioning node property to node " + n.getDisplayName());
-                        n.getNodeProperties().add(template.toSlaveProvisioningNodeProperty());
+                        n.getNodeProperties().add(template.toMasterProvisioningNodeProperty());
                     }
                     return n;
                 } catch (IOException e) {

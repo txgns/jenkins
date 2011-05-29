@@ -1,0 +1,13 @@
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
+         xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+
+    <j:if test="${app.config.isMasterProvisioning()}">
+        <f:section title="Master provisioning">
+            <f:optionalBlock name="enabled" title="${%Enable on DEV@cloud Private Edition node}"
+                             checked="${instance.enabled}">
+                <f:property field="nodeTemplate"/>
+            </f:optionalBlock>
+        </f:section>
+    </j:if>
+
+</j:jelly>

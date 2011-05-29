@@ -10,7 +10,9 @@ import hudson.slaves.NodeProperty;
 import hudson.slaves.NodePropertyDescriptor;
 import metanectar.model.MasterServer;
 import metanectar.model.MetaNectar;
+import net.sf.json.JSONObject;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.StaplerRequest;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -19,12 +21,10 @@ import java.util.Map;
 
 /**
  * The master provisioning node property.
- * <p>
- * This property is only valid via the UI configuration for MetaNectar itself.
  *
  * @author Paul Sandoz
  */
-public class MasterProvisioningNodeProperty extends NodeProperty<MetaNectar> {
+public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
 
     /**
      * The maximum number of masters that can be provisioned for this node.
@@ -77,7 +77,7 @@ public class MasterProvisioningNodeProperty extends NodeProperty<MetaNectar> {
     // TODO setNode is never called
     private Node getNode() {
         MetaNectar mn = MetaNectar.getInstance();
-        if (this == mn.getGlobalNodeProperties().get(this.getClass()))
+        if (this == mn.getNodeProperties().get(this.getClass()))
             return mn;
 
         for (Node n : MetaNectar.getInstance().getNodes()) {
@@ -94,9 +94,13 @@ public class MasterProvisioningNodeProperty extends NodeProperty<MetaNectar> {
             return np;
 
         if (n instanceof MetaNectar)
-            return ((MetaNectar)n).getGlobalNodeProperties().get(MasterProvisioningNodeProperty.class);
+            return ((MetaNectar)n).getNodeProperties().get(MasterProvisioningNodeProperty.class);
 
         return null;
+    }
+
+    public NodeProperty<?> reconfigure(StaplerRequest req, JSONObject form) throws Descriptor.FormException {
+        return this;
     }
 
     @Extension
@@ -104,7 +108,7 @@ public class MasterProvisioningNodeProperty extends NodeProperty<MetaNectar> {
 
         @Override
 		public String getDisplayName() {
-            return (MetaNectar.getInstance().getConfig().isMasterProvisioning()) ? "Master Provisioning" : null;
+            return null;
 		}
     }
 

@@ -131,6 +131,63 @@ public class Config {
         }
     }
 
+    public static class SSHConnectionProperties {
+        private String key;
+
+        private String userName;
+
+        private String userPassword;
+
+        private int port;
+
+        private String jvmOptions;
+
+        public String getKey() {
+            return key;
+        }
+
+        public String getUserName() {
+            return userName;
+        }
+
+        public String getUserPassword() {
+            return userPassword;
+        }
+
+        public int getPort() {
+            return port;
+        }
+
+        public String getJvmOptions() {
+            return jvmOptions;
+        }
+
+        @Property("metaNectar.master.ssh.key.private") @Optional
+        public void setKey(String key) {
+            this.key = key;
+        }
+
+        @Property("metaNectar.master.ssh.username")
+        public void setUserName(String userName) {
+            this.userName = userName;
+        }
+
+        @Property("metaNectar.master.ssh.password") @Optional
+        public void setUserPassword(String userPassword) {
+            this.userPassword = userPassword;
+        }
+
+        @Property("metaNectar.master.ssh.port") @DefaultValue("22")
+        public void setPort(int port) {
+            this.port = port;
+        }
+
+        @Property("metaNectar.master.ssh.jvmOptions") @Optional
+        public void setJvmOptions(String jvmOptions) {
+            this.jvmOptions = jvmOptions;
+        }
+    }
+
     public <T> T getBean(Class<T> c) {
         if (bindCache.containsKey(c)) {
             return (T)bindCache.get(c);

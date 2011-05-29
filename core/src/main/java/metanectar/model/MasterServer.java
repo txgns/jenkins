@@ -700,6 +700,13 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         MetaNectar.getInstance().masterProvisioner.terminate(this, clean);
     }
 
+    @Override
+    public synchronized void delete() throws IOException, InterruptedException {
+        if (state == MasterServer.State.TerminatingError) {
+            setTerminateCompletedState();
+        }
+        super.delete();
+    }
 
     // Methods for accessing state
 

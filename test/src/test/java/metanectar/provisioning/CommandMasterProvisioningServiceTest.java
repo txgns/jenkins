@@ -24,7 +24,7 @@ import static metanectar.provisioning.LatchMasterServerListener.StopAndTerminate
  */
 public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisioningTestCase {
     public void testConfigProvisionLocally() throws Exception {
-        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(1, getConfigCommand()));
+        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(1, getConfigCommand()));
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());
 
@@ -41,7 +41,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     }
 
     public void testProvisionLocally() throws Exception {
-        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(1, getDefaultCommand()));
+        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(1, getDefaultCommand()));
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());
 
@@ -58,7 +58,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     }
 
     public void testProvisionCommandTimeOut() throws Exception {
-        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(1,
+        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(1,
                 getCommand("sleep 60", getStartScript(), getStopScript(), getTerminateScript())));
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());
@@ -74,7 +74,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     }
 
     public void testStartCommandTimeOut() throws Exception {
-        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(1,
+        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(1,
                 getCommand(getProvisionScript(), "sleep 60", getStopScript(), getTerminateScript())));
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());
@@ -100,7 +100,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     }
 
     public void testStopCommandTimeOut() throws Exception {
-        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(1,
+        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(1,
                 getCommand(getProvisionScript(), getStartScript(), "sleep 60", getTerminateScript())));
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());
@@ -116,7 +116,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     }
 
     public void testTerminateCommandTimeOut() throws Exception {
-        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(1,
+        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(1,
                 getCommand(getProvisionScript(), getStartScript(), getStopScript(), "sleep 60")));
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());

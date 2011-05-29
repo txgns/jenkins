@@ -56,7 +56,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
 
         ProvisionListener cl = new ProvisionListener();
 
-        SlaveMasterProvisioningNodePropertyTemplate tp = new SlaveMasterProvisioningNodePropertyTemplate(nodesPerMaster, new DummyMasterProvisioningService(100));
+        MasterProvisioningNodePropertyTemplate tp = new MasterProvisioningNodePropertyTemplate(nodesPerMaster, new DummyMasterProvisioningService(100));
         MasterProvisioningCloudProxy pc = new MasterProvisioningCloudProxy(tp, new TestSlaveCloud(this, 100));
         metaNectar.clouds.add(pc);
 
@@ -129,7 +129,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
     private List<MasterServer> _testProvisionOnMetaNectarNode(int masters, int nodesPerMaster) throws Exception {
         int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
 
-        metaNectar.getGlobalNodeProperties().add(new MasterProvisioningNodeProperty(nodesPerMaster, new DummyMasterProvisioningService(100)));
+        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(nodesPerMaster, new DummyMasterProvisioningService(100)));
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());
 

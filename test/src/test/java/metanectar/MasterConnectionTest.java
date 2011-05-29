@@ -43,6 +43,12 @@ public class MasterConnectionTest extends MetaNectarTestCase {
     class Client extends MetaNectarAgentProtocol.Listener {
         Channel channel;
 
+        CountDownLatch cdl;
+
+        Client(CountDownLatch cdl) {
+            this.cdl = cdl;
+        }
+
         @Override
         public URL getEndpoint() throws IOException {
             return new URL("http://bogus.client/");
@@ -55,6 +61,12 @@ public class MasterConnectionTest extends MetaNectarTestCase {
         @Override
         public void onConnectedTo(Channel channel, X509Certificate identity, String organization) throws IOException {
             this.channel = channel;
+            cdl.countDown();
+            try {
+                channel.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
         }
 
         @Override
@@ -114,26 +126,38 @@ public class MasterConnectionTest extends MetaNectarTestCase {
         CountDownLatch onEventCdl = new CountDownLatch(1);
         metaNectar.configureNectarAgentListener(new TestAgentProtocolListener(new MetaNectar.AgentProtocolListener(metaNectar), onEventCdl, onEventCdl));
 
-        Client client = new Client();
+        CountDownLatch onConnected = new CountDownLatch(1);
+        Client client = new Client(onConnected);
 
         MasterServer ms = metaNectar.createMasterServer("org");
         ms.setPreProvisionState();
         ms.setProvisionStartedState(metaNectar, 0);
         ms.setProvisionCompletedState(metaNectar.getMetaNectarPortUrl());
+        ms.setStartingState();
+        ms.setStartedState();
 
         Map<String, String> properties = new HashMap<String, String>();
         properties.put(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID, ms.getGrantId());
         MetaNectarAgentProtocol.Outbound p = new MetaNectarAgentProtocol.Outbound(
                 MetaNectarAgentProtocol.getInstanceIdentityCertificate(id, metaNectar), id.getPrivate(),
-                "org",
+                ms.getIdName(),
                 properties,
                 client, null);
 
-        Agent agent = new Agent(new AgentStatusListener.LoggerListener(LOGGER), null, p);
-        InetSocketAddress serverAddress = new InetSocketAddress("localhost", metaNectar.getNectarAgentListener().getPort());
+        final Agent agent = new Agent(new AgentStatusListener.LoggerListener(LOGGER), null, p);
+        final InetSocketAddress serverAddress = new InetSocketAddress("localhost", metaNectar.getNectarAgentListener().getPort());
 
-        agent.connectOnce(serverAddress);
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    agent.connectOnce(serverAddress);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }).start();
 
+        onConnected.await();
         assertNotNull(ms.getIdentity());
         assertNotNull(ms.getLocalEndpoint());
 
@@ -156,17 +180,20 @@ public class MasterConnectionTest extends MetaNectarTestCase {
         CountDownLatch onEventCdl = new CountDownLatch(1);
         metaNectar.configureNectarAgentListener(new TestAgentProtocolListener(new MetaNectar.AgentProtocolListener(metaNectar), onEventCdl, onEventCdl));
 
-        Client client = new Client();
+        CountDownLatch onConnected = new CountDownLatch(0);
+        Client client = new Client(onConnected);
 
         MasterServer ms = metaNectar.createMasterServer("org");
         ms.setPreProvisionState();
         ms.setProvisionStartedState(metaNectar, 0);
         ms.setProvisionCompletedState(metaNectar.getMetaNectarPortUrl());
+        ms.setStartingState();
+        ms.setStartedState();
 
         Map<String, String> properties = new HashMap<String, String>();
         MetaNectarAgentProtocol.Outbound p = new MetaNectarAgentProtocol.Outbound(
                 MetaNectarAgentProtocol.getInstanceIdentityCertificate(id, metaNectar), id.getPrivate(),
-                "org",
+                ms.getIdName(),
                 properties,
                 client, null);
 

@@ -17,10 +17,7 @@ import metanectar.Config;
 import metanectar.ExtensionFilter;
 import metanectar.MetaNectarExtensionPoint;
 import metanectar.model.views.MasterServerColumn;
-import metanectar.provisioning.IdentifierFinder;
-import metanectar.provisioning.MasterProvisioner;
-import metanectar.provisioning.MasterProvisioningNodeProperty;
-import metanectar.provisioning.MasterProvisioningService;
+import metanectar.provisioning.*;
 import metanectar.proxy.ReverseProxyProdder;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 import org.jvnet.hudson.reactor.ReactorException;
@@ -157,10 +154,7 @@ public class MetaNectar extends Hudson {
 
         if (!getConfig().isMasterProvisioning()) {
             // If master provisioning is disabled then remove the master provisioning node property if present
-            MasterProvisioningNodeProperty p = getGlobalNodeProperties().get(MasterProvisioningNodeProperty.class);
-            if (p != null) {
-                 getGlobalNodeProperties().remove(p);
-            }
+            MetaNectar.getInstance().getNodeProperties().removeAll(MasterProvisioningNodeProperty.class);
         }
 
         // Set up reverse proxy prodding if reload script is configured
