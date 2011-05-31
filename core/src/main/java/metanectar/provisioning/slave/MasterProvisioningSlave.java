@@ -51,7 +51,7 @@ public class MasterProvisioningSlave extends Slave implements MetaNectarExtensio
     @Extension
     public static final class DescriptorImpl extends SlaveDescriptor {
         public String getDisplayName() {
-            return "Master Provisioning Slave";
+            return "Master Provisioning Node";
         }
     }
 }
