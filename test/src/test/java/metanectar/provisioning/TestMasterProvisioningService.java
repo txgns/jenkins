@@ -34,10 +34,10 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
         return delay;
     }
 
-    public Future<Master> provision(final VirtualChannel channel, TaskListener listener,
+    public Future<Provisioned> provision(final VirtualChannel channel, TaskListener listener,
                                     int id, final String name, final URL metaNectarEndpoint, final Map<String, Object> properties) throws IOException, InterruptedException {
-        return Computer.threadPoolForRemoting.submit(new Callable<Master>() {
-            public Master call() throws Exception {
+        return Computer.threadPoolForRemoting.submit(new Callable<Provisioned>() {
+            public Provisioned call() throws Exception {
                 System.out.println("Launching master " + name);
 
                 Thread.sleep(delay);
@@ -48,7 +48,7 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
 
                 System.out.println("Launched master " + name + ": " + endpoint);
                 provisioned.put(name, endpoint);
-                return new Master(name, endpoint);
+                return new Provisioned(name, endpoint);
             }
         });
     }
@@ -89,10 +89,10 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
         });
     }
 
-    public Future<?> terminate(VirtualChannel channel, TaskListener listener,
-                               final String organization, boolean clean) throws IOException, InterruptedException {
-        return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
-            public Void call() throws Exception {
+    public Future<Terminated> terminate(VirtualChannel channel, TaskListener listener,
+                               final String organization) throws IOException, InterruptedException {
+        return Computer.threadPoolForRemoting.submit(new Callable<Terminated>() {
+            public Terminated call() throws Exception {
                 Thread.sleep(delay);
 
                 return null;

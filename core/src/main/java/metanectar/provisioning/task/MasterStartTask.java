@@ -2,7 +2,6 @@ package metanectar.provisioning.task;
 
 import hudson.model.Node;
 import metanectar.model.MasterServer;
-import metanectar.provisioning.Master;
 import metanectar.provisioning.MasterProvisioningNodeProperty;
 
 import java.net.URL;
@@ -25,16 +24,17 @@ public class MasterStartTask extends MasterServerTask {
         final Node node = ms.getNode();
 
         try {
+            LOGGER.info("Starting master " + ms.getName() + " on node " + node.getNodeName());
+
+            // Set the starting state on the master server
+            ms.setStartingState();
+
             final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(node);
 
             this.future = p.getProvisioningService().start(
                     node.toComputer().getChannel(), ms.getTaskListener(),
                     ms.getIdName());
 
-            LOGGER.info("Starting master " + ms.getName() + " on node " + node.getNodeName());
-
-            // Set the starting state on the master server
-            ms.setStartingState();
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Starting error for master " + ms.getName() + " on node " + node.getNodeName(), e);
 

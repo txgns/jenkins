@@ -47,15 +47,15 @@ public abstract class AbstractMasterProvisioningTestCase extends MetaNectarTestC
             this.delay = delay;
         }
 
-        public Future<Master> provision(VirtualChannel channel, TaskListener listener,
-                                        int id, final String organization, final URL metaNectarEndpoint, Map<String, Object> properties) throws IOException, InterruptedException {
-            return Computer.threadPoolForRemoting.submit(new Callable<Master>() {
-                public Master call() throws Exception {
+        public Future<Provisioned> provision(VirtualChannel channel, TaskListener listener,
+                                        int id, final String name, final URL metaNectarEndpoint, Map<String, Object> properties) throws IOException, InterruptedException {
+            return Computer.threadPoolForRemoting.submit(new Callable<Provisioned>() {
+                public Provisioned call() throws Exception {
                     Thread.sleep(delay);
 
                     System.out.println("provisioning master");
 
-                    return new Master(organization, metaNectarEndpoint);
+                    return new Provisioned(name, metaNectarEndpoint);
                 }
             });
         }
@@ -70,9 +70,17 @@ public abstract class AbstractMasterProvisioningTestCase extends MetaNectarTestC
             return getFuture("stopping master");
         }
 
-        public Future<?> terminate(VirtualChannel channel, TaskListener listener,
-                                   String organization, boolean clean) throws IOException, InterruptedException {
-            return getFuture("terminating master");
+        public Future<Terminated> terminate(VirtualChannel channel, TaskListener listener,
+                                   final String name) throws IOException, InterruptedException {
+            return Computer.threadPoolForRemoting.submit(new Callable<Terminated>() {
+                public Terminated call() throws Exception {
+                    Thread.sleep(delay);
+
+                    System.out.println("terminating master");
+
+                    return new Terminated(name, null);
+                }
+            });
         }
 
         private Future<?> getFuture(final String s) {

@@ -105,8 +105,8 @@ public class ConfiguredCommandMasterProvisioningService extends MasterProvisioni
     }
 
     @Override
-    public Future<Master> provision(VirtualChannel channel, TaskListener listener, int id, String organization, URL metaNectarEndpoint, Map<String, Object> properties) throws Exception {
-        return s.provision(channel, listener, id, organization, metaNectarEndpoint, properties);
+    public Future<Provisioned> provision(VirtualChannel channel, TaskListener listener, int id, String name, URL metaNectarEndpoint, Map<String, Object> properties) throws Exception {
+        return s.provision(channel, listener, id, name, metaNectarEndpoint, properties);
     }
 
     @Override
@@ -120,8 +120,8 @@ public class ConfiguredCommandMasterProvisioningService extends MasterProvisioni
     }
 
     @Override
-    public Future<?> terminate(VirtualChannel channel, TaskListener listener, String organization, boolean clean) throws Exception {
-        return s.terminate(channel, listener, organization, clean);
+    public Future<Terminated> terminate(VirtualChannel channel, TaskListener listener, String organization) throws Exception {
+        return s.terminate(channel, listener, organization);
     }
 
 

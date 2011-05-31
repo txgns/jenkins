@@ -364,11 +364,9 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         taskListener.getLogger().println(toString());
     }
 
-    public synchronized void setProvisionErrorState(Node node, Throwable error) throws IOException {
+    public synchronized void setProvisionErrorState(Throwable error) throws IOException {
         setState(ProvisioningError);
         this.error = error;
-        this.nodeName = node.getNodeName();
-        this.node = node;
         this.nodeId = 0;
         save();
         fireOnStateChange();

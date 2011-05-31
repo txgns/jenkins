@@ -121,7 +121,7 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
     }
 
     @Override
-    public Future<Master> provision(final VirtualChannel channel, final TaskListener listener,
+    public Future<Provisioned> provision(final VirtualChannel channel, final TaskListener listener,
                                     final int id, final String name, final URL metaNectarEndpoint, final Map<String, Object> properties) throws Exception {
         final String home = getHome(name);
 
@@ -134,8 +134,8 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
         final Map<String, String> startVariables = Maps.newHashMap();
         startVariables.put(Variable.MASTER_HOME.name(), home);
 
-        return Computer.threadPoolForRemoting.submit(new Callable<Master>() {
-            public Master call() throws Exception {
+        return Computer.threadPoolForRemoting.submit(new Callable<Provisioned>() {
+            public Provisioned call() throws Exception {
                 final ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
                 listener.getLogger().println(String.format("Executing provisioning command \"%s\" with environment variables %s", getProvisionCommand(), provisionVariables));
@@ -168,11 +168,10 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
                     throw new IOException(msg);
                 }
 
-                Master m;
+                Provisioned provisioned;
                 try {
                     final URL endpoint = new URL(properties.getProperty(Property.MASTER_ENDPOINT.toString()));
-
-                    m = new Master(name, endpoint);
+                    provisioned = new Provisioned(name, endpoint);
                 } catch (MalformedURLException e) {
                     e.printStackTrace(listener.error(String.format("The property \"%s\" of value \"%s\" is not a valid", Property.MASTER_ENDPOINT.toString(), properties.get(Property.MASTER_ENDPOINT.toString()))));
                     throw e;
@@ -181,7 +180,7 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
                 // additional provisioning of home directory
                 final HomeDirectoryProvisioner hdp = new HomeDirectoryProvisioner(listener, getFilePath(channel, home));
 
-                return m;
+                return provisioned;
             }
         });
     }
@@ -241,13 +240,13 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
     }
 
     @Override
-    public Future<?> terminate(final VirtualChannel channel, final TaskListener listener,
-                               final String name, final boolean clean) throws Exception {
+    public Future<Terminated> terminate(final VirtualChannel channel, final TaskListener listener,
+                               final String name) throws Exception {
         final Map<String, String> variables = Maps.newHashMap();
         variables.put(Variable.MASTER_HOME.name(), getHome(name));
 
-        return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
-            public Void call() throws Exception {
+        return Computer.threadPoolForRemoting.submit(new Callable<Terminated>() {
+            public Terminated call() throws Exception {
                 listener.getLogger().println(String.format("Executing termination command \"%s\" with environment variables %s", getTerminateCommand(), variables));
                 final Proc proc = getLauncher(channel, listener).launch().
                         envs(variables).

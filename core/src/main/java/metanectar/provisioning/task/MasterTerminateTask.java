@@ -3,7 +3,9 @@ package metanectar.provisioning.task;
 import hudson.model.Node;
 import metanectar.model.MasterServer;
 import metanectar.provisioning.MasterProvisioningNodeProperty;
+import metanectar.provisioning.MasterProvisioningService;
 
+import java.net.URL;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -11,7 +13,7 @@ import java.util.logging.Logger;
 /**
  * @author Paul Sandoz
  */
-public class MasterTerminateTask extends MasterServerTask {
+public class MasterTerminateTask extends MasterServerTask<MasterProvisioningService.Terminated> {
     private static final Logger LOGGER = Logger.getLogger(MasterTerminateTask.class.getName());
 
     public MasterTerminateTask(MasterServer ms) {
@@ -22,15 +24,16 @@ public class MasterTerminateTask extends MasterServerTask {
         final Node node = ms.getNode();
 
         try {
-            final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(node);
-            this.future = p.getProvisioningService().terminate(
-                    node.toComputer().getChannel(), ms.getTaskListener(),
-                    ms.getIdName(), false);
-
             LOGGER.info("Terminating master " + ms.getName() + " on node " + node.getNodeName());
 
             // Set terminate stated state on the master server
             ms.setTerminateStartedState();
+
+            final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(node);
+
+            this.future = p.getProvisioningService().terminate(
+                    node.toComputer().getChannel(), ms.getTaskListener(),
+                    ms.getIdName());
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Terminating error for master " + ms.getName() + " on node " + node.getNodeName(), e);
 
@@ -43,7 +46,7 @@ public class MasterTerminateTask extends MasterServerTask {
         final Node node = ms.getNode();
 
         try {
-            future.get();
+            final MasterProvisioningService.Terminated terminated = future.get();
 
             LOGGER.info("Terminating completed for master " + ms.getName() + " on node " + node.getNodeName());
 

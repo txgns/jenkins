@@ -22,16 +22,16 @@ public class MasterStopTask extends MasterServerTask {
         final Node node = ms.getNode();
 
         try {
+            LOGGER.info("Stopping master " + ms.getName() + " on node " + node.getNodeName());
+
+            // Set the stopping state on the master server
+            ms.setStoppingState();
+
             final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(node);
 
             this.future = p.getProvisioningService().stop(
                     node.toComputer().getChannel(), ms.getTaskListener(),
                     ms.getIdName());
-
-            LOGGER.info("Stopping master " + ms.getName() + " on node " + node.getNodeName());
-
-            // Set the stopping state on the master server
-            ms.setStoppingState();
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Stopping error for master " + ms.getName() + " on node " + node.getNodeName(), e);
 
