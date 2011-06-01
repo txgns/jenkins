@@ -45,8 +45,12 @@ public class MasterProvisionTask extends MasterServerTask<MasterProvisioningServ
             final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(node);
 
             Map<String, Object> provisionProperties = new HashMap<String, Object>(properties);
-            provisionProperties.put(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID, ms.getGrantId());
-
+            if (ms.getGrantId() != null) {
+                provisionProperties.put(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID, ms.getGrantId());
+            }
+            if (ms.getSnapshot() != null) {
+                provisionProperties.put(MasterProvisioningService.PROPERTY_PROVISION_HOME_SNAPSHOT, ms.getSnapshot());
+            }
             this.future = p.getProvisioningService().provision(
                     node.toComputer().getChannel(), ms.getTaskListener(),
                     id, ms.getIdName(), metaNectarEndpoint, provisionProperties);

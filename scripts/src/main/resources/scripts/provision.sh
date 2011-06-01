@@ -5,6 +5,14 @@ WORK="$(dirname "$0")"
 if [ ! -d "${MASTER_HOME}" ]
 then
   mkdir -p "${MASTER_HOME}/plugins"
+
+  if [ -n "${MASTER_SNAPSHOT}" ]
+  then
+    # assume file-based URL
+    file=${MASTER_SNAPSHOT##*:}
+    unzip -q ${file} -d "${MASTER_HOME}" 1>&2
+  fi
+
   find "${WORK}/../" -name \*.hpi -exec cp "{}" "${MASTER_HOME}/plugins/" \;
 
   echo "cd \"${MASTER_HOME}\";" > "${MASTER_HOME}.start"

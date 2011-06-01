@@ -103,10 +103,10 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTestC
              super(delay);
          }
 
-         public Future<?> terminate(VirtualChannel channel, TaskListener listener,
-                                    String organization, boolean clean) throws IOException, InterruptedException {
-             return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
-                 public Void call() throws Exception {
+         public Future<Terminated> terminate(VirtualChannel channel, TaskListener listener,
+                                    String name) throws IOException, InterruptedException {
+             return Computer.threadPoolForRemoting.submit(new Callable<Terminated>() {
+                 public Terminated call() throws Exception {
                      Thread.sleep(getDelay());
 
                      throw new Exception();
@@ -145,7 +145,7 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTestC
             }
         };
 
-        ms.stopAndTerminateAction(false);
+        ms.stopAndTerminateAction();
         provisioningError.await(1, TimeUnit.MINUTES);
         assertEquals(MasterServer.State.TerminatingError, ms.getState());
         assertEquals(Exception.class, ms.getError().getClass());

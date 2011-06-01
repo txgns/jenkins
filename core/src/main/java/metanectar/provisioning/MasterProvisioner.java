@@ -97,7 +97,7 @@ public class MasterProvisioner {
         pendingMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties, true));
     }
 
-    public void stopAndTerminate(MasterServer ms, boolean clean) {
+    public void stopAndTerminate(MasterServer ms) {
         masterServerTaskQueue.start(new MasterStopThenTerminateTask(ms));
     }
 
@@ -114,7 +114,7 @@ public class MasterProvisioner {
         masterServerTaskQueue.start(new MasterStopTask(ms));
     }
 
-    public void terminate(MasterServer ms, boolean clean) {
+    public void terminate(MasterServer ms) {
         masterServerTaskQueue.start(new MasterTerminateTask(ms));
     }
 

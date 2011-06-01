@@ -110,7 +110,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
 
         for (MasterServer mn : masters) {
             assertEquals(mn, metaNectar.getMasterByName(mn.getIdName()));
-            mn.stopAndTerminateAction(true);
+            mn.stopAndTerminateAction();
         }
 
         masterTl.await(1, TimeUnit.MINUTES);
@@ -165,7 +165,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
 
         for (MasterServer mn : masters) {
             assertEquals(mn, metaNectar.getMasterByName(mn.getIdName()));
-            mn.stopAndTerminateAction(true);
+            mn.stopAndTerminateAction();
         }
 
         tl.await(1, TimeUnit.MINUTES);

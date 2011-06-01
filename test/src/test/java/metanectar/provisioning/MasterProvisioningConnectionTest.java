@@ -174,7 +174,7 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
         StopAndTerminateListener masterTl = new StopAndTerminateListener(4 * masters.size());
 
         for (MasterServer mn : masters) {
-            mn.stopAndTerminateAction(true);
+            mn.stopAndTerminateAction();
         }
 
         masterTl.await(1, TimeUnit.MINUTES);

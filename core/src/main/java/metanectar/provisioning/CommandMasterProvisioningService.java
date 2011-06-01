@@ -50,11 +50,13 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
         MASTER_PORT,
         MASTER_HOME,
         MASTER_METANECTAR_ENDPOINT,
-        MASTER_GRANT_ID
+        MASTER_GRANT_ID,
+        MASTER_SNAPSHOT
     }
 
     private enum Property {
-        MASTER_ENDPOINT
+        MASTER_ENDPOINT,
+        MASTER_SNAPSHOT
     }
 
     private final int basePort;
@@ -129,7 +131,13 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
         provisionVariables.put(Variable.MASTER_PORT.name(), Integer.toString(getPort(id)));
         provisionVariables.put(Variable.MASTER_HOME.name(), home);
         provisionVariables.put(Variable.MASTER_METANECTAR_ENDPOINT.name(), metaNectarEndpoint.toExternalForm());
-        provisionVariables.put(Variable.MASTER_GRANT_ID.name(), (String)properties.get(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID));
+        if (properties.containsKey(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID)) {
+            provisionVariables.put(Variable.MASTER_GRANT_ID.name(), (String)properties.get(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID));
+        }
+        if (properties.containsKey(MasterProvisioningService.PROPERTY_PROVISION_HOME_SNAPSHOT)) {
+            URL snapshot = (URL)properties.get(MasterProvisioningService.PROPERTY_PROVISION_HOME_SNAPSHOT);
+            provisionVariables.put(Variable.MASTER_SNAPSHOT.name(), snapshot.toExternalForm());
+        }
 
         final Map<String, String> startVariables = Maps.newHashMap();
         startVariables.put(Variable.MASTER_HOME.name(), home);
@@ -247,12 +255,14 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
 
         return Computer.threadPoolForRemoting.submit(new Callable<Terminated>() {
             public Terminated call() throws Exception {
+                final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
                 listener.getLogger().println(String.format("Executing termination command \"%s\" with environment variables %s", getTerminateCommand(), variables));
                 final Proc proc = getLauncher(channel, listener).launch().
                         envs(variables).
                         cmds(Util.tokenize(getTerminateCommand())).
                         stderr(listener.getLogger()).
-                        stdout(listener.getLogger()).
+                        stdout(baos).
                         start();
 
                 final int result = proc.joinWithTimeout(timeOut, TimeUnit.SECONDS, listener);
@@ -261,8 +271,28 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
                     throw commandError(listener, "Failed to terminate master, received signal from terminate command: " + result, result);
                 }
 
-                listener.getLogger().println("Termination command succeeded");
-                return null;
+                final Properties properties = new Properties();
+                try {
+                    properties.load(new ByteArrayInputStream(baos.toByteArray()));
+                } catch (IOException e) {
+                    e.printStackTrace(listener.error("Error parsing termination command result into Java properties"));
+                    throw e;
+                }
+
+                listener.getLogger().println("Termination command succeeded and returned with the properties: " + properties);
+
+                if (!properties.containsKey(Property.MASTER_SNAPSHOT.toString())) {
+                    String msg = "The returned properties does not contain the required property \"" + Property.MASTER_SNAPSHOT.toString() + "\"";
+                    listener.error(msg);
+                    throw new IOException(msg);
+                }
+
+                try {
+                    return new Terminated(name, new URL(properties.getProperty(Property.MASTER_SNAPSHOT.toString())));
+                } catch (MalformedURLException e) {
+                    e.printStackTrace(listener.error(String.format("The property \"%s\" of value \"%s\" is not a valid", Property.MASTER_ENDPOINT.toString(), properties.get(Property.MASTER_ENDPOINT.toString()))));
+                    throw e;
+                }
             }
         });
     }
