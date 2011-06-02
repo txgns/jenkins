@@ -90,12 +90,12 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
     }
 
     public Future<Terminated> terminate(VirtualChannel channel, TaskListener listener,
-                               final String organization) throws IOException, InterruptedException {
+                               final String name) throws IOException, InterruptedException {
         return Computer.threadPoolForRemoting.submit(new Callable<Terminated>() {
             public Terminated call() throws Exception {
                 Thread.sleep(delay);
 
-                return null;
+                return new Terminated(name, null);
             }
         });
     }

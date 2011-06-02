@@ -57,6 +57,14 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         terminate(provision());
     }
 
+    public void testSnapshot() throws Exception {
+        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(1, getDefaultCommand()));
+        // Reset the labels
+        metaNectar.setNodes(metaNectar.getNodes());
+
+        provision(terminate(provision()));
+    }
+
     public void testProvisionCommandTimeOut() throws Exception {
         metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(1,
                 getCommand("sleep 60", getStartScript(), getStopScript(), getTerminateScript())));
@@ -140,7 +148,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
             }
         };
 
-        ms.stopAndTerminateAction(false);
+        ms.stopAndTerminateAction();
 
         error.await(1, TimeUnit.MINUTES);
 
@@ -190,6 +198,10 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         return masterHomeDir;
     }
 
+    private String getSnapshotUrl() {
+        return "file:/tmp/snapshot";
+    }
+
     private ConfiguredCommandMasterProvisioningService getConfigCommand() throws IOException {
         Map<String, String> properties = Maps.newHashMap();
         properties.put("metaNectar.endpoint", "http://localhost:8080");
@@ -237,7 +249,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     }
 
     private String getTerminateScript() throws IOException {
-        return "rm -fr " + getMasterHomeDir().toString();
+        return String.format("/bin/sh -c \"rm -fr '%s'; echo 'MASTER_SNAPSHOT=%s'\"", getMasterHomeDir().toString(), getSnapshotUrl());
     }
 
     private MasterServer provision() throws Exception {
@@ -266,20 +278,48 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         assertNotNull(grantId);
         assertEquals(ms.getGrantId(), grantId);
 
+        // Not set
+        String snapshot = params.get(CommandMasterProvisioningService.Variable.MASTER_SNAPSHOT.toString());
+        assertNotNull(snapshot);
+        assertEquals("${" + CommandMasterProvisioningService.Variable.MASTER_SNAPSHOT.toString() + "}", snapshot);
+
         assertTrue(getMasterHomeDir().exists());
         assertTrue(new File(getMasterHomeDir(), "started").exists());
 
         return ms;
     }
 
-    private void terminate(MasterServer ms) throws Exception {
+    private MasterServer terminate(MasterServer ms) throws Exception {
         StopAndTerminateListener tl = new StopAndTerminateListener(4);
 
-        ms.stopAndTerminateAction(false);
+        ms.stopAndTerminateAction();
 
         tl.await(1, TimeUnit.MINUTES);
 
+        assertEquals(MasterServer.State.Terminated, ms.getState());
+
+        assertNotNull(ms.getSnapshot());
+        assertEquals(getSnapshotUrl(), ms.getSnapshot().toExternalForm());
+
         assertFalse(getMasterHomeDir().exists());
+
+        return ms;
+    }
+
+    private MasterServer provision(MasterServer ms) throws Exception {
+        ProvisionAndStartListener pl = new ProvisionAndStartListener(4);
+
+        ms.provisionAndStartAction();
+
+        pl.await(1, TimeUnit.MINUTES);
+
+        Map<String, String> params = getParams(ms.getLocalEndpoint());
+
+        String snapshot = params.get(CommandMasterProvisioningService.Variable.MASTER_SNAPSHOT.toString());
+        assertNotNull(snapshot);
+        assertEquals(ms.getSnapshot().toExternalForm(), snapshot);
+
+        return ms;
     }
 
     private String getTestUrl() {

@@ -195,9 +195,14 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     private volatile URL globalEndpoint;
 
     /**
-     * The encoded image of the public key that indicates the identity of the masters.
+     * The encoded image of the public key that indicates the identity of the master.
      */
     private volatile byte[] identity;
+
+    /**
+     * The URL pointing to the snapshot of the home directory of the master.
+     */
+    private volatile URL snapshot;
 
     // connected state
 
@@ -277,6 +282,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
                 add("nodeId", nodeId).
                 add("localEndpoint", localEndpoint).
                 add("globalEndpoint", globalEndpoint).
+                add("snapshot", snapshot).
                 add("channel", channel).
                 add("identity", (key == null) ? null : key.getFormat() + ", " + key.getAlgorithm()).
                 toString();
@@ -527,7 +533,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         error.printStackTrace(taskListener.error("Terminating Error"));
     }
 
-    public synchronized void setTerminateCompletedState() throws IOException {
+    public synchronized void setTerminateCompletedState(URL snapshot) throws IOException {
         setState(Terminated);
         this.grantId = null;
         this.approved = false;
@@ -536,6 +542,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         this.nodeId = 0;
         this.localEndpoint = null;
         this.identity = null;
+        this.snapshot = snapshot;
         save();
         fireOnStateChange();
 
@@ -667,10 +674,10 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         MetaNectar.getInstance().masterProvisioner.provisionAndStart(this, MetaNectar.getInstance().getMetaNectarPortUrl(), properties);
     }
 
-    public synchronized void stopAndTerminateAction(boolean clean) throws IllegalStateException {
+    public synchronized void stopAndTerminateAction() throws IllegalStateException {
         preConditionAction(Action.Stop);
 
-        MetaNectar.getInstance().masterProvisioner.stopAndTerminate(this, clean);
+        MetaNectar.getInstance().masterProvisioner.stopAndTerminate(this);
     }
 
     public synchronized void provisionAction() throws IOException, IllegalStateException  {
@@ -695,13 +702,14 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     public synchronized void terminateAction(boolean clean) throws IllegalStateException {
         preConditionAction(Action.Terminate);
 
-        MetaNectar.getInstance().masterProvisioner.terminate(this, clean);
+        MetaNectar.getInstance().masterProvisioner.terminate(this);
     }
 
     @Override
     public synchronized void delete() throws IOException, InterruptedException {
         if (state == MasterServer.State.TerminatingError) {
-            setTerminateCompletedState();
+            // TODO disable this, or only enable for development purposes.
+            setTerminateCompletedState(null);
         }
         super.delete();
     }
@@ -746,6 +754,10 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
     public URL getGlobalEndpoint() {
         return globalEndpoint;
+    }
+
+    public URL getSnapshot() {
+        return snapshot;
     }
 
     public Node getNode() {

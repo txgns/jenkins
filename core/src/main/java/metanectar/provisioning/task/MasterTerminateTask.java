@@ -51,7 +51,7 @@ public class MasterTerminateTask extends MasterServerTask<MasterProvisioningServ
             LOGGER.info("Terminating completed for master " + ms.getName() + " on node " + node.getNodeName());
 
             // Set terminate completed state on the master server
-            ms.setTerminateCompletedState();
+            ms.setTerminateCompletedState(terminated.getHomeSnapshot());
         } catch (Exception e) {
             final Throwable cause = (e instanceof ExecutionException) ? e.getCause() : e;
             LOGGER.log(Level.WARNING, "Terminating completion error for master " + ms.getName() + " on node " + node.getNodeName(), cause);

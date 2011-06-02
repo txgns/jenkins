@@ -134,7 +134,7 @@ public abstract class AbstractMasterProvisioningTestCase extends MetaNectarTestC
     public void terminateAndDeleteMaster(MasterServer ms) throws Exception {
         LatchMasterServerListener.StopAndTerminateListener tl = new LatchMasterServerListener.StopAndTerminateListener(4);
 
-        ms.stopAndTerminateAction(true);
+        ms.stopAndTerminateAction();
         metaNectar.getItems().remove(ms);
 
         tl.await(1, TimeUnit.MINUTES);
@@ -145,7 +145,7 @@ public abstract class AbstractMasterProvisioningTestCase extends MetaNectarTestC
         LatchMasterServerListener.StopAndTerminateListener tl = new LatchMasterServerListener.StopAndTerminateListener(l.size() * 4);
 
         for (MasterServer ms : l) {
-            ms.stopAndTerminateAction(true);
+            ms.stopAndTerminateAction();
         }
 
         tl.await(1, TimeUnit.MINUTES);
