@@ -5,6 +5,7 @@ import hudson.model.Computer;
 import hudson.model.TaskListener;
 import hudson.remoting.VirtualChannel;
 import hudson.util.IOUtils;
+import metanectar.model.MasterServer;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -14,11 +15,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
 /**
-* Created by IntelliJ IDEA.
-* User: sandoz
-* Date: 4/6/11
-* Time: 6:36 PM
-* To change this template use File | Settings | File Templates.
+ * @author Paul Sandoz
 */
 public class TestMasterProvisioningService extends MasterProvisioningService {
 
@@ -34,27 +31,33 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
         return delay;
     }
 
-    public Future<Provisioned> provision(final VirtualChannel channel, TaskListener listener,
-                                    int id, final String name, final URL metaNectarEndpoint, final Map<String, Object> properties) throws IOException, InterruptedException {
+    public Future<Provisioned> provision(final MasterServer ms, final URL metaNectarEndpoint, final Map<String, Object> properties) throws IOException, InterruptedException {
+        final VirtualChannel channel = ms.getNode().toComputer().getChannel();
+        final String name = ms.getIdName();
+
+        final Map<String, Object> provisionVariables = Maps.newHashMap();
+        provisionVariables.put(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID, ms.getGrantId());
+
         return Computer.threadPoolForRemoting.submit(new Callable<Provisioned>() {
             public Provisioned call() throws Exception {
                 System.out.println("Launching master " + name);
 
                 Thread.sleep(delay);
 
-                final URL endpoint = channel.call(new TestMasterServerCallable(metaNectarEndpoint, name, properties));
+                final URL endpoint = channel.call(new TestMasterServerCallable(metaNectarEndpoint, name, provisionVariables));
 
                 Thread.sleep(delay);
 
                 System.out.println("Launched master " + name + ": " + endpoint);
                 provisioned.put(name, endpoint);
-                return new Provisioned(name, endpoint);
+                return new Provisioned(null, endpoint);
             }
         });
     }
 
-    public Future<?> start(VirtualChannel channel, TaskListener listener,
-                                    final String name) throws Exception {
+    public Future<?> start(final MasterServer ms) throws Exception {
+        final String name = ms.getIdName();
+
         return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
             public Void call() throws Exception {
                 URL endpoint = provisioned.get(name);
@@ -71,8 +74,9 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
         });
     }
 
-    public Future<?> stop(VirtualChannel channel, TaskListener listener,
-                                    final String name) throws Exception {
+    public Future<?> stop(final MasterServer ms) throws Exception {
+        final String name = ms.getIdName();
+
         return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
             public Void call() throws Exception {
                 URL endpoint = provisioned.get(name);
@@ -89,13 +93,14 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
         });
     }
 
-    public Future<Terminated> terminate(VirtualChannel channel, TaskListener listener,
-                               final String name) throws IOException, InterruptedException {
+    public Future<Terminated> terminate(final MasterServer ms) throws IOException, InterruptedException {
+        final String name = ms.getIdName();
+
         return Computer.threadPoolForRemoting.submit(new Callable<Terminated>() {
             public Terminated call() throws Exception {
                 Thread.sleep(delay);
 
-                return new Terminated(name, null);
+                return new Terminated(null);
             }
         });
     }

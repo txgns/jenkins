@@ -14,7 +14,6 @@ import hudson.util.RemotingDiagnostics;
 import hudson.util.StreamTaskListener;
 import hudson.util.io.ReopenableFileOutputStream;
 import metanectar.Config;
-import metanectar.MasterServerNameEncoder;
 import metanectar.provisioning.IdentifierFinder;
 import metanectar.provisioning.MetaNectarSlaveManager;
 import org.kohsuke.stapler.HttpResponse;
@@ -39,9 +38,7 @@ import static metanectar.model.MasterServer.State.*;
 import static metanectar.model.MasterServer.State.Approved;
 
 /**
- * Representation of remote Master server inside MetaNectar.
- *
- * TODO construct vanity URL
+ * Representation of remote master inside MetaNectar.
  *
  * @author Kohsuke Kawaguchi, Paul Sandoz
  */
@@ -133,16 +130,15 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     private int id;
 
     /**
+     * The name encoded for safe use within URL path segments.
+     */
+    private String encodedName;
+
+    /**
      * A unique name comprising of the id and name. This is suitable for use as a master home directory name.
      * Any unsafe characters in the name will be encoded.
      */
     private String idName;
-
-    /**
-     * A unique path comprising of the id and name. This suitable for use within URLs.
-     * Any unsafe characters in the name will be encoded.
-     */
-    private String idPathName;
 
     /**
      * The time stamp when the state was modified.
@@ -183,6 +179,11 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
      * provisioned for a node.
      */
     private volatile int nodeId;
+
+    /**
+     * The local home directory of the master.
+     */
+    private volatile String localHome;
 
     /**
      * The local URL to the master.
@@ -271,8 +272,8 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         return Objects.toStringHelper(this).
                 add("state", state).
                 add("id", id).
+                add("encodedName", name).
                 add("idName", idName).
-                add("idPathName", idPathName).
                 add("timeStamp", timeStamp).
                 add("error", error).
                 add("grantId", grantId).
@@ -280,6 +281,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
                 add("nodeName", nodeName).
                 add("node", getNode()).
                 add("nodeId", nodeId).
+                add("localHome", localHome).
                 add("localEndpoint", localEndpoint).
                 add("globalEndpoint", globalEndpoint).
                 add("snapshot", snapshot).
@@ -309,8 +311,8 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     public synchronized void setCreatedState(int id) throws IOException {
         setState(Created);
         this.id = id;
-        this.idName = createIdName(id, name);
-        this.idPathName = createIdPath(id, name);
+        this.encodedName = createEncodedName(name);
+        this.idName = createIdName(id, encodedName);
         this.globalEndpoint = createGlobalEndpoint();
 
         save();
@@ -325,9 +327,9 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         if (p.getBaseEndpoint() != null) {
             String s = p.getBaseEndpoint().toExternalForm();
             if (s.endsWith("/"))
-                s += getIdPathName();
+                s += getIdName();
             else
-                s += '/' + getIdPathName();
+                s += '/' + getIdName();
             return new URL(s);
         } else {
             return null;
@@ -360,8 +362,9 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         taskListener.getLogger().println(toString());
     }
 
-    public synchronized void setProvisionCompletedState(URL endpoint) throws IOException {
+    public synchronized void setProvisionCompletedState(String home, URL endpoint) throws IOException {
         setState(Provisioned);
+        this.localHome = home;
         this.localEndpoint = endpoint;
         save();
         fireOnStateChange();
@@ -540,6 +543,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         this.nodeName = null;
         this.node = null;
         this.nodeId = 0;
+        this.localHome = null;
         this.localEndpoint = null;
         this.identity = null;
         this.snapshot = snapshot;
@@ -724,12 +728,12 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         return id;
     }
 
-    public String getIdName() {
-        return idName;
+    public String getEncodedName() {
+        return encodedName;
     }
 
-    public String getIdPathName() {
-        return idPathName;
+    public String getIdName() {
+        return idName;
     }
 
     public long getTimeStamp() {
@@ -746,6 +750,10 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
     public URL getEndpoint() {
         return (globalEndpoint != null) ? globalEndpoint : localEndpoint;
+    }
+
+    public String getLocalHome() {
+        return localHome;
     }
 
     public URL getLocalEndpoint() {
@@ -1029,17 +1037,17 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     }
 
     /**
-     * Create the ID name given a unique ID of a master and it's name.
+     * Create the encoded name.
      */
-    public static String createIdName(int id, String name) {
-        return Integer.toString(id) + "-" + MasterServerNameEncoder.encode(name);
+    public static String createEncodedName(String name) {
+        return Util.rawEncode(name);
     }
 
     /**
-     * Create the ID path given a unique ID of a master and it's name.
+     * Create the ID name given a unique ID of a master and it's name.
      */
-    public static String createIdPath(int id, String name) {
-        return Integer.toString(id) + "/" + Util.rawEncode(name);
+    public static String createIdName(int id, String name) {
+        return Integer.toString(id) + "-" + name;
     }
 
     public static class PropertyList extends DescribableList<MasterServerProperty<?>,MasterServerPropertyDescriptor> {

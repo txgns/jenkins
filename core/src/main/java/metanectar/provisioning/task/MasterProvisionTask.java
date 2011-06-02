@@ -45,15 +45,7 @@ public class MasterProvisionTask extends MasterServerTask<MasterProvisioningServ
             final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(node);
 
             Map<String, Object> provisionProperties = new HashMap<String, Object>(properties);
-            if (ms.getGrantId() != null) {
-                provisionProperties.put(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID, ms.getGrantId());
-            }
-            if (ms.getSnapshot() != null) {
-                provisionProperties.put(MasterProvisioningService.PROPERTY_PROVISION_HOME_SNAPSHOT, ms.getSnapshot());
-            }
-            this.future = p.getProvisioningService().provision(
-                    node.toComputer().getChannel(), ms.getTaskListener(),
-                    id, ms.getIdName(), metaNectarEndpoint, provisionProperties);
+            this.future = p.getProvisioningService().provision(ms, metaNectarEndpoint, provisionProperties);
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Provisioning error for master " + ms.getName() + " on node " + node.getNodeName(), e);
 
@@ -69,7 +61,7 @@ public class MasterProvisionTask extends MasterServerTask<MasterProvisioningServ
             LOGGER.info("Provisioning completed for master " + ms.getName() + " on node " + node.getNodeName());
 
             // Set the provision completed state on the master server
-            ms.setProvisionCompletedState(provisioned.getEndpoint());
+            ms.setProvisionCompletedState(provisioned.getHome(), provisioned.getEndpoint());
         } catch (Exception e) {
             final Throwable cause = (e instanceof ExecutionException) ? e.getCause() : e;
             LOGGER.log(Level.WARNING, "Provisioning completion error for master " + ms.getName() + " on node " + node.getNodeName(), cause);

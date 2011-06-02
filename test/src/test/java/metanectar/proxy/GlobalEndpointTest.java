@@ -26,7 +26,7 @@ public class GlobalEndpointTest extends MetaNectarTestCase {
     public void testGlobalEndpoint() throws Exception {
         MasterServer ms = metaNectar.createMasterServer("foo");
 
-        String expected = "http://remote:80/base" + "/" + ms.getIdPathName();
+        String expected = "http://remote:80/base" + "/" + ms.getIdName();
 
         assertEquals(expected, ms.getEndpoint().toExternalForm());
         assertEquals(expected, ms.getGlobalEndpoint().toExternalForm());

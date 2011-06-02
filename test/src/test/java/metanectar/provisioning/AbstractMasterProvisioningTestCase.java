@@ -47,38 +47,34 @@ public abstract class AbstractMasterProvisioningTestCase extends MetaNectarTestC
             this.delay = delay;
         }
 
-        public Future<Provisioned> provision(VirtualChannel channel, TaskListener listener,
-                                        int id, final String name, final URL metaNectarEndpoint, Map<String, Object> properties) throws IOException, InterruptedException {
+        public Future<Provisioned> provision(final MasterServer ms, final URL metaNectarEndpoint, Map<String, Object> properties) throws IOException, InterruptedException {
             return Computer.threadPoolForRemoting.submit(new Callable<Provisioned>() {
                 public Provisioned call() throws Exception {
                     Thread.sleep(delay);
 
                     System.out.println("provisioning master");
 
-                    return new Provisioned(name, metaNectarEndpoint);
+                    return new Provisioned(null, metaNectarEndpoint);
                 }
             });
         }
 
-        public Future<?> start(VirtualChannel channel, TaskListener listener,
-                                        String name) throws Exception {
+        public Future<?> start(final MasterServer ms) throws Exception {
             return getFuture("starting master");
         }
 
-        public Future<?> stop(VirtualChannel channel, TaskListener listener,
-                                        String name) throws Exception {
+        public Future<?> stop(final MasterServer ms) throws Exception {
             return getFuture("stopping master");
         }
 
-        public Future<Terminated> terminate(VirtualChannel channel, TaskListener listener,
-                                   final String name) throws IOException, InterruptedException {
+        public Future<Terminated> terminate(final MasterServer ms) throws IOException, InterruptedException {
             return Computer.threadPoolForRemoting.submit(new Callable<Terminated>() {
                 public Terminated call() throws Exception {
                     Thread.sleep(delay);
 
                     System.out.println("terminating master");
 
-                    return new Terminated(name, null);
+                    return new Terminated(null);
                 }
             });
         }

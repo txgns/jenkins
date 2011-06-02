@@ -7,6 +7,7 @@ import hudson.model.Descriptor;
 import hudson.model.TaskListener;
 import hudson.remoting.LocalChannel;
 import hudson.remoting.VirtualChannel;
+import metanectar.model.MasterServer;
 import metanectar.model.MetaNectar;
 import org.kohsuke.stapler.DataBoundConstructor;
 
@@ -24,11 +25,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * A master provisioning service that executes commands to provision and terminate masters.
- * <p>
- * The command to provision a master must return a URL on stdout, if the command is successful.
- * <p>
- * TODO change MasterProvisioningService to support provision, start, stop, terminate and
- *      then change MasterProvisioner to execute multiple tasks
+ *
  * @author Paul Sandoz
  */
 public class CommandMasterProvisioningService extends MasterProvisioningService {
@@ -47,8 +44,10 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
     }
 
     public enum Variable {
+        MASTER_INDEX,
+        MASTER_NAME,
+        MASTER_HOME_LOCATION,
         MASTER_PORT,
-        MASTER_HOME,
         MASTER_METANECTAR_ENDPOINT,
         MASTER_GRANT_ID,
         MASTER_SNAPSHOT
@@ -56,6 +55,7 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
 
     private enum Property {
         MASTER_ENDPOINT,
+        MASTER_HOME,
         MASTER_SNAPSHOT
     }
 
@@ -113,34 +113,32 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
         return terminateCommand;
     }
 
-    private String getHome(String name) {
-        return (homeLocation.endsWith("/"))
-                ? homeLocation + name : homeLocation + "/" + name;
-    }
-
     private int getPort(int id) {
         return basePort + id;
     }
 
+    private Map<String, String> getVariables(MasterServer ms) {
+        final Map<String, String> variables = Maps.newHashMap();
+        variables.put(Variable.MASTER_INDEX.name(), Integer.toString(ms.getId()));
+        variables.put(Variable.MASTER_NAME.name(), ms.getEncodedName());
+        if (homeLocation != null)
+            variables.put(Variable.MASTER_HOME_LOCATION.name(), homeLocation);
+
+        return variables;
+    }
+
     @Override
-    public Future<Provisioned> provision(final VirtualChannel channel, final TaskListener listener,
-                                    final int id, final String name, final URL metaNectarEndpoint, final Map<String, Object> properties) throws Exception {
-        final String home = getHome(name);
+    public Future<Provisioned> provision(final MasterServer ms, final URL metaNectarEndpoint, final Map<String, Object> properties) throws Exception {
+        final VirtualChannel channel = ms.getNode().toComputer().getChannel();
+        final TaskListener listener = ms.getTaskListener();
 
-        final Map<String, String> provisionVariables = Maps.newHashMap();
-        provisionVariables.put(Variable.MASTER_PORT.name(), Integer.toString(getPort(id)));
-        provisionVariables.put(Variable.MASTER_HOME.name(), home);
+        final Map<String, String> provisionVariables = getVariables(ms);
+        provisionVariables.put(Variable.MASTER_PORT.name(), Integer.toString(getPort(ms.getNodeId())));
         provisionVariables.put(Variable.MASTER_METANECTAR_ENDPOINT.name(), metaNectarEndpoint.toExternalForm());
-        if (properties.containsKey(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID)) {
-            provisionVariables.put(Variable.MASTER_GRANT_ID.name(), (String)properties.get(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID));
+        provisionVariables.put(Variable.MASTER_GRANT_ID.name(), ms.getGrantId());
+        if (ms.getSnapshot() != null) {
+            provisionVariables.put(Variable.MASTER_SNAPSHOT.name(), ms.getSnapshot().toExternalForm());
         }
-        if (properties.containsKey(MasterProvisioningService.PROPERTY_PROVISION_HOME_SNAPSHOT)) {
-            URL snapshot = (URL)properties.get(MasterProvisioningService.PROPERTY_PROVISION_HOME_SNAPSHOT);
-            provisionVariables.put(Variable.MASTER_SNAPSHOT.name(), snapshot.toExternalForm());
-        }
-
-        final Map<String, String> startVariables = Maps.newHashMap();
-        startVariables.put(Variable.MASTER_HOME.name(), home);
 
         return Computer.threadPoolForRemoting.submit(new Callable<Provisioned>() {
             public Provisioned call() throws Exception {
@@ -170,33 +168,41 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
 
                 listener.getLogger().println("Provisioning command succeeded and returned with the properties: " + properties);
 
+                if (!properties.containsKey(Property.MASTER_HOME.toString())) {
+                    String msg = "The returned properties does not contain the required property \"" + Property.MASTER_HOME.toString() + "\"";
+                    listener.error(msg);
+                    throw new IOException(msg);
+                }
+
                 if (!properties.containsKey(Property.MASTER_ENDPOINT.toString())) {
                     String msg = "The returned properties does not contain the required property \"" + Property.MASTER_ENDPOINT.toString() + "\"";
                     listener.error(msg);
                     throw new IOException(msg);
                 }
 
-                Provisioned provisioned;
+                final Provisioned provisioned;
                 try {
-                    final URL endpoint = new URL(properties.getProperty(Property.MASTER_ENDPOINT.toString()));
-                    provisioned = new Provisioned(name, endpoint);
+                    provisioned = new Provisioned(
+                            properties.getProperty(Property.MASTER_HOME.toString()),
+                            new URL(properties.getProperty(Property.MASTER_ENDPOINT.toString())));
                 } catch (MalformedURLException e) {
                     e.printStackTrace(listener.error(String.format("The property \"%s\" of value \"%s\" is not a valid", Property.MASTER_ENDPOINT.toString(), properties.get(Property.MASTER_ENDPOINT.toString()))));
                     throw e;
                 }
 
                 // additional provisioning of home directory
-                final HomeDirectoryProvisioner hdp = new HomeDirectoryProvisioner(listener, getFilePath(channel, home));
+                final HomeDirectoryProvisioner hdp = new HomeDirectoryProvisioner(listener, getFilePath(channel, provisioned.getHome()));
 
                 return provisioned;
             }
         });
     }
 
-    public Future<?> start(final VirtualChannel channel, final TaskListener listener,
-                                    final String name) throws Exception {
-        final Map<String, String> startVariables = Maps.newHashMap();
-        startVariables.put(Variable.MASTER_HOME.name(), getHome(name));
+    public Future<?> start(final MasterServer ms) throws Exception {
+        final VirtualChannel channel = ms.getNode().toComputer().getChannel();
+        final TaskListener listener = ms.getTaskListener();
+
+        final Map<String, String> startVariables = getVariables(ms);
 
         return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
             public Void call() throws Exception {
@@ -220,10 +226,11 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
         });
     }
 
-    public Future<?> stop(final VirtualChannel channel, final TaskListener listener,
-                                    final String name) throws Exception {
-        final Map<String, String> variables = Maps.newHashMap();
-        variables.put(Variable.MASTER_HOME.name(), getHome(name));
+    public Future<?> stop(final MasterServer ms) throws Exception {
+        final VirtualChannel channel = ms.getNode().toComputer().getChannel();
+        final TaskListener listener = ms.getTaskListener();
+
+        final Map<String, String> variables = getVariables(ms);
 
         return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
             public Void call() throws Exception {
@@ -248,10 +255,11 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
     }
 
     @Override
-    public Future<Terminated> terminate(final VirtualChannel channel, final TaskListener listener,
-                               final String name) throws Exception {
-        final Map<String, String> variables = Maps.newHashMap();
-        variables.put(Variable.MASTER_HOME.name(), getHome(name));
+    public Future<Terminated> terminate(final MasterServer ms) throws Exception {
+        final VirtualChannel channel = ms.getNode().toComputer().getChannel();
+        final TaskListener listener = ms.getTaskListener();
+
+        final Map<String, String> variables = getVariables(ms);
 
         return Computer.threadPoolForRemoting.submit(new Callable<Terminated>() {
             public Terminated call() throws Exception {
@@ -288,7 +296,7 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
                 }
 
                 try {
-                    return new Terminated(name, new URL(properties.getProperty(Property.MASTER_SNAPSHOT.toString())));
+                    return new Terminated(new URL(properties.getProperty(Property.MASTER_SNAPSHOT.toString())));
                 } catch (MalformedURLException e) {
                     e.printStackTrace(listener.error(String.format("The property \"%s\" of value \"%s\" is not a valid", Property.MASTER_ENDPOINT.toString(), properties.get(Property.MASTER_ENDPOINT.toString()))));
                     throw e;

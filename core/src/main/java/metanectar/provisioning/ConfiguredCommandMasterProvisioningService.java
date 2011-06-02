@@ -5,7 +5,9 @@ import hudson.model.Descriptor;
 import hudson.model.TaskListener;
 import hudson.remoting.VirtualChannel;
 import metanectar.Config;
+import metanectar.model.MasterServer;
 import metanectar.property.DefaultValue;
+import metanectar.property.Optional;
 import metanectar.property.Property;
 import org.kohsuke.stapler.DataBoundConstructor;
 
@@ -42,7 +44,7 @@ public class ConfiguredCommandMasterProvisioningService extends MasterProvisioni
             this.basePort = basePort;
         }
 
-        @Property("metaNectar.master.provisioning.homeLocation")
+        @Property("metaNectar.master.provisioning.homeLocation") @Optional
         public void setHomeLocation(String homeLocation) {
             this.homeLocation = homeLocation;
         }
@@ -105,23 +107,23 @@ public class ConfiguredCommandMasterProvisioningService extends MasterProvisioni
     }
 
     @Override
-    public Future<Provisioned> provision(VirtualChannel channel, TaskListener listener, int id, String name, URL metaNectarEndpoint, Map<String, Object> properties) throws Exception {
-        return s.provision(channel, listener, id, name, metaNectarEndpoint, properties);
+    public Future<Provisioned> provision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws Exception {
+        return s.provision(ms, metaNectarEndpoint, properties);
     }
 
     @Override
-    public Future<?> start(VirtualChannel channel, TaskListener listener, String name) throws Exception {
-        return s.start(channel, listener, name);
+    public Future<?> start(MasterServer ms) throws Exception {
+        return s.start(ms);
     }
 
     @Override
-    public Future<?> stop(VirtualChannel channel, TaskListener listener, String name) throws Exception {
-        return s.stop(channel, listener, name);
+    public Future<?> stop(MasterServer ms) throws Exception {
+        return s.stop(ms);
     }
 
     @Override
-    public Future<Terminated> terminate(VirtualChannel channel, TaskListener listener, String organization) throws Exception {
-        return s.terminate(channel, listener, organization);
+    public Future<Terminated> terminate(MasterServer ms) throws Exception {
+        return s.terminate(ms);
     }
 
 

@@ -31,10 +31,7 @@ public class MasterStartTask extends MasterServerTask {
 
             final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(node);
 
-            this.future = p.getProvisioningService().start(
-                    node.toComputer().getChannel(), ms.getTaskListener(),
-                    ms.getIdName());
-
+            this.future = p.getProvisioningService().start(ms);
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Starting error for master " + ms.getName() + " on node " + node.getNodeName(), e);
 

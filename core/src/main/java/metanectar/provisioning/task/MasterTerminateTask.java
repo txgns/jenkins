@@ -31,9 +31,7 @@ public class MasterTerminateTask extends MasterServerTask<MasterProvisioningServ
 
             final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(node);
 
-            this.future = p.getProvisioningService().terminate(
-                    node.toComputer().getChannel(), ms.getTaskListener(),
-                    ms.getIdName());
+            this.future = p.getProvisioningService().terminate(ms);
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Terminating error for master " + ms.getName() + " on node " + node.getNodeName(), e);
 

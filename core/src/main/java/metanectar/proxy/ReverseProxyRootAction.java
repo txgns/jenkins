@@ -1,6 +1,7 @@
 package metanectar.proxy;
 
 import com.google.common.base.Function;
+import com.google.common.collect.Lists;
 import hudson.Extension;
 import hudson.model.UnprotectedRootAction;
 import metanectar.model.MasterServer;
@@ -13,8 +14,7 @@ import org.kohsuke.stapler.export.Flavor;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 
 /**
  * A hidden and unprotected root action that provides the URLs of provisioned masters to a reverse proxy
@@ -41,19 +41,19 @@ public class ReverseProxyRootAction implements UnprotectedRootAction {
 
     @ExportedBean(defaultVisibility=999)
     public static class Masters {
-        Map<String, Master> instances;
+        List<Master> instances;
 
         public Masters() {
-            this.instances = new HashMap<String, Master>();
+            this.instances = Lists.newArrayList();
         }
 
         @Exported
-        public Map<String, Master> getInstances() {
+        public List<Master> getInstances() {
             return instances;
         }
 
         public void add(Master m) {
-            instances.put(m.getName(), m);
+            instances.add(m);
         }
     }
 
@@ -62,18 +62,27 @@ public class ReverseProxyRootAction implements UnprotectedRootAction {
     public static class Master {
         String name;
 
+        int index;
+
         String state;
 
         String url;
 
-        public Master(String name, String state, String url) {
+        public Master(String name, int index, String state, String url) {
             this.name = name;
+            this.index = index;
             this.state = state;
             this.url = url;
         }
 
+        @Exported
         public String getName() {
             return name;
+        }
+
+        @Exported
+        public int getIndex() {
+            return index;
         }
 
         @Exported
@@ -98,7 +107,7 @@ public class ReverseProxyRootAction implements UnprotectedRootAction {
         final Function<MasterServer, Void> f = new Function<MasterServer, Void>() {
             public Void apply(final MasterServer master) {
                 if (master.isProvisioned()) {
-                    masters.add(new Master(master.getIdPathName(), master.getState().name(), master.getLocalEndpoint().toExternalForm()));
+                    masters.add(new Master(master.getName(), master.getId(), master.getState().name(), master.getLocalEndpoint().toExternalForm()));
                 }
                 return null;
             }

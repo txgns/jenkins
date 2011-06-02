@@ -132,7 +132,7 @@ public class MasterConnectionTest extends MetaNectarTestCase {
         MasterServer ms = metaNectar.createMasterServer("org");
         ms.setPreProvisionState();
         ms.setProvisionStartedState(metaNectar, 0);
-        ms.setProvisionCompletedState(metaNectar.getMetaNectarPortUrl());
+        ms.setProvisionCompletedState(null, metaNectar.getMetaNectarPortUrl());
         ms.setStartingState();
         ms.setStartedState();
 
@@ -186,7 +186,7 @@ public class MasterConnectionTest extends MetaNectarTestCase {
         MasterServer ms = metaNectar.createMasterServer("org");
         ms.setPreProvisionState();
         ms.setProvisionStartedState(metaNectar, 0);
-        ms.setProvisionCompletedState(metaNectar.getMetaNectarPortUrl());
+        ms.setProvisionCompletedState(null, metaNectar.getMetaNectarPortUrl());
         ms.setStartingState();
         ms.setStartedState();
 

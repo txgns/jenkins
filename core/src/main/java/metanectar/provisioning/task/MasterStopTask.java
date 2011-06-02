@@ -29,9 +29,7 @@ public class MasterStopTask extends MasterServerTask {
 
             final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(node);
 
-            this.future = p.getProvisioningService().stop(
-                    node.toComputer().getChannel(), ms.getTaskListener(),
-                    ms.getIdName());
+            this.future = p.getProvisioningService().stop(ms);
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Stopping error for master " + ms.getName() + " on node " + node.getNodeName(), e);
 

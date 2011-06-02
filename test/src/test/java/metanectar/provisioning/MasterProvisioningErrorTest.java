@@ -25,8 +25,7 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTestC
             this.delay = delay;
         }
 
-        public Future<Provisioned> provision(VirtualChannel channel, TaskListener listener,
-                                        int id, final String organization, final URL metaNectarEndpoint, Map<String, Object> properties) throws IOException, InterruptedException {
+        public Future<Provisioned> provision(final MasterServer ms, final URL metaNectarEndpoint, Map<String, Object> properties) throws IOException, InterruptedException {
             return Computer.threadPoolForRemoting.submit(new Callable<Provisioned>() {
                 public Provisioned call() throws Exception {
                     Thread.sleep(delay);
@@ -36,18 +35,15 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTestC
             });
         }
 
-        public Future<?> start(VirtualChannel channel, TaskListener listener,
-                                        String name) throws Exception {
+        public Future<?> start(final MasterServer ms) throws Exception {
             return getFuture("starting master");
         }
 
-        public Future<?> stop(VirtualChannel channel, TaskListener listener,
-                                        String name) throws Exception {
+        public Future<?> stop(final MasterServer ms) throws Exception {
             return getFuture("stopping master");
         }
 
-        public Future<Terminated> terminate(VirtualChannel channel, TaskListener listener,
-                                   String organization) throws IOException, InterruptedException {
+        public Future<Terminated> terminate(final MasterServer ms) throws IOException, InterruptedException {
             return Computer.threadPoolForRemoting.submit(new Callable<Terminated>() {
                 public Terminated call() throws Exception {
                     Thread.sleep(delay);
@@ -103,8 +99,8 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTestC
              super(delay);
          }
 
-         public Future<Terminated> terminate(VirtualChannel channel, TaskListener listener,
-                                    String name) throws IOException, InterruptedException {
+
+         public Future<Terminated> terminate(final MasterServer ms) throws IOException, InterruptedException {
              return Computer.threadPoolForRemoting.submit(new Callable<Terminated>() {
                  public Terminated call() throws Exception {
                      Thread.sleep(getDelay());

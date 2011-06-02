@@ -179,12 +179,16 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         return homeDir;
     }
 
+    private int getMasterIndex() {
+        return 0;
+    }
+
     private String getMasterName() {
         return "org";
     }
 
     private String getMasterIdName() {
-        return MasterServer.createIdName(0, getMasterName());
+        return MasterServer.createIdName(getMasterIndex(), getMasterName());
     }
 
     private File masterHomeDir;
@@ -237,7 +241,10 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     }
 
     private String getProvisionScript() throws IOException {
-        return String.format("/bin/sh -c \"mkdir -p '%s'; echo 'MASTER_ENDPOINT=%s'\"", getMasterHomeDir().toString(), getTestUrl());
+        return String.format("/bin/sh -c \"mkdir -p '%s'; echo 'MASTER_ENDPOINT=%s\nMASTER_HOME=%s'\"",
+                getMasterHomeDir().toString(),
+                getTestUrl(),
+                getMasterHomeDir());
     }
 
     private String getStartScript() throws IOException {
@@ -260,15 +267,23 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
 
         pl.await(1, TimeUnit.MINUTES);
 
+        assertNotNull(ms.getLocalHome());
+        assertEquals(getMasterHomeDir().toString(), ms.getLocalHome());
+        assertNotNull(ms.getLocalEndpoint());
+
         Map<String, String> params = getParams(ms.getLocalEndpoint());
 
         String port = params.get(CommandMasterProvisioningService.Variable.MASTER_PORT.toString());
         assertNotNull(port);
         assertEquals(8080, Integer.valueOf(port) + ms.getNodeId());
 
-        String home = params.get(CommandMasterProvisioningService.Variable.MASTER_HOME.toString());
-        assertNotNull(home);
-        assertEquals(home, getMasterHomeDir().toString());
+        String index = params.get(CommandMasterProvisioningService.Variable.MASTER_INDEX.toString());
+        assertNotNull(index);
+        assertEquals(getMasterIndex(), Integer.parseInt(index));
+
+        String name = params.get(CommandMasterProvisioningService.Variable.MASTER_NAME.toString());
+        assertNotNull(name);
+        assertEquals(getMasterName(), name);
 
         String metaNectarEndpoint = params.get(CommandMasterProvisioningService.Variable.MASTER_METANECTAR_ENDPOINT.toString());
         assertNotNull(metaNectarEndpoint);
