@@ -1,7 +1,9 @@
 package metanectar.provisioning;
 
 import com.cloudbees.commons.metanectar.provisioning.ComputerLauncherFactory;
+import com.cloudbees.commons.metanectar.provisioning.ExportableFuture;
 import com.cloudbees.commons.metanectar.provisioning.FutureComputerLauncherFactory;
+import com.cloudbees.commons.metanectar.provisioning.SerializableLabel;
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import hudson.model.Hudson;
 import hudson.model.Hudson.MasterComputer;
@@ -86,11 +88,11 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
         assertFalse("we are accesing it via a proxy, and not directly", proxy instanceof DummyMetaNectarSlaveManagerImpl);
 
         // this dummy manager can allocate 'foo', so it can provision "foo||bar"
-        final Label fooOrBar = Label.parseExpression("foo||bar");
-        assertTrue(proxy.canProvision(fooOrBar));
+        final SerializableLabel foo = new SerializableLabel( "foo" );
+        assertTrue(proxy.canProvision(foo));
 
         StreamTaskListener stl = new StreamTaskListener(new OutputStreamWriter(System.out));
-        final FutureComputerLauncherFactory pip = proxy.provision(fooOrBar, stl, 1);
+        final FutureComputerLauncherFactory pip = proxy.provision(foo, stl, 1);
         System.out.println("J: Waiting for the provisioning of " + pip.getDisplayName());
         final ComputerLauncherFactory r = pip.get();
         System.out.println("J: Result obtained");
@@ -109,7 +111,7 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
     public static class DummyMetaNectarSlaveManagerImpl implements SlaveManager {
         private int n;
 
-        public boolean canProvision(Label label) throws IOException, InterruptedException {
+        public boolean canProvision(SerializableLabel label) throws IOException, InterruptedException {
             return label.matches(new VariableResolver<Boolean>() {
                 public Boolean resolve(String name) {
                     return name.equals("foo");
@@ -117,11 +119,11 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
             });
         }
 
-        public Collection<LabelAtom> getLabels() {
-            return Collections.singleton(new LabelAtom("foo"));
+        public Collection<SerializableLabel> getLabels() {
+            return Collections.singleton(new SerializableLabel("foo"));
         }
 
-        public FutureComputerLauncherFactory provision(Label label, final TaskListener listener, int numOfExecutors) throws IOException, InterruptedException {
+        public FutureComputerLauncherFactory provision(SerializableLabel label, final TaskListener listener, int numOfExecutors) throws IOException, InterruptedException {
             listener.getLogger().println("MN: Started provisioning");
             final Future<ComputerLauncherFactory> task = MasterComputer.threadPoolForRemoting.submit(new Callable<ComputerLauncherFactory>() {
                 public ComputerLauncherFactory call() throws Exception {
@@ -133,7 +135,7 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
                 }
             });
 
-            return new FutureComputerLauncherFactory("slave"+(n++), 1, new RemoteFuture<ComputerLauncherFactory>(task));
+            return new FutureComputerLauncherFactory("slave"+(n++), 1, new ExportableFuture<ComputerLauncherFactory>(task));
         }
 
         private static class ResultImpl extends ComputerLauncherFactory {

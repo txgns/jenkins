@@ -1,7 +1,9 @@
 package metanectar.provisioning;
 
 import com.cloudbees.commons.metanectar.provisioning.ComputerLauncherFactory;
+import com.cloudbees.commons.metanectar.provisioning.ExportableFuture;
 import com.cloudbees.commons.metanectar.provisioning.FutureComputerLauncherFactory;
+import com.cloudbees.commons.metanectar.provisioning.SerializableLabel;
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import hudson.model.Hudson;
 import hudson.model.Label;
@@ -28,7 +30,7 @@ import java.util.concurrent.Future;
 public class MetaNectarSlaveManager implements SlaveManager {
     private int n;
 
-    public boolean canProvision(Label label) throws IOException, InterruptedException {
+    public boolean canProvision(SerializableLabel label) throws IOException, InterruptedException {
         return label.matches(new VariableResolver<Boolean>() {
             public Boolean resolve(String name) {
                 return name.equals("foo");
@@ -36,11 +38,11 @@ public class MetaNectarSlaveManager implements SlaveManager {
         });
     }
 
-    public Collection<LabelAtom> getLabels() {
-        return Collections.singleton(new LabelAtom("foo"));
+    public Collection<SerializableLabel> getLabels() {
+        return Collections.singleton(new SerializableLabel("foo"));
     }
 
-    public FutureComputerLauncherFactory provision(Label label, final TaskListener listener, int numOfExecutors) throws IOException, InterruptedException {
+    public FutureComputerLauncherFactory provision(SerializableLabel label, final TaskListener listener, int numOfExecutors) throws IOException, InterruptedException {
         listener.getLogger().println("MN: Started provisioning");
         final Future<ComputerLauncherFactory> task = Hudson.MasterComputer.threadPoolForRemoting.submit(new Callable<ComputerLauncherFactory>() {
             public ComputerLauncherFactory call() throws Exception {
@@ -52,16 +54,18 @@ public class MetaNectarSlaveManager implements SlaveManager {
             }
         });
 
-        return new FutureComputerLauncherFactory("slave"+(n++), 1, new RemoteFuture<ComputerLauncherFactory>(task));
+        return new FutureComputerLauncherFactory("slave"+(n++), 1, new ExportableFuture<ComputerLauncherFactory>(task));
     }
 
     private static class ResultImpl extends ComputerLauncherFactory {
         public ComputerLauncher getOrCreateLauncher() throws IOException, InterruptedException {
             try {
-                return new CommandLauncher(
-                        String.format("\"%s/bin/java\" -jar \"%s\"",
-                                System.getProperty("java.home"),
-                                new File(Hudson.getInstance().getJnlpJars("slave.jar").getURL().toURI()).getAbsolutePath()));
+                System.out.println( "Launching Slave Computer..." );
+                String command = String.format( "\"%s/bin/java\" -jar \"%s\"", System.getProperty( "java.home" ),
+                                               new File( Hudson.getInstance().getJnlpJars(
+                                                   "slave.jar" ).getURL().toURI() ).getAbsolutePath() );
+                System.out.println( "... Command is " + command );
+                return new CommandLauncher( command );
             } catch (URISyntaxException e) {
                 // during the test we always find slave.jar in the file system
                 throw new AssertionError(e);
