@@ -1,20 +1,17 @@
 package metanectar.provisioning;
 
+import antlr.ANTLRException;
 import com.cloudbees.commons.metanectar.provisioning.ComputerLauncherFactory;
-import com.cloudbees.commons.metanectar.provisioning.ExportableFuture;
 import com.cloudbees.commons.metanectar.provisioning.FutureComputerLauncherFactory;
-import com.cloudbees.commons.metanectar.provisioning.SerializableLabel;
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import hudson.model.Hudson;
-import hudson.model.Hudson.MasterComputer;
 import hudson.model.Label;
 import hudson.model.Node.Mode;
 import hudson.model.TaskListener;
-import hudson.model.labels.LabelAtom;
+import hudson.model.labels.LabelExpression;
 import hudson.remoting.Channel;
 import hudson.remoting.FastPipedInputStream;
 import hudson.remoting.FastPipedOutputStream;
-import hudson.remoting.RemoteFuture;
 import hudson.slaves.CommandLauncher;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.DumbSlave;
@@ -81,18 +78,19 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
     public void testScenario() throws Exception {
         // MetaNectar would expose the manager to the channel
         metaNectar.setProperty(SlaveManager.class.getName(),
-                metaNectar.export(SlaveManager.class,new DummyMetaNectarSlaveManagerImpl()));
+                metaNectar.export(SlaveManager.class, new DummyMetaNectarSlaveManagerImpl()));
 
         // Jenkins would obtain a proxy
-        SlaveManager proxy = (SlaveManager)jenkins.waitForRemoteProperty(SlaveManager.class.getName());
-        assertFalse("we are accesing it via a proxy, and not directly", proxy instanceof DummyMetaNectarSlaveManagerImpl);
+        SlaveManager proxy = (SlaveManager) jenkins.waitForRemoteProperty(SlaveManager.class.getName());
+        assertFalse("we are accesing it via a proxy, and not directly",
+                proxy instanceof DummyMetaNectarSlaveManagerImpl);
 
         // this dummy manager can allocate 'foo', so it can provision "foo||bar"
-        final SerializableLabel foo = new SerializableLabel( "foo" );
-        assertTrue(proxy.canProvision(foo));
+        String fooOrBar = "foo||bar";
+        assertTrue(proxy.canProvision(fooOrBar));
 
         StreamTaskListener stl = new StreamTaskListener(new OutputStreamWriter(System.out));
-        final FutureComputerLauncherFactory pip = proxy.provision(foo, stl, 1);
+        final FutureComputerLauncherFactory pip = proxy.provision(fooOrBar, stl, 1);
         System.out.println("J: Waiting for the provisioning of " + pip.getDisplayName());
         final ComputerLauncherFactory r = pip.get();
         System.out.println("J: Result obtained");
@@ -111,46 +109,41 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
     public static class DummyMetaNectarSlaveManagerImpl implements SlaveManager {
         private int n;
 
-        public boolean canProvision(SerializableLabel label) throws IOException, InterruptedException {
-            return label.matches(new VariableResolver<Boolean>() {
-                public Boolean resolve(String name) {
-                    return name.equals("foo");
-                }
-            });
-        }
-
-        public Collection<SerializableLabel> getLabels() {
-            return Collections.singleton(new SerializableLabel("foo"));
-        }
-
-        public FutureComputerLauncherFactory provision(SerializableLabel label, final TaskListener listener, int numOfExecutors) throws IOException, InterruptedException {
-            listener.getLogger().println("MN: Started provisioning");
-            final Future<ComputerLauncherFactory> task = MasterComputer.threadPoolForRemoting.submit(new Callable<ComputerLauncherFactory>() {
-                public ComputerLauncherFactory call() throws Exception {
-                    Thread.sleep(3000);
-                    listener.getLogger().println("MN: Still provisioning");
-                    Thread.sleep(3000);
-                    listener.getLogger().println("MN: Done provisioning");
-                    return new ResultImpl();
-                }
-            });
-
-            return new FutureComputerLauncherFactory("slave"+(n++), 1, new ExportableFuture<ComputerLauncherFactory>(task));
-        }
-
-        private static class ResultImpl extends ComputerLauncherFactory {
-
-            public ComputerLauncher getOrCreateLauncher() throws IOException, InterruptedException {
-                try {
-                    return new CommandLauncher(
-                            String.format("\"%s/bin/java\" -jar \"%s\"",
-                                    System.getProperty("java.home"),
-                                    new File(Hudson.getInstance().getJnlpJars("slave.jar").getURL().toURI()).getAbsolutePath()));
-                } catch (URISyntaxException e) {
-                    // during the test we always find slave.jar in the file system
-                    throw new AssertionError(e);
-                }
+        public boolean canProvision(String labelExpression) throws IOException, InterruptedException {
+            try {
+                Label label = Label.parseExpression(labelExpression);
+                return label.matches(new VariableResolver<Boolean>() {
+                    public Boolean resolve(String name) {
+                        return name.equals("foo");
+                    }
+                });
+            } catch (ANTLRException e) {
+                return false;
             }
         }
+
+        public Collection<String> getLabels() {
+            return Collections.singleton("foo");
+        }
+
+        public FutureComputerLauncherFactory provision(final String labelExpression, final TaskListener listener,
+                                                       final int numOfExecutors)
+                throws IOException, InterruptedException {
+            listener.getLogger().println("MN: Started provisioning");
+            final String displayName = "slave" + (n++);
+            final Future<ComputerLauncherFactory> task =
+                    Hudson.MasterComputer.threadPoolForRemoting.submit(new Callable<ComputerLauncherFactory>() {
+                        public ComputerLauncherFactory call() throws Exception {
+                            Thread.sleep(3000);
+                            listener.getLogger().println("MN: Still provisioning");
+                            Thread.sleep(3000);
+                            listener.getLogger().println("MN: Done provisioning");
+                            return new LocalForkingComputerLauncherFactory(displayName, numOfExecutors, "foo");
+                        }
+                    });
+
+            return new FutureComputerLauncherFactory(displayName, 1, task);
+        }
+
     }
 }
