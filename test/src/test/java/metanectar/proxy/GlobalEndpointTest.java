@@ -5,6 +5,7 @@ import metanectar.model.MasterServer;
 import metanectar.test.MetaNectarTestCase;
 
 import java.io.File;
+import java.net.URL;
 import java.util.Properties;
 
 /**
@@ -24,11 +25,15 @@ public class GlobalEndpointTest extends MetaNectarTestCase {
     }
 
     public void testGlobalEndpoint() throws Exception {
-        MasterServer ms = metaNectar.createMasterServer("foo");
+        URL local = new URL("http://local:8080/master/foo");
 
-        String expected = "http://remote:80/base" + "/" + ms.getIdName();
+        MasterServer ms = metaNectar.createMasterServer("foo");
+        ms.setProvisionCompletedState("home", local);
+        String expected = proxyUrl + local.getPath();
 
         assertEquals(expected, ms.getEndpoint().toExternalForm());
         assertEquals(expected, ms.getGlobalEndpoint().toExternalForm());
     }
+
+
 }

@@ -313,27 +313,12 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         this.id = id;
         this.encodedName = createEncodedName(name);
         this.idName = createIdName(id, encodedName);
-        this.globalEndpoint = createGlobalEndpoint();
 
         save();
         fireOnStateChange();
 
         taskListener.getLogger().println("Created");
         taskListener.getLogger().println(toString());
-    }
-
-    private URL createGlobalEndpoint() throws IOException {
-        Config.ProxyProperties p = MetaNectar.getInstance().getConfig().getBean(Config.ProxyProperties.class);
-        if (p.getBaseEndpoint() != null) {
-            String s = p.getBaseEndpoint().toExternalForm();
-            if (s.endsWith("/"))
-                s += getIdName();
-            else
-                s += '/' + getIdName();
-            return new URL(s);
-        } else {
-            return null;
-        }
     }
 
     public synchronized void setPreProvisionState() throws IOException {
@@ -366,11 +351,26 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         setState(Provisioned);
         this.localHome = home;
         this.localEndpoint = endpoint;
+        this.globalEndpoint = createGlobalEndpoint(endpoint);
         save();
         fireOnStateChange();
 
         taskListener.getLogger().println("Provisioned");
         taskListener.getLogger().println(toString());
+    }
+
+    private static URL createGlobalEndpoint(URL localEndpoint) throws IOException {
+        Config.ProxyProperties p = MetaNectar.getInstance().getConfig().getBean(Config.ProxyProperties.class);
+        if (p.getBaseEndpoint() != null) {
+            URL proxyEndpoint = p.getBaseEndpoint();
+
+            // This assumes that the paths for both URLs start with "/"
+            String path = proxyEndpoint.getPath() + localEndpoint.getPath();
+            path = path.replaceAll("/+", "/");
+            return new URL(proxyEndpoint.getProtocol(), proxyEndpoint.getHost(), proxyEndpoint.getPort(), path);
+        } else {
+            return null;
+        }
     }
 
     public synchronized void setProvisionErrorState(Throwable error) throws IOException {
