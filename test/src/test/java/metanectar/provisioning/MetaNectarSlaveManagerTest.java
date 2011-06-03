@@ -3,16 +3,16 @@ package metanectar.provisioning;
 import antlr.ANTLRException;
 import com.cloudbees.commons.metanectar.provisioning.ComputerLauncherFactory;
 import com.cloudbees.commons.metanectar.provisioning.FutureComputerLauncherFactory;
+import com.cloudbees.commons.metanectar.provisioning.LeaseId;
+import com.cloudbees.commons.metanectar.provisioning.ProvisioningException;
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import hudson.model.Hudson;
 import hudson.model.Label;
 import hudson.model.Node.Mode;
 import hudson.model.TaskListener;
-import hudson.model.labels.LabelExpression;
 import hudson.remoting.Channel;
 import hudson.remoting.FastPipedInputStream;
 import hudson.remoting.FastPipedOutputStream;
-import hudson.slaves.CommandLauncher;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.DumbSlave;
 import hudson.slaves.RetentionStrategy;
@@ -20,10 +20,8 @@ import hudson.util.StreamTaskListener;
 import hudson.util.VariableResolver;
 import metanectar.test.MetaNectarTestCase;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.Callable;
@@ -109,7 +107,7 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
     public static class DummyMetaNectarSlaveManagerImpl implements SlaveManager {
         private int n;
 
-        public boolean canProvision(String labelExpression) throws IOException, InterruptedException {
+        public boolean canProvision(String labelExpression) {
             try {
                 Label label = Label.parseExpression(labelExpression);
                 return label.matches(new VariableResolver<Boolean>() {
@@ -128,7 +126,7 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
 
         public FutureComputerLauncherFactory provision(final String labelExpression, final TaskListener listener,
                                                        final int numOfExecutors)
-                throws IOException, InterruptedException {
+                throws ProvisioningException {
             listener.getLogger().println("MN: Started provisioning");
             final String displayName = "slave" + (n++);
             final Future<ComputerLauncherFactory> task =
@@ -138,11 +136,19 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
                             listener.getLogger().println("MN: Still provisioning");
                             Thread.sleep(3000);
                             listener.getLogger().println("MN: Done provisioning");
-                            return new LocalForkingComputerLauncherFactory(displayName, numOfExecutors, "foo");
+                            return new LocalForkingComputerLauncherFactory(null, displayName, numOfExecutors, "foo");
                         }
                     });
 
             return new FutureComputerLauncherFactory(displayName, 1, task);
+        }
+
+        public void release(ComputerLauncherFactory leaseId) {
+            // No-op as these are local leases
+        }
+
+        public boolean isProvisioned(LeaseId leaseId) {
+            return true; // as these are local leases.
         }
 
     }

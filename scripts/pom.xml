@@ -57,7 +57,7 @@
     <dependency>
       <groupId>org.jenkins-ci.main</groupId>
       <artifactId>jenkins-war</artifactId>
-      <version>1.415-SNAPSHOT</version>
+      <version>1.413</version>
       <type>war</type>
     </dependency>
     <dependency>
@@ -69,13 +69,13 @@
     <dependency>
       <groupId>com.cloudbees.nectar.plugins</groupId>
       <artifactId>cloudbees-metanectar-plugin</artifactId>
-      <version>1.10</version>
+      <version>1.11</version>
       <type>hpi</type>
     </dependency>
     <dependency>
       <groupId>com.cloudbees.plugins</groupId>
       <artifactId>cloudbees-slave-provisioning-plugin</artifactId>
-      <version>0.1-SNAPSHOT</version>
+      <version>0.1</version>
       <type>hpi</type>
     </dependency>
   </dependencies>

@@ -1,6 +1,7 @@
 package metanectar.provisioning;
 
 import com.cloudbees.commons.metanectar.provisioning.ComputerLauncherFactory;
+import com.cloudbees.commons.metanectar.provisioning.LeaseId;
 import hudson.EnvVars;
 import hudson.Functions;
 import hudson.Util;
@@ -32,7 +33,8 @@ public class LocalForkingComputerLauncherFactory extends ComputerLauncherFactory
     private final String labelString;
     private transient LocalForkingComputerLauncher launcher;
 
-    public LocalForkingComputerLauncherFactory(String nodeName, int numExecutors, String labelString) {
+    public LocalForkingComputerLauncherFactory(LeaseId leaseId, String nodeName, int numExecutors, String labelString) {
+        super(leaseId);
         this.nodeName = nodeName;
         this.numExecutors = numExecutors;
         this.labelString = labelString;
