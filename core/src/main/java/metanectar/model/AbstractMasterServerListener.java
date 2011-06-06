@@ -95,9 +95,4 @@ public abstract class AbstractMasterServerListener extends MasterServerListener 
     public void onTerminatingError(MasterServer ms) {}
 
     public void onTerminated(MasterServer ms) {}
-
-    public void onConnected(MasterServer ms) {}
-
-    public void onDisconnected(MasterServer ms) {}
-
 }

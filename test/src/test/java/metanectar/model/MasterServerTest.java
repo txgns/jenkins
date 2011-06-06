@@ -17,7 +17,7 @@ public class MasterServerTest extends MetaNectarTestCase {
      * Makes sure that the key round-trips in {@link MasterServer#getIdentity()}.
      */
     public void testAcknowledgement() throws Exception {
-        final MasterServer s = metaNectar.createMasterServer("org");
+        final MasterServer s = metaNectar.createManagedMaster("org");
 
         RSAKeyPairGenerator gen = new RSAKeyPairGenerator();
         gen.initialize(2048,new SecureRandom());

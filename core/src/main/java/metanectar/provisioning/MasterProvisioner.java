@@ -70,7 +70,7 @@ public class MasterProvisioner {
         // TODO normalize states
 
         // Re-create node with masters map
-        for (MasterServer ms : mn.getAllItems(MasterServer.class)) {
+        for (MasterServer ms : mn.getManagedMasters()) {
             if (ms.getNode() != null) {
                 nodesWithMasters.put(ms.getNode(), ms);
             }

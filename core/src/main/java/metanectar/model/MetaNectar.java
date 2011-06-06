@@ -11,17 +11,13 @@ import hudson.model.*;
 import hudson.remoting.Channel;
 import hudson.util.AdministrativeError;
 import hudson.util.AlternativeUiTextProvider;
-import hudson.util.FormValidation;
-import hudson.views.StatusColumn;
 import metanectar.Config;
 import metanectar.ExtensionFilter;
 import metanectar.MetaNectarExtensionPoint;
-import metanectar.model.views.MasterServerColumn;
 import metanectar.provisioning.*;
 import metanectar.proxy.ReverseProxyProdder;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 import org.jvnet.hudson.reactor.ReactorException;
-import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
@@ -38,8 +34,6 @@ import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 import java.util.*;
 import java.util.logging.Logger;
-
-import static hudson.Util.fixEmpty;
 
 /**
  * The root object of MetaNectar.
@@ -70,19 +64,19 @@ public class MetaNectar extends Hudson {
         }
 
         public void onConnectingTo(URL address, X509Certificate identity, String name, Map<String, String> properties) throws GeneralSecurityException, IOException {
-            final MasterServer server = metaNectar.getMasterByName(name);
+            final ConnectedMaster master = metaNectar.getConnectedMasterByName(name);
 
-            if (server == null) {
+            if (master == null) {
                 throw new IllegalStateException("The master " + name + " does not exist");
             }
 
-            if (!server.isApprovable()) {
-                throw new IllegalStateException("The master " + name + " is not in an approvable state: " + server.getState().name());
+            if (!master.isApprovable()) {
+                throw new IllegalStateException("The master " + name + " is not in an approvable state: " + master.toString());
             }
 
-            if (server.isApproved()) {
-                if (server.getIdentity().equals(identity.getPublicKey())) {
-                    server.setReapprovedState();
+            if (master.isApproved()) {
+                if (master.getIdentity().equals(identity.getPublicKey())) {
+                    master.setReapprovedState();
                     LOGGER.info("Master is identified and approved: " + name + " " + address);
                     return;
                 }
@@ -91,35 +85,36 @@ public class MetaNectar extends Hudson {
             }
 
             if (properties.containsKey(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID)) {
-                // Check if there is a grant for automatic registration
+                // Check if there is a grant for registration
                 final String receivedGrant = properties.get(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID);
 
-                if (server.getGrantId().equals(receivedGrant)) {
-                    server.setApprovedState((RSAPublicKey) identity.getPublicKey(), address);
+                if (master.getGrantId().equals(receivedGrant)) {
+                    master.setApprovedState((RSAPublicKey) identity.getPublicKey(), address);
                     LOGGER.info("Valid grant received. Master is identified and approved: " + name + " " + address);
                     return;
                 }
 
-                GeneralSecurityException e = new GeneralSecurityException("Invalid grant for master " + name + ": received " + receivedGrant + " expected " + server.getGrantId());
-                server.setApprovalErrorState(e);
+                GeneralSecurityException e = new GeneralSecurityException("Invalid grant for master " + name + ": received " + receivedGrant + " expected " + master.getGrantId());
+                master.setApprovalErrorState(e);
                 throw e;
             }
 
             LOGGER.info("Master is not approved: "+ name + " " + address);
             GracefulConnectionRefusalException e = new GracefulConnectionRefusalException("This master is not approved by MetaNectar");
-            server.setApprovalErrorState(e);
+            master.setApprovalErrorState(e);
             throw e;
         }
 
         public void onConnectedTo(Channel channel, X509Certificate identity, String name) throws IOException {
-            final MasterServer server = metaNectar.getMasterByName(name);
-            if (server != null) {
-                server.setConnectedState(channel);
+            final ConnectedMaster master = metaNectar.getConnectedMasterByName(name);
+
+            if (master != null) {
+                master.setConnectedState(channel);
                 return;
             }
 
             channel.close();
-            throw new IOException("Unable to route the connection. No server found");
+            throw new IOException("Unable to route the connection. No master found");
         }
 
         @Override
@@ -241,20 +236,42 @@ public class MetaNectar extends Hudson {
         return Messages.MetaNectar_DisplayName();
     }
 
-    public List<MasterServer> getMasters() {
+    public List<ConnectedMaster> getConnectedMasters() {
         // TODO make this more efficient by caching the masters and modifying when creating/deleting
-        return getAllItems(MasterServer.class);
+        return getAllItems(ConnectedMaster.class);
     }
 
-    public MasterServer getMasterByIdentity(PublicKey identity) {
-        for (MasterServer js : getMasters())
+    public ConnectedMaster getConnectedMasterByIdentity(PublicKey identity) {
+        for (ConnectedMaster js : getConnectedMasters())
             if (js.getIdentity().equals(identity))
                 return js;
         return null;
     }
 
-    public MasterServer getMasterByName(String idName) {
-        for (MasterServer ms : getMasters()) {
+    public ConnectedMaster getConnectedMasterByName(String idName) {
+        for (ConnectedMaster ms : getConnectedMasters()) {
+            if (ms.getIdName().equals(idName)) {
+                return ms;
+            }
+        }
+
+        return null;
+    }
+
+    public List<MasterServer> getManagedMasters() {
+        // TODO make this more efficient by caching the masters and modifying when creating/deleting
+        return getAllItems(MasterServer.class);
+    }
+
+    public MasterServer getManagedMasterByIdentity(PublicKey identity) {
+        for (MasterServer js : getManagedMasters())
+            if (js.getIdentity().equals(identity))
+                return js;
+        return null;
+    }
+
+    public MasterServer getManagedMasterByName(String idName) {
+        for (MasterServer ms : getManagedMasters()) {
             if (ms.getIdName().equals(idName)) {
                 return ms;
             }
@@ -274,10 +291,16 @@ public class MetaNectar extends Hudson {
 
     // Master creation
 
-    public MasterServer createMasterServer(String name) throws IOException {
+    public MasterServer createManagedMaster(String name) throws IOException {
         checkMasterName(name);
 
         return createProject(MasterServer.class, name);
+    }
+
+    public AttachedMaster createAttachedMaster(String name) throws IOException {
+        checkMasterName(name);
+
+        return createProject(AttachedMaster.class, name);
     }
 
     private void checkMasterName(String name) {

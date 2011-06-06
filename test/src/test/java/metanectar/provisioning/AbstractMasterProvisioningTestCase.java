@@ -3,8 +3,6 @@ package metanectar.provisioning;
 import com.google.common.collect.Lists;
 import hudson.model.Computer;
 import hudson.model.LoadStatistics;
-import hudson.model.TaskListener;
-import hudson.remoting.VirtualChannel;
 import metanectar.model.MasterServer;
 import metanectar.test.MetaNectarTestCase;
 
@@ -106,7 +104,7 @@ public abstract class AbstractMasterProvisioningTestCase extends MetaNectarTestC
     public MasterServer provisionAndStartMaster(String name) throws Exception {
         LatchMasterServerListener.ProvisionAndStartListener pl = new LatchMasterServerListener.ProvisionAndStartListener(4);
 
-        MasterServer ms = metaNectar.createMasterServer(name);
+        MasterServer ms = metaNectar.createManagedMaster(name);
         ms.provisionAndStartAction();
 
         pl.await(1, TimeUnit.MINUTES);
@@ -118,7 +116,7 @@ public abstract class AbstractMasterProvisioningTestCase extends MetaNectarTestC
 
         List<MasterServer> l = Lists.newArrayList();
         for (int i = 0; i < n ; i++) {
-            MasterServer ms = metaNectar.createMasterServer(name + i);
+            MasterServer ms = metaNectar.createManagedMaster(name + i);
             ms.provisionAndStartAction();
             l.add(ms);
         }

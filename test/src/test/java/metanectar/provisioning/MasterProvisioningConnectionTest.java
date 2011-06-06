@@ -125,7 +125,7 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
 
         List<MasterServer> l = Lists.newArrayList();
         for (int i = 0; i < masters; i++) {
-            MasterServer ms = metaNectar.createMasterServer("org" + i);
+            MasterServer ms = metaNectar.createManagedMaster("org" + i);
             l.add(ms);
             ms.provisionAndStartAction();
         }
@@ -136,9 +136,9 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
         // Wait for masters to be connected
         onEventCdl.await(1, TimeUnit.MINUTES);
 
-        assertEquals(masters, metaNectar.getAllItems(MasterServer.class).size());
-        for (MasterServer mn : metaNectar.getAllItems(MasterServer.class)) {
-            assertEquals(mn, metaNectar.getMasterByName(mn.getIdName()));
+        assertEquals(masters, metaNectar.getManagedMasters().size());
+        for (MasterServer mn : metaNectar.getManagedMasters()) {
+            assertEquals(mn, metaNectar.getManagedMasterByName(mn.getIdName()));
             assertTrue(mn.isApproved());
             assertNotNull(mn.getChannel());
         }
@@ -179,8 +179,8 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
 
         masterTl.await(1, TimeUnit.MINUTES);
 
-        assertEquals(masters.size(), metaNectar.getAllItems(MasterServer.class).size());
-        for (MasterServer ms : metaNectar.getAllItems(MasterServer.class)) {
+        assertEquals(masters.size(), metaNectar.getManagedMasters().size());
+        for (MasterServer ms : metaNectar.getManagedMasters()) {
             assertEquals(MasterServer.State.Terminated, ms.getState());
             assertNull(ms.getChannel());
         }

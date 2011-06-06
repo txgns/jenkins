@@ -113,7 +113,7 @@ public class ReverseProxyRootAction implements UnprotectedRootAction {
             }
         };
 
-        for (MasterServer master : MetaNectar.getInstance().getMasters()) {
+        for (MasterServer master : MetaNectar.getInstance().getManagedMasters()) {
             master.query(f);
         }
 

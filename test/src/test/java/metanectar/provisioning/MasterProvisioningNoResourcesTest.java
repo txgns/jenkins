@@ -1,5 +1,6 @@
 package metanectar.provisioning;
 
+import metanectar.LatchConnectedMasterListener;
 import metanectar.model.MasterServer;
 
 import java.util.concurrent.TimeUnit;
@@ -12,7 +13,7 @@ public class MasterProvisioningNoResourcesTest extends AbstractMasterProvisionin
     public void testProvisionOneMasterOnMetaNectar() throws Exception {
         new WebClient().goTo("/");
 
-        MasterServer ms = metaNectar.createMasterServer("org");
+        MasterServer ms = metaNectar.createManagedMaster("org");
 
         LatchMasterServerListener noResources = new LatchMasterServerListener(1) {
             public void onProvisioningErrorNoResources(MasterServer ms) {
@@ -20,15 +21,13 @@ public class MasterProvisioningNoResourcesTest extends AbstractMasterProvisionin
             }
         };
 
-        LatchMasterServerListener connected = new LatchMasterServerListener.ProvisionListener(4) {
+        LatchMasterServerListener approved = new LatchMasterServerListener.ProvisionListener(3) {
             public void onApproved(MasterServer ms) {
                 countDown();
             }
-
-            public void onConnected(MasterServer ms) {
-                countDown();
-            }
         };
+
+        LatchConnectedMasterListener connected = new LatchConnectedMasterListener.ConnectedListener(1);
 
         // Try to provision when there are no resources
         ms.provisionAndStartAction();
@@ -36,7 +35,8 @@ public class MasterProvisioningNoResourcesTest extends AbstractMasterProvisionin
         noResources.await(1, TimeUnit.MINUTES);
 
         assertEquals(MasterServer.State.ProvisioningErrorNoResources, ms.getState());
-        assertEquals(4, connected.getCount());
+        assertEquals(3, approved.getCount());
+        assertEquals(1, connected.getCount());
 
         // Add provisioning resources
         TestMasterProvisioningService s = new TestMasterProvisioningService(100);
@@ -44,6 +44,7 @@ public class MasterProvisioningNoResourcesTest extends AbstractMasterProvisionin
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());
 
+        approved.await(1, TimeUnit.MINUTES);
         connected.await(1, TimeUnit.MINUTES);
 
         assertEquals(MasterServer.State.Approved, ms.getState());

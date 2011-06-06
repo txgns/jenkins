@@ -150,7 +150,10 @@ public class TestMasterServer {
         this.organization = organization;
 
         Map<String, String> protocolProperties = new HashMap<String, String>();
-        protocolProperties.put(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID, (String)properties.get(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID));
+        if (properties.containsKey(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID)) {
+            protocolProperties.put(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID,
+                    (String)properties.get(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID));
+        }
         MetaNectarAgentProtocol.Outbound p = new MetaNectarAgentProtocol.Outbound(
                 MetaNectarAgentProtocol.getInstanceIdentityCertificate(id, endpoint.toExternalForm()),
                 id.getPrivate(),
@@ -199,6 +202,7 @@ public class TestMasterServer {
     }
 
     public void stop() {
+        agent.setNoReconnect(true);
         agentThread.interrupt();
     }
 

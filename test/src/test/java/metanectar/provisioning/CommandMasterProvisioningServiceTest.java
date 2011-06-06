@@ -98,7 +98,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     }
 
     private void _testProvisionStartTimeOut(LatchMasterServerListener error, MasterServer.State state) throws Exception {
-        MasterServer ms = metaNectar.createMasterServer("org1");
+        MasterServer ms = metaNectar.createManagedMaster("org1");
         ms.provisionAndStartAction();
 
         error.await(1, TimeUnit.MINUTES);
@@ -262,7 +262,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     private MasterServer provision() throws Exception {
         ProvisionAndStartListener pl = new ProvisionAndStartListener(4);
 
-        ms = metaNectar.createMasterServer(getMasterName());
+        ms = metaNectar.createManagedMaster(getMasterName());
         ms.provisionAndStartAction();
 
         pl.await(1, TimeUnit.MINUTES);

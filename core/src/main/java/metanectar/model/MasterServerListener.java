@@ -14,6 +14,8 @@ import java.util.logging.Logger;
  * @author Paul Sandoz
  */
 public abstract class MasterServerListener implements ExtensionPoint {
+    private static final Logger LOGGER = Logger.getLogger(MasterServerListener.class.getName());
+
     /**
      * Called when the state of the master changes.
      *
@@ -21,21 +23,30 @@ public abstract class MasterServerListener implements ExtensionPoint {
      */
     public abstract void onStateChange(MasterServer ms);
 
-    /**
-     * Called when the master is connected.
-     *
-     * @param ms the master.
-     */
-    public void onConnected(MasterServer ms) {}
-
-    /**
-     * Called when the master is disconnected.
-     *
-     * @param ms the master.
-     */
-    public void onDisconnected(MasterServer ms) {}
-
     public static ExtensionList<MasterServerListener> all() {
         return Hudson.getInstance().getExtensionList(MasterServerListener.class);
     }
+
+    /* package */ final static void fireOnStateChange(final MasterServer ms) {
+        fire (new FireLambda() {
+            public void f(MasterServerListener msl) {
+                msl.onStateChange(ms);
+            }
+        });
+    }
+
+    private interface FireLambda {
+        void f(MasterServerListener msl);
+    }
+
+    private static void fire(FireLambda l) {
+        for (MasterServerListener msl : MasterServerListener.all()) {
+            try {
+                l.f(msl);
+            } catch (Exception e) {
+                LOGGER.log(Level.SEVERE, "Exception when firing event", e);
+            }
+        }
+    }
+
 }

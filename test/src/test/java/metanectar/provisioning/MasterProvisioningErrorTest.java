@@ -1,8 +1,7 @@
 package metanectar.provisioning;
 
 import hudson.model.Computer;
-import hudson.model.TaskListener;
-import hudson.remoting.VirtualChannel;
+import metanectar.LatchConnectedMasterListener;
 import metanectar.model.MasterServer;
 
 import java.io.IOException;
@@ -70,7 +69,7 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTestC
     public void testProvisionWithError() throws Exception {
         new WebClient().goTo("/");
 
-        MasterServer ms = metaNectar.createMasterServer("org");
+        MasterServer ms = metaNectar.createManagedMaster("org");
 
         LatchMasterServerListener provisioningError = new LatchMasterServerListener(1) {
             public void onProvisioningError(MasterServer ms) {
@@ -114,17 +113,15 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTestC
     public void testTerminateWithError() throws Exception {
         new WebClient().goTo("/");
 
-        MasterServer ms = metaNectar.createMasterServer("org");
+        MasterServer ms = metaNectar.createManagedMaster("org");
 
-        LatchMasterServerListener connected = new LatchMasterServerListener.ProvisionListener(4) {
+        LatchMasterServerListener approved = new LatchMasterServerListener.ProvisionListener(3) {
             public void onApproved(MasterServer ms) {
                 countDown();
             }
-
-            public void onConnected(MasterServer ms) {
-                countDown();
-            }
         };
+
+        LatchConnectedMasterListener connected = new LatchConnectedMasterListener.ConnectedListener(1);
 
         // Add provisioning resources
         ErrorTerminatingService s = new ErrorTerminatingService(100);
@@ -133,6 +130,7 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTestC
         metaNectar.setNodes(metaNectar.getNodes());
 
         ms.provisionAndStartAction();
+        approved.await(1, TimeUnit.MINUTES);
         connected.await(1, TimeUnit.MINUTES);
 
         LatchMasterServerListener provisioningError = new LatchMasterServerListener(1) {

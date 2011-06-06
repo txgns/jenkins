@@ -129,7 +129,7 @@ public class MasterConnectionTest extends MetaNectarTestCase {
         CountDownLatch onConnected = new CountDownLatch(1);
         Client client = new Client(onConnected);
 
-        MasterServer ms = metaNectar.createMasterServer("org");
+        MasterServer ms = metaNectar.createManagedMaster("org");
         ms.setPreProvisionState();
         ms.setProvisionStartedState(metaNectar, 0);
         ms.setProvisionCompletedState(null, metaNectar.getMetaNectarPortUrl());
@@ -162,7 +162,7 @@ public class MasterConnectionTest extends MetaNectarTestCase {
         assertNotNull(ms.getLocalEndpoint());
 
         // this should create an unapproved Jenkins instance on the server
-        ms = metaNectar.getMasterByIdentity(id.getPublic());
+        ms = metaNectar.getManagedMasterByIdentity(id.getPublic());
         assertNotNull(ms);
         assertTrue(ms.isApproved());
         assertNotNull(client.channel);
@@ -183,7 +183,7 @@ public class MasterConnectionTest extends MetaNectarTestCase {
         CountDownLatch onConnected = new CountDownLatch(0);
         Client client = new Client(onConnected);
 
-        MasterServer ms = metaNectar.createMasterServer("org");
+        MasterServer ms = metaNectar.createManagedMaster("org");
         ms.setPreProvisionState();
         ms.setProvisionStartedState(metaNectar, 0);
         ms.setProvisionCompletedState(null, metaNectar.getMetaNectarPortUrl());

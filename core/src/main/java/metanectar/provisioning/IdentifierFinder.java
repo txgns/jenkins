@@ -1,7 +1,5 @@
 package metanectar.provisioning;
 
-import metanectar.model.MasterServer;
-
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -10,33 +8,23 @@ import java.util.List;
 /**
  * @author Paul Sandoz
  */
-public class IdentifierFinder {
+public abstract class IdentifierFinder<T> {
 
-    public interface Identifier {
-        int getId(MasterServer ms);
-    }
+    private final Comparator c = new Comparator<T>() {
+        public int compare(T t1, T t2) {
+            return getId(t1) - getId(t2);
+        }
+    };
 
-    private final Comparator<MasterServer> c = new Comparator<MasterServer>() {
-            public int compare(MasterServer ms1, MasterServer ms2) {
-                return getId(ms1) - getId(ms2);
-            }
-        };
-
-    private final Identifier identifier;
-
-    public IdentifierFinder(Identifier identifier) {
-        this.identifier = identifier;
-    }
-
-    public int getUnusedIdentifier(final List<MasterServer> l) {
+    public int getUnusedIdentifier(final List<T> l) {
         // Empty
         if (l.isEmpty())
             return 0;
 
         // One Element
         if (l.size() == 1) {
-            final MasterServer ms = l.get(0);
-            return (getId(ms) > 0) ? 0 : getId(ms) + 1;
+            final T t = l.get(0);
+            return (getId(t) > 0) ? 0 : getId(t) + 1;
         }
 
         // Multiple elements, sort by id then find a gap in the intervals
@@ -47,11 +35,11 @@ public class IdentifierFinder {
             return l.size();
         }
 
-        final Iterator<MasterServer> msi = l.iterator();
-        MasterServer start = msi.next();
-        MasterServer end = null;
-        while (msi.hasNext()) {
-            end = msi.next();
+        final Iterator<T> ti = l.iterator();
+        T start = ti.next();
+        T end = null;
+        while (ti.hasNext()) {
+            end = ti.next();
 
             if (getId(end) - getId(start) > 1) {
                 return getId(start) + 1;
@@ -63,8 +51,5 @@ public class IdentifierFinder {
         return getId(end) + 1;
     }
 
-    private int getId(MasterServer ms) {
-        return identifier.getId(ms);
-    }
-
+    protected abstract int getId(T t);
 }

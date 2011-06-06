@@ -64,7 +64,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
 
         List<MasterServer> l = Lists.newArrayList();
         for (int i = 0; i < masters; i++) {
-            MasterServer ms = metaNectar.createMasterServer("org" + i);
+            MasterServer ms = metaNectar.createManagedMaster("org" + i);
             l.add(ms);
             ms.provisionAndStartAction();
         }
@@ -109,7 +109,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
         StopAndTerminateListener masterTl = new StopAndTerminateListener(4 * masters.size());
 
         for (MasterServer mn : masters) {
-            assertEquals(mn, metaNectar.getMasterByName(mn.getIdName()));
+            assertEquals(mn, metaNectar.getManagedMasterByName(mn.getIdName()));
             mn.stopAndTerminateAction();
         }
 
@@ -137,7 +137,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
 
         List<MasterServer> l = Lists.newArrayList();
         for (int i = 0; i < masters; i++) {
-            MasterServer ms = metaNectar.createMasterServer("org" + i);
+            MasterServer ms = metaNectar.createManagedMaster("org" + i);
             l.add(ms);
             ms.provisionAndStartAction();
         }
@@ -164,7 +164,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
         StopAndTerminateListener tl = new StopAndTerminateListener(4 * masters.size());
 
         for (MasterServer mn : masters) {
-            assertEquals(mn, metaNectar.getMasterByName(mn.getIdName()));
+            assertEquals(mn, metaNectar.getManagedMasterByName(mn.getIdName()));
             mn.stopAndTerminateAction();
         }
 
