@@ -42,7 +42,7 @@ import static metanectar.model.MasterServer.State.Approved;
  *
  * @author Kohsuke Kawaguchi, Paul Sandoz
  */
-public class MasterServer extends AbstractItem implements TopLevelItem, HttpResponse {
+public class MasterServer extends AbstractItem implements TopLevelItem {
 
     public static IdentifierFinder MASTER_SERVER_IDENTIFIER_FINDER = new IdentifierFinder(new IdentifierFinder.Identifier() {
         public int getId(MasterServer ms) {
@@ -61,10 +61,10 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
      * The states of the master.
      */
     public static enum State {
-        Created(Action.Provision),
+        Created(Action.Provision, Action.Delete),
         PreProvisioning(),
         Provisioning(),
-        ProvisioningErrorNoResources(),   // TODO cancel
+        ProvisioningErrorNoResources(),   // TODO delete
         ProvisioningError(Action.Provision, Action.Terminate),
         Provisioned(Action.Start, Action.Terminate),
         Starting(),
@@ -226,6 +226,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
     protected MasterServer(ItemGroup parent, String name) {
         super(parent, name);
+
     }
 
     @Override
@@ -239,6 +240,12 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     public void onCreatedFromScratch() {
         super.onCreatedFromScratch();
         init();
+
+        try {
+            setCreatedState(MasterServer.MASTER_SERVER_IDENTIFIER_FINDER.getUnusedIdentifier(Hudson.getInstance().getAllItems(MasterServer.class)));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void init() {
@@ -545,6 +552,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
         this.nodeId = 0;
         this.localHome = null;
         this.localEndpoint = null;
+        this.globalEndpoint = null;
         this.identity = null;
         this.snapshot = snapshot;
         save();
@@ -974,10 +982,6 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
 
     //
 
-    public void generateResponse(StaplerRequest req, StaplerResponse rsp, Object node) throws IOException, ServletException {
-        HttpResponses.redirectViaContextPath(getUrl()).generateResponse(req, rsp, node);
-    }
-
     /**
      * Returns {@code true} if the page elements should be refreshed by AJAX.
      * @return {@code true} if the page elements should be refreshed by AJAX.
@@ -1027,7 +1031,7 @@ public class MasterServer extends AbstractItem implements TopLevelItem, HttpResp
     public static class DescriptorImpl extends TopLevelItemDescriptor {
         @Override
         public String getDisplayName() {
-            return "Master server";
+            return "Master";
         }
 
         @Override

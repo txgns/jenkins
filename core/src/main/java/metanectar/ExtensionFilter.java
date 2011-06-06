@@ -6,8 +6,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import hudson.DescriptorExtensionList;
 import hudson.ExtensionList;
-import hudson.model.Describable;
-import hudson.model.Descriptor;
+import hudson.model.*;
 import hudson.slaves.Cloud;
 import hudson.slaves.EnvironmentVariablesNodeProperty;
 import hudson.slaves.NodeProperty;
@@ -131,6 +130,12 @@ public class ExtensionFilter {
             rule(NodeProperty.class, new BlackListRule(Lists.<Class>newArrayList(
                     EnvironmentVariablesNodeProperty.class, ToolLocationNodeProperty.class
             )));
+
+            rule(TopLevelItem.class, new Predicate<Class>() {
+                public boolean apply(Class input) {
+                    return !Job.class.isAssignableFrom(input);
+                }
+            });
 
             rule(ToolInstallation.class, new WhiteListRule(Collections.<Class>emptyList()));
         }

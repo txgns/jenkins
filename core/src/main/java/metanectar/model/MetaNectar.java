@@ -271,38 +271,13 @@ public class MetaNectar extends Hudson {
         return config;
     }
 
-    /**
-     * Sets up the initial view state.
-     */
-    @Override
-    protected View createInitialView() {
-        try {
-            MasterServerListView lv = new MasterServerListView("All");
-            lv.setColumns(Arrays.asList(
-                    new StatusColumn(),
-                    new MasterServerColumn()));
-            return lv;
-        } catch (IOException e) {
-            // view doesn't save itself unless it's connected to the parent, which we don't do in this method.
-            // so this never happens
-            throw new AssertionError(e);
-        }
-    }
-
 
     // Master creation
 
     public MasterServer createMasterServer(String name) throws IOException {
         checkMasterName(name);
 
-        synchronized (this) {
-            int id = MasterServer.MASTER_SERVER_IDENTIFIER_FINDER.getUnusedIdentifier(getAllItems(MasterServer.class));
-
-            final MasterServer server = createProject(MasterServer.class, name);
-
-            server.setCreatedState(id);
-            return server;
-        }
+        return createProject(MasterServer.class, name);
     }
 
     private void checkMasterName(String name) {
@@ -313,29 +288,6 @@ public class MetaNectar extends Hudson {
         if (getItem(name) != null)
             throw new Failure("Master " + name + "already exists");
     }
-
-    /**
-     * Provision a new master and issue a grant for automatic approval.
-     *
-     */
-    public MasterServer doProvisionMasterServer(String name) throws IOException {
-        final MasterServer server = createMasterServer(name);
-
-        server.provisionAndStartAction();
-
-        return server;
-    }
-
-    /**
-     * Attach to a new master and issue a grant for automatic approval.
-     *
-     */
-    public MasterServer doAttachMasterServer(String name) throws IOException {
-        final MasterServer server = createMasterServer(name);
-
-        return server;
-    }
-
 
     // Global configuration
 
