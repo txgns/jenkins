@@ -86,11 +86,6 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
     protected volatile URL localEndpoint;
 
     /**
-     * The global URL to the master. May be null if no reverse proxy is utilized.
-     */
-    protected volatile URL globalEndpoint;
-
-    /**
      * The encoded image of the public key that indicates the identity of the master.
      */
     protected volatile byte[] identity;
@@ -130,7 +125,6 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
                 add("approved", approved).
                 add("localHome", localHome).
                 add("localEndpoint", localEndpoint).
-                add("globalEndpoint", globalEndpoint).
                 add("channel", channel).
                 add("identity", (key == null) ? null : key.getFormat() + ", " + key.getAlgorithm());
     }
@@ -289,7 +283,7 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
     }
 
     public URL getEndpoint() {
-        return (globalEndpoint != null) ? globalEndpoint : localEndpoint;
+        return localEndpoint;
     }
 
     public String getLocalHome() {
@@ -298,10 +292,6 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
 
     public URL getLocalEndpoint() {
         return localEndpoint;
-    }
-
-    public URL getGlobalEndpoint() {
-        return globalEndpoint;
     }
 
     public synchronized RSAPublicKey getIdentity() {
@@ -454,26 +444,6 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
      */
     public static String createIdName(int id, String name) {
         return Integer.toString(id) + "-" + name;
-    }
-
-    /**
-     * Create the global endpoint if a reverse proxy is deployed.
-     *
-     * @param localEndpoint the local endpoint
-     * @return the global endpoint, otherwise null if no reverse proxy is deployed.
-     */
-    public static URL createGlobalEndpoint(URL localEndpoint) throws IOException {
-        Config.ProxyProperties p = MetaNectar.getInstance().getConfig().getBean(Config.ProxyProperties.class);
-        if (p.getBaseEndpoint() != null) {
-            URL proxyEndpoint = p.getBaseEndpoint();
-
-            // This assumes that the paths for both URLs start with "/"
-            String path = proxyEndpoint.getPath() + localEndpoint.getPath();
-            path = path.replaceAll("/+", "/");
-            return new URL(proxyEndpoint.getProtocol(), proxyEndpoint.getHost(), proxyEndpoint.getPort(), path);
-        } else {
-            return null;
-        }
     }
 
     /**

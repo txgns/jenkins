@@ -34,5 +34,4 @@ public class GlobalEndpointTest extends MetaNectarTestCase {
         assertEquals(expected, ms.getGlobalEndpoint().toExternalForm());
     }
 
-
 }

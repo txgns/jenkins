@@ -4,6 +4,7 @@ import com.google.common.base.Function;
 import com.google.common.collect.ImmutableSet;
 import hudson.Extension;
 import hudson.model.*;
+import metanectar.Config;
 import metanectar.provisioning.IdentifierFinder;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.HttpResponses;
@@ -18,6 +19,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static metanectar.model.MasterServer.State.*;
@@ -97,6 +99,11 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
     private volatile State state;
 
     /**
+     * The global URL to the master. May be null if no reverse proxy is utilized.
+     */
+    protected transient volatile URL globalEndpoint;
+
+    /**
      * The name of the node where the master is provisioned
      */
     private volatile String nodeName;
@@ -133,6 +140,7 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
                 add("node", getNode()).
                 add("nodeId", nodeId).
                 add("snapshot", snapshot).
+                add("globalEndpoint", globalEndpoint).
                 add("state", state).
                 toString();
     }
@@ -176,7 +184,6 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
         setState(Provisioned);
         this.localHome = home;
         this.localEndpoint = endpoint;
-        this.globalEndpoint = createGlobalEndpoint(endpoint);
         save();
         fireOnStateChange();
 
@@ -344,7 +351,6 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
         this.nodeId = 0;
         this.localHome = null;
         this.localEndpoint = null;
-        this.globalEndpoint = null;
         this.identity = null;
         this.snapshot = snapshot;
         save();
@@ -492,6 +498,22 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
         return state;
     }
 
+    public URL getEndpoint() {
+        return (getGlobalEndpoint() != null) ? getGlobalEndpoint() : getLocalEndpoint();
+    }
+
+    public synchronized URL getGlobalEndpoint() {
+        if (globalEndpoint == null) {
+            try {
+                globalEndpoint = createGlobalEndpoint(getLocalEndpoint());
+            } catch (IOException e) {
+                LOGGER.log(Level.SEVERE, "Error creating global endpoint", e);
+                globalEndpoint = localEndpoint;
+            }
+        }
+        return globalEndpoint;
+    }
+
     public String getStatePage() {
         return state.name().toLowerCase();
     }
@@ -599,6 +621,26 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
         @Override
         public TopLevelItem newInstance(ItemGroup parent, String name) {
             return new MasterServer(parent, name);
+        }
+    }
+
+    /**
+     * Create the global endpoint if a reverse proxy is deployed.
+     *
+     * @param localEndpoint the local endpoint
+     * @return the global endpoint, otherwise the local endpoint.
+     */
+    public static URL createGlobalEndpoint(URL localEndpoint) throws IOException {
+        Config.ProxyProperties p = MetaNectar.getInstance().getConfig().getBean(Config.ProxyProperties.class);
+        if (p.getBaseEndpoint() != null) {
+            URL proxyEndpoint = p.getBaseEndpoint();
+
+            // This assumes that the paths for both URLs start with "/"
+            String path = proxyEndpoint.getPath() + localEndpoint.getPath();
+            path = path.replaceAll("/+", "/");
+            return new URL(proxyEndpoint.getProtocol(), proxyEndpoint.getHost(), proxyEndpoint.getPort(), path);
+        } else {
+            return localEndpoint;
         }
     }
 
