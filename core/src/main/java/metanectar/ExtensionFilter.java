@@ -12,6 +12,7 @@ import hudson.slaves.EnvironmentVariablesNodeProperty;
 import hudson.slaves.NodeProperty;
 import hudson.tools.ToolInstallation;
 import hudson.tools.ToolLocationNodeProperty;
+import hudson.views.*;
 import metanectar.model.MetaNectar;
 
 import java.util.Collections;
@@ -128,7 +129,8 @@ public class ExtensionFilter {
             rule(Cloud.class, METANECTAR_EXTENSION_POINT);
 
             rule(NodeProperty.class, new BlackListRule(Lists.<Class>newArrayList(
-                    EnvironmentVariablesNodeProperty.class, ToolLocationNodeProperty.class
+                    EnvironmentVariablesNodeProperty.class,
+                    ToolLocationNodeProperty.class
             )));
 
             rule(TopLevelItem.class, new Predicate<Class>() {
@@ -138,6 +140,14 @@ public class ExtensionFilter {
             });
 
             rule(ToolInstallation.class, new WhiteListRule(Collections.<Class>emptyList()));
+
+            rule(ListViewColumn.class, new BlackListRule(Lists.<Class>newArrayList(
+                    JobColumn.class,
+                    LastSuccessColumn.class,
+                    LastFailureColumn.class,
+                    LastDurationColumn.class,
+                    BuildButtonColumn.class
+            )));
         }
     }
 
