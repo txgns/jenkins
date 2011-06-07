@@ -186,7 +186,7 @@ public class MetaNectar extends Hudson {
         }
     }
 
-    private String rootUrl;
+    private transient String rootUrl;
 
     @Override
     public String getRootUrl() {
