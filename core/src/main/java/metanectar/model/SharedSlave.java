@@ -1,6 +1,8 @@
 package metanectar.model;
 
 import hudson.Extension;
+import hudson.Util;
+import hudson.cli.declarative.CLIMethod;
 import hudson.model.AbstractItem;
 import hudson.model.Action;
 import hudson.model.Descriptor;
@@ -8,22 +10,32 @@ import hudson.model.HealthReport;
 import hudson.model.Hudson;
 import hudson.model.ItemGroup;
 import hudson.model.Job;
+import hudson.model.JobProperty;
+import hudson.model.JobPropertyDescriptor;
 import hudson.model.StatusIcon;
 import hudson.model.StockStatusIcon;
 import hudson.model.TopLevelItem;
 import hudson.model.TopLevelItemDescriptor;
+import hudson.tasks.LogRotator;
 import hudson.util.DescribableList;
+import net.sf.json.JSONException;
+import net.sf.json.JSONObject;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+
+import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 
 /**
  * Represents a slave
@@ -39,6 +51,12 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
     protected SharedSlave(ItemGroup parent, String name) {
         super(parent, name);
     }
+
+    public boolean isBuilding() {
+        return false; // TODO
+    }
+
+    //////// AbstractItem
 
     @Override
     public Collection<? extends Job> getAllJobs() {
@@ -102,9 +120,126 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
         checkPermission(CONFIGURE);
 
         description = req.getParameter("description");
-        save();
+        try {
+            JSONObject json = req.getSubmittedForm();
 
-        rsp.sendRedirect(".");
+            PropertyList t = new PropertyList(properties.toList());
+            t.rebuild(req,json.optJSONObject("properties"), SharedSlavePropertyDescriptor.all());
+            properties.clear();
+            for (SharedSlaveProperty p : t) {
+                p.setOwner(this);
+                properties.add(p);
+            }
+
+            save();
+
+            String newName = req.getParameter("name");
+            if (newName != null && !newName.equals(name)) {
+                // check this error early to avoid HTTP response splitting.
+                Hudson.checkGoodName(newName);
+                rsp.sendRedirect("rename?newName=" + URLEncoder.encode(newName, "UTF-8"));
+            } else {
+                rsp.sendRedirect(".");
+            }
+        } catch (JSONException e) {
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            pw.println("Failed to parse form data. Please report this problem as a bug");
+            pw.println("JSON=" + req.getSubmittedForm());
+            pw.println();
+            e.printStackTrace(pw);
+
+            rsp.setStatus(SC_BAD_REQUEST);
+            sendError(sw.toString(), req, rsp, true);
+        }
+    }
+
+    /**
+     * Accepts the new description.
+     */
+    public synchronized void doSubmitDescription( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
+        checkPermission(CONFIGURE);
+
+        setDescription(req.getParameter("description"));
+        rsp.sendRedirect(".");  // go to the top page
+    }
+
+    /**
+     * Deletes this item.
+     */
+    @CLIMethod(name="delete-job")
+    public void doDoDelete( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, InterruptedException {
+        requirePOST();
+        delete();
+        if (rsp != null) // null for CLI
+            rsp.sendRedirect2(req.getContextPath()+"/"+getParent().getUrl());
+    }
+
+    public void delete( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
+        try {
+            doDoDelete(req,rsp);
+        } catch (InterruptedException e) {
+            // TODO: allow this in Stapler
+            throw new ServletException(e);
+        }
+    }
+
+    /**
+     * Deletes this item.
+     */
+    public synchronized void delete() throws IOException, InterruptedException {
+        checkPermission(DELETE);
+        performDelete();
+
+        try {
+            invokeOnDeleted();
+        } catch (AbstractMethodError e) {
+            // ignore
+        }
+    }
+
+    /**
+     * Renames this slave.
+     */
+    public/* not synchronized. see renameTo() */void doDoRename(
+            StaplerRequest req, StaplerResponse rsp) throws IOException,
+            ServletException {
+        requirePOST();
+        // rename is essentially delete followed by a create
+        checkPermission(CREATE);
+        checkPermission(DELETE);
+
+        String newName = req.getParameter("newName");
+        Hudson.checkGoodName(newName);
+
+        if (isBuilding()) {
+            // redirect to page explaining that we can't rename now
+            rsp.sendRedirect("rename?newName=" + URLEncoder.encode(newName, "UTF-8"));
+            return;
+        }
+
+        renameTo(newName);
+        // send to the new job page
+        // note we can't use getUrl() because that would pick up old name in the
+        // Ancestor.getUrl()
+        rsp.sendRedirect2(req.getContextPath() + '/' + getParent().getUrl()
+                + getShortUrl());
+    }
+
+    /**
+     * A pointless function to work around what appears to be a HotSpot problem. See HUDSON-5756 and bug 6933067
+     * on BugParade for more details.
+     */
+    private void invokeOnDeleted() throws IOException {
+        getParent().onDeleted(this);
+    }
+
+    /**
+     * Does the real job of deleting the item.
+     */
+    protected void performDelete() throws IOException, InterruptedException {
+        getConfigFile().delete();
+        Util.deleteRecursive(getRootDir());
     }
 
     @Extension
@@ -126,6 +261,10 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
         }
 
         public PropertyList() {// needed for XStream deserialization
+        }
+
+        /*package*/ PropertyList(List<SharedSlaveProperty<?>> initialList) {
+            super(NOOP, initialList);
         }
 
         public SharedSlave getOwner() {
