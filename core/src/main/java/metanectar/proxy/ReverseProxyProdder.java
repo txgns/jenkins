@@ -11,9 +11,7 @@ import metanectar.model.MasterServer;
 import metanectar.model.MasterServerListener;
 import metanectar.model.MetaNectar;
 
-import java.util.concurrent.Callable;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.logging.Logger;
 
@@ -56,6 +54,25 @@ public class ReverseProxyProdder extends MasterServerListener {
     @Override
     public void onStateChange(MasterServer ms) {
         prod();
+    }
+
+    /**
+     * Wait until prodding has completed.
+     * <p>
+     * Mostly useful for testing purposes.
+     */
+    public void await(long timeout, TimeUnit unit) throws ExecutionException, TimeoutException, InterruptedException {
+        while (true) {
+            final Future n;
+            synchronized (lock) {
+                n = currentProd;
+            }
+            n.get(timeout, unit);
+            synchronized (lock) {
+                if (resubmitProd == false)
+                    break;
+            }
+        }
     }
 
     private void prod() {

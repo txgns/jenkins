@@ -67,10 +67,14 @@ public class MetaNectarSlaveManagerTest extends MetaNectarTestCase {
 
     @Override
     protected void tearDown() throws Exception {
-        metaNectar.close(); // this will automatically initiate the close on the other channel, too.
-        metaNectar.join();
-        jenkins.join();
-        executors.shutdownNow();
+        try {
+            metaNectar.close(); // this will automatically initiate the close on the other channel, too.
+            metaNectar.join();
+            jenkins.join();
+            executors.shutdownNow();
+        } finally {
+            super.tearDown();
+        }
     }
 
     public void testScenario() throws Exception {

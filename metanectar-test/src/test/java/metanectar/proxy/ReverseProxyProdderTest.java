@@ -8,6 +8,7 @@ import metanectar.provisioning.AbstractMasterProvisioningTestCase;
 import java.io.File;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 /**
  * This test will only work on UNIX.
@@ -29,22 +30,27 @@ public class ReverseProxyProdderTest extends AbstractMasterProvisioningTestCase 
 
     public void testProvision() throws Exception {
         configureDummyMasterProvisioningOnMetaNectar();
+        ReverseProxyProdder rpp = MasterServerListener.all().get(ReverseProxyProdder.class);
 
         provisionAndStartMaster("o1");
+        rpp.await(1, TimeUnit.MINUTES);
 
         assertFalse(f.exists());
     }
 
     public void testTerminate() throws Exception {
         configureDummyMasterProvisioningOnMetaNectar();
+        ReverseProxyProdder rpp = MasterServerListener.all().get(ReverseProxyProdder.class);
 
         MasterServer o1 = provisionAndStartMaster("o1");
+        rpp.await(1, TimeUnit.MINUTES);
         assertFalse(f.exists());
 
         f.createNewFile();
         assertTrue(f.exists());
 
         terminateAndDeleteMaster(o1);
+        rpp.await(1, TimeUnit.MINUTES);
         assertFalse(f.exists());
     }
 
@@ -55,6 +61,7 @@ public class ReverseProxyProdderTest extends AbstractMasterProvisioningTestCase 
         ReverseProxyProdder rpp = MasterServerListener.all().get(ReverseProxyProdder.class);
 
         List<MasterServer> l = provisionAndStartMasters("o", n);
+        rpp.await(1, TimeUnit.MINUTES);
 
         for (MasterServer ms : l) {
             assertEquals(MasterServer.State.Started, ms.getState());
@@ -65,6 +72,7 @@ public class ReverseProxyProdderTest extends AbstractMasterProvisioningTestCase 
         assertEquals(n * 6, rpp.getRequestedProdCount());
 
         terminateAndDeleteMasters(l);
+        rpp.await(1, TimeUnit.MINUTES);
 
         assertTrue(i < rpp.getActualProdCount());
         assertTrue(rpp.getActualProdCount() < rpp.getRequestedProdCount());

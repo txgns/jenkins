@@ -1,5 +1,6 @@
 package metanectar.proxy;
 
+import junit.framework.TestCase;
 import metanectar.Config;
 import metanectar.model.MasterServer;
 import metanectar.test.MetaNectarTestCase;
