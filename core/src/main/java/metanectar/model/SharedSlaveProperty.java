@@ -15,36 +15,37 @@ import java.util.List;
 /**
  * @author Stephen Connolly
  */
-public abstract class SlaveProperty<S extends Slave> implements ReconfigurableDescribable<SlaveProperty<?>>, ExtensionPoint {
+public abstract class SharedSlaveProperty<S extends SharedSlave>
+        implements ReconfigurableDescribable<SharedSlaveProperty<?>>, ExtensionPoint {
     protected transient S owner;
 
     public void setOwner(S owner) {
         this.owner = owner;
     }
 
-    public Descriptor<SlaveProperty<?>> getDescriptor() {
-        return (SlavePropertyDescriptor)Hudson.getInstance().getDescriptorOrDie(getClass());
+    public Descriptor<SharedSlaveProperty<?>> getDescriptor() {
+        return (SharedSlavePropertyDescriptor) Hudson.getInstance().getDescriptorOrDie(getClass());
     }
 
-    public SlaveProperty<?> reconfigure(StaplerRequest req, JSONObject form) throws Descriptor.FormException {
+    public SharedSlaveProperty<?> reconfigure(StaplerRequest req, JSONObject form) throws Descriptor.FormException {
         return form==null ? null : getDescriptor().newInstance(req, form);
     }
 
-    public abstract Collection<? extends Action> getSlaveActions(Slave m);
+    public abstract Collection<? extends Action> getSlaveActions(SharedSlave m);
 
     /**
      * Lists up all the registered {@link metanectar.model.ConnectedMasterPropertyDescriptor}s in the system.
      */
-    public static DescriptorExtensionList<SlaveProperty<?>,SlavePropertyDescriptor> all() {
-        return (DescriptorExtensionList) Hudson.getInstance().getDescriptorList(SlaveProperty.class);
+    public static DescriptorExtensionList<SharedSlaveProperty<?>,SharedSlavePropertyDescriptor> all() {
+        return (DescriptorExtensionList) Hudson.getInstance().getDescriptorList(SharedSlaveProperty.class);
     }
 
     /**
      * List up all {@link metanectar.model.ConnectedMasterPropertyDescriptor}s that are applicable for the
      * given connected master.
      */
-    public static List<SlavePropertyDescriptor> for_(Slave node) {
-        return SlavePropertyDescriptor.for_(all(), node);
+    public static List<SharedSlavePropertyDescriptor> for_(SharedSlave node) {
+        return SharedSlavePropertyDescriptor.for_(all(), node);
     }
 
 }

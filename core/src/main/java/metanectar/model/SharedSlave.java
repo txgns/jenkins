@@ -30,13 +30,13 @@ import java.util.List;
  *
  * @author Stephen Connolly
  */
-public class Slave extends AbstractItem implements TopLevelItem {
+public class SharedSlave extends AbstractItem implements TopLevelItem {
     // property state
 
-    protected volatile DescribableList<SlaveProperty<?>,SlavePropertyDescriptor> properties =
+    protected volatile DescribableList<SharedSlaveProperty<?>,SharedSlavePropertyDescriptor> properties =
             new PropertyList(this);
 
-    protected Slave(ItemGroup parent, String name) {
+    protected SharedSlave(ItemGroup parent, String name) {
         super(parent, name);
     }
 
@@ -53,7 +53,8 @@ public class Slave extends AbstractItem implements TopLevelItem {
     public String getSearchUrl() {
         return "slave/" + name;
     }
-//////// Methods to handle the weather icon
+
+    //////// Methods to handle the weather icon
 
     /**
      * Get the current health report for a job.
@@ -62,12 +63,12 @@ public class Slave extends AbstractItem implements TopLevelItem {
      */
     public HealthReport getBuildHealth() {
         List<HealthReport> reports = getBuildHealthReports();
-        return reports.isEmpty() ? new HealthReport(100, Messages._Slave_PerfectHealth()) : reports.get(0);
+        return reports.isEmpty() ? new HealthReport(100, Messages._SharedSlave_PerfectHealth()) : reports.get(0);
     }
 
     @Exported(name = "healthReport")
     public List<HealthReport> getBuildHealthReports() {
-        return Arrays.asList(new HealthReport(100, Messages._Slave_PerfectHealth()));
+        return Arrays.asList(new HealthReport(100, Messages._SharedSlave_PerfectHealth()));
     }
 
     //////// Methods to handle the status icon
@@ -82,13 +83,13 @@ public class Slave extends AbstractItem implements TopLevelItem {
 
     //////// Properties
 
-    public DescribableList<SlaveProperty<?>,SlavePropertyDescriptor> getProperties() {
+    public DescribableList<SharedSlaveProperty<?>,SharedSlavePropertyDescriptor> getProperties() {
         return properties;
     }
 
     public List<hudson.model.Action> getPropertyActions() {
         ArrayList<Action> result = new ArrayList<hudson.model.Action>();
-        for (SlaveProperty<?> prop: properties) {
+        for (SharedSlaveProperty<?> prop: properties) {
             result.addAll(prop.getSlaveActions(this));
         }
         return result;
@@ -110,30 +111,30 @@ public class Slave extends AbstractItem implements TopLevelItem {
     public static class DescriptorImpl extends TopLevelItemDescriptor {
         @Override
         public String getDisplayName() {
-            return Messages.Slave_SlaveResource_DisplayName();
+            return Messages.SharedSlave_SlaveResource_DisplayName();
         }
 
         @Override
         public TopLevelItem newInstance(ItemGroup parent, String name) {
-            return new Slave(parent, name);
+            return new SharedSlave(parent, name);
         }
     }
 
-    public static class PropertyList extends DescribableList<SlaveProperty<?>,SlavePropertyDescriptor> {
-        private PropertyList(Slave owner) {
+    public static class PropertyList extends DescribableList<SharedSlaveProperty<?>,SharedSlavePropertyDescriptor> {
+        private PropertyList(SharedSlave owner) {
             super(owner);
         }
 
         public PropertyList() {// needed for XStream deserialization
         }
 
-        public Slave getOwner() {
-            return (Slave)owner;
+        public SharedSlave getOwner() {
+            return (SharedSlave)owner;
         }
 
         @Override
         protected void onModified() throws IOException {
-            for (SlaveProperty p : this)
+            for (SharedSlaveProperty p : this)
                 p.setOwner(getOwner());
         }
     }
