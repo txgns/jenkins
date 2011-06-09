@@ -188,6 +188,20 @@ public class Config {
         }
     }
 
+    public static class JavaDebugProperties {
+        private int javaDebugBasePort = -1;
+
+        public int getJavaDebugBasePort() {
+            return javaDebugBasePort;
+        }
+
+        @Property("metaNectar.master.provisioning.javaDebugBasePort") @Optional
+        public void setUserPassword(int javaDebugBasePort) {
+            this.javaDebugBasePort = javaDebugBasePort;
+        }
+
+    }
+
     public <T> T getBean(Class<T> c) {
         if (bindCache.containsKey(c)) {
             return (T)bindCache.get(c);

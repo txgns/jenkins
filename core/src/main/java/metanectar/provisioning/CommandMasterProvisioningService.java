@@ -7,6 +7,7 @@ import hudson.model.Descriptor;
 import hudson.model.TaskListener;
 import hudson.remoting.LocalChannel;
 import hudson.remoting.VirtualChannel;
+import metanectar.Config;
 import metanectar.model.MasterServer;
 import metanectar.model.MetaNectar;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -48,6 +49,7 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
         MASTER_NAME,
         MASTER_HOME_LOCATION,
         MASTER_PORT,
+        MASTER_JAVA_DEBUG_PORT,
         MASTER_METANECTAR_ENDPOINT,
         MASTER_GRANT_ID,
         MASTER_SNAPSHOT
@@ -138,6 +140,12 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
         provisionVariables.put(Variable.MASTER_GRANT_ID.name(), ms.getGrantId());
         if (ms.getSnapshot() != null) {
             provisionVariables.put(Variable.MASTER_SNAPSHOT.name(), ms.getSnapshot().toExternalForm());
+        }
+
+        // Add Java debug port, if configured
+        Config.JavaDebugProperties dps = MetaNectar.getInstance().getConfig().getBean(Config.JavaDebugProperties.class);
+        if (dps.getJavaDebugBasePort() != -1) {
+            provisionVariables.put(Variable.MASTER_JAVA_DEBUG_PORT.name(), Integer.toString(dps.getJavaDebugBasePort() + ms.getNodeId()));
         }
 
         return Computer.threadPoolForRemoting.submit(new Callable<Provisioned>() {
