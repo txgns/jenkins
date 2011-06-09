@@ -98,6 +98,17 @@ THE SOFTWARE.
   </dependencies>
 
   <build>
+    <testResources>
+      <testResource>
+        <directory>src/test/resources</directory>
+        <targetPath>${project.build.directory}</targetPath>
+      </testResource>
+      <testResource>
+        <directory>src/filtered/resources</directory>
+        <targetPath>${project.build.directory}</targetPath>
+        <filtering>true</filtering>
+      </testResource>
+    </testResources>
     <finalName>metanectar</finalName>
     <plugins>
       <plugin>
@@ -125,15 +136,70 @@ THE SOFTWARE.
         </configuration>
       </plugin>
       <plugin>
+        <artifactId>maven-clean-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>post-clean</phase>
+            <goals>
+              <goal>clean</goal>
+            </goals>
+            <configuration>
+              <excludeDefaultDirectories>true</excludeDefaultDirectories>
+              <filesets>
+                <fileset>
+                  <directory>${basedir}/work</directory>
+                  <directory>${basedir}/work-node</directory>
+                  <directory>${basedir}/work-masters</directory>
+                </fileset>
+              </filesets>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
         <artifactId>maven-dependency-plugin</artifactId>
         <executions>
           <execution>
+            <id>list-dependencies</id>
             <phase>generate-resources</phase>
             <goals>
               <goal>list</goal>
             </goals>
             <configuration>
               <outputFile>${basedir}/target/classes/dependencies.txt</outputFile>
+            </configuration>
+          </execution>
+          <execution>
+            <id>setup-testing-env</id>
+            <phase>generate-test-resources</phase>
+            <goals>
+              <!-- these dependencies come from outside the reactor... thus we use copy... also don't want them on
+                   the classpath for the jenkins-dev:run mojo -->
+              <goal>copy</goal>
+            </goals>
+            <configuration>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>org.jenkins-ci.main</groupId>
+                  <artifactId>jenkins-war</artifactId>
+                  <version>1.415-alpha-cb-1</version>
+                  <type>war</type>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>com.cloudbees.nectar.plugins</groupId>
+                  <artifactId>cloudbees-metanectar-plugin</artifactId>
+                  <version>1.12</version>
+                  <type>hpi</type>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>com.cloudbees.plugins</groupId>
+                  <artifactId>cloudbees-slave-provisioning-plugin</artifactId>
+                  <version>0.1</version>
+                  <type>hpi</type>
+                </artifactItem>
+              </artifactItems>
+              <outputDirectory>${project.build.directory}/scripts</outputDirectory>
+              <stripVersion>true</stripVersion>
             </configuration>
           </execution>
         </executions>
@@ -256,6 +322,18 @@ THE SOFTWARE.
             <systemProperty>
               <name>JENKINS_HOME</name>
               <value>${JENKINS_HOME}</value>
+            </systemProperty>
+            <systemProperty>
+              <name>METANECTAR_PROPERTIES_URL</name>
+              <value>file:${project.build.directory}/scripts/config.properties</value>
+            </systemProperty>
+            <systemProperty>
+              <name>metanectar.provisioning.MasterProvisioner.initialDelay</name>
+              <value>10000</value>
+            </systemProperty>
+            <systemProperty>
+              <name>metanectar.provisioning.MasterProvisioner.recurrencePeriod</name>
+              <value>5000</value>
             </systemProperty>
             <systemProperty>
               <!-- always reload views during debugging -->
