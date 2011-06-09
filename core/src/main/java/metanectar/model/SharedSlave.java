@@ -5,18 +5,22 @@ import hudson.Util;
 import hudson.cli.declarative.CLIMethod;
 import hudson.model.AbstractItem;
 import hudson.model.Action;
+import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.model.HealthReport;
 import hudson.model.Hudson;
 import hudson.model.ItemGroup;
 import hudson.model.Job;
-import hudson.model.JobProperty;
-import hudson.model.JobPropertyDescriptor;
+import hudson.model.Node;
 import hudson.model.StatusIcon;
 import hudson.model.StockStatusIcon;
 import hudson.model.TopLevelItem;
 import hudson.model.TopLevelItemDescriptor;
-import hudson.tasks.LogRotator;
+import hudson.slaves.CloudRetentionStrategy;
+import hudson.slaves.ComputerLauncher;
+import hudson.slaves.NodeProperty;
+import hudson.slaves.NodePropertyDescriptor;
+import hudson.slaves.RetentionStrategy;
 import hudson.util.DescribableList;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
@@ -47,6 +51,13 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
 
     protected volatile DescribableList<SharedSlaveProperty<?>,SharedSlavePropertyDescriptor> properties =
             new PropertyList(this);
+    private String remoteFS;
+    private int numExecutors;
+    private Node.Mode mode = Node.Mode.NORMAL;
+    private String labelString;
+    private RetentionStrategy<? extends Computer> retentionStrategy = new CloudRetentionStrategy(1);
+    private List<? extends NodeProperty<?>> nodeProperties = Collections.emptyList();
+    private ComputerLauncher launcher;
 
     protected SharedSlave(ItemGroup parent, String name) {
         super(parent, name);
@@ -56,7 +67,93 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
         return false; // TODO
     }
 
-    //////// AbstractItem
+    public ComputerLauncher getLauncher() {
+        return launcher;
+    }
+
+    public void setLauncher(ComputerLauncher launcher) {
+        this.launcher = launcher;
+    }
+
+    /**
+     * Returns the remote file system path to be used for this node.
+     *
+     * @return the remote file system path to be used for this node.
+     */
+    public String getRemoteFS() {
+        return remoteFS;
+    }
+
+    /**
+     * Returns the number of executors supported on this node.
+     *
+     * @return the number of executors supported on this node.
+     */
+    public int getNumExecutors() {
+        return numExecutors;
+    }
+
+    /**
+     * Returns the mode of this Node with respect to what types of job can be run on it.
+     *
+     * @return the mode of this Node with respect to what types of job can be run on it.
+     */
+    public Node.Mode getMode() {
+        return mode;
+    }
+
+    /**
+     * Returns the label string for this node.
+     *
+     * @return the label string for this node.
+     */
+    public String getLabelString() {
+        return labelString;
+    }
+
+    /**
+     * Returns the retention strategy for this node.
+     *
+     * @return the retention strategy for this node.
+     */
+    public RetentionStrategy getRetentionStrategy() {
+        return retentionStrategy;
+    }
+
+    /**
+     * Returns the properties of this node.
+     *
+     * @return the properties of this node.
+     */
+    public List<? extends NodeProperty<?>> getNodeProperties() {
+        return nodeProperties;
+    }
+
+    public void setRemoteFS(String remoteFS) {
+        this.remoteFS = remoteFS;
+    }
+
+    public void setNumExecutors(int numExecutors) {
+        this.numExecutors = numExecutors;
+    }
+
+    public void setMode(Node.Mode mode) {
+        this.mode = mode;
+    }
+
+    public void setLabelString(String labelString) {
+        this.labelString = labelString;
+    }
+
+    public void setRetentionStrategy(RetentionStrategy<? extends Computer> retentionStrategy) {
+        this.retentionStrategy = retentionStrategy;
+    }
+
+    public void setNodeProperties(List<? extends NodeProperty<?>> nodeProperties) {
+        this.nodeProperties = nodeProperties;
+    }
+
+//////// AbstractItem
 
     @Override
     public Collection<? extends Job> getAllJobs() {
@@ -105,6 +202,10 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
         return properties;
     }
 
+    public void setProperties(DescribableList<SharedSlaveProperty<?>, SharedSlavePropertyDescriptor> properties) {
+        this.properties = properties;
+    }
+
     public List<hudson.model.Action> getPropertyActions() {
         ArrayList<Action> result = new ArrayList<hudson.model.Action>();
         for (SharedSlaveProperty<?> prop: properties) {
@@ -122,6 +223,8 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
         description = req.getParameter("description");
         try {
             JSONObject json = req.getSubmittedForm();
+
+            req.bindJSON(this, json.getJSONObject("node"));
 
             PropertyList t = new PropertyList(properties.toList());
             t.rebuild(req,json.optJSONObject("properties"), SharedSlavePropertyDescriptor.all());
@@ -252,6 +355,15 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
         @Override
         public TopLevelItem newInstance(ItemGroup parent, String name) {
             return new SharedSlave(parent, name);
+        }
+
+        public List<NodePropertyDescriptor> getNodePropertyDescriptors() {
+            return Collections.emptyList();
+
+        }
+
+        public List<SharedSlavePropertyDescriptor> getSlavePropertyDescriptors() {
+            return SharedSlavePropertyDescriptor.all();
         }
     }
 

@@ -30,7 +30,7 @@ THE SOFTWARE.
     <st:include page="sidepanel.jelly"/>
     <l:main-panel>
       <f:form method="post" action="configSubmit" name="config">
-        <j:set var="instance" value="${it.node}" />
+        <j:set var="instance" value="${it}" />
         <j:set var="descriptor" value="${instance.descriptor}" />
 
         <f:entry title="${%Name}" field="name">
@@ -42,7 +42,16 @@ THE SOFTWARE.
         </f:entry>
 
         <!-- main body of the configuration -->
-        <st:include it="${instance}" page="configure-entries.jelly" />
+        <f:section name="node" title="Details">
+          <st:include page="configure-entries.jelly"/>
+        </f:section>
+
+        <!-- TODO: find a way of getting the Node descriptors when we are no longer based on Node -->
+
+        <f:descriptorList title="${%Node Properties}" descriptors="${descriptor.getNodePropertyDescriptors()}" field="nodeProperties" />
+
+        <f:descriptorList title="${%Slave Properties}" descriptors="${descriptor.getSlavePropertyDescriptors()}" field="properties" />
+
 
         <j:if test="${h.hasPermission(it,it.CONFIGURE)}">
           <f:block>

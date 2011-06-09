@@ -43,7 +43,7 @@ THE SOFTWARE.
   <f:slave-mode name="mode" node="${it}" />
 
   <!-- TODO: should be packaged as a tag -->
-  <f:dropdownList name="slave.launcher" title="${%Launch method}"
+  <f:dropdownList name="launcher" title="${%Launch method}"
                   help="${descriptor.getHelpFile('launcher')}">
     <j:forEach var="d" items="${h.getComputerLauncherDescriptors()}">
       <f:dropdownListBlock value="${d.clazz.name}" name="${d.displayName}"
@@ -62,7 +62,7 @@ THE SOFTWARE.
 
   <!-- pointless to show this if there's only one option, which is the default -->
   <j:if test="${h.getRetentionStrategyDescriptors().size() gt 1}">
-    <f:dropdownList name="slave.retentionStrategy" title="${%Availability}"
+    <f:dropdownList name="retentionStrategy" title="${%Availability}"
                     help="/help/system-config/master-slave/availability.html">
       <j:forEach var="d" items="${h.getRetentionStrategyDescriptors()}">
         <j:if test="${d != null}">
@@ -81,11 +81,4 @@ THE SOFTWARE.
       </j:forEach>
     </f:dropdownList>
   </j:if>
-
-  <!-- TODO: find a way of getting the Node descriptors when we are no longer based on Node -->
-
-  <f:descriptorList title="${%Node Properties}" descriptors="${h.getNodePropertyDescriptors(descriptor.clazz)}" field="nodeProperties" />
-
-  <!-- TODO: put in the slave properties -->
-
 </j:jelly>
