@@ -1,6 +1,7 @@
 package metanectar.model;
 
 import hudson.Extension;
+import hudson.Functions;
 import hudson.Util;
 import hudson.cli.declarative.CLIMethod;
 import hudson.model.AbstractItem;
@@ -364,6 +365,11 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
 
         public List<SharedSlavePropertyDescriptor> getSlavePropertyDescriptors() {
             return SharedSlavePropertyDescriptor.all();
+        }
+
+        public List<Descriptor<ComputerLauncher>> getComputerLauncherDescriptors() {
+            // TODO filter
+            return Hudson.getInstance().<ComputerLauncher,Descriptor<ComputerLauncher>>getDescriptorList(ComputerLauncher.class);
         }
     }
 
