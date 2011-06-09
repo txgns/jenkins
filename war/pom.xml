@@ -290,7 +290,7 @@ THE SOFTWARE.
         <!-- this is really just a patched version of maven-jetty-plugin to workaround issue #932 -->
         <groupId>org.jenkins-ci.tools</groupId>
         <artifactId>maven-jenkins-dev-plugin</artifactId>
-        <version>6.1.26-jenkins-1</version>
+        <version>6.1.26-jenkins-2</version>
         <configuration>
           <contextPath>${contextPath}</contextPath>
           <!--
@@ -354,7 +354,7 @@ THE SOFTWARE.
               <!-- load view resources from the source directly, again for real time change -->
               <name>stapler.resourcePath</name>
               <value>
-                  ../core/src/main/resources;
+                  ${basedir}/../core/src/main/resources;
               </value>
             </systemProperty>
             <systemProperty>
