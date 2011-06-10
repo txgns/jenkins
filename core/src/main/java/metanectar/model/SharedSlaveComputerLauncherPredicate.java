@@ -26,6 +26,6 @@ public final class SharedSlaveComputerLauncherPredicate extends DescriptorBlackL
 
     @Override
     public boolean apply(@Nullable Descriptor<ComputerLauncher> input) {
-        return super.apply(input) && input != null && MetaNectarExtensionPoint.class.isAssignableFrom(input.clazz);
+        return super.apply(input) && input != null && !MetaNectarExtensionPoint.class.isAssignableFrom(input.clazz);
     }
 }
