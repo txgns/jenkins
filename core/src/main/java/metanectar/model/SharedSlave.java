@@ -1,6 +1,7 @@
 package metanectar.model;
 
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.Util;
@@ -373,14 +374,10 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
         }
 
         public List<Descriptor<ComputerLauncher>> getComputerLauncherDescriptors() {
-            ArrayList<Descriptor<ComputerLauncher>> result = new ArrayList<Descriptor<ComputerLauncher>>();
             DescriptorExtensionList<ComputerLauncher, Descriptor<ComputerLauncher>> unfiltered =
                     Hudson.getInstance().getDescriptorList(ComputerLauncher.class);
-            for (Descriptor<ComputerLauncher> filtered : Iterables.filter(unfiltered,
-                    SharedSlaveComputerLauncherPredicate.getInstance())) {
-                result.add(filtered);
-            }
-            return result;
+            return Lists.newArrayList(Iterables.filter(unfiltered,
+                    SharedSlaveComputerLauncherPredicate.getInstance()));
         }
 
     }
