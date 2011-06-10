@@ -12,6 +12,14 @@
 
       <t:editableDescription permission="${it.CONFIGURE}"/>
 
+      <div id="ajax-status">
+          <st:include page="status.jelly"/>
+      </div>
+
+      <script type="text/javascript">
+          new Ajax.PeriodicalUpdater('ajax-status', './status')
+      </script>
+
     </l:main-panel>
   </l:layout>
 </j:jelly>

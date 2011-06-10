@@ -1,7 +1,14 @@
 package metanectar.model;
 
+import antlr.ANTLRException;
+import com.cloudbees.commons.metanectar.provisioning.ComputerLauncherFactory;
+import com.cloudbees.commons.metanectar.provisioning.FutureComputerLauncherFactory;
+import com.cloudbees.commons.metanectar.provisioning.LeaseId;
+import com.cloudbees.commons.metanectar.provisioning.ProvisioningException;
+import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.thoughtworks.xstream.XStreamException;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.Util;
@@ -14,17 +21,25 @@ import hudson.model.HealthReport;
 import hudson.model.Hudson;
 import hudson.model.ItemGroup;
 import hudson.model.Job;
+import hudson.model.Label;
 import hudson.model.Node;
 import hudson.model.StatusIcon;
 import hudson.model.StockStatusIcon;
+import hudson.model.TaskListener;
 import hudson.model.TopLevelItem;
 import hudson.model.TopLevelItemDescriptor;
+import hudson.model.labels.LabelAtom;
+import hudson.model.labels.LabelExpression;
 import hudson.slaves.CloudRetentionStrategy;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.NodeProperty;
 import hudson.slaves.NodePropertyDescriptor;
 import hudson.slaves.RetentionStrategy;
 import hudson.util.DescribableList;
+import hudson.util.IOException2;
+import metanectar.provisioning.LeaseIdImpl;
+import metanectar.provisioning.SharedSlaveRetentionStrategy;
+import net.jcip.annotations.GuardedBy;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.StaplerRequest;
@@ -33,6 +48,8 @@ import org.kohsuke.stapler.export.Exported;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URLEncoder;
@@ -40,7 +57,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 
@@ -49,7 +71,8 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
  *
  * @author Stephen Connolly
  */
-public class SharedSlave extends AbstractItem implements TopLevelItem {
+public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveManager {
+    private static final Logger LOGGER = Logger.getLogger(SharedSlave.class.getName());
     // property state
 
     protected volatile DescribableList<SharedSlaveProperty<?>, SharedSlavePropertyDescriptor> properties =
@@ -61,13 +84,17 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
     private RetentionStrategy<? extends Computer> retentionStrategy = new CloudRetentionStrategy(1);
     private List<? extends NodeProperty<?>> nodeProperties = Collections.emptyList();
     private ComputerLauncher launcher;
+    @GuardedBy("this")
+    private LeaseId leaseId;
 
     protected SharedSlave(ItemGroup parent, String name) {
         super(parent, name);
     }
 
     public boolean isBuilding() {
-        return false; // TODO
+        synchronized (this) {
+            return leaseId != null;
+        }
     }
 
     public ComputerLauncher getLauncher() {
@@ -111,7 +138,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
      * @return the label string for this node.
      */
     public String getLabelString() {
-        return labelString;
+        return Util.fixNull(labelString).trim();
     }
 
     /**
@@ -295,6 +322,19 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
         }
     }
 
+    public void doForceRelease(StaplerRequest req, StaplerResponse rsp)
+            throws IOException, ServletException, InterruptedException {
+        synchronized (this) {
+            leaseId = null;
+            try {
+                save();
+            } catch (IOException e) {
+                LOGGER.log(Level.INFO, "SharedSlave[{0}] could not persist", getUrl());
+            }
+        }
+        rsp.sendRedirect(".");  // go to the top page
+    }
+
     /**
      * Deletes this item.
      */
@@ -353,6 +393,92 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
         Util.deleteRecursive(getRootDir());
     }
 
+    public ComputerLauncherFactory newComputerLauncherFactory(LeaseId leaseId) {
+        return new ComputerLauncherFactoryImpl(leaseId, getName(), getDescription(), getNumExecutors(),
+                getLabelString(), getRemoteFS(), getMode(), new SharedSlaveRetentionStrategy(), getNodeProperties(),
+                getLauncher());
+    }
+
+    public boolean canProvision(String labelExpression) {
+        synchronized (this) {
+            if (leaseId != null) {
+                // TODO decide if this applies always or just right now.
+                return false;
+            }
+            try {
+                if (labelExpression == null) {
+                    return Node.Mode.NORMAL.equals(getMode());
+                }
+                Label label = LabelExpression.parseExpression(labelExpression);
+                return label.matches(Label.parse(getLabelString()));
+            } catch (ANTLRException e) {
+                // if we don't understand the label expression we cannot provision it (might be a new syntax... our
+                // problem)
+                return false;
+            }
+        }
+    }
+
+    public Collection<String> getLabels() {
+        HashSet<String> result = new HashSet<String>();
+        for (LabelAtom label : Label.parse(getLabelString())) {
+            result.add(label.getName());
+        }
+        return result;
+    }
+
+    public FutureComputerLauncherFactory provision(String labelExpression, TaskListener listener, int numOfExecutors)
+            throws ProvisioningException {
+        LOGGER.log(Level.INFO, "", new Object[]{});
+        return new FutureComputerLauncherFactory(getName(), numOfExecutors,
+                Computer.threadPoolForRemoting.submit(new Callable<ComputerLauncherFactory>() {
+                    public ComputerLauncherFactory call() throws Exception {
+                        synchronized (SharedSlave.this) {
+                            while (leaseId != null) {
+                                SharedSlave.this.wait();
+                            }
+                            try {
+                                leaseId = new LeaseIdImpl(UUID.randomUUID().toString());
+                                LOGGER.log(Level.INFO, "SharedSlave[{0}] lent out on lease {1}",
+                                        new Object[]{getUrl(), leaseId});
+                                return newComputerLauncherFactory(leaseId);
+                            } finally {
+                                try {
+                                    save();
+                                } catch (IOException e) {
+                                    LOGGER.log(Level.INFO, "SharedSlave[{0}] could not persist", getUrl());
+                                }
+                            }
+                        }
+                    }
+                }));
+    }
+
+    public void release(ComputerLauncherFactory allocatedSlave) {
+        synchronized (this) {
+            if (leaseId != null && leaseId.equals(allocatedSlave.getLeaseId())) {
+                LOGGER.log(Level.INFO, "SharedSlave[{0}] returned from lease {1}", new Object[]{getUrl(), leaseId});
+                leaseId = null;
+                this.notifyAll();
+                try {
+                    save();
+                } catch (IOException e) {
+                    LOGGER.log(Level.INFO, "SharedSlave[{0}] could not persist", getUrl());
+                }
+            }
+        }
+    }
+
+    public boolean isProvisioned(LeaseId id) {
+        synchronized (this) {
+            return leaseId != null && leaseId.equals(id);
+        }
+    }
+
+    public LeaseId getLeaseId() {
+        return leaseId;
+    }
+
     @Extension
     public static class DescriptorImpl extends TopLevelItemDescriptor {
         @Override
@@ -403,6 +529,108 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
             for (SharedSlaveProperty p : this) {
                 p.setOwner(getOwner());
             }
+        }
+    }
+
+    public static class ComputerLauncherFactoryImpl extends ComputerLauncherFactory {
+
+        private String remoteFS;
+        private int numExecutors;
+        private Node.Mode mode;
+        private String labelString;
+        private RetentionStrategy<? extends Computer> retentionStrategy;
+        private List<? extends NodeProperty<?>> nodeProperties;
+        private transient ComputerLauncher launcher;
+        private Class<? extends ComputerLauncher> launcherClass;
+        private String name;
+        private String description;
+
+        public ComputerLauncherFactoryImpl(LeaseId leaseId, String name, String description, int numExecutors,
+                                           String labelString,
+                                           String remoteFS, Node.Mode mode,
+                                           RetentionStrategy<? extends Computer> retentionStrategy,
+                                           List<? extends NodeProperty<?>> nodeProperties, ComputerLauncher launcher) {
+            super(leaseId);
+            this.name = name;
+            this.description = description;
+            this.numExecutors = numExecutors;
+            this.labelString = labelString;
+            this.remoteFS = remoteFS;
+            this.mode = mode;
+            this.retentionStrategy = retentionStrategy;
+            this.nodeProperties = nodeProperties;
+            this.launcherClass = launcher.getClass();
+            this.launcher = launcher; // save init on this JVM
+        }
+
+        /**
+         * Constructor for the de-serialization path
+         */
+        protected ComputerLauncherFactoryImpl() {
+        }
+
+        private void writeObject(ObjectOutputStream stream) throws IOException {
+            // fill in the latest data for the launcher
+            stream.defaultWriteObject();
+            try {
+                stream.writeUTF(Hudson.XSTREAM.toXML(launcher));
+            } catch (XStreamException e) {
+                throw new IOException2(e);
+            }
+        }
+
+        private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
+            stream.defaultReadObject();
+            try {
+                launcher = launcherClass.cast(Hudson.XSTREAM.fromXML(stream.readUTF()));
+            } catch (XStreamException e) {
+                throw new IOException2(e);
+            }
+        }
+
+        @Override
+        public String getNodeDescription() {
+            return description;
+        }
+
+        @Override
+        public Node.Mode getMode() {
+            return mode;
+        }
+
+        @Override
+        public RetentionStrategy getRetentionStrategy() {
+            return retentionStrategy;
+        }
+
+        @Override
+        public List<? extends NodeProperty<?>> getNodeProperties() {
+            return nodeProperties == null ? Collections.<NodeProperty<?>>emptyList() : nodeProperties;
+        }
+
+        @Override
+        public String getNodeName() {
+            return name;
+        }
+
+        @Override
+        public String getRemoteFS() {
+            return remoteFS;
+        }
+
+        @Override
+        public int getNumExecutors() {
+            return numExecutors;
+        }
+
+        @Override
+        public String getLabelString() {
+            return labelString;
+        }
+
+        @Override
+        public synchronized ComputerLauncher getOrCreateLauncher() throws IOException, InterruptedException {
+            return launcher;
         }
     }
 

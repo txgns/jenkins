@@ -13,6 +13,7 @@ import hudson.util.io.ReopenableFileOutputStream;
 import metanectar.Config;
 import metanectar.provisioning.IdentifierFinder;
 import metanectar.provisioning.MetaNectarSlaveManager;
+import metanectar.provisioning.ScopedSlaveManager;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.StaplerRequest;
@@ -94,7 +95,7 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
 
     protected transient volatile Channel channel;
 
-    protected transient MetaNectarSlaveManager slaveManager;
+    protected transient SlaveManager slaveManager;
 
     // logging state
 
@@ -236,9 +237,8 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
         this.error = null;
         ConnectedMasterListener.fireOnConnected(this);
 
-        slaveManager = new MetaNectarSlaveManager();
-        channel.setProperty(SlaveManager.class.getName(),
-                channel.export(SlaveManager.class, slaveManager));
+        slaveManager = new ScopedSlaveManager(getParent());
+        channel.setProperty(SlaveManager.class.getName(), channel.export(SlaveManager.class, slaveManager));
 
         taskListener.getLogger().println("Connected");
         taskListener.getLogger().println(toString());
