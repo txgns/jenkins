@@ -34,14 +34,14 @@ public abstract class SharedSlaveProperty<S extends SharedSlave>
     public abstract Collection<? extends Action> getSlaveActions(SharedSlave m);
 
     /**
-     * Lists up all the registered {@link metanectar.model.ConnectedMasterPropertyDescriptor}s in the system.
+     * Lists up all the registered {@link metanectar.model.SharedSlavePropertyDescriptor}s in the system.
      */
     public static DescriptorExtensionList<SharedSlaveProperty<?>,SharedSlavePropertyDescriptor> all() {
         return (DescriptorExtensionList) Hudson.getInstance().getDescriptorList(SharedSlaveProperty.class);
     }
 
     /**
-     * List up all {@link metanectar.model.ConnectedMasterPropertyDescriptor}s that are applicable for the
+     * List up all {@link metanectar.model.SharedSlavePropertyDescriptor}s that are applicable for the
      * given connected master.
      */
     public static List<SharedSlavePropertyDescriptor> for_(SharedSlave node) {
