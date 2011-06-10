@@ -1,6 +1,7 @@
 package com.cloudbees.hudson.model;
 
 import java.io.File;
+import java.io.IOException;
 
 public class FileUtils {
 
@@ -25,5 +26,14 @@ public class FileUtils {
             return new File(relativeTo(fromAbsolutePath.getParentFile(), relativeToRoot), fromAbsolutePath.getName());
         }
     }
+    
+
+    public static String toAbsolutePathOnMaster(String absolutePathOnSlave)
+            throws IOException {
+        File relativePath = FileUtils.relativeTo(new File(absolutePathOnSlave),
+                new File(MasterConfig.getSlaveRootOnSlave()));
+        return new File(MasterConfig.getSlaveRootOnMaster(), relativePath.getPath()).getCanonicalPath();
+    }
+    
 
 }

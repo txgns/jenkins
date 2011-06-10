@@ -35,20 +35,16 @@ public class PsuedoNode extends Node {
      */
     @Override
     public FilePath createPath(String absolutePath) {
-        File localSlaveRootDir = MasterConfig.getSlaveRootOnMaster();
-
-        File relativePath = FileUtils.relativeTo(new File(absolutePath),
-                new File(MasterConfig.getSlaveRootOnSlave()));
 
         try {
-            return Hudson.getInstance().createPath(new File(MasterConfig.getSlaveRootOnMaster(), relativePath.getPath()).getCanonicalPath());
+            return Hudson.getInstance().createPath(FileUtils.toAbsolutePathOnMaster(absolutePath));
         } catch (IOException e) {
             LOGGER.log(Level.WARNING,"Error translating path from slave to master",e);
             return null;
         }
 
     }
-    
+
     @Override
     public Computer toComputer() {
         return computer;
