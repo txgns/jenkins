@@ -9,11 +9,6 @@ import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.thoughtworks.xstream.XStreamException;
-import com.thoughtworks.xstream.converters.Converter;
-import com.thoughtworks.xstream.converters.MarshallingContext;
-import com.thoughtworks.xstream.converters.UnmarshallingContext;
-import com.thoughtworks.xstream.io.HierarchicalStreamReader;
-import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.Util;
@@ -35,7 +30,6 @@ import hudson.model.TopLevelItem;
 import hudson.model.TopLevelItemDescriptor;
 import hudson.model.labels.LabelAtom;
 import hudson.model.labels.LabelExpression;
-import hudson.remoting.Channel;
 import hudson.slaves.CloudRetentionStrategy;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.NodeProperty;
@@ -43,9 +37,8 @@ import hudson.slaves.NodePropertyDescriptor;
 import hudson.slaves.RetentionStrategy;
 import hudson.util.DescribableList;
 import hudson.util.IOException2;
-import hudson.util.Secret;
-import hudson.util.XStream2;
 import metanectar.provisioning.LeaseIdImpl;
+import metanectar.provisioning.NotSecretXStream;
 import metanectar.provisioning.SharedSlaveRetentionStrategy;
 import net.jcip.annotations.GuardedBy;
 import net.sf.json.JSONException;
@@ -71,8 +64,6 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 
@@ -583,9 +574,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
             // fill in the latest data for the launcher
             stream.defaultWriteObject();
             try {
-                XStream2 xStream = new XStream2();
-                xStream.registerConverter(new SecretConverterImpl(), Integer.MAX_VALUE);
-                stream.writeUTF(xStream.toXML(launcher));
+                stream.writeUTF(NotSecretXStream.INSTANCE.toXML(launcher));
             } catch (XStreamException e) {
                 throw new IOException2(e);
             }
@@ -594,9 +583,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
         private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
             stream.defaultReadObject();
             try {
-                XStream2 xStream = new XStream2();
-                xStream.registerConverter(new SecretConverterImpl(), Integer.MAX_VALUE);
-                launcher = launcherClass.cast(xStream.fromXML(stream.readUTF()));
+                launcher = launcherClass.cast(NotSecretXStream.INSTANCE.fromXML(stream.readUTF()));
             } catch (XStreamException e) {
                 throw new IOException2(e);
             }
@@ -645,24 +632,6 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
         @Override
         public synchronized ComputerLauncher getOrCreateLauncher() throws IOException, InterruptedException {
             return launcher;
-        }
-    }
-
-    public static final class SecretConverterImpl implements Converter {
-        public SecretConverterImpl() {
-        }
-
-        public boolean canConvert(Class type) {
-            return type==Secret.class && Channel.current() != null;
-        }
-
-        public void marshal(Object source, HierarchicalStreamWriter writer, MarshallingContext context) {
-            Secret src = (Secret) source;
-            writer.setValue(src.getPlainText());
-        }
-
-        public Object unmarshal(HierarchicalStreamReader reader, final UnmarshallingContext context) {
-            return Secret.fromString(reader.getValue());
         }
     }
 
