@@ -1,11 +1,11 @@
 package metanectar.model;
 
 import com.google.common.base.Predicate;
-import com.sun.istack.internal.Nullable;
 import hudson.model.Describable;
 import hudson.model.Descriptor;
 import hudson.model.Hudson;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.Charset;

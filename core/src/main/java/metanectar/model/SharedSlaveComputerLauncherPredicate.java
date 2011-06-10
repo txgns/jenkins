@@ -1,9 +1,10 @@
 package metanectar.model;
 
-import com.sun.istack.internal.Nullable;
 import hudson.model.Descriptor;
 import hudson.slaves.ComputerLauncher;
 import metanectar.MetaNectarExtensionPoint;
+
+import javax.annotation.Nullable;
 
 /**
  * Checks that the supplied {@link ComputerLauncher} descriptors are ones that can be used for {@link SharedSlave}s.
