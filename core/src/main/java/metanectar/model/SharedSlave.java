@@ -220,7 +220,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
     //////// Methods to handle the status icon
 
     public String getIcon() {
-        return "slave-computer.png";
+        return isBuilding() ? "slave-computer-w.png" : "slave-computer.png";
     }
 
     public StatusIcon getIconColor() {
@@ -477,7 +477,9 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
     }
 
     public LeaseId getLeaseId() {
+        synchronized (this) {
         return leaseId;
+        }
     }
 
     @Extension
