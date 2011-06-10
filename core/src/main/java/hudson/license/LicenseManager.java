@@ -172,6 +172,9 @@ public class LicenseManager extends ManagementLink implements Describable<Licens
             s = "Evaluation License";
         } else {
             s = "Licensed to "+parsed.getCustomerName();
+            String ou = parsed.getOrganizationalUnit();
+            if (ou!=null)
+                s += " - "+ou;
         }
         int d = getRemainingDays();
         if (d<0)

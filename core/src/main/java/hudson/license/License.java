@@ -52,6 +52,7 @@ public final class License {
     private String serverKey;
     private final long expirationDate;
     private final String customerName;
+    private String organizationalUnit;
 
     License(String key, String certificate) throws GeneralSecurityException, IOException {
         this.key = key = key.trim();
@@ -106,6 +107,7 @@ public final class License {
             }
             expirationDate = cert.getNotAfter().getTime();
             customerName = name.getCommonName();
+            organizationalUnit = name.getOrganizationalUnit();
         }
 
         if (!LicenseManager.getHudsonIdHash().equals(serverKey))
@@ -141,6 +143,10 @@ public final class License {
 
     public String getCustomerName() {
         return customerName;
+    }
+
+    public String getOrganizationalUnit() {
+        return organizationalUnit;
     }
 
     public int getExecutorsLimit() {
