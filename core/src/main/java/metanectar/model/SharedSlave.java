@@ -1,7 +1,8 @@
 package metanectar.model;
 
+import com.google.common.collect.Iterables;
+import hudson.DescriptorExtensionList;
 import hudson.Extension;
-import hudson.Functions;
 import hudson.Util;
 import hudson.cli.declarative.CLIMethod;
 import hudson.model.AbstractItem;
@@ -50,7 +51,7 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 public class SharedSlave extends AbstractItem implements TopLevelItem {
     // property state
 
-    protected volatile DescribableList<SharedSlaveProperty<?>,SharedSlavePropertyDescriptor> properties =
+    protected volatile DescribableList<SharedSlaveProperty<?>, SharedSlavePropertyDescriptor> properties =
             new PropertyList(this);
     private String remoteFS;
     private int numExecutors;
@@ -199,7 +200,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
 
     //////// Properties
 
-    public DescribableList<SharedSlaveProperty<?>,SharedSlavePropertyDescriptor> getProperties() {
+    public DescribableList<SharedSlaveProperty<?>, SharedSlavePropertyDescriptor> getProperties() {
         return properties;
     }
 
@@ -209,7 +210,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
 
     public List<hudson.model.Action> getPropertyActions() {
         ArrayList<Action> result = new ArrayList<hudson.model.Action>();
-        for (SharedSlaveProperty<?> prop: properties) {
+        for (SharedSlaveProperty<?> prop : properties) {
             result.addAll(prop.getSlaveActions(this));
         }
         return result;
@@ -218,7 +219,8 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
     //////// Action methods
 
     public synchronized void doConfigSubmit(StaplerRequest req,
-            StaplerResponse rsp) throws IOException, ServletException, Descriptor.FormException {
+                                            StaplerResponse rsp)
+            throws IOException, ServletException, Descriptor.FormException {
         checkPermission(CONFIGURE);
 
         description = req.getParameter("description");
@@ -228,7 +230,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
             req.bindJSON(this, json.getJSONObject("node"));
 
             PropertyList t = new PropertyList(properties.toList());
-            t.rebuild(req,json.optJSONObject("properties"), SharedSlavePropertyDescriptor.all());
+            t.rebuild(req, json.optJSONObject("properties"), SharedSlavePropertyDescriptor.all());
             properties.clear();
             for (SharedSlaveProperty p : t) {
                 p.setOwner(this);
@@ -261,7 +263,8 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
     /**
      * Accepts the new description.
      */
-    public synchronized void doSubmitDescription( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
+    public synchronized void doSubmitDescription(StaplerRequest req, StaplerResponse rsp)
+            throws IOException, ServletException {
         checkPermission(CONFIGURE);
 
         setDescription(req.getParameter("description"));
@@ -271,17 +274,20 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
     /**
      * Deletes this item.
      */
-    @CLIMethod(name="delete-job")
-    public void doDoDelete( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, InterruptedException {
+    @CLIMethod(name = "delete-job")
+    public void doDoDelete(StaplerRequest req, StaplerResponse rsp)
+            throws IOException, ServletException, InterruptedException {
         requirePOST();
         delete();
         if (rsp != null) // null for CLI
-            rsp.sendRedirect2(req.getContextPath()+"/"+getParent().getUrl());
+        {
+            rsp.sendRedirect2(req.getContextPath() + "/" + getParent().getUrl());
+        }
     }
 
-    public void delete( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
+    public void delete(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
         try {
-            doDoDelete(req,rsp);
+            doDoDelete(req, rsp);
         } catch (InterruptedException e) {
             // TODO: allow this in Stapler
             throw new ServletException(e);
@@ -360,7 +366,6 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
 
         public List<NodePropertyDescriptor> getNodePropertyDescriptors() {
             return Collections.emptyList();
-
         }
 
         public List<SharedSlavePropertyDescriptor> getSlavePropertyDescriptors() {
@@ -368,12 +373,19 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
         }
 
         public List<Descriptor<ComputerLauncher>> getComputerLauncherDescriptors() {
-            // TODO filter
-            return Hudson.getInstance().<ComputerLauncher,Descriptor<ComputerLauncher>>getDescriptorList(ComputerLauncher.class);
+            ArrayList<Descriptor<ComputerLauncher>> result = new ArrayList<Descriptor<ComputerLauncher>>();
+            DescriptorExtensionList<ComputerLauncher, Descriptor<ComputerLauncher>> unfiltered =
+                    Hudson.getInstance().getDescriptorList(ComputerLauncher.class);
+            for (Descriptor<ComputerLauncher> filtered : Iterables.filter(unfiltered,
+                    SharedSlaveComputerLauncherPredicate.getInstance())) {
+                result.add(filtered);
+            }
+            return result;
         }
+
     }
 
-    public static class PropertyList extends DescribableList<SharedSlaveProperty<?>,SharedSlavePropertyDescriptor> {
+    public static class PropertyList extends DescribableList<SharedSlaveProperty<?>, SharedSlavePropertyDescriptor> {
         private PropertyList(SharedSlave owner) {
             super(owner);
         }
@@ -386,13 +398,14 @@ public class SharedSlave extends AbstractItem implements TopLevelItem {
         }
 
         public SharedSlave getOwner() {
-            return (SharedSlave)owner;
+            return (SharedSlave) owner;
         }
 
         @Override
         protected void onModified() throws IOException {
-            for (SharedSlaveProperty p : this)
+            for (SharedSlaveProperty p : this) {
                 p.setOwner(getOwner());
+            }
         }
     }
 

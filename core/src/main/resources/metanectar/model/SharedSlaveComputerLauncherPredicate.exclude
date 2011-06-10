@@ -1,0 +1,5 @@
+# this one is for masters only
+metanectar.provisioning.slave.ConfiguredComputerLauncher
+
+# this one does not make sense when sent from our machine to a random master
+hudson.slaves.CommandLauncher
