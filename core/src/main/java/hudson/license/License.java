@@ -108,6 +108,7 @@ public final class License {
             expirationDate = cert.getNotAfter().getTime();
             customerName = name.getCommonName();
             organizationalUnit = name.getOrganizationalUnit();
+            if (organizationalUnit.equals("customer"))  organizationalUnit=null;    // old licenses put a generic value here. That's pointless to show.
         }
 
         if (!LicenseManager.getHudsonIdHash().equals(serverKey))
