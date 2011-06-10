@@ -30,6 +30,7 @@ import hudson.model.TopLevelItem;
 import hudson.model.TopLevelItemDescriptor;
 import hudson.model.labels.LabelAtom;
 import hudson.model.labels.LabelExpression;
+import hudson.slaves.Cloud;
 import hudson.slaves.CloudRetentionStrategy;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.NodeProperty;
@@ -37,6 +38,7 @@ import hudson.slaves.NodePropertyDescriptor;
 import hudson.slaves.RetentionStrategy;
 import hudson.util.DescribableList;
 import hudson.util.IOException2;
+import metanectar.cloud.AbstractProvisioningCloud;
 import metanectar.provisioning.LeaseIdImpl;
 import metanectar.provisioning.NotSecretXStream;
 import metanectar.provisioning.SharedSlaveRetentionStrategy;
@@ -88,6 +90,10 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
     private ComputerLauncher launcher;
     @GuardedBy("this")
     private Set<LeaseId> leaseIds = new HashSet<LeaseId>();
+    /**
+     * Active {@link hudson.slaves.Cloud}s.
+     */
+    private final CloudList clouds = new CloudList(this);
 
     protected SharedCloud(ItemGroup parent, String name) {
         super(parent, name);
@@ -97,6 +103,10 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
         synchronized (this) {
             return !leaseIds.isEmpty();
         }
+    }
+
+    public CloudList getClouds() {
+        return clouds;
     }
 
     public ComputerLauncher getLauncher() {
@@ -258,6 +268,8 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
             JSONObject json = req.getSubmittedForm();
 
             req.bindJSON(this, json.getJSONObject("node"));
+
+            clouds.rebuildHetero(req, json, AbstractProvisioningCloud.getSlaveProvisioningCloudDescriptors(), "cloud");
 
             PropertyList t = new PropertyList(properties.toList());
             t.rebuild(req, json.optJSONObject("properties"), SharedCloudPropertyDescriptor.all());
@@ -636,6 +648,27 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
         @Override
         public synchronized ComputerLauncher getOrCreateLauncher() throws IOException, InterruptedException {
             return launcher;
+        }
+    }
+
+    public static class CloudList extends DescribableList<Cloud,Descriptor<Cloud>> {
+        public CloudList(SharedCloud h) {
+            super(h);
+        }
+
+        public CloudList() {// needed for XStream deserialization
+        }
+
+        public Cloud getByName(String name) {
+            for (Cloud c : this)
+                if (c.name.equals(name))
+                    return c;
+            return null;
+        }
+
+        @Override
+        protected void onModified() throws IOException {
+            super.onModified();
         }
     }
 

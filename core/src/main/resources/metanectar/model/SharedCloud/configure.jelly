@@ -41,6 +41,21 @@ THE SOFTWARE.
           <f:textarea name="description" value="${it.description}"/>
         </f:entry>
 
+        <j:invokeStatic var="cloudDescriptors"
+                        className="metanectar.cloud.AbstractProvisioningCloud"
+                        method="getSlaveProvisioningCloudDescriptors"/>
+        <j:if test="${!empty(cloudDescriptors)}">
+          <f:section title="${%Cloud}">
+            <f:block>
+              <f:hetero-list name="cloud" hasHeader="true"
+                             descriptors="${cloudDescriptors}"
+                             items="${it.clouds}"
+                             addCaption="${%Add a new cloud}"
+                             deleteCaption="${%Delete cloud}"/>
+            </f:block>
+          </f:section>
+        </j:if>
+
         <!-- main body of the configuration -->
         <f:section name="node" title="Details">
           <st:include page="configure-entries.jelly"/>
