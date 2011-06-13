@@ -458,6 +458,26 @@ THE SOFTWARE.
               </execution>
             </executions>
           </plugin>
+          <plugin>
+            <groupId>org.jvnet.maven-antrun-extended-plugin</groupId>
+            <artifactId>maven-antrun-extended-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>work-around-people-doing-things-far-from-the-maven-way</id>
+                <phase>generate-test-resources</phase>
+                <goals>
+                  <goal>run</goal>
+                </goals>
+                <configuration>
+                  <tasks>
+                    <copy todir="${project.build.directory}/${project.build.finalName}">
+                      <fileset dir="${project.build.directory}/generated-resources"/>
+                    </copy>
+                  </tasks>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
         </plugins>
       </build>
     </profile>
