@@ -312,6 +312,12 @@ THE SOFTWARE.
             -->
             <additionalClassesDirectory>../core/target/classes</additionalClassesDirectory>
           </additionalClassesDirectories>
+          <webAppConfig>
+            <contextPath>${contextPath}</contextPath>
+            <baseResource implementation="org.mortbay.resource.ResourceCollection">
+              <resourcesAsCSV>${basedir}/src/main/webapp,${project.build.directory}/generated-resources</resourcesAsCSV>
+            </baseResource>
+          </webAppConfig>
           <userRealms>
             <userRealm implementation="org.mortbay.jetty.security.HashUserRealm">
               <name>default</name>
@@ -455,26 +461,6 @@ THE SOFTWARE.
                 <goals>
                   <goal>run</goal>
                 </goals>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.jvnet.maven-antrun-extended-plugin</groupId>
-            <artifactId>maven-antrun-extended-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>work-around-people-doing-things-far-from-the-maven-way</id>
-                <phase>generate-test-resources</phase>
-                <goals>
-                  <goal>run</goal>
-                </goals>
-                <configuration>
-                  <tasks>
-                    <copy todir="${project.build.directory}/${project.build.finalName}">
-                      <fileset dir="${project.build.directory}/generated-resources"/>
-                    </copy>
-                  </tasks>
-                </configuration>
               </execution>
             </executions>
           </plugin>
