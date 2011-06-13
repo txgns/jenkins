@@ -26,13 +26,13 @@ public class FileUtils {
             return new File(relativeTo(fromAbsolutePath.getParentFile(), relativeToRoot), fromAbsolutePath.getName());
         }
     }
-    
 
-    public static String toAbsolutePathOnMaster(String absolutePathOnSlave)
-            throws IOException {
-        File relativePath = FileUtils.relativeTo(new File(absolutePathOnSlave),
+
+    public static File toAbsolutePathOnMaster(File fromAbsolutePath) {
+        File relativePath = FileUtils.relativeTo(fromAbsolutePath,
                 new File(MasterConfig.getSlaveRootOnSlave()));
-        return new File(MasterConfig.getSlaveRootOnMaster(), relativePath.getPath()).getCanonicalPath();
+        File absolutePathOnMaster = new File(MasterConfig.getSlaveRootOnMaster(), relativePath.getPath());
+        return absolutePathOnMaster;
     }
     
 

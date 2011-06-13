@@ -37,7 +37,7 @@ public class PsuedoNode extends Node {
     public FilePath createPath(String absolutePath) {
 
         try {
-            return Hudson.getInstance().createPath(FileUtils.toAbsolutePathOnMaster(absolutePath));
+            return Hudson.getInstance().createPath(FileUtils.toAbsolutePathOnMaster(new File(absolutePath)).getCanonicalPath());
         } catch (IOException e) {
             LOGGER.log(Level.WARNING,"Error translating path from slave to master",e);
             return null;
