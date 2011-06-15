@@ -70,7 +70,7 @@ THE SOFTWARE.
       <groupId>${project.groupId}</groupId>
       <artifactId>remoting</artifactId>
       <version>${project.version}</version>
-    </dependency>    
+    </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>cli</artifactId>
@@ -245,7 +245,7 @@ THE SOFTWARE.
                 <resolveArtifact artifactId="remoting" tofile="${basedir}/target/generated-resources/WEB-INF/slave.jar" />
                 <resolveArtifact groupId="${project.groupId}" artifactId="cli" classifier="jar-with-dependencies" version="${project.version}" type="jar" tofile="${basedir}/target/generated-resources/WEB-INF/jenkins-cli.jar" />
                 <resolveArtifact artifactId="winstone" tofile="${basedir}/target/generated-resources/winstone.jar" />
-                
+
                 <!-- bundled plugins -->
                 <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="active-directory" version="1.16" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/active-directory.hpi" />
                 <resolveArtifact type="hpi" groupId="org.jvnet.hudson.plugins" artifactId="ssh-slaves" version="0.14" tofile="${basedir}/target/generated-resources/WEB-INF/plugins/ssh-slaves.hpi" />
@@ -305,7 +305,7 @@ THE SOFTWARE.
           <additionalClassesDirectories>
             <!-- load resoures straight from source -->
             <additionalClassesDirectory>../core/src/main/resources</additionalClassesDirectory>
-            
+
             <!--
               read directly from core module's output directory,
               so that changes are picked up right away without running mvn.
@@ -461,6 +461,26 @@ THE SOFTWARE.
                 <goals>
                   <goal>run</goal>
                 </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.jvnet.maven-antrun-extended-plugin</groupId>
+            <artifactId>maven-antrun-extended-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>work-around-people-doing-things-far-from-the-maven-way</id>
+                <phase>generate-test-resources</phase>
+                <goals>
+                  <goal>run</goal>
+                </goals>
+                <configuration>
+                  <tasks>
+                    <copy todir="${basedir}/work/plugins" flatten="true">
+                      <fileset dir="${project.build.directory}/generated-resources" includes="**/*.hp?"/>
+                    </copy>
+                  </tasks>
+                </configuration>
               </execution>
             </executions>
           </plugin>
