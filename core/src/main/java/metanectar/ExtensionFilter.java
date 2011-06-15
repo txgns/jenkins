@@ -126,8 +126,6 @@ public class ExtensionFilter {
         public DefaultExtensionFilter(MetaNectar mn) {
             super(mn);
 
-            rule(Cloud.class, METANECTAR_EXTENSION_POINT);
-
             rule(NodeProperty.class, new BlackListRule(Lists.<Class>newArrayList(
                     EnvironmentVariablesNodeProperty.class,
                     ToolLocationNodeProperty.class
