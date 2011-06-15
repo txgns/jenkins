@@ -24,6 +24,7 @@ import hudson.model.Job;
 import hudson.model.Label;
 import hudson.model.Node;
 import hudson.model.PeriodicWork;
+import hudson.model.ReconfigurableDescribable;
 import hudson.model.Slave;
 import hudson.model.StatusIcon;
 import hudson.model.StockStatusIcon;
@@ -165,11 +166,11 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
             int instanceCap = ((AbstractCloudImpl) cloud).getInstanceCap();
             if (instanceCap < Integer.MAX_VALUE) {
                 int instanceCount;
-                synchronized (nodeLock) {
-                    instanceCount = provisionedNodes.size();
+                synchronized (this) {
+                    instanceCount = leaseIds.size();
                 }
                 result.add(new HealthReport(100 - (instanceCount * 100 / instanceCap),
-                        Messages._SharedCloud_ActiveInstanceCountWithRespectToCap(instanceCap - instanceCount,
+                        Messages._SharedCloud_ActiveInstanceCountWithRespectToCap(instanceCount,
                                 instanceCap)));
             }
         }
@@ -220,7 +221,12 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
 
             JSONObject cloudJson = json.getJSONObject("cloud");
             cloudJson.element("name", name);
-            cloud = req.bindJSON(Cloud.class, cloudJson);
+            if (cloud != null && cloud instanceof ReconfigurableDescribable
+                    && cloud.getClass().getName().equals(cloudJson.getString("stapler-class"))) {
+                ((ReconfigurableDescribable) cloud).reconfigure(req, cloudJson);
+            } else {
+                cloud = req.bindJSON(Cloud.class, cloudJson);
+            }
 
             PropertyList t = new PropertyList(properties.toList());
             t.rebuild(req, json.optJSONObject("properties"), SharedCloudPropertyDescriptor.all());
