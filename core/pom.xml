@@ -540,7 +540,7 @@ THE SOFTWARE.
     <dependency>
       <groupId>com.cloudbees.commons.nectar</groupId>
       <artifactId>cloudbees-commons-node-iterator</artifactId>
-      <version>0.2</version>
+      <version>0.3</version>
     </dependency>
 
     <dependency>

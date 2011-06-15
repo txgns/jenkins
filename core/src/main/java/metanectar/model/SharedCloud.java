@@ -6,6 +6,7 @@ import com.cloudbees.commons.metanectar.provisioning.FutureComputerLauncherFacto
 import com.cloudbees.commons.metanectar.provisioning.LeaseId;
 import com.cloudbees.commons.metanectar.provisioning.ProvisioningException;
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
+import com.cloudbees.commons.nectar.nodeiterator.NodeIterator;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.thoughtworks.xstream.XStreamException;
@@ -66,6 +67,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -722,6 +724,50 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
                 }
             }
         }
+    }
+
+    @Extension
+    public static class NodeIteratorImpl extends NodeIterator {
+        private final Iterator<SharedCloud> clouds;
+        private Iterator<Node> delegate;
+
+        public NodeIteratorImpl() {
+            this.delegate = Hudson.getInstance().getNodes().iterator();
+            this.clouds = Hudson.getInstance().getAllItems(SharedCloud.class).iterator();
+        }
+
+        /** {@inheritDoc} */
+        public synchronized boolean hasNext() {
+            if (delegate != null && delegate.hasNext()) {
+                return true;
+            }
+            while (clouds.hasNext()) {
+                List<Node> list;
+                SharedCloud cloud = clouds.next();
+                synchronized (cloud.nodeLock) {
+                    list = new ArrayList<Node>(cloud.provisionedNodes);
+                }
+                delegate = list.iterator();
+                if (delegate.hasNext()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /** {@inheritDoc} */
+        public synchronized Node next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            return delegate.next();
+        }
+
+        /** {@inheritDoc} */
+        public void remove() {
+            throw new UnsupportedOperationException();
+        }
+
     }
 
 }

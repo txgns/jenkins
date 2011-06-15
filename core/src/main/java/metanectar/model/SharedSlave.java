@@ -478,7 +478,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
 
     public LeaseId getLeaseId() {
         synchronized (this) {
-        return leaseId;
+            return leaseId;
         }
     }
 
