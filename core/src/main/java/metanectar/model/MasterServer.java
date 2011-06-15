@@ -504,6 +504,9 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
 
     public synchronized URL getGlobalEndpoint() {
         if (globalEndpoint == null) {
+            if (getLocalEndpoint() == null)
+                return null;
+
             try {
                 globalEndpoint = createGlobalEndpoint(getLocalEndpoint());
             } catch (IOException e) {

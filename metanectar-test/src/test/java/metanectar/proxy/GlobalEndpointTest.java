@@ -24,6 +24,14 @@ public class GlobalEndpointTest extends MetaNectarTestCase {
         super.setUp();
     }
 
+    public void testGlobalEndpointCreated() throws Exception {
+        MasterServer ms = metaNectar.createManagedMaster("foo");
+
+        assertNull(ms.getLocalEndpoint());
+        assertNull(ms.getGlobalEndpoint());
+        assertNull(ms.getEndpoint());
+    }
+
     public void testGlobalEndpoint() throws Exception {
         URL local = new URL("http://local:8080/master/foo");
 
@@ -31,8 +39,7 @@ public class GlobalEndpointTest extends MetaNectarTestCase {
         ms.setProvisionCompletedState("home", local);
         String expected = proxyUrl + local.getPath();
 
-        assertEquals(expected, ms.getEndpoint().toExternalForm());
         assertEquals(expected, ms.getGlobalEndpoint().toExternalForm());
+        assertEquals(expected, ms.getEndpoint().toExternalForm());
     }
-
 }
