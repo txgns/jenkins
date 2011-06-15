@@ -23,22 +23,24 @@ import hudson.model.ItemGroup;
 import hudson.model.Job;
 import hudson.model.Label;
 import hudson.model.Node;
+import hudson.model.PeriodicWork;
+import hudson.model.Slave;
 import hudson.model.StatusIcon;
 import hudson.model.StockStatusIcon;
 import hudson.model.TaskListener;
 import hudson.model.TopLevelItem;
 import hudson.model.TopLevelItemDescriptor;
-import hudson.model.labels.LabelAtom;
 import hudson.model.labels.LabelExpression;
+import hudson.slaves.AbstractCloudImpl;
+import hudson.slaves.AbstractCloudSlave;
 import hudson.slaves.Cloud;
-import hudson.slaves.CloudRetentionStrategy;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.NodeProperty;
 import hudson.slaves.NodePropertyDescriptor;
+import hudson.slaves.NodeProvisioner;
 import hudson.slaves.RetentionStrategy;
 import hudson.util.DescribableList;
 import hudson.util.IOException2;
-import metanectar.cloud.AbstractProvisioningCloud;
 import metanectar.provisioning.LeaseIdImpl;
 import metanectar.provisioning.NotSecretXStream;
 import metanectar.provisioning.SharedSlaveRetentionStrategy;
@@ -57,15 +59,19 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URLEncoder;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
@@ -81,19 +87,21 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
 
     protected volatile DescribableList<SharedCloudProperty<?>, SharedCloudPropertyDescriptor> properties =
             new PropertyList(this);
-    private String remoteFS;
-    private int numExecutors;
-    private Node.Mode mode = Node.Mode.NORMAL;
-    private String labelString;
-    private RetentionStrategy<? extends Computer> retentionStrategy = new CloudRetentionStrategy(1);
-    private List<? extends NodeProperty<?>> nodeProperties = Collections.emptyList();
-    private ComputerLauncher launcher;
+
     @GuardedBy("this")
-    private Set<LeaseId> leaseIds = new HashSet<LeaseId>();
-    /**
-     * Active {@link hudson.slaves.Cloud}s.
-     */
-    private final CloudList clouds = new CloudList(this);
+    private Map<LeaseId, Node> leaseIds = new HashMap<LeaseId, Node>();
+
+    private final Object nodeLock = new Object();
+
+    @GuardedBy("nodeLock")
+    private List<Node> provisionedNodes = new ArrayList<Node>();
+
+    @GuardedBy("nodeLock")
+    private List<NodeProvisioner.PlannedNode> plannedNodes = new ArrayList<NodeProvisioner.PlannedNode>();
+
+    private Cloud cloud;
+
+    private transient Runnable periodicWork;
 
     protected SharedCloud(ItemGroup parent, String name) {
         super(parent, name);
@@ -105,94 +113,21 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
         }
     }
 
-    public CloudList getClouds() {
-        return clouds;
+    public Cloud getCloud() {
+        return cloud;
     }
 
-    public ComputerLauncher getLauncher() {
-        return launcher;
+    public void setCloud(Cloud cloud) {
+        this.cloud = cloud;
     }
 
-    public void setLauncher(ComputerLauncher launcher) {
-        this.launcher = launcher;
-    }
-
-    /**
-     * Returns the remote file system path to be used for this node.
-     *
-     * @return the remote file system path to be used for this node.
-     */
-    public String getRemoteFS() {
-        return remoteFS;
-    }
-
-    /**
-     * Returns the number of executors supported on this node.
-     *
-     * @return the number of executors supported on this node.
-     */
-    public int getNumExecutors() {
-        return numExecutors;
-    }
-
-    /**
-     * Returns the mode of this Node with respect to what types of job can be run on it.
-     *
-     * @return the mode of this Node with respect to what types of job can be run on it.
-     */
-    public Node.Mode getMode() {
-        return mode;
-    }
-
-    /**
-     * Returns the label string for this node.
-     *
-     * @return the label string for this node.
-     */
-    public String getLabelString() {
-        return Util.fixNull(labelString).trim();
-    }
-
-    /**
-     * Returns the retention strategy for this node.
-     *
-     * @return the retention strategy for this node.
-     */
-    public RetentionStrategy getRetentionStrategy() {
-        return retentionStrategy;
-    }
-
-    /**
-     * Returns the properties of this node.
-     *
-     * @return the properties of this node.
-     */
-    public List<? extends NodeProperty<?>> getNodeProperties() {
-        return nodeProperties;
-    }
-
-    public void setRemoteFS(String remoteFS) {
-        this.remoteFS = remoteFS;
-    }
-
-    public void setNumExecutors(int numExecutors) {
-        this.numExecutors = numExecutors;
-    }
-
-    public void setMode(Node.Mode mode) {
-        this.mode = mode;
-    }
-
-    public void setLabelString(String labelString) {
-        this.labelString = labelString;
-    }
-
-    public void setRetentionStrategy(RetentionStrategy<? extends Computer> retentionStrategy) {
-        this.retentionStrategy = retentionStrategy;
-    }
-
-    public void setNodeProperties(List<? extends NodeProperty<?>> nodeProperties) {
-        this.nodeProperties = nodeProperties;
+    protected Runnable getPeriodicWork() {
+        synchronized (nodeLock) {
+            if (periodicWork == null) {
+                periodicWork = new PeriodicWorkRunnable();
+            }
+            return periodicWork;
+        }
     }
 
 //////// AbstractItem
@@ -225,7 +160,21 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
 
     @Exported(name = "healthReport")
     public List<HealthReport> getBuildHealthReports() {
-        return Arrays.asList(new HealthReport(100, Messages._SharedCloud_PerfectHealth()));
+        List<HealthReport> result = new ArrayList<HealthReport>();
+        if (cloud instanceof AbstractCloudImpl) {
+            int instanceCap = ((AbstractCloudImpl) cloud).getInstanceCap();
+            if (instanceCap < Integer.MAX_VALUE) {
+                int instanceCount;
+                synchronized (nodeLock) {
+                    instanceCount = provisionedNodes.size();
+                }
+                result.add(new HealthReport(100 - (instanceCount * 100 / instanceCap),
+                        Messages._SharedCloud_ActiveInstanceCountWithRespectToCap(instanceCap - instanceCount,
+                                instanceCap)));
+            }
+        }
+        result.add(new HealthReport(100, Messages._SharedCloud_PerfectHealth()));
+        return result;
     }
 
     //////// Methods to handle the status icon
@@ -269,7 +218,9 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
 
             req.bindJSON(this, json.getJSONObject("node"));
 
-            clouds.rebuildHetero(req, json, AbstractProvisioningCloud.getSlaveProvisioningCloudDescriptors(), "cloud");
+            JSONObject cloudJson = json.getJSONObject("cloud");
+            cloudJson.element("name", name);
+            cloud = req.bindJSON(Cloud.class, cloudJson);
 
             PropertyList t = new PropertyList(properties.toList());
             t.rebuild(req, json.optJSONObject("properties"), SharedCloudPropertyDescriptor.all());
@@ -408,23 +359,36 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
     }
 
     public ComputerLauncherFactory newComputerLauncherFactory(LeaseId leaseId) {
-        return new ComputerLauncherFactoryImpl(leaseId, getName(), getDescription(), getNumExecutors(),
-                getLabelString(), getRemoteFS(), getMode(), new SharedSlaveRetentionStrategy(), getNodeProperties(),
-                getLauncher());
+        synchronized (nodeLock) {
+            Node node = leaseIds.get(leaseId);
+            if (node instanceof Slave) {
+                final Slave slave = (Slave) node;
+                return new ComputerLauncherFactoryImpl(leaseId, node.getNodeName(), node.getNodeDescription(),
+                        node.getNumExecutors(), node.getLabelString(), slave.getRemoteFS(), node.getMode(),
+                        new SharedSlaveRetentionStrategy(), node.getNodeProperties().toList(),
+                        slave.getLauncher());
+            } else {
+                return null;
+            }
+        }
     }
 
     public boolean canProvision(String labelExpression) {
         synchronized (this) {
-            if (leaseIds != null) {
-                // TODO decide if this applies always or just right now.
-                return false;
-            }
             try {
                 if (labelExpression == null) {
-                    return Node.Mode.NORMAL.equals(getMode());
+                    return cloud.canProvision(null);
                 }
-                Label label = LabelExpression.parseExpression(labelExpression);
-                return label.matches(Label.parse(getLabelString()));
+                return cloud.canProvision(LabelExpression.parseExpression(labelExpression));
+            } catch (NullPointerException e) {
+                LogRecord r = new LogRecord(Level.WARNING,
+                        "{0} does not comply with the contract for canProvision(null)");
+                r.setParameters(new Object[]{cloud.getClass()});
+                r.setThrown(e);
+                LOGGER.log(r);
+                // if the cloud impl does not get that a null label implies no assigned label, then we cannot provision
+                // a slave with no label
+                return false;
             } catch (ANTLRException e) {
                 // if we don't understand the label expression we cannot provision it (might be a new syntax... our
                 // problem)
@@ -434,46 +398,83 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
     }
 
     public Collection<String> getLabels() {
-        HashSet<String> result = new HashSet<String>();
-        for (LabelAtom label : Label.parse(getLabelString())) {
-            result.add(label.getName());
-        }
-        return result;
+        return Collections.emptySet(); // we cannot query this info out of Cloud
     }
 
     public FutureComputerLauncherFactory provision(String labelExpression, TaskListener listener, int numOfExecutors)
             throws ProvisioningException {
+        final Label label;
+        try {
+            label = labelExpression == null ? null : Label.parseExpression(labelExpression);
+        } catch (ANTLRException e) {
+            throw new ProvisioningException(e.getMessage(), e);
+        }
         LOGGER.log(Level.INFO, "", new Object[]{});
         return new FutureComputerLauncherFactory(getName(), numOfExecutors,
                 Computer.threadPoolForRemoting.submit(new Callable<ComputerLauncherFactory>() {
                     public ComputerLauncherFactory call() throws Exception {
-                        synchronized (SharedCloud.this) {
-                            while (!leaseIds.isEmpty()) {
-                                SharedCloud.this.wait();
-                            }
-                            try {
-                                LeaseIdImpl leaseId = new LeaseIdImpl(UUID.randomUUID().toString());
-                                leaseIds.add(leaseId);
-                                LOGGER.log(Level.INFO, "SharedCloud[{0}] lent out on lease {1}",
-                                        new Object[]{getUrl(), leaseId});
-                                return newComputerLauncherFactory(leaseId);
-                            } finally {
+//                        Node node = null;
+//                        while (node == null) {
+//                            synchronized (nodeLock) {
+//                                for (Node n : provisionedNodes) {
+//                                    if ((label == null && n.getMode().equals(Node.Mode.NORMAL))
+//                                            || (label != null && label.matches(n.getAssignedLabels()))) {
+//                                        node = n;
+//                                        break;
+//                                    }
+//                                }
+//                                if (node == null) {
+//                                    nodeLock.wait(TimeUnit.SECONDS.toMillis(10));
+//                                }
+//                            }
+//                        }
+                        LeaseIdImpl leaseId = new LeaseIdImpl(UUID.randomUUID().toString());
+                        Collection<NodeProvisioner.PlannedNode> provision = cloud.provision(label, 1);
+                        for (NodeProvisioner.PlannedNode n : provision) {
+                            LOGGER.log(Level.INFO, "SharedCloud[{0}] waiting for provisioning of {2} executors on {1}",
+                                    new Object[]{getUrl(), n.displayName, 1});
+                            Node node = n.future.get();
+                            synchronized (SharedCloud.this) {
                                 try {
-                                    save();
-                                } catch (IOException e) {
-                                    LOGGER.log(Level.INFO, "SharedCloud[{0}] could not persist", getUrl());
+                                    leaseIds.put(leaseId, node);
+                                    LOGGER.log(Level.INFO, "SharedCloud[{0}] lent out {2} on lease {1}",
+                                            new Object[]{getUrl(), leaseId, node.getNodeName()});
+                                    return newComputerLauncherFactory(leaseId);
+                                } finally {
+                                    try {
+                                        save();
+                                    } catch (IOException e) {
+                                        LOGGER.log(Level.INFO, "SharedCloud[{0}] could not persist", getUrl());
+                                    }
                                 }
                             }
                         }
+                        throw new ProvisioningException("Could not provision node");
                     }
                 }));
     }
 
     public void release(ComputerLauncherFactory allocatedSlave) {
         synchronized (this) {
-            if (leaseIds.contains(allocatedSlave.getLeaseId())) {
+            if (leaseIds.containsKey(allocatedSlave.getLeaseId())) {
                 LOGGER.log(Level.INFO, "SharedCloud[{0}] returned from lease {1}", new Object[]{getUrl(), leaseIds});
-                leaseIds.remove(allocatedSlave.getLeaseId());
+                Node node = leaseIds.remove(allocatedSlave.getLeaseId());
+                if (node != null) {
+                    if (node instanceof AbstractCloudSlave) {
+                        final AbstractCloudSlave cloudSlave = (AbstractCloudSlave) node;
+                        Computer.threadPoolForRemoting.submit(new Runnable() {
+                            public void run() {
+                                try {
+                                    cloudSlave.terminate();
+                                } catch (InterruptedException e) {
+                                    LOGGER.log(Level.INFO, "Interrupted during release", e);
+                                } catch (IOException e) {
+                                    LOGGER.log(Level.INFO, "IOException during release", e);
+                                }
+                            }
+                        });
+                    }
+                }
                 this.notifyAll();
                 try {
                     save();
@@ -486,13 +487,13 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
 
     public boolean isProvisioned(LeaseId id) {
         synchronized (this) {
-            return leaseIds.contains(id);
+            return leaseIds.containsKey(id);
         }
     }
 
     public Set<LeaseId> getLeaseIds() {
         synchronized (this) {
-        return leaseIds;
+            return leaseIds.keySet();
         }
     }
 
@@ -651,7 +652,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
         }
     }
 
-    public static class CloudList extends DescribableList<Cloud,Descriptor<Cloud>> {
+    public static class CloudList extends DescribableList<Cloud, Descriptor<Cloud>> {
         public CloudList(SharedCloud h) {
             super(h);
         }
@@ -660,15 +661,60 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
         }
 
         public Cloud getByName(String name) {
-            for (Cloud c : this)
-                if (c.name.equals(name))
+            for (Cloud c : this) {
+                if (c.name.equals(name)) {
                     return c;
+                }
+            }
             return null;
         }
 
         @Override
         protected void onModified() throws IOException {
             super.onModified();
+        }
+    }
+
+    @Extension
+    public static class PeriodicWorkScheduler extends PeriodicWork {
+
+        @Override
+        public long getRecurrencePeriod() {
+            return TimeUnit.SECONDS.toMillis(1);
+        }
+
+        @Override
+        protected void doRun() throws Exception {
+            for (SharedCloud cloud : MetaNectar.getInstance().getAllItems(SharedCloud.class)) {
+                Computer.threadPoolForRemoting.submit(cloud.getPeriodicWork());
+            }
+        }
+    }
+
+    public class PeriodicWorkRunnable implements Runnable {
+
+        public void run() {
+            synchronized (nodeLock) {
+                for (Iterator<NodeProvisioner.PlannedNode> itr = plannedNodes.iterator(); itr.hasNext(); ) {
+                    NodeProvisioner.PlannedNode f = itr.next();
+                    if (f.future.isDone()) {
+                        try {
+                            provisionedNodes.add(f.future.get());
+                            nodeLock.notifyAll();
+                            LOGGER.info(f.displayName + " provisioning successfully completed. We have now "
+                                    + provisionedNodes.size() + " computer(s)");
+                        } catch (InterruptedException e) {
+                            throw new AssertionError(e); // since we confirmed that the future is already done
+                        } catch (ExecutionException e) {
+                            LOGGER.log(Level.WARNING, "Provisioned slave " + f.displayName + " failed to launch",
+                                    e.getCause());
+                        } catch (Exception e) {
+                            LOGGER.log(Level.WARNING, "Provisioned slave " + f.displayName + " failed to launch", e);
+                        }
+                        itr.remove();
+                    }
+                }
+            }
         }
     }
 
