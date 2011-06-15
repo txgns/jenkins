@@ -1,6 +1,7 @@
 package metanectar.cloud;
 
 import hudson.model.Computer;
+import hudson.model.Descriptor;
 import hudson.model.Node;
 import hudson.slaves.RetentionStrategy;
 import metanectar.model.MetaNectar;
@@ -42,6 +43,18 @@ public abstract class NodeTerminatingRetentionStrategy<N extends Node, C extends
         @Override
         public void terminate(Node node) throws Exception {
             MetaNectar.getInstance().removeNode(node);
+        }
+        @Override
+        public Descriptor<RetentionStrategy<?>> getDescriptor() {
+            return DESCRIPTOR;
+        }
+
+        private final DescriptorImpl DESCRIPTOR = new DescriptorImpl();
+
+        class DescriptorImpl extends Descriptor<RetentionStrategy<?>> {
+            public String getDisplayName() {
+                return "";
+            }
         }
     }
 }
