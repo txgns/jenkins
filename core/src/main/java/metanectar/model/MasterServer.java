@@ -10,13 +10,16 @@ import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.export.Exported;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
@@ -609,6 +612,32 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
         save();
 
         rsp.sendRedirect(".");
+    }
+
+    //////// Methods to handle the weather icon
+
+    /**
+     * Get the current health report for a job.
+     *
+     * @return the health report. Never returns null
+     */
+    public HealthReport getBuildHealth() {
+        List<HealthReport> reports = getBuildHealthReports();
+        return reports.isEmpty() ? new HealthReport(100, Messages._SharedCloud_PerfectHealth()) : reports.get(0);
+    }
+
+    @Exported(name = "healthReport")
+    public List<HealthReport> getBuildHealthReports() {
+        if (getState().name().toLowerCase().contains("error")) {
+            return Arrays.asList(new HealthReport(0, getState().name()));
+        } else if (State.Approved.equals(getState())) {
+        return Arrays.asList(new HealthReport(100, Messages._SharedCloud_PerfectHealth()));
+        } else if (State.Starting.equals(getState())) {
+            return Arrays.asList(new HealthReport(75, Messages._SharedCloud_PerfectHealth()));
+        } else if (State.Provisioned.equals(getState())) {
+            return Arrays.asList(new HealthReport(45, Messages._SharedCloud_PerfectHealth()));
+        }
+        return Arrays.asList(new HealthReport(25, Messages._SharedCloud_PerfectHealth()));
     }
 
 
