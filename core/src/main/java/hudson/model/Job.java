@@ -26,6 +26,7 @@ package hudson.model;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 import static javax.servlet.http.HttpServletResponse.SC_NO_CONTENT;
 
+import com.google.common.collect.Iterables;
 import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 import hudson.ExtensionPoint;
 import hudson.PermalinkList;
@@ -42,10 +43,13 @@ import hudson.search.SearchItem;
 import hudson.search.SearchItems;
 import hudson.security.ACL;
 import hudson.tasks.LogRotator;
+import hudson.util.AlternativeUiTextProvider;
+import hudson.util.AlternativeUiTextProvider.Message;
 import hudson.util.ChartUtil;
 import hudson.util.ColorPalette;
 import hudson.util.CopyOnWriteList;
 import hudson.util.DataSetBuilder;
+import hudson.util.DescribableList;
 import hudson.util.IOException2;
 import hudson.util.RunList;
 import hudson.util.ShiftedCategoryAxis;
@@ -139,6 +143,7 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
     /**
      * List of {@link UserProperty}s configured for this project.
      */
+    // this should have been DescribableList but now it's too late
     protected CopyOnWriteList<JobProperty<? super JobT>> properties = new CopyOnWriteList<JobProperty<? super JobT>>();
 
     protected Job(ItemGroup parent, String name) {
@@ -242,7 +247,7 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
 
     @Override
     public String getPronoun() {
-        return Messages.Job_Pronoun();
+        return AlternativeUiTextProvider.get(PRONOUN, this, Messages.Job_Pronoun());
     }
 
     /**
@@ -413,6 +418,18 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
             if (clazz.isInstance(p))
                 return clazz.cast(p);
         }
+        return null;
+    }
+
+    /**
+     * Bind {@link JobProperty}s to URL spaces.
+     *
+     * @since 1.403
+     */
+    public JobProperty getProperty(String className) {
+        for (JobProperty p : properties)
+            if (p.getClass().getName().equals(className))
+                return p;
         return null;
     }
 
@@ -935,25 +952,19 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
         keepDependencies = req.getParameter("keepDependencies") != null;
 
         try {
-            properties.clear();
-
             JSONObject json = req.getSubmittedForm();
 
             if (req.getParameter("logrotate") != null)
                 logRotator = LogRotator.DESCRIPTOR.newInstance(req,json.getJSONObject("logrotate"));
             else
                 logRotator = null;
-            
-            int i = 0;
-            for (JobPropertyDescriptor d : JobPropertyDescriptor
-                    .getPropertyDescriptors(Job.this.getClass())) {
-                String name = "jobProperty" + (i++);
-                JSONObject config = json.getJSONObject(name);
-                JobProperty prop = d.newInstance(req, config);
-                if (prop != null) {
-                    prop.setOwner(this);
-                    properties.add(prop);
-                }
+
+            DescribableList<JobProperty<?>, JobPropertyDescriptor> t = new DescribableList<JobProperty<?>, JobPropertyDescriptor>(NOOP,getAllProperties());
+            t.rebuild(req,json.optJSONObject("properties"),JobPropertyDescriptor.getPropertyDescriptors(Job.this.getClass()));
+            properties.clear();
+            for (JobProperty p : t) {
+                p.setOwner(this);
+                properties.add(p);
             }
 
             submit(req, rsp);

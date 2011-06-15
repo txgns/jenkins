@@ -28,6 +28,7 @@ THE SOFTWARE.
   <%@ attribute name="td" required="false" type="java.lang.String" %>
   <%@ attribute name="link" required="false" type="java.lang.String" %>
 -->
+<?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:x="jelly:xml" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
     <j:set var="buildHealth" value="${job.buildHealth}"/>
     <j:if test="${td}"><j:set var="useTdElement" value="x"/></j:if>
@@ -40,7 +41,7 @@ THE SOFTWARE.
         <j:if test="${buildHealth!=null}">
             <a href="${empty(link)?'#':link}" style="${attrs.style}">
                 <img src="${rootURL}${buildHealth.getIconUrl(iconSize)}"
-                     alt="${buildHealth.score}%"/>
+                     alt="${buildHealth.score}%" class="icon${iconSize}"/>
             </a>
         </j:if>
         <j:set var="healthReports" value="${job.buildHealthReports}"/>

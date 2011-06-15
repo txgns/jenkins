@@ -6,6 +6,7 @@ work
 *.iml
 *.ipr
 .idea
+out
 
 # eclipse project file
 .metadata

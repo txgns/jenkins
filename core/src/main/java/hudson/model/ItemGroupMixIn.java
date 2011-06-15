@@ -144,7 +144,9 @@ public abstract class ItemGroupMixIn {
             String from = req.getParameter("from");
 
             // resolve a name to Item
-            Item src = parent.getItem(from);
+            Item src = null;
+            if (!from.startsWith("/"))
+                src = parent.getItem(from);
             if (src==null)
                 src = Hudson.getInstance().getItemByFullName(from);
 
@@ -245,7 +247,11 @@ public abstract class ItemGroupMixIn {
         } catch (Exception e) {
             throw new IllegalArgumentException(e);
         }
-        item.onCreatedFromScratch();
+        try {
+            callOnCreatedFromScratch(item);
+        } catch (AbstractMethodError e) {
+            // ignore this error. Must be older plugin that doesn't have this method
+        }
         item.save();
         add(item);
 
@@ -253,5 +259,12 @@ public abstract class ItemGroupMixIn {
             ItemListener.fireOnCreated(item);
 
         return item;
+    }
+
+    /**
+     * Pointless wrapper to avoid HotSpot problem. See JENKINS-5756
+     */
+    private void callOnCreatedFromScratch(TopLevelItem item) {
+        item.onCreatedFromScratch();
     }
 }

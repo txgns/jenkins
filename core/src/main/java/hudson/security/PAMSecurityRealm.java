@@ -57,6 +57,7 @@ import org.jruby.ext.posix.Passwd;
 import org.jruby.ext.posix.Group;
 
 import java.util.Set;
+import java.util.logging.Logger;
 import java.io.File;
 
 /**
@@ -88,11 +89,7 @@ public class PAMSecurityRealm extends SecurityRealm {
 
             try {
                 UnixUser u = new PAM(serviceName).authenticate(username, password);
-                Set<String> grps = u.getGroups();
-                GrantedAuthority[] groups = new GrantedAuthority[grps.size()];
-                int i=0;
-                for (String g : grps)
-                    groups[i++] = new GrantedAuthorityImpl(g);
+                GrantedAuthority[] groups = toAuthorities(u);
 
                 // I never understood why Acegi insists on keeping the password...
                 return new UsernamePasswordAuthenticationToken(username, password, groups);
@@ -119,12 +116,26 @@ public class PAMSecurityRealm extends SecurityRealm {
                 public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException, DataAccessException {
                     if(!UnixUser.exists(username))
                         throw new UsernameNotFoundException("No such Unix user: "+username);
-                    // return some dummy instance
-                    return new User(username,"",true,true,true,true,
-                            new GrantedAuthority[]{AUTHENTICATED_AUTHORITY});
+                    try {
+                        UnixUser uu = new UnixUser(username);
+                        // return some dummy instance
+                        return new User(username,"",true,true,true,true, toAuthorities(uu));
+                    } catch (PAMException e) {
+                        throw new UsernameNotFoundException("Failed to load information about Unix user "+username,e);
+                    }
                 }
             }
         );
+    }
+
+    private static GrantedAuthority[] toAuthorities(UnixUser u) {
+        Set<String> grps = u.getGroups();
+        GrantedAuthority[] groups = new GrantedAuthority[grps.size()+1];
+        int i=0;
+        for (String g : grps)
+            groups[i++] = new GrantedAuthorityImpl(g);
+        groups[i++] = AUTHENTICATED_AUTHORITY;
+        return groups;
     }
 
     @Override
@@ -148,7 +159,7 @@ public class PAMSecurityRealm extends SecurityRealm {
             File s = new File("/etc/shadow");
             if(s.exists() && !s.canRead()) {
                 // it looks like shadow password is in use, but we don't have read access
-                System.out.println("Shadow in use");
+                LOGGER.fine("/etc/shadow exists but not readable");
                 POSIX api = PosixAPI.get();
                 FileStat st = api.stat("/etc/shadow");
                 if(st==null)
@@ -185,4 +196,6 @@ public class PAMSecurityRealm extends SecurityRealm {
         if(!Functions.isWindows()) return new DescriptorImpl();
         return null;
     }
+
+    private static final Logger LOGGER = Logger.getLogger(PAMSecurityRealm.class.getName());
 }

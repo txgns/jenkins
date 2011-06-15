@@ -23,13 +23,14 @@
  */
 package hudson.model;
 
-import static hudson.model.Hudson.checkGoodName;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.ExtensionPoint;
 import hudson.Util;
 import hudson.model.Descriptor.FormException;
 import hudson.model.Node.Mode;
+import hudson.model.labels.LabelAtomProperty;
+import hudson.model.labels.LabelAtomPropertyDescriptor;
 import hudson.scm.ChangeLogSet.Entry;
 import hudson.search.CollectionSearchIndex;
 import hudson.search.SearchIndexBuilder;
@@ -37,10 +38,17 @@ import hudson.security.ACL;
 import hudson.security.AccessControlled;
 import hudson.security.Permission;
 import hudson.security.PermissionGroup;
+import hudson.util.DescribableList;
 import hudson.util.DescriptorList;
 import hudson.util.RunList;
 import hudson.widgets.Widget;
+import net.sf.json.JSONObject;
+import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.export.Exported;
+import org.kohsuke.stapler.export.ExportedBean;
 
+import javax.servlet.ServletException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -54,12 +62,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
-import javax.servlet.ServletException;
-
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
-import org.kohsuke.stapler.export.Exported;
-import org.kohsuke.stapler.export.ExportedBean;
+import static hudson.model.Hudson.*;
 
 /**
  * Encapsulates the rendering of the list of {@link TopLevelItem}s
@@ -82,7 +85,7 @@ import org.kohsuke.stapler.export.ExportedBean;
  * @see ViewGroup
  */
 @ExportedBean
-public abstract class View extends AbstractModelObject implements AccessControlled, Describable<View>, ExtensionPoint {
+public abstract class View extends AbstractModelObject implements AccessControlled, Describable<View>, ExtensionPoint, Saveable {
     /**
      * Container of this view. Set right after the construction
      * and never change thereafter.
@@ -110,6 +113,12 @@ public abstract class View extends AbstractModelObject implements AccessControll
     protected boolean filterQueue;
     
     protected transient List<Action> transientActions;
+
+    /**
+     * List of {@link ViewProperty}s configured for this view.
+     * @since 1.406
+     */
+    private volatile DescribableList<ViewProperty,ViewPropertyDescriptor> properties = new PropertyList(this);
 
     protected View(String name) {
         this.name = name;
@@ -181,6 +190,57 @@ public abstract class View extends AbstractModelObject implements AccessControll
     @Exported
     public String getDescription() {
         return description;
+    }
+
+    /**
+     * Gets the view properties configured for this view.
+     * @since 1.406
+     */
+    public DescribableList<ViewProperty,ViewPropertyDescriptor> getProperties() {
+        // readResolve was the best place to do this, but for compatibility reasons,
+        // this class can no longer have readResolve() (the mechanism itself isn't suitable for class hierarchy)
+        // see JENKINS-9431
+        //
+        // until we have that, putting this logic here.
+        synchronized (this) {
+            if (properties == null) {
+                properties = new PropertyList(this);
+            } else {
+                properties.setOwner(this);
+            }
+        }
+
+        return properties;
+    }
+
+    /**
+     * Returns all the {@link LabelAtomPropertyDescriptor}s that can be potentially configured
+     * on this label.
+     */
+    public List<ViewPropertyDescriptor> getApplicablePropertyDescriptors() {
+        List<ViewPropertyDescriptor> r = new ArrayList<ViewPropertyDescriptor>();
+        for (ViewPropertyDescriptor pd : ViewProperty.all()) {
+            if (pd.isEnabledFor(this))
+                r.add(pd);
+        }
+        return r;
+    }
+
+    public void save() throws IOException {
+        // persistence is a part of the owner
+        // due to initialization timing issue, it can be null when this method is called
+        if (owner != null) {
+            owner.save();
+        }
+    }
+
+    /**
+     * List of all {@link ViewProperty}s exposed primarily for the remoting API.
+     * @since 1.406
+     */
+    @Exported(name="property",inline=true)
+    public List<ViewProperty> getAllProperties() {
+        return getProperties().toList();
     }
 
     public ViewDescriptor getDescriptor() {
@@ -559,7 +619,7 @@ public abstract class View extends AbstractModelObject implements AccessControll
         checkPermission(CONFIGURE);
 
         description = req.getParameter("description");
-        owner.save();
+        save();
         rsp.sendRedirect(".");  // go to the top page
     }
 
@@ -579,7 +639,11 @@ public abstract class View extends AbstractModelObject implements AccessControll
 
         rename(req.getParameter("name"));
 
-        owner.save();
+        JSONObject json = req.getSubmittedForm();
+
+        getProperties().rebuild(req, req.getSubmittedForm(), getApplicablePropertyDescriptors());
+
+        save();
 
         rsp.sendRedirect2("../"+name);
     }
@@ -702,5 +766,24 @@ public abstract class View extends AbstractModelObject implements AccessControll
         rsp.sendRedirect2(req.getContextPath()+'/'+v.getUrl()+v.getPostConstructLandingPage());
 
         return v;
+    }
+
+    public static class PropertyList extends DescribableList<ViewProperty,ViewPropertyDescriptor> {
+        private PropertyList(View owner) {
+            super(owner);
+        }
+
+        public PropertyList() {// needed for XStream deserialization
+        }
+
+        public View getOwner() {
+            return (View)owner;
+        }
+
+        @Override
+        protected void onModified() throws IOException {
+            for (ViewProperty p : this)
+                p.setView(getOwner());
+        }
     }
 }

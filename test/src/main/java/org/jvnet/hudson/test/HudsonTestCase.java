@@ -1,7 +1,8 @@
 /*
  * The MIT License
  * 
- * Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Erik Ramfelt, Yahoo! Inc., Tom Huybrechts
+ * Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Erik Ramfelt, 
+ * Yahoo! Inc., Tom Huybrechts, Olivier Lamy
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +33,7 @@ import hudson.Extension;
 import hudson.ExtensionList;
 import hudson.FilePath;
 import hudson.Functions;
+import hudson.Functions.ThreadGroupMap;
 import hudson.Launcher;
 import hudson.Launcher.LocalLauncher;
 import hudson.Main;
@@ -72,6 +74,8 @@ import hudson.model.TaskListener;
 import hudson.model.UpdateSite;
 import hudson.model.User;
 import hudson.model.View;
+import hudson.remoting.Channel;
+import hudson.remoting.VirtualChannel;
 import hudson.remoting.Which;
 import hudson.security.ACL;
 import hudson.security.AbstractPasswordBasedSecurityRealm;
@@ -105,6 +109,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
+import java.lang.management.ThreadInfo;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -116,15 +121,16 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.jar.Manifest;
 import java.util.logging.Filter;
 import java.util.logging.Level;
@@ -229,7 +235,12 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     /**
      * Remember {@link WebClient}s that are created, to release them properly.
      */
-    private List<WeakReference<WebClient>> clients = new ArrayList<WeakReference<WebClient>>();
+    private List<WebClient> clients = new ArrayList<WebClient>();
+
+    /**
+     * Remember channels that are created, to release them at the end.
+     */
+    private List<Channel> channels = new ArrayList<Channel>();
 
     /**
      * JavaScript "debugger" that provides you information about the JavaScript call stack
@@ -336,13 +347,19 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     protected void tearDown() throws Exception {
         try {
             // cancel pending asynchronous operations, although this doesn't really seem to be working
-            for (WeakReference<WebClient> client : clients) {
-                WebClient c = client.get();
-                if(c==null) continue;
+            for (WebClient client : clients) {
                 // unload the page to cancel asynchronous operations
-                c.getPage("about:blank");
+                client.getPage("about:blank");
+                client.closeAllWindows();
             }
             clients.clear();
+
+            for (Channel c : channels)
+                c.close();
+            for (Channel c : channels)
+                c.join();
+            channels.clear();
+
         } finally {
             server.stop();
             for (LenientRunnable r : tearDowns)
@@ -366,8 +383,27 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         System.out.println("=== Starting "+ getClass().getSimpleName() + "." + getName());
         // so that test code has all the access to the system
         SecurityContextHolder.getContext().setAuthentication(ACL.SYSTEM);
-        super.runTest();
+
+        try {
+            super.runTest();
+        } catch (Throwable t) {
+            // allow the late attachment of a debugger in case of a failure. Useful
+            // for diagnosing a rare failure
+            try {
+                throw new BreakException();
+            } catch (BreakException e) {}
+
+            // dump threads
+            ThreadInfo[] threadInfos = Functions.getThreadInfos();
+            ThreadGroupMap m = Functions.sortThreadsAndGetGroupMap(threadInfos);
+            for (ThreadInfo ti : threadInfos) {
+                System.err.println(Functions.dumpThreadInfo(ti, m));
+            }
+            throw t;
+        }
     }
+
+    public static class BreakException extends Exception {}
 
     public String getIconFileName() {
         return null;
@@ -406,6 +442,15 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         context.setMimeTypes(MIME_TYPES);
 
         SocketConnector connector = new SocketConnector();
+        connector.setHeaderBufferSize(12*1024); // use a bigger buffer as Stapler traces can get pretty large on deeply nested URL
+
+        server.setThreadPool(new ThreadPoolImpl(new ThreadPoolExecutor(10, 10, 10L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(),new ThreadFactory() {
+            public Thread newThread(Runnable r) {
+                Thread t = new Thread(r);
+                t.setName("Jetty Thread Pool");
+                return t;
+            }
+        })));
         server.addConnector(connector);
         server.addUserRealm(configureUserRealm());
         server.start();
@@ -431,6 +476,17 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
 
         return realm;
     }
+
+    @TestExtension
+    public static class ComputerListenerImpl extends ComputerListener {
+        @Override
+        public void onOnline(Computer c, TaskListener listener) throws IOException, InterruptedException {
+            VirtualChannel ch = c.getChannel();
+            if (ch instanceof Channel)
+            TestEnvironment.get().testCase.channels.add((Channel)ch);
+        }
+    }
+
 
 //    /**
 //     * Sets guest credentials to access java.net Subversion repo.
@@ -632,11 +688,14 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
      */
     public DumbSlave createSlave(String labels, EnvVars env) throws Exception {
         synchronized (hudson) {
-            // this synchronization block is so that we don't end up adding the same slave name more than once.
-
             int sz = hudson.getNodes().size();
+            return createSlave("slave" + sz,labels,env);
+    	}
+    }
 
-            DumbSlave slave = new DumbSlave("slave" + sz, "dummy",
+    public DumbSlave createSlave(String nodeName, String labels, EnvVars env) throws Exception {
+        synchronized (hudson) {
+            DumbSlave slave = new DumbSlave(nodeName, "dummy",
     				createTmpDir().getPath(), "1", Mode.NORMAL, labels==null?"":labels, createComputerLauncher(env), RetentionStrategy.NOOP, Collections.EMPTY_LIST);
     		hudson.addNode(slave);
     		return slave;
@@ -710,7 +769,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
      * This is useful during debugging a test so that one can inspect the state of Hudson through the web browser.
      */
     public void interactiveBreak() throws Exception {
-        System.out.println("Hudson is running at http://localhost:"+localPort+"/");
+        System.out.println("Jenkins is running at http://localhost:"+localPort+"/");
         new BufferedReader(new InputStreamReader(System.in)).readLine();
     }
 
@@ -785,6 +844,21 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         computerConnectorTester.connector = before;
         submit(createWebClient().goTo("self/computerConnectorTester/configure").getFormByName("config"));
         return (C)computerConnectorTester.connector;
+    }
+
+    protected User configRoundtrip(User u) throws Exception {
+        submit(createWebClient().goTo(u.getUrl()+"/configure").getFormByName("config"));
+        return u;
+    }
+        
+    protected <N extends Node> N configRoundtrip(N node) throws Exception {
+        submit(createWebClient().goTo("/computer/"+node.getNodeName()+"/configure").getFormByName("config"));
+        return (N)hudson.getNode(node.getNodeName());
+    }
+
+    protected <V extends View> V configRoundtrip(V view) throws Exception {
+        submit(createWebClient().getPage(view, "configure").getFormByName("viewConfig"));
+        return view;
     }
 
 
@@ -1105,7 +1179,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     public void assertEqualDataBoundBeans(Object lhs, Object rhs) throws Exception {
         if (lhs==null && rhs==null)     return;
         if (lhs==null)      fail("lhs is null while rhs="+rhs);
-        if (rhs==null)      fail("rhs is null while lhs="+rhs);
+        if (rhs==null)      fail("rhs is null while lhs="+lhs);
         
         Constructor<?> lc = findDataBoundConstructor(lhs.getClass());
         Constructor<?> rc = findDataBoundConstructor(rhs.getClass());
@@ -1149,7 +1223,16 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
             assertEqualBeans(lhs,rhs,Util.join(primitiveProperties,","));
     }
 
-    private Constructor<?> findDataBoundConstructor(Class<?> c) {
+    /**
+     * Makes sure that two collections are identical via {@link #assertEqualDataBoundBeans(Object, Object)}
+     */
+    public void assertEqualDataBoundBeans(List<?> lhs, List<?> rhs) throws Exception {
+        assertEquals(lhs.size(), rhs.size());
+        for (int i=0; i<lhs.size(); i++) 
+            assertEqualDataBoundBeans(lhs.get(i),rhs.get(i));
+    }
+
+    protected Constructor<?> findDataBoundConstructor(Class<?> c) {
         for (Constructor<?> m : c.getConstructors()) {
             if (m.getAnnotation(DataBoundConstructor.class)!=null)
                 return m;
@@ -1414,7 +1497,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
 
 //            setJavaScriptEnabled(false);
             setPageCreator(HudsonPageCreator.INSTANCE);
-            clients.add(new WeakReference<WebClient>(this));
+            clients.add(this);
             // make ajax calls run as post-action for predictable behaviors that simplify debugging
             setAjaxController(new AjaxController() {
                 public boolean processSynchron(HtmlPage page, WebRequestSettings settings, boolean async) {
@@ -1456,6 +1539,10 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
                 public void contextReleased(Context cx) {
                 }
             });
+
+            // avoid a hang by setting a time out. It should be long enough to prevent
+            // false-positive timeout on slow systems
+            setTimeout(60*1000);
         }
 
         /**

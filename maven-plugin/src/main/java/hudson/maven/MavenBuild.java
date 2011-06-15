@@ -1,7 +1,7 @@
 /*
  * The MIT License
  * 
- * Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi
+ * Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Olivier Lamy
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,28 +23,45 @@
  */
 package hudson.maven;
 
-import hudson.FilePath;
 import hudson.EnvVars;
-import hudson.maven.reporters.SurefireArchiver;
-import hudson.slaves.WorkspaceList;
-import hudson.slaves.WorkspaceList.Lease;
+import hudson.FilePath;
 import hudson.maven.agent.AbortException;
+import hudson.maven.reporters.SurefireArchiver;
+import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
 import hudson.model.Computer;
+import hudson.model.Environment;
+import hudson.model.Executor;
 import hudson.model.Hudson;
+import hudson.model.Node;
 import hudson.model.Result;
 import hudson.model.Run;
-import hudson.model.Environment;
 import hudson.model.TaskListener;
-import hudson.model.Node;
-import hudson.model.Executor;
 import hudson.remoting.Channel;
 import hudson.scm.ChangeLogSet;
 import hudson.scm.ChangeLogSet.Entry;
+import hudson.slaves.WorkspaceList;
+import hudson.slaves.WorkspaceList.Lease;
 import hudson.tasks.BuildWrapper;
 import hudson.tasks.Maven.MavenInstallation;
 import hudson.util.ArgumentListBuilder;
 import hudson.util.IOUtils;
+import hudson.util.ReflectionUtils;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.Serializable;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.maven.BuildFailureException;
 import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.apache.maven.execution.MavenSession;
@@ -55,19 +72,6 @@ import org.apache.maven.project.MavenProject;
 import org.kohsuke.stapler.Ancestor;
 import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.StaplerRequest;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * {@link Run} for {@link MavenModule}.
@@ -521,8 +525,10 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
             }
 
             if(hasntStartedYet()) {
-                // Mark the build as aborted. This method is used when the aggregated build
-                // failed before it didn't even get to this module.
+                // Mark the build as not_built. This method is used when the aggregated build
+                // failed before it didn't even get to this module
+                // OR if the aggregated build is an incremental one and this
+                // module needn't be build.
                 run(new Runner() {
                     public Result run(BuildListener listener) {
                         listener.getLogger().println(Messages.MavenBuild_FailedEarlier());
@@ -535,6 +541,34 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
                     public void cleanUp(BuildListener listener) {
                     }
                 });
+                
+                
+                // record modules which have not been build though they should have - i.e. because they
+                // have SCM changes.
+                // see JENKINS-5764
+                if (getParentBuild().getParent().isIncrementalBuild() && getParentBuild().getResult() == Result.FAILURE) {
+                    UnbuiltModuleAction action = getParentBuild().getAction(UnbuiltModuleAction.class);
+                    if (action == null) {
+                        action = new UnbuiltModuleAction();
+                        getParentBuild().getActions().add(action);
+                    }
+                    action.addUnbuiltModule(getParent().getModuleName());
+                }
+            } else {
+                // mark that this module has been built now, if it has previously been remembered as unbuilt
+                // JENKINS-5764
+                MavenModuleSetBuild previousParentBuild = getParentBuild().getPreviousBuild();
+                if (previousParentBuild != null) {
+                    UnbuiltModuleAction unbuiltModuleAction = previousParentBuild.getAction(UnbuiltModuleAction.class);
+                    if (unbuiltModuleAction != null) {
+                        unbuiltModuleAction.removeUnbuildModule(getParent().getModuleName());
+                        try {
+                            previousParentBuild.save();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
             }
         }
 
@@ -598,14 +632,14 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
                 process =
                     MavenBuild.mavenProcessCache.get( launcher.getChannel(), listener,
                                                       new Maven3ProcessFactory( getParent().getParent(), launcher,
-                                                                                envVars, null ) );
+                                                                                envVars, getMavenOpts(listener), null ) );
             }
             else
             {
                 process =
                     MavenBuild.mavenProcessCache.get( launcher.getChannel(), listener,
                                                       new MavenProcessFactory( getParent().getParent(), launcher,
-                                                                               envVars, null ) );
+                                                                               envVars, getMavenOpts(listener), null ) );
             }
 
 
@@ -672,6 +706,29 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
                 reporter.end(MavenBuild.this,launcher,listener);
         }
 
+    }
+
+    public String getMavenOpts(TaskListener listener) {
+        MavenModuleSet mms = getProject().getParent();
+        String opts = mms.getMavenOpts();
+        if (opts == null ) return null;
+        try {
+            Class<?> clazz = Class.forName( "org.jenkinsci.plugins.tokenmacro.TokenMacro" );
+            Method expandMethod =
+                ReflectionUtils.findMethod(clazz, "expand", new Class[]{ AbstractBuild.class, TaskListener.class, String.class} );
+            opts = (String) expandMethod.invoke( null, this, listener, opts );
+            //opts = TokenMacro.expand(this, listener, opts);
+        //} catch (MacroEvaluationException e) {
+        //    listener.error( "Ignore MacroEvaluationException " + e.getMessage() );            
+        }
+        catch(Exception tokenException) {
+            listener.error("Ignore Problem expanding maven opts macros " + tokenException.getMessage());
+        }
+        catch(LinkageError linkageError) {
+            // Token plugin not present. Ignore, this is OK.
+        }
+
+        return opts;
     }
 
     private static final int MAX_PROCESS_CACHE = 5;

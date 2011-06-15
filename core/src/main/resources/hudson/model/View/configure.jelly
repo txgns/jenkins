@@ -25,8 +25,9 @@ THE SOFTWARE.
 <!--
   Edit View Page
 -->
+<?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-  <l:layout norefresh="true">
+  <l:layout norefresh="true" title="${%Edit View}">
     <st:include page="sidepanel.jelly" />
     <l:main-panel>
       <!-- to make the form field binding work -->
@@ -49,6 +50,9 @@ THE SOFTWARE.
 
         <!-- subtypes can put entries here. -->
         <st:include page="configure-entries.jelly" optional="true" />
+
+        <!-- view property configurations -->
+        <f:descriptorList descriptors="${it.getApplicablePropertyDescriptors()}" instances="${it.properties}" />
 
         <f:block>
           <f:submit value="OK" />

@@ -60,6 +60,7 @@ import hudson.security.AccessControlled;
  *
  * @author Kohsuke Kawaguchi
  * @see Items
+ * @see ItemVisitor
  */
 public interface Item extends PersistenceRoot, SearchableModelObject, AccessControlled {
     /**
@@ -180,6 +181,8 @@ public interface Item extends PersistenceRoot, SearchableModelObject, AccessCont
     /**
      * When an item is created from scratch (instead of copied),
      * this method will be invoked. Used as the post-construction initialization.
+     *
+     * @since 1.374
       */
     void onCreatedFromScratch();
 

@@ -49,7 +49,7 @@ import java.util.logging.Logger;
 
 /**
  * Captures information about an artifact created by Maven and archived by
- * Hudson, so that we can later deploy it to repositories of our choice.
+ * Jenkins, so that we can later deploy it to repositories of our choice.
  *
  * <p>
  * This object is created within the Maven process and sent back to the master,
@@ -101,7 +101,6 @@ public final class MavenArtifact implements Serializable {
         this.version = a.getVersion();
         this.classifier = a.getClassifier();
         this.type = a.getType();
-        // TODO: on archive we need to follow the same format as Maven repository
         this.fileName = a.getFile().getName();
         this.md5sum = Util.getDigestOf(new FileInputStream(a.getFile()));
         String extension;
@@ -180,15 +179,15 @@ public final class MavenArtifact implements Serializable {
     /**
      * Obtains the {@link File} representing the archived artifact.
      */
-    protected File getFile(MavenBuild build) throws IOException {
-        File f = new File(new File(new File(new File(build.getArtifactsDir(), groupId), artifactId), version), fileName);
+    public File getFile(MavenBuild build) throws IOException {
+        File f = new File(new File(new File(new File(build.getArtifactsDir(), groupId), artifactId), version), canonicalName);
         if(!f.exists())
             throw new IOException("Archived artifact is missing: "+f);
         return f;
     }
 
     private FilePath getArtifactArchivePath(MavenBuildProxy build, String groupId, String artifactId, String version) {
-        return build.getArtifactsDir().child(groupId).child(artifactId).child(version).child(fileName);
+        return build.getArtifactsDir().child(groupId).child(artifactId).child(version).child(canonicalName);
     }
 
     /**

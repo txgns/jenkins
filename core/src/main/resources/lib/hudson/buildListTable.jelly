@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -->
 
+<?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
   <st:documentation>
     Creates a table of builds.
@@ -38,7 +39,7 @@ THE SOFTWARE.
     <tr>
       <th><st:nbsp/></th>
       <th>${%Build}</th>
-      <th initialSortDir="up">${%Date}</th>
+      <th initialSortDir="up">${%Time Since}</th>
       <th>${%Status}</th>
       <th><st:nbsp/></th>
     </tr>
@@ -48,7 +49,7 @@ THE SOFTWARE.
         <td data="${b.iconColor.ordinal()}">
           <a href="${jobBaseUrl}${b.url}">
             <img src="${imagesURL}/${iconSize}/${b.buildStatusUrl}"
-                 alt="${b.iconColor.description}"/>
+                 alt="${b.iconColor.description}" class="icon${iconSize}"/>
           </a>
         </td>
         <td>

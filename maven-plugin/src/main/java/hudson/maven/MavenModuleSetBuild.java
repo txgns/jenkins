@@ -35,6 +35,7 @@ import hudson.Util;
 import hudson.maven.MavenBuild.ProxyImpl2;
 import hudson.maven.reporters.MavenFingerprinter;
 import hudson.maven.reporters.MavenMailer;
+import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
 import hudson.model.Build;
@@ -60,6 +61,7 @@ import hudson.tasks.Maven.MavenInstallation;
 import hudson.util.ArgumentListBuilder;
 import hudson.util.IOUtils;
 import hudson.util.MaskingClassLoader;
+import hudson.util.ReflectionUtils;
 import hudson.util.StreamTaskListener;
 
 import java.io.File;
@@ -67,6 +69,7 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.PrintStream;
 import java.io.Serializable;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -125,12 +128,20 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
 
     private String mavenVersionUsed;
 
+    private transient Object notifyModuleBuildLock = new Object();
+
     public MavenModuleSetBuild(MavenModuleSet job) throws IOException {
         super(job);
     }
 
     public MavenModuleSetBuild(MavenModuleSet project, File buildDir) throws IOException {
         super(project, buildDir);
+    }
+
+    @Override
+    protected void onLoad() {
+        super.onLoad();
+        notifyModuleBuildLock = new Object();
     }
 
     /**
@@ -144,7 +155,8 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
     @Override
     public EnvVars getEnvironment(TaskListener log) throws IOException, InterruptedException {
         EnvVars envs = super.getEnvironment(log);
-        String opts = project.getMavenOpts();
+        String opts = getMavenOpts(log);
+
         if(opts!=null)
             envs.put("MAVEN_OPTS", opts);
         // We need to add M2_HOME and the mvn binary to the PATH so if Maven
@@ -271,6 +283,9 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
      * Returns the estimated duration for this builds.
      * Takes only the modules into account which are actually being build in
      * case of incremental builds.
+     * 
+     * @return the estimated duration in milliseconds
+     * @since 1.383
      */
     @Override
     public long getEstimatedDuration() {
@@ -282,13 +297,23 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
         long result = 0;
         
         Map<MavenModule, List<MavenBuild>> moduleBuilds = getModuleBuilds();
+        
+        boolean noModuleBuildsYet = true; 
+        
         for (List<MavenBuild> builds : moduleBuilds.values()) {
             if (!builds.isEmpty()) {
+                noModuleBuildsYet = false;
                 MavenBuild build = builds.get(0);
                 if (build.getResult() != Result.NOT_BUILT && build.getEstimatedDuration() != -1) {
                     result += build.getEstimatedDuration();
                 }
             }
+        }
+        
+        if (noModuleBuildsYet) {
+            // modules not determined, yet, i.e. POM not parsed.
+            // Use best estimation we have:
+            return super.getEstimatedDuration();
         }
         
         result += estimateModuleSetBuildDurationOverhead(3);
@@ -324,14 +349,24 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
     }
 
     private static String normalizePath(String relPath) {
-        // JENKINS-8525 FilenameUtils.normalize for ../foo returns null
-        if (StringUtils.isEmpty(relPath) || StringUtils.startsWith( relPath, "../" )) {
-            LOGGER.config("No need to normalize " + (StringUtils.isEmpty(relPath) ? "an empty path" : relPath));
+        relPath = StringUtils.trimToEmpty( relPath );
+        if (StringUtils.isEmpty( relPath )) {
+            LOGGER.config("No need to normalize an empty path.");
         } else {
-            String tmp = FilenameUtils.normalize( relPath );
-            LOGGER.config("Normalized path " + relPath + " to "+tmp);
-            relPath = tmp;
+            if(FilenameUtils.indexOfLastSeparator( relPath ) == -1) {
+                LOGGER.config("No need to normalize "+relPath);
+            } else {
+                String tmp = FilenameUtils.normalize( relPath );
+                if(tmp == null) {
+                    LOGGER.config("Path " + relPath + " can not be normalized (parent dir is unknown). Keeping as is.");
+                } else {
+                    LOGGER.config("Normalized path " + relPath + " to "+tmp);
+                    relPath = tmp;
+                }
+                relPath = FilenameUtils.separatorsToUnix( relPath );
+            }
         }
+        LOGGER.fine("Returning path " + relPath);
         return relPath;
     }
 
@@ -456,7 +491,9 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
 
             // actions need to be replaced atomically especially
             // given that two builds might complete simultaneously.
-            synchronized(this) {
+            // use a separate lock object since this synchronized block calls into plugins,
+            // which in turn can access other MavenModuleSetBuild instances, which will result in a dead lock.
+            synchronized(notifyModuleBuildLock) {
                 boolean modified = false;
 
                 List<Action> actions = getActions();
@@ -497,6 +534,28 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
         } catch (InterruptedException e) {
             LOGGER.log(Level.WARNING,"Failed to update "+this,e);
         }
+    }
+
+    public String getMavenOpts(TaskListener listener) {
+        String opts = project.getMavenOpts();
+        if (opts == null ) return null;
+        try {
+            Class<?> clazz = Class.forName( "org.jenkinsci.plugins.tokenmacro.TokenMacro" );
+            Method expandMethod =
+                ReflectionUtils.findMethod(clazz, "expand", new Class[]{ AbstractBuild.class, TaskListener.class, String.class} );
+            opts = (String) expandMethod.invoke( null, this, listener, opts );
+            //opts = TokenMacro.expand(this, listener, opts);
+        //} catch (MacroEvaluationException e) {
+        //    listener.error( "Ignore MacroEvaluationException " + e.getMessage() );            
+        }
+        catch(Exception tokenException) {
+            listener.error("Ignore Problem expanding maven opts macros " + tokenException.getMessage());
+        }
+        catch(LinkageError linkageError) {
+            // Token plugin not present. Ignore, this is OK.
+        }
+
+        return opts;
     }
 
     /**
@@ -558,11 +617,15 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
                         parsePoms(listener, logger, envVars, mvn, mavenVersion); // #5428 : do pre-build *before* parsing pom
                         SplittableBuildListener slistener = new SplittableBuildListener(listener);
                         proxies = new HashMap<ModuleName, ProxyImpl2>();
-                        List<String> changedModules = new ArrayList<String>();
+                        List<ModuleName> changedModules = new ArrayList<ModuleName>();
+                        
+                        if (project.isIncrementalBuild() && !getChangeSet().isEmptySet()) {
+                            changedModules.addAll(getUnbuildModulesSinceLastSuccessfulBuild());
+                        }
 
                         for (MavenModule m : project.sortedActiveModules) {
                             MavenBuild mb = m.newBuild();
-                            // HUDSON-8418
+                            // JENKINS-8418
                             mb.setBuiltOnStr( getBuiltOnStr() );
                             // Check if incrementalBuild is selected and that there are changes -
                             // we act as if incrementalBuild is not set if there are no changes.
@@ -574,7 +637,7 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
                                 if ((mb.getPreviousBuiltBuild() == null) ||
                                     (!getChangeSetFor(m).isEmpty()) 
                                     || (mb.getPreviousBuiltBuild().getResult().isWorseThan(Result.SUCCESS))) {
-                                    changedModules.add(m.getModuleName().toString());
+                                    changedModules.add(m.getModuleName());
                                 }
                             }
 
@@ -604,14 +667,14 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
                             LOGGER.info( "using maven 3 " + mavenVersion );
                             process =
                                 MavenBuild.mavenProcessCache.get( launcher.getChannel(), slistener,
-                                                                  new Maven3ProcessFactory( project, launcher, envVars,
+                                                                  new Maven3ProcessFactory( project, launcher, envVars, getMavenOpts(listener),
                                                                                             pom.getParent() ) );
                         }
                         else
                         {
                             process =
                                 MavenBuild.mavenProcessCache.get( launcher.getChannel(), slistener,
-                                                                  new MavenProcessFactory( project, launcher, envVars,
+                                                                  new MavenProcessFactory( project, launcher, envVars,getMavenOpts(listener),
                                                                                            pom.getParent() ) );
                         }
                         ArgumentListBuilder margs = new ArgumentListBuilder().add("-B").add("-f", pom.getRemote());
@@ -712,7 +775,7 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
                 return Result.FAILURE;
             } catch (RuntimeException e) {
                 // bug in the code.
-                e.printStackTrace(listener.error("Processing failed due to a bug in the code. Please report this to jenkins-users@googlegroups.com"));
+                e.printStackTrace(listener.error("Processing failed due to a bug in the code. Please report this to jenkinsci-users@googlegroups.com"));
                 logger.println("project="+project);
                 logger.println("project.getModules()="+project.getModules());
                 logger.println("project.getRootModule()="+project.getRootModule());
@@ -720,12 +783,38 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
             }
         }
 
+        /**
+         * Returns the modules which have not been build since the last successful aggregator build
+         * though they should be because they had SCM changes.
+         * This can happen when the aggregator build fails before it reaches the module.
+         * 
+         * See JENKINS-5764
+         */
+        private Collection<ModuleName> getUnbuildModulesSinceLastSuccessfulBuild() {
+            Collection<ModuleName> unbuiltModules = new ArrayList<ModuleName>();
+            MavenModuleSetBuild previousSuccessfulBuild = getPreviousSuccessfulBuild();
+            if (previousSuccessfulBuild != null) {
+                MavenModuleSetBuild previousBuild = previousSuccessfulBuild;
+                do {
+                    UnbuiltModuleAction unbuiltModuleAction = previousBuild.getAction(UnbuiltModuleAction.class);
+                    if (unbuiltModuleAction != null) {
+                        for (ModuleName name : unbuiltModuleAction.getUnbuildModules()) {
+                            unbuiltModules.add(name);
+                        }
+                    }
+                    
+                    previousBuild = previousBuild.getNextBuild();
+                } while (previousBuild != null && previousBuild != MavenModuleSetBuild.this);
+            }
+            return unbuiltModules;
+        }
+
         private void parsePoms(BuildListener listener, PrintStream logger, EnvVars envVars, MavenInstallation mvn, String mavenVersion) throws IOException, InterruptedException {
             logger.println("Parsing POMs");
 
             List<PomInfo> poms;
             try {
-                poms = getModuleRoot().act(new PomParser(listener, mvn, project, mavenVersion));
+                poms = getModuleRoot().act(new PomParser(listener, mvn, project, mavenVersion, envVars));
             } catch (IOException e) {
                 if (e.getCause() instanceof AbortException)
                     throw (AbortException) e.getCause();
@@ -1046,7 +1135,7 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
         
         String rootPOMRelPrefix;
         
-        public PomParser(BuildListener listener, MavenInstallation mavenHome, MavenModuleSet project,String mavenVersion) {
+        public PomParser(BuildListener listener, MavenInstallation mavenHome, MavenModuleSet project,String mavenVersion,EnvVars envVars) {
             // project cannot be shipped to the remote JVM, so all the relevant properties need to be captured now.
             this.listener = listener;
             this.mavenHome = mavenHome;
@@ -1062,6 +1151,14 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
                     }
                 }
             }
+            if (envVars != null && !envVars.isEmpty()) {
+                for (Entry<String,String> entry : envVars.entrySet()) {
+                    if (entry.getKey() != null && entry.getValue() != null) {
+                        this.properties.put( "env." + entry.getKey(), entry.getValue() );
+                    }
+                }
+            }
+            
             this.nonRecursive = project.isNonRecursive();
             this.workspaceProper = project.getLastBuild().getWorkspace().getRemote();
             if (project.usesPrivateRepository()) {
@@ -1069,6 +1166,8 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
             } else {
                 this.privateRepository = null;
             }
+            // TODO maybe in goals with -s,--settings
+            // or -Dmaven.repo.local
             this.alternateSettings = project.getAlternateSettings();
             this.mavenVersion = mavenVersion;
             this.resolveDependencies = project.isResolveDependencies();
@@ -1309,7 +1408,7 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
      * Extra verbose debug switch.
      */
     public static boolean debug = Boolean.getBoolean( "hudson.maven.debug" );
-    
+
     @Override
     public MavenModuleSet getParent() {// don't know why, but javac wants this
         return super.getParent();
