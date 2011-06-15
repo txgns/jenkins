@@ -42,7 +42,7 @@ public class ScopedSlaveManager implements SlaveManager {
                         LOGGER.log(Level.INFO, "{0}[{1}].canProvision({2})={3}",
                                 new Object[]{
                                         ScopedSlaveManager.class.getSimpleName(),
-                                        scope.getUrl(),
+                                        item.getUrl(),
                                         labelExpression,
                                         Boolean.TRUE
                                 });
