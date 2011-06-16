@@ -231,7 +231,7 @@ public class MasterProvisioner {
                 if (!pns.isEmpty()) {
                     for (PlannedNode pn : pns) {
                         try {
-                            NodeProvisionTask npt = new NodeProvisionTask(mn, c, pn);
+                            NodeProvisionThenOnlineTask npt = new NodeProvisionThenOnlineTask(mn, c, pn);
                             npt.start();
                             nodeTaskQueue.add(npt);
                         } catch (Exception e) {

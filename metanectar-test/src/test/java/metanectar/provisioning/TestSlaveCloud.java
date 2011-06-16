@@ -42,17 +42,8 @@ class TestSlaveCloud extends Cloud implements MasterProvisioningCloud {
                         public Node call() throws Exception {
                             Thread.sleep(delay);
 
-                            System.out.println("launching slave");
-
                             DumbSlave slave = mtc.createSlave();
                             slave.setRetentionStrategy(new NodeTerminatingRetentionStrategy.RemoveNode());
-
-                            Computer computer = slave.toComputer();
-                            computer.connect(false).get();
-                            synchronized (this) {
-                                System.out.println(computer.getName()+" launch"+(computer.isOnline()?"ed successfully":" failed"));
-                                System.out.println(computer.getLog());
-                            }
                             return slave;
                         }
                     })

@@ -23,12 +23,18 @@ public class NodeProvisionTask extends FutureTask<Node, Task> {
 
     private final NodeProvisioner.PlannedNode pn;
 
+    private Node n;
+
     public NodeProvisionTask(MetaNectar mn, Cloud c, NodeProvisioner.PlannedNode pn) {
         super(pn.future);
 
         this.mn = mn;
         this.c = c;
         this.pn = pn;
+    }
+
+    protected Node getNode() {
+        return n;
     }
 
     public void start() throws Exception {
@@ -39,7 +45,7 @@ public class NodeProvisionTask extends FutureTask<Node, Task> {
 
     public Task end() throws Exception {
         try {
-            final Node n = pn.future.get();
+            n = pn.future.get();
             mn.addNode(n);
 
             LOGGER.info("Provision completed for node " + pn.displayName + " on cloud " + c.name + ". There are now " + mn.getComputers().length + " computer(s)");
