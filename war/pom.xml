@@ -261,7 +261,7 @@ THE SOFTWARE.
                 </macrodef>
 
                 <resolvePlugin groupId="com.infradna.hudson.plugins" artifactId="infradna-backup" version="1.2" />
-                <resolvePlugin groupId="com.cloudbees.nectar" artifactId="nectar-vmware" version="1.4" />
+                <resolvePlugin groupId="com.cloudbees.nectar" artifactId="nectar-vmware" version="1.5" />
                 <resolvePlugin groupId="com.cloudbees.metanectar" artifactId="metanectar-vmware" version="1.0-SNAPSHOT" />
                 <resolvePlugin groupId="com.cloudbees.nectar" artifactId="nectar-rbac" version="1.0" />
                 <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="cloudbees-folder" version="1.2" />
