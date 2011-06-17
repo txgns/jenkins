@@ -7,6 +7,7 @@ import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -34,6 +35,10 @@ public class AboutDEVATcloud extends ManagementLink {
     @Override
     public String getDescription() {
         return Messages.AboutDEVATcloud_Description();
+    }
+
+    public Properties getProperties() {
+        return MetaNectar.getInstance().getConfig().getProperties();
     }
 
     public String getPublicKey() {

@@ -49,6 +49,10 @@ public class Config {
         this.binder = new PropertiesToBeanMapper(properties);
     }
 
+    public Properties getProperties() {
+        return properties;
+    }
+
     private static class SingletonHolder {
         public static final Config INSTANCE = new Config();
     }
