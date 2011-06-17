@@ -75,7 +75,7 @@ public class ReverseProxyProdder extends MasterServerListener {
         }
     }
 
-    private void prod() {
+    public void prod() {
         synchronized (lock) {
             requestedProdCount++;
             if (currentProd.isDone()) {

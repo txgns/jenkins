@@ -6,9 +6,6 @@ import hudson.slaves.ComputerConnectorDescriptor;
 import metanectar.Config;
 import metanectar.MetaNectarExtensionPoint;
 import metanectar.model.MetaNectar;
-import metanectar.property.DefaultValue;
-import metanectar.property.Optional;
-import metanectar.property.Property;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 /**
@@ -23,7 +20,7 @@ public class ConfiguredComputerConnector extends SSHConnector implements MetaNec
     }
 
     private ConfiguredComputerConnector(Config.SSHConnectionProperties p) {
-        super(p.getPort(), p.getUserName(), p.getUserPassword(), p.getKey(), p.getJvmOptions());
+        super(p.getPort(), p.getUserName(), p.getUserPassword(), p.getPrivateKey(), p.getJvmOptions());
     }
 
     @Extension

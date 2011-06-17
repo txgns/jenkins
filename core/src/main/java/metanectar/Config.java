@@ -132,7 +132,9 @@ public class Config {
     }
 
     public static class SSHConnectionProperties {
-        private String key;
+        private String privateKey;
+
+        private String publicKey;
 
         private String userName;
 
@@ -142,8 +144,12 @@ public class Config {
 
         private String jvmOptions;
 
-        public String getKey() {
-            return key;
+        public String getPrivateKey() {
+            return privateKey;
+        }
+
+        public String getPublicKey() {
+            return publicKey;
         }
 
         public String getUserName() {
@@ -163,8 +169,13 @@ public class Config {
         }
 
         @Property("metaNectar.master.ssh.key.private") @Optional
-        public void setKey(String key) {
-            this.key = key;
+        public void setPrivateKey(String privateKey) {
+            this.privateKey = privateKey;
+        }
+
+        @Property("metaNectar.master.ssh.key.public") @Optional
+        public void setPublicKey(String publicKey) {
+            this.publicKey = publicKey;
         }
 
         @Property("metaNectar.master.ssh.username")

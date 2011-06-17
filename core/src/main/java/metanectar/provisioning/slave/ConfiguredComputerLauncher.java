@@ -3,14 +3,10 @@ package metanectar.provisioning.slave;
 import hudson.Extension;
 import hudson.model.Descriptor;
 import hudson.plugins.sshslaves.SSHLauncher;
-import hudson.slaves.ComputerConnectorDescriptor;
 import hudson.slaves.ComputerLauncher;
 import metanectar.Config;
 import metanectar.MetaNectarExtensionPoint;
 import metanectar.model.MetaNectar;
-import metanectar.property.DefaultValue;
-import metanectar.property.Optional;
-import metanectar.property.Property;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 /**
@@ -25,7 +21,7 @@ public class ConfiguredComputerLauncher extends SSHLauncher implements MetaNecta
     }
 
     private ConfiguredComputerLauncher(String host, Config.SSHConnectionProperties p) {
-        super(host, p.getPort(), p.getUserName(), p.getUserPassword(), p.getKey(), p.getJvmOptions());
+        super(host, p.getPort(), p.getUserName(), p.getUserPassword(), p.getPrivateKey(), p.getJvmOptions());
     }
 
     @Extension

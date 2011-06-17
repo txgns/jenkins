@@ -28,9 +28,29 @@ public class ReverseProxyProdderTest extends AbstractMasterProvisioningTestCase 
         super.setUp();
     }
 
+    private ReverseProxyProdder initiate() throws Exception {
+        ReverseProxyProdder rpp = MasterServerListener.all().get(ReverseProxyProdder.class);
+        rpp.await(1, TimeUnit.MINUTES);
+        assertEquals(1, rpp.getActualProdCount());
+        assertFalse(f.exists());
+
+        return rpp;
+    }
+    private ReverseProxyProdder initiateAndReset() throws Exception {
+        ReverseProxyProdder rpp = initiate();
+
+        f.createNewFile();
+        assertTrue(f.exists());
+        return rpp;
+    }
+
+    public void testInitiate() throws Exception {
+        initiate();
+    }
+
     public void testProvision() throws Exception {
         configureDummyMasterProvisioningOnMetaNectar();
-        ReverseProxyProdder rpp = MasterServerListener.all().get(ReverseProxyProdder.class);
+        ReverseProxyProdder rpp = initiateAndReset();
 
         provisionAndStartMaster("o1");
         rpp.await(1, TimeUnit.MINUTES);
@@ -40,7 +60,7 @@ public class ReverseProxyProdderTest extends AbstractMasterProvisioningTestCase 
 
     public void testTerminate() throws Exception {
         configureDummyMasterProvisioningOnMetaNectar();
-        ReverseProxyProdder rpp = MasterServerListener.all().get(ReverseProxyProdder.class);
+        ReverseProxyProdder rpp = initiateAndReset();
 
         MasterServer o1 = provisionAndStartMaster("o1");
         rpp.await(1, TimeUnit.MINUTES);
@@ -57,8 +77,7 @@ public class ReverseProxyProdderTest extends AbstractMasterProvisioningTestCase 
     public void testMultiple() throws Exception {
         int n = 100;
         configureDummyMasterProvisioningOnMetaNectar(n);
-
-        ReverseProxyProdder rpp = MasterServerListener.all().get(ReverseProxyProdder.class);
+        ReverseProxyProdder rpp = initiateAndReset();
 
         List<MasterServer> l = provisionAndStartMasters("o", n);
         rpp.await(1, TimeUnit.MINUTES);
@@ -69,14 +88,14 @@ public class ReverseProxyProdderTest extends AbstractMasterProvisioningTestCase 
 
         int i = rpp.getActualProdCount();
         assertTrue(i < rpp.getRequestedProdCount());
-        assertEquals(n * 6, rpp.getRequestedProdCount());
+        assertEquals(n * 6 + 1, rpp.getRequestedProdCount());
 
         terminateAndDeleteMasters(l);
         rpp.await(1, TimeUnit.MINUTES);
 
         assertTrue(i < rpp.getActualProdCount());
         assertTrue(rpp.getActualProdCount() < rpp.getRequestedProdCount());
-        assertEquals(n * 6 + n * 4, rpp.getRequestedProdCount());
+        assertEquals(n * 6 + n * 4 + 1, rpp.getRequestedProdCount());
     }
 
 }

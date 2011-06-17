@@ -28,8 +28,15 @@ THE SOFTWARE.
     <l:main-panel>
       <h1>${%about(app.VERSION)}</h1>
 
+      <h2>${%SSH Public Key}</h2>
+      <p>The SSH public key of this DEV@cloud Private Edition installation.
+          This public key must be declared on provisioned master machines so that DEV@cloud Private Edition can
+          securely managing masters on those machines.
+      </p>
+      <p>${it.publicKey}</p>
+      <h2>${%Dependencies}</h2>
       <p>
-        ${%dependencies}
+        ${%dependency_text}
       </p>
       <t:thirdPartyLicenses>
         <st:include page="/META-INF/licenses.xml" optional="true" />
