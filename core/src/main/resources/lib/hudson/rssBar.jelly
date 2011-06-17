@@ -23,6 +23,7 @@ THE SOFTWARE.
 -->
 
 <j:jelly xmlns:j="jelly:core" xmlns:x="jelly:xml" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+  <!--
   <div align="right" style="margin:1em">
     <a href="${rootURL}/legend">${%Legend}</a>
     <span style="padding-left:1em">
@@ -35,4 +36,5 @@ THE SOFTWARE.
       <a href="rssLatest"><img src="${imagesURL}/atom.gif" border="0" alt="Feed"/> ${%for just latest builds}</a>
     </span>
   </div>
+  -->
 </j:jelly>

@@ -4,6 +4,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
+import hudson.AboutJenkins;
 import hudson.DescriptorExtensionList;
 import hudson.ExtensionList;
 import hudson.model.*;
@@ -145,6 +146,10 @@ public class ExtensionFilter {
                     LastFailureColumn.class,
                     LastDurationColumn.class,
                     BuildButtonColumn.class
+            )));
+
+            rule(ManagementLink.class, new BlackListRule(Lists.<Class>newArrayList(
+                    AboutJenkins.class
             )));
         }
     }

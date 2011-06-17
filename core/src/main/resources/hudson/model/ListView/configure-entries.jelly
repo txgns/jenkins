@@ -27,8 +27,9 @@ THE SOFTWARE.
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
 
- <f:section title="${%Job Filters}">
-  
+ <f:section title="${%Item Filters}">
+
+  <!--
   <f:entry title="${%Status Filter}" help="/help/view-config/statusFilter.html">
     <select name="statusFilter" class="setting-input">
       <f:option value="" selected="${it.statusFilter==null}">${%All selected jobs}</f:option>
@@ -36,15 +37,16 @@ THE SOFTWARE.
       <f:option value="2" selected="${it.statusFilter==false}">${%Disabled jobs only}</f:option>
     </select>
   </f:entry>
+  -->
 
-  <f:entry title="${%Jobs}">
+  <f:entry title="${%Items}">
     <j:forEach var="job" items="${app.items}">
       <f:checkbox name="${job.name}" checked="${it.contains(job)}" title="${job.name}" />
       <br/>
     </j:forEach>
   </f:entry>
 
-  <f:optionalBlock name="useincluderegex" title="${%Use a regular expression to include jobs into the view}"
+  <f:optionalBlock name="useincluderegex" title="${%Use a regular expression to include items into the view}"
                    checked="${it.includeRegex != null}" help="/help/view-config/includeregex.html">
     <f:entry title="${%Regular expression}">
       <f:textbox name="includeRegex" field="includeRegex" />
