@@ -33,7 +33,12 @@ THE SOFTWARE.
           This public key must be declared on provisioned master machines so that DEV@cloud Private Edition can
           securely managing masters on those machines.
       </p>
-      <p>${it.publicKey}</p>
+      <table style="table-layout:fixed;word-wrap:break-word" width="100%" >
+        <tr>
+          <td><pre>${it.publicKey}</pre></td>
+        </tr>
+      </table>
+
       <h2>${%Dependencies}</h2>
       <p>
         ${%dependency_text}
