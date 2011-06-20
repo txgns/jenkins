@@ -28,7 +28,7 @@ public class ConfiguredComputerLauncher extends SSHLauncher implements MetaNecta
     public static class DescriptorImpl extends Descriptor<ComputerLauncher> {
         @Override
         public String getDisplayName() {
-            return "Pre-configured Computer Launcher";
+            return "DEV@cloud Private Edition computer launcher";
         }
     }
 

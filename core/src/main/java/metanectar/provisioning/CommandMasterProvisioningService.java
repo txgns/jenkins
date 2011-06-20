@@ -330,13 +330,6 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
                 : new FilePath(channel, path);
     }
 
-    @Extension
-    public static class DescriptorImpl extends Descriptor<MasterProvisioningService> {
-        public String getDisplayName() {
-            return "Command Provisioning Service";
-        }
-    }
-
     private static final class IsUnix implements hudson.remoting.Callable<Boolean,IOException> {
         public Boolean call() throws IOException {
             return File.pathSeparatorChar==':';

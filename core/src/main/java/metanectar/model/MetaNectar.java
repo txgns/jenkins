@@ -4,6 +4,7 @@ import com.cloudbees.commons.metanectar.agent.AgentListener;
 import com.cloudbees.commons.metanectar.agent.AgentStatusListener;
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol.GracefulConnectionRefusalException;
+import com.google.common.base.Predicate;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.PluginManager;
@@ -21,6 +22,7 @@ import org.jvnet.hudson.reactor.ReactorException;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
+import javax.annotation.Nullable;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import java.io.File;
@@ -339,16 +341,39 @@ public class MetaNectar extends Hudson {
      * @return the sub-list of descriptors
      */
     public static <T extends Describable<T>, D extends Descriptor<T>> List<D> allWithMetaNectarExtensions(Class<T> describableClass) {
-        return allWithMetaNectarExtensions(describableClass, MetaNectarExtensionPoint.class);
+        return allWithPredicate(describableClass,
+                new Predicate<Class<? extends T>>() {
+                    public boolean apply(@Nullable Class<? extends T> input) {
+                        return MetaNectarExtensionPoint.class.isAssignableFrom(input);
+                    }
+                });
     }
 
-    private static <T extends Describable<T>, D extends Descriptor<T>> List<D> allWithMetaNectarExtensions(Class<T> describableClass, Class assignableTo) {
+    /**
+     * Obtain the list of descriptors for a describable class whose sub-classes are not assignable
+     * to {@link MetaNectarExtensionPoint}.
+     *
+     * @param describableClass the describable class
+     * @param <T> the describable type
+     * @param <D> the descriptor type
+     * @return the sub-list of descriptors
+     */
+    public static <T extends Describable<T>, D extends Descriptor<T>> List<D> allWithoutMetaNectarExtensions(Class<T> describableClass) {
+        return allWithPredicate(describableClass,
+                new Predicate<Class<? extends T>>() {
+                    public boolean apply(@Nullable Class<? extends T> input) {
+                        return !MetaNectarExtensionPoint.class.isAssignableFrom(input);
+                    }
+                });
+    }
+
+    private static <T extends Describable<T>, D extends Descriptor<T>> List<D> allWithPredicate(Class<T> describableClass, Predicate<Class<? extends T>> predicate) {
         final DescriptorExtensionList<T, D> unfiltered = MetaNectar.getInstance().getDescriptorList(describableClass);
 
         final List<D> filtered = new ArrayList<D>(unfiltered.size());
 
         for (D d : unfiltered) {
-            if (assignableTo.isAssignableFrom(d.clazz)) {
+            if (predicate.apply(d.clazz)) {
                 filtered.add(d);
             }
         }

@@ -53,5 +53,9 @@ public class MasterProvisioningSlave extends Slave implements MetaNectarExtensio
         public String getDisplayName() {
             return "Master Provisioning Node";
         }
+
+        public List<Descriptor<ComputerLauncher>> getComputerLauncherDescriptors() {
+            return MetaNectar.allWithMetaNectarExtensions(ComputerLauncher.class);
+        }
     }
 }

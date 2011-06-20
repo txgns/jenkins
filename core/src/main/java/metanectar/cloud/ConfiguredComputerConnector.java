@@ -27,7 +27,7 @@ public class ConfiguredComputerConnector extends SSHConnector implements MetaNec
     public static class DescriptorImpl extends ComputerConnectorDescriptor {
         @Override
         public String getDisplayName() {
-            return "Pre-configured Computer Connector";
+            return "DEV@cloud Private Edition computer connector";
         }
     }
 
