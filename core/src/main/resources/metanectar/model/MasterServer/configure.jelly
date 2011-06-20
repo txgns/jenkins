@@ -25,31 +25,32 @@ THE SOFTWARE.
 <!--
   Config page. derived class specific entries should go to configure-entries.jsp
 -->
-<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-  <l:layout title="${it.displayName} Config" norefresh="true" permission="${it.EXTENDED_READ}">
-    <st:include page="sidepanel.jelly" />
-    <l:main-panel>
-      <div class="behavior-loading">${%LOADING}</div>
-      <f:form method="post" action="configSubmit" name="config">
-        <j:set var="descriptor" value="${it.descriptor}" />
-        <j:set var="instance" value="${it}" />
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
+         xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
+    <l:layout title="${it.displayName} Config" norefresh="true" permission="${it.EXTENDED_READ}">
+        <st:include page="sidepanel.jelly"/>
+        <l:main-panel>
+            <div class="behavior-loading">${%LOADING}</div>
+            <f:form method="post" action="configSubmit" name="config">
+                <j:set var="descriptor" value="${it.descriptor}"/>
+                <j:set var="instance" value="${it}"/>
 
-        <j:if test="${it.isNameEditable()}">
-          <f:entry title="${%name(it.pronoun)}">
-            <f:textbox name="name" value="${it.name}" />
-          </f:entry>
-        </j:if>
+                <h1>
+                    <img src="${imagesURL}/48x48/${it.icon}" width="48" height="48" alt=""/>
+                    <st:nbsp/>${it.displayName}
+                    <st:nbsp/>
+                </h1>
 
-        <f:entry title="${%Description}" help="${app.markupFormatter.helpUrl}">
-          <f:textarea name="description" value="${it.description}"/>
-        </f:entry>
+                <f:entry title="${%Description}" help="${app.markupFormatter.helpUrl}">
+                    <f:textarea name="description" value="${it.description}"/>
+                </f:entry>
 
-        <j:if test="${h.hasPermission(it,it.CONFIGURE)}">
-          <f:block>
-            <f:submit value="${%Save}" />
-          </f:block>
-        </j:if>
-      </f:form>
-    </l:main-panel>
-  </l:layout>
+                <j:if test="${h.hasPermission(it,it.CONFIGURE)}">
+                    <f:block>
+                        <f:submit value="${%Save}"/>
+                    </f:block>
+                </j:if>
+            </f:form>
+        </l:main-panel>
+    </l:layout>
 </j:jelly>
