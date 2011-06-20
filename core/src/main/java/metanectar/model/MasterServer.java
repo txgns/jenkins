@@ -354,6 +354,7 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
         this.nodeId = 0;
         this.localHome = null;
         this.localEndpoint = null;
+        this.globalEndpoint = null;
         this.identity = null;
         this.snapshot = snapshot;
         save();

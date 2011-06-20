@@ -268,6 +268,7 @@ public class MasterProvisioner {
                         final NodeTerminatingRetentionStrategy rs = (NodeTerminatingRetentionStrategy)c.getRetentionStrategy();
 
                         try {
+                            // TODO terminate should be added as an async task
                             rs.terminate(n);
 
                             LOGGER.info("Terminate completed for node " + n.getNodeName());
