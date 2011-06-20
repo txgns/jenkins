@@ -2,6 +2,7 @@ package metanectar.model;
 
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableSet;
+import hudson.AbortException;
 import hudson.Extension;
 import hudson.model.*;
 import metanectar.Config;
@@ -489,10 +490,15 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
 
     @Override
     public synchronized void delete() throws IOException, InterruptedException {
+        if (!canDoAction(Action.Delete)) {
+            throw new AbortException(String.format("Action \"%s\" cannot be performed when in state \"\"", Action.Delete.name(), getState().name()));
+        }
+
         if (state == MasterServer.State.TerminatingError) {
             // TODO disable this, or only enable for development purposes.
             setTerminateCompletedState(null);
         }
+
         super.delete();
     }
 

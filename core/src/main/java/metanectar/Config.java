@@ -81,13 +81,24 @@ public class Config {
     public static class MetaNectarProperties {
         private URL endpoint;
 
+        private String templatesDirectory;
+
         public URL getEndpoint() {
             return endpoint;
+        }
+
+        public String getTemplatesDirectory() {
+            return templatesDirectory;
         }
 
         @Property("metaNectar.endpoint")
         public void setEndpoint(URL endpoint) {
             this.endpoint = endpoint;
+        }
+
+        @Property("metaNectar.archive.templatesDirectory") @Optional // TODO change to required when Vagrant is updated
+        public void setTemplatesDirectory(String templatesDirectory) {
+            this.templatesDirectory = templatesDirectory;
         }
     }
 
@@ -233,6 +244,14 @@ public class Config {
      */
     public URL getEndpoint() {
         return getBean(MetaNectarProperties.class).endpoint;
+    }
+
+    /**
+     * @return the property "metaNectar.archive.templatesDirectory" that is the location where master templates are
+     *         stored
+     */
+    public String getTemplatesDirectory() {
+        return getBean(MetaNectarProperties.class).templatesDirectory;
     }
 
     /**

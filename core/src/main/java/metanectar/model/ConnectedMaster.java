@@ -3,24 +3,29 @@ package metanectar.model;
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import com.google.common.base.Function;
 import com.google.common.base.Objects;
+import com.google.common.collect.Sets;
+import hudson.FilePath;
 import hudson.Util;
 import hudson.console.AnnotatedLargeText;
 import hudson.model.*;
+import hudson.remoting.Callable;
 import hudson.remoting.Channel;
 import hudson.util.DescribableList;
+import hudson.util.DirScanner;
+import hudson.util.FileVisitor;
 import hudson.util.StreamTaskListener;
+import hudson.util.io.ArchiverFactory;
 import hudson.util.io.ReopenableFileOutputStream;
 import metanectar.Config;
 import metanectar.provisioning.IdentifierFinder;
-import metanectar.provisioning.MetaNectarSlaveManager;
 import metanectar.provisioning.ScopedSlaveManager;
+import org.apache.tools.ant.types.resources.Files;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.security.GeneralSecurityException;
@@ -200,7 +205,7 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
     //
 
     /**
-     * No nested job under Jenkins server
+     * No nested jobs
      *
      * @deprecated
      *      No one shouldn't be calling this directly.
@@ -347,7 +352,103 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
     }
 
 
-    // Channel methods
+    // Channel-specific methods that can only be performed when online
+
+    public void doCloneToTemplateAction() throws IOException, InterruptedException {
+        cloneHomeDir();
+
+        // Requires: master template name
+
+        // Create MasterTemplate, by default in same location as this master
+        // Create async task to clone master home dir and set state on the master template
+    }
+
+    public void doCloneToNewMasterAction() throws IOException, InterruptedException {
+        // Requires: master name, ?
+
+        // Create MasterServer, by default in same location as this master
+        // Create async task to clone master home dir and set state on the master server
+    }
+
+    /**
+     * Clone the master home directory to a local tar.gz file.
+     * <p>
+     * This operation is synchronous.</p>
+     * <p>
+     * Any instance specific files, such as those related to identity, will be removed.</p>
+     */
+    public void cloneHomeDir() throws IOException, InterruptedException {
+        if (isOffline()) {
+            throw new IllegalStateException("Not online");
+        }
+
+        File f = createTemplateFile();
+
+        LOGGER.info(f.toString());
+
+        FilePath fp = getHomeDir();
+
+        fp.archive(ArchiverFactory.TARGZ,
+                new BufferedOutputStream(new FileOutputStream(f)),
+                new DirContentsWithFilterScanner(new HomeDirFilter()));
+    }
+
+    private File createTemplateFile() throws IOException {
+        File f = null;
+        do {
+            final String base = MetaNectar.getInstance().getConfig().getTemplatesDirectory();
+            f = new File(base, "template-" + UUID.randomUUID().toString());
+        } while (!f.createNewFile());
+
+        return f;
+    }
+    /**
+     * Directory scanner that does not include the top directory
+     */
+    private static class DirContentsWithFilterScanner extends DirScanner.Full {
+        private static final long serialVersionUID = 1L;
+
+        private final FileFilter filter;
+
+        public DirContentsWithFilterScanner(FileFilter filter) {
+            this.filter = filter;
+        }
+
+        public void scan(File dir, FileVisitor visitor) throws IOException {
+            for (File child : dir.listFiles())
+                super.scan(child, visitor.with(filter));
+        }
+    }
+
+    private static class HomeDirFilter implements FileFilter, Serializable {
+        private static final long serialVersionUID = 1L;
+
+        private static Set<String> blackList = Sets.newHashSet("identity.key", "secret.key");
+
+        public boolean accept(File pathname) {
+            return !blackList.contains(pathname.getName());
+        }
+    }
+
+    /**
+     * Get the master home directory.
+     * <p>
+     * This operation is synchronous.
+     * </p>
+     */
+    public FilePath getHomeDir() throws IOException, InterruptedException {
+        if (isOffline()) {
+            throw new IllegalStateException("Not online");
+        }
+
+        return channel.call(new HomeDirCallable());
+    }
+
+    private static class HomeDirCallable implements Callable<FilePath, RuntimeException> {
+        public FilePath call() throws RuntimeException {
+            return Hudson.getInstance().getRootPath();
+        }
+    }
 
     protected boolean setChannel(Channel channel) throws IOException, IllegalStateException {
         if (this.channel != null) {

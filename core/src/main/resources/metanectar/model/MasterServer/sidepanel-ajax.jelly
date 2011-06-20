@@ -35,6 +35,12 @@ THE SOFTWARE.
                         enabled="${it.canDoAction(action)}"/>
             </j:forEach>
 
+            <j:if test="${it.online}">
+                <l:task icon="images/24x24/setting.gif" href="cloneToTemplate" title="${%Clone To Template}"/>
+
+                <l:task icon="images/24x24/setting.gif" href="cloneToNewMaster" title="${%Clone To New Master}"/>
+            </j:if>
+
         </l:isAdmin>
 
     </l:ajax>
