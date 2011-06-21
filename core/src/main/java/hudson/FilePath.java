@@ -399,6 +399,31 @@ public final class FilePath implements Serializable {
         });
     }
 
+    /**
+     * Archives this directory into the specified archive format, to the given {@link OutputStream}, by using
+     * {@link DirScanner} to choose what files to include.
+     *
+     * @return
+     *      number of files/directories archived. This is only really useful to check for a situation where nothing
+     *      is archived.
+     */
+    public Future<Integer> archiveAsync(final ArchiverFactory factory, OutputStream os, final DirScanner scanner) throws IOException, InterruptedException {
+        final OutputStream out = (channel!=null)?new RemoteOutputStream(os):os;
+        return actAsync(new FileCallable<Integer>() {
+            public Integer invoke(File f, VirtualChannel channel) throws IOException {
+                Archiver a = factory.create(out);
+                try {
+                    scanner.scan(f,a);
+                } finally {
+                    a.close();
+                }
+                return a.countEntries();
+            }
+
+            private static final long serialVersionUID = 1L;
+        });
+    }
+
     private int archive(final ArchiverFactory factory, OutputStream os, final FileFilter filter) throws IOException, InterruptedException {
         return archive(factory,os,new DirScanner.Filter(filter));
     }
