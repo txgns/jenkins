@@ -10,6 +10,7 @@ import hudson.console.AnnotatedLargeText;
 import hudson.model.*;
 import hudson.remoting.Callable;
 import hudson.remoting.Channel;
+import hudson.remoting.Future;
 import hudson.util.DescribableList;
 import hudson.util.DirScanner;
 import hudson.util.FileVisitor;
@@ -33,6 +34,7 @@ import java.security.KeyFactory;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -354,20 +356,19 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
 
     // Channel-specific methods that can only be performed when online
 
-    public void doCloneToTemplateAction() throws IOException, InterruptedException {
-        cloneHomeDir();
+    public void doCloneToTemplateAction(StaplerRequest req, StaplerResponse rsp) throws Exception {
+        checkPermission(Job.CREATE);
+
+        ItemGroup ig = getParent();
+
+        File archive = createTemplateFile();
+        LOGGER.info(archive.getAbsolutePath());
+        cloneHomeDir(archive);
 
         // Requires: master template name
 
         // Create MasterTemplate, by default in same location as this master
         // Create async task to clone master home dir and set state on the master template
-    }
-
-    public void doCloneToNewMasterAction() throws IOException, InterruptedException {
-        // Requires: master name, ?
-
-        // Create MasterServer, by default in same location as this master
-        // Create async task to clone master home dir and set state on the master server
     }
 
     /**
@@ -377,31 +378,30 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
      * <p>
      * Any instance specific files, such as those related to identity, will be removed.</p>
      */
-    public void cloneHomeDir() throws IOException, InterruptedException {
+    public void cloneHomeDir(File archive) throws IOException, InterruptedException {
         if (isOffline()) {
             throw new IllegalStateException("Not online");
         }
 
-        File f = createTemplateFile();
-
-        LOGGER.info(f.toString());
+        LOGGER.info(archive.toString());
 
         FilePath fp = getHomeDir();
 
         fp.archive(ArchiverFactory.TARGZ,
-                new BufferedOutputStream(new FileOutputStream(f)),
+                new BufferedOutputStream(new FileOutputStream(archive)),
                 new DirContentsWithFilterScanner(new HomeDirFilter()));
     }
 
-    private File createTemplateFile() throws IOException {
+    public File createTemplateFile() throws IOException {
         File f = null;
         do {
             final String base = MetaNectar.getInstance().getConfig().getTemplatesDirectory();
-            f = new File(base, "template-" + UUID.randomUUID().toString());
+            f = new File(base, "template-" + UUID.randomUUID().toString() + ".tar.gz");
         } while (!f.createNewFile());
 
         return f;
     }
+
     /**
      * Directory scanner that does not include the top directory
      */

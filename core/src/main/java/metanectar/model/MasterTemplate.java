@@ -36,6 +36,7 @@ import java.util.logging.Logger;
  * @author Paul Sandoz
  */
 public abstract class MasterTemplate extends AbstractItem implements TopLevelItem {
+
     /**
      * The states of the master.
      */
@@ -84,7 +85,7 @@ public abstract class MasterTemplate extends AbstractItem implements TopLevelIte
     /**
      * The state of the master.
      */
-    private volatile State state;
+    private volatile State state = State.Created;
 
     /**
      * The time stamp when the state was modified.
@@ -124,13 +125,6 @@ public abstract class MasterTemplate extends AbstractItem implements TopLevelIte
     public void onCreatedFromScratch() {
         super.onCreatedFromScratch();
         init();
-
-        try {
-            setCreatedState();
-            save();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private void init() {
@@ -156,14 +150,15 @@ public abstract class MasterTemplate extends AbstractItem implements TopLevelIte
 
     // Methods for modifying state
 
-    public synchronized void setCreatedState() throws IOException {
-        setState(State.Created);
+    public synchronized void setCopyingState() throws IOException {
+        setState(State.Copying);
 
         save();
     }
 
-    public synchronized void setCopyingState() throws IOException {
+    public synchronized void setCopyingErrorState(Throwable error) throws IOException {
         setState(State.Copying);
+        this.error = error;
 
         save();
     }
