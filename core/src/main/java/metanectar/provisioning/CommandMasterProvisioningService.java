@@ -380,8 +380,13 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
     }
 
     private String getSuffix(String path) {
-        int i = path.lastIndexOf('.');
-        return (i > 0) ? path.substring(i) : "";
+        if (path.endsWith(".tar.gz")) {
+            return ".tar.gz";
+        } else if (path.endsWith(".zip")) {
+            return ".zip";
+        } else {
+            return "";
+        }
     }
 
     private void copySnapshotFromRemoteToLocal() {
