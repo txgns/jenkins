@@ -1,6 +1,7 @@
 package metanectar.model;
 
 import hudson.DescriptorExtensionList;
+import hudson.ExtensionList;
 import hudson.ExtensionPoint;
 import hudson.model.Action;
 import hudson.model.Descriptor;
@@ -11,11 +12,15 @@ import org.kohsuke.stapler.StaplerRequest;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * @author Stephen Connolly
  */
 public abstract class ConnectedMasterProperty<S extends ConnectedMaster> implements ReconfigurableDescribable<ConnectedMasterProperty<?>>, ExtensionPoint {
+    private static final Logger LOGGER = Logger.getLogger(ConnectedMasterProperty.class.getName());
+
     protected transient S owner;
 
     public void setOwner(S owner) {
@@ -45,6 +50,46 @@ public abstract class ConnectedMasterProperty<S extends ConnectedMaster> impleme
      */
     public static List<ConnectedMasterPropertyDescriptor> for_(ConnectedMaster node) {
         return ConnectedMasterPropertyDescriptor.for_(all(), node);
+    }
+
+    /**
+     * Called when the master is connected.
+     */
+    public void onConnected() {}
+
+    /**
+     * Called when the master is disconnected.
+     */
+    public void onDisconnected() {}
+
+    /* package */ static void fireOnConnected(final ConnectedMaster<?> cm) {
+        fire (cm, new FireLambda() {
+            public void f(ConnectedMasterProperty<?> property) {
+                property.onConnected();
+            }
+        });
+    }
+
+    /* package */ static void fireOnDisconnected(final ConnectedMaster<?> cm) {
+        fire (cm, new FireLambda() {
+            public void f(ConnectedMasterProperty property) {
+                property.onDisconnected();
+            }
+        });
+    }
+
+    private interface FireLambda {
+        void f(ConnectedMasterProperty<?> cml);
+    }
+
+    private static void fire(ConnectedMaster<?> cm, FireLambda l) {
+        for (ConnectedMasterProperty<?> property : cm.properties) {
+            try {
+                l.f(property);
+            } catch (Throwable e) {
+                LOGGER.log(Level.SEVERE, "Exception when firing event", e);
+            }
+        }
     }
 
 }

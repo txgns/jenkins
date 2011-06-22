@@ -243,6 +243,7 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
 
         this.error = null;
         ConnectedMasterListener.fireOnConnected(this);
+        ConnectedMasterProperty.fireOnConnected(this);
 
         slaveManager = new ScopedSlaveManager(getParent());
         channel.setProperty(SlaveManager.class.getName(), channel.export(SlaveManager.class, slaveManager));
@@ -486,6 +487,7 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
 
     protected void setDisconnectStateCallback() throws IOException {
         ConnectedMasterListener.fireOnDisconnected(this);
+        ConnectedMasterProperty.fireOnDisconnected(this);
 
         taskListener.getLogger().println("Disconnected");
         taskListener.getLogger().println(toString());
@@ -495,6 +497,7 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
         this.error = error;
 
         ConnectedMasterListener.fireOnDisconnected(this);
+        ConnectedMasterProperty.fireOnDisconnected(this);
 
         taskListener.getLogger().println("Disconnected Error");
         taskListener.getLogger().println(toString());
