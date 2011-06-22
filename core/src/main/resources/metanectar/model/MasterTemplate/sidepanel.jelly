@@ -1,0 +1,27 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:x="jelly:xml" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
+         xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
+    <l:side-panel>
+        <l:tasks>
+            <j:set var="url" value="${h.getNearestAncestorUrl(request,it)}"/>
+            <l:task icon="images/24x24/up.png" href="${rootURL}/" title="${%Back to Dashboard}"/>
+            <l:task icon="images/24x24/search.png" href="${url}/" title="${%Status}"/>
+
+            <div id="ajax-sidepanel">
+                <st:include page="sidepanel-ajax.jelly"/>
+            </div>
+
+            <!--<l:task icon="images/24x24/edit-delete.gif" href="delete" title="${%Delete Template}" permission="${it.DELETE}"/>-->
+            <l:isAdmin>
+                <l:task icon="images/24x24/setting.gif" href="configure" title="${%Configure}"/>
+            </l:isAdmin>
+            <j:forEach var="action" items="${it.propertyActions}">
+                <l:task icon="${action.iconFileName}" href="${action.urlName}" title="${action.displayName}"/>
+            </j:forEach>
+        </l:tasks>
+    </l:side-panel>
+    <script type="text/javascript">
+        new Ajax.PeriodicalUpdater('ajax-sidepanel', './sidepanel-ajax')
+    </script>
+
+</j:jelly>

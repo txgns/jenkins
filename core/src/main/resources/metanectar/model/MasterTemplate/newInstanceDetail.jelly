@@ -1,0 +1,5 @@
+<?jelly escape-by-default='true'?>
+<div>
+  <img width="24" height="24" style="margin: 2px;" alt="" src="${rootURL}${h.resourcePath}/images/24x24/package.png"/>
+  ${%body}
+</div>

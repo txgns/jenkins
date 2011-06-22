@@ -27,14 +27,5 @@ THE SOFTWARE.
 -->
 <j:jelly xmlns:j="jelly:core" xmlns:x="jelly:xml" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-    <l:ajax>
-        <l:isAdmin>
-
-            <j:forEach var="action" items="${it.actionSet}">
-                <l:task icon="images/24x24/${action.icon}" href="${action.href}" title="${action.displayName}"
-                        enabled="${it.canDoAction(action)}"/>
-            </j:forEach>
-
-        </l:isAdmin>
-    </l:ajax>
+    <p><a href="cloneFromSource">Clone</a> the master from the source</p>
 </j:jelly>

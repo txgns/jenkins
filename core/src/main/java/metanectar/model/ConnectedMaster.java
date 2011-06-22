@@ -10,17 +10,14 @@ import hudson.console.AnnotatedLargeText;
 import hudson.model.*;
 import hudson.remoting.Callable;
 import hudson.remoting.Channel;
-import hudson.remoting.Future;
 import hudson.util.DescribableList;
 import hudson.util.DirScanner;
 import hudson.util.FileVisitor;
 import hudson.util.StreamTaskListener;
 import hudson.util.io.ArchiverFactory;
 import hudson.util.io.ReopenableFileOutputStream;
-import metanectar.Config;
 import metanectar.provisioning.IdentifierFinder;
 import metanectar.provisioning.ScopedSlaveManager;
-import org.apache.tools.ant.types.resources.Files;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.StaplerRequest;
@@ -34,7 +31,6 @@ import java.security.KeyFactory;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -357,21 +353,6 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
 
     // Channel-specific methods that can only be performed when online
 
-    public void doCloneToTemplateAction(StaplerRequest req, StaplerResponse rsp) throws Exception {
-        checkPermission(Job.CREATE);
-
-        ItemGroup ig = getParent();
-
-        File archive = createTemplateFile();
-        LOGGER.info(archive.getAbsolutePath());
-        cloneHomeDir(archive);
-
-        // Requires: master template name
-
-        // Create MasterTemplate, by default in same location as this master
-        // Create async task to clone master home dir and set state on the master template
-    }
-
     /**
      * Clone the master home directory to a local tar.gz file.
      * <p>
@@ -379,56 +360,17 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
      * <p>
      * Any instance specific files, such as those related to identity, will be removed.</p>
      */
-    public void cloneHomeDir(File archive) throws IOException, InterruptedException {
+    public void cloneHomeDir(File archive, ArchiverFactory af) throws IOException, InterruptedException {
         if (isOffline()) {
-            throw new IllegalStateException("Not online");
+            throw new IllegalStateException(String.format("Master %s is not online", getName()));
         }
-
-        LOGGER.info(archive.toString());
 
         FilePath fp = getHomeDir();
 
-        fp.archive(ArchiverFactory.TARGZ,
+        // Note that the glob scanner will not include the top-level directory in the archive
+        fp.archive(af,
                 new BufferedOutputStream(new FileOutputStream(archive)),
-                new DirContentsWithFilterScanner(new HomeDirFilter()));
-    }
-
-    public File createTemplateFile() throws IOException {
-        File f = null;
-        do {
-            final String base = MetaNectar.getInstance().getConfig().getTemplatesDirectory();
-            f = new File(base, "template-" + UUID.randomUUID().toString() + ".tar.gz");
-        } while (!f.createNewFile());
-
-        return f;
-    }
-
-    /**
-     * Directory scanner that does not include the top directory
-     */
-    private static class DirContentsWithFilterScanner extends DirScanner.Full {
-        private static final long serialVersionUID = 1L;
-
-        private final FileFilter filter;
-
-        public DirContentsWithFilterScanner(FileFilter filter) {
-            this.filter = filter;
-        }
-
-        public void scan(File dir, FileVisitor visitor) throws IOException {
-            for (File child : dir.listFiles())
-                super.scan(child, visitor.with(filter));
-        }
-    }
-
-    private static class HomeDirFilter implements FileFilter, Serializable {
-        private static final long serialVersionUID = 1L;
-
-        private static Set<String> blackList = Sets.newHashSet("identity.key", "secret.key");
-
-        public boolean accept(File pathname) {
-            return !blackList.contains(pathname.getName());
-        }
+                new DirScanner.Glob("", "identity.key, secret.key, jobs/**/builds, jobs/**/workspace"));
     }
 
     /**
@@ -535,6 +477,33 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
     }
 
     //
+
+    /**
+     * Create a unique master template file for writing a template of a master home
+     * directory.
+     *
+     */
+    public static File createMasterTemplateFile(String dir, String suffix) throws IOException {
+        return createMasterArchiveFile(dir, "template-", suffix);
+    }
+
+    /**
+     * Create a unique master snapshot file for writing a snapshot of a master home
+     * directory.
+     *
+     */
+    public static File createMasterSnapshotFile(String dir, String suffix) throws IOException {
+        return createMasterArchiveFile(dir, "snapshot-", suffix);
+    }
+
+    private static File createMasterArchiveFile(String dir, String prefix, String suffix) throws IOException {
+        File f = null;
+        do {
+            f = new File(dir, prefix + UUID.randomUUID().toString() + suffix);
+        } while (!f.createNewFile());
+
+        return f;
+    }
 
     /**
      * Create the encoded name.

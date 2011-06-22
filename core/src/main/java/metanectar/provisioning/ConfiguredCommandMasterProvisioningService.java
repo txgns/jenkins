@@ -2,8 +2,6 @@ package metanectar.provisioning;
 
 import hudson.Extension;
 import hudson.model.Descriptor;
-import hudson.model.TaskListener;
-import hudson.remoting.VirtualChannel;
 import metanectar.Config;
 import metanectar.model.MasterServer;
 import metanectar.property.DefaultValue;
@@ -31,6 +29,8 @@ public class ConfiguredCommandMasterProvisioningService extends MasterProvisioni
 
         private int timeOut;
 
+        private String archive;
+
         private String provision;
 
         private String start;
@@ -52,6 +52,11 @@ public class ConfiguredCommandMasterProvisioningService extends MasterProvisioni
         @Property("metaNectar.master.provisioning.timeOut") @DefaultValue("60")
         public void setTimeOut(int timeOut) {
             this.timeOut = timeOut;
+        }
+
+        @Property("metaNectar.master.provisioning.archive")
+        public void setArchive(String archive) {
+            this.archive = archive;
         }
 
         @Property("metaNectar.master.provisioning.script.provision")
@@ -100,6 +105,7 @@ public class ConfiguredCommandMasterProvisioningService extends MasterProvisioni
                 p.basePort,
                 p.homeLocation,
                 p.timeOut,
+                p.archive,
                 p.provision,
                 p.start,
                 p.stop,

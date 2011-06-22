@@ -8,6 +8,7 @@ import metanectar.cloud.NodeTerminatingRetentionStrategy;
 import metanectar.cloud.MasterProvisioningCloudListener;
 import metanectar.model.MasterServer;
 import metanectar.model.MasterServerListener;
+import metanectar.model.MasterTemplate;
 import metanectar.model.MetaNectar;
 import metanectar.provisioning.task.*;
 import metanectar.provisioning.task.TaskQueue;
@@ -116,6 +117,10 @@ public class MasterProvisioner {
 
     public void terminate(MasterServer ms) {
         masterServerTaskQueue.start(new MasterTerminateTask(ms));
+    }
+
+    public void cloneTemplateFromSource(MasterTemplate mt) {
+        masterServerTaskQueue.start(new TemplateCloneTask(mt));
     }
 
     private void process() throws Exception {

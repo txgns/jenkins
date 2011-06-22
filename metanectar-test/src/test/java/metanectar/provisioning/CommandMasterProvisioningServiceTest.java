@@ -202,8 +202,16 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         return masterHomeDir;
     }
 
-    private String getSnapshotUrl() {
-        return "file:/tmp/snapshot";
+    private URL snapshotUrl;
+
+    private URL getSnapshotUrl() throws IOException {
+        if (snapshotUrl == null) {
+
+            File f = File.createTempFile("terminate-snapshot-", ".zip");
+            snapshotUrl = new URL("file", null, f.getAbsolutePath());
+        }
+
+        return snapshotUrl;
     }
 
     private ConfiguredCommandMasterProvisioningService getConfigCommand() throws IOException {
@@ -213,6 +221,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         properties.put("metaNectar.master.provisioning.basePort", "8080");
         properties.put("metaNectar.master.provisioning.homeLocation", getHomeDir().toString());
         properties.put("metaNectar.master.provisioning.timeOut", "2");
+        properties.put("metaNectar.master.provisioning.archive", getHomeDir().toString());
         properties.put("metaNectar.master.provisioning.script.provision", getProvisionScript());
         properties.put("metaNectar.master.provisioning.script.start", getStartScript());
         properties.put("metaNectar.master.provisioning.script.stop", getStopScript());
@@ -220,7 +229,9 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
 
         Properties ps = new Properties();
         ps.putAll(properties);
-        return new ConfiguredCommandMasterProvisioningService(new Config(ps));
+        Config c = new Config(ps);
+        metaNectar.setConfig(c);
+        return new ConfiguredCommandMasterProvisioningService(c);
     }
 
     private CommandMasterProvisioningService getDefaultCommand() throws IOException {
@@ -234,6 +245,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     private CommandMasterProvisioningService getCommand(String provisionCommand, String startCommand,
                                                         String stopCommand, String terminateCommand) throws IOException {
         return new CommandMasterProvisioningService(8080, getHomeDir().toString(), 2,
+                getHomeDir().toString(),
                 provisionCommand,
                 startCommand,
                 stopCommand,
@@ -256,7 +268,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     }
 
     private String getTerminateScript() throws IOException {
-        return String.format("/bin/sh -c \"rm -fr '%s'; echo 'MASTER_SNAPSHOT=%s'\"", getMasterHomeDir().toString(), getSnapshotUrl());
+        return String.format("/bin/sh -c \"rm -fr '%s'; echo 'MASTER_SNAPSHOT=%s'\"", getMasterHomeDir().toString(), getSnapshotUrl().toExternalForm());
     }
 
     private MasterServer provision() throws Exception {
@@ -314,8 +326,8 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         assertEquals(MasterServer.State.Terminated, ms.getState());
 
         assertNotNull(ms.getSnapshot());
-        assertEquals(getSnapshotUrl(), ms.getSnapshot().toExternalForm());
-
+        assertTrue(new File(ms.getSnapshot().getPath()).exists());
+        assertFalse(new File(getSnapshotUrl().getPath()).exists());
         assertFalse(getMasterHomeDir().exists());
 
         return ms;

@@ -9,5 +9,5 @@ import java.util.List;
 /**
  * @author Paul Sandoz
  */
-public class MasterServerTaskQueue extends TaskQueue<MasterServerTask> {
+public class MasterServerTaskQueue extends TaskQueue<FutureTask> {
 }

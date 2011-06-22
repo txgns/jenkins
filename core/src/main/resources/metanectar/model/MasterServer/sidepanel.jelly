@@ -32,6 +32,7 @@ THE SOFTWARE.
             <j:set var="url" value="${h.getNearestAncestorUrl(request,it)}"/>
             <l:task icon="images/24x24/up.png" href="${rootURL}/" title="${%Back to Dashboard}"/>
             <l:task icon="images/24x24/search.png" href="${url}/" title="${%Status}"/>
+
             <div id="ajax-sidepanel">
                 <st:include page="sidepanel-ajax.jelly"/>
             </div>

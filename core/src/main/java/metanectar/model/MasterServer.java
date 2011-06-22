@@ -14,6 +14,7 @@ import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
 
 import javax.servlet.ServletException;
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
@@ -357,7 +358,14 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
         this.localEndpoint = null;
         this.globalEndpoint = null;
         this.identity = null;
+
+        // Remove the old snapshot if present
+        if (this.snapshot != null) {
+            File f = new File(this.snapshot.getPath());
+            f.delete();
+        }
         this.snapshot = snapshot;
+
         save();
         fireOnStateChange();
 
@@ -444,45 +452,45 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
         return canDoAction(Action.Delete);
     }
 
-    private void preConditionAction(Action a) throws IllegalStateException {
+    private void preConditionAction(Action a) throws AbortException {
         if (!canDoAction(a)) {
-            throw new IllegalStateException(String.format("Action \"%s\" cannot be performed when in state \"\"", a.name(), getState().name()));
+            throw new AbortException(String.format("Action \"%s\" cannot be performed when in state \"\"", a.name(), getState().name()));
         }
     }
 
-    public synchronized void provisionAndStartAction() throws IOException, IllegalStateException  {
+    public synchronized void provisionAndStartAction() throws IOException  {
         preConditionAction(Action.Provision);
 
         Map<String, Object> properties = new HashMap<String, Object>();
         MetaNectar.getInstance().masterProvisioner.provisionAndStart(this, MetaNectar.getInstance().getMetaNectarPortUrl(), properties);
     }
 
-    public synchronized void stopAndTerminateAction() throws IllegalStateException {
+    public synchronized void stopAndTerminateAction() throws IOException {
         preConditionAction(Action.Stop);
 
         MetaNectar.getInstance().masterProvisioner.stopAndTerminate(this);
     }
 
-    public synchronized void provisionAction() throws IOException, IllegalStateException  {
+    public synchronized void provisionAction() throws IOException  {
         preConditionAction(Action.Provision);
 
         Map<String, Object> properties = new HashMap<String, Object>();
         MetaNectar.getInstance().masterProvisioner.provision(this, MetaNectar.getInstance().getMetaNectarPortUrl(), properties);
     }
 
-    public synchronized void startAction() throws IllegalStateException {
+    public synchronized void startAction() throws IOException {
         preConditionAction(Action.Start);
 
         MetaNectar.getInstance().masterProvisioner.start(this);
     }
 
-    public synchronized void stopAction() throws IllegalStateException {
+    public synchronized void stopAction() throws IOException {
         preConditionAction(Action.Stop);
 
         MetaNectar.getInstance().masterProvisioner.stop(this);
     }
 
-    public synchronized void terminateAction(boolean clean) throws IllegalStateException {
+    public synchronized void terminateAction(boolean clean) throws IOException {
         preConditionAction(Action.Terminate);
 
         MetaNectar.getInstance().masterProvisioner.terminate(this);
@@ -490,9 +498,7 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
 
     @Override
     public synchronized void delete() throws IOException, InterruptedException {
-        if (!canDoAction(Action.Delete)) {
-            throw new AbortException(String.format("Action \"%s\" cannot be performed when in state \"\"", Action.Delete.name(), getState().name()));
-        }
+        preConditionAction(Action.Delete);
 
         if (state == MasterServer.State.TerminatingError) {
             // TODO disable this, or only enable for development purposes.
@@ -574,7 +580,7 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
 
     public HttpResponse doStartAction() throws Exception {
         return new DoActionLambda() {
-            public void f() {
+            public void f() throws Exception {
                 startAction();
             }
         }.doAction();
@@ -582,7 +588,7 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
 
     public HttpResponse doStopAction() throws Exception {
         return new DoActionLambda() {
-            public void f() {
+            public void f() throws Exception {
                 stopAction();
             }
         }.doAction();
@@ -590,7 +596,7 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
 
     public HttpResponse doTerminateAction() throws Exception {
         return new DoActionLambda() {
-            public void f() {
+            public void f() throws Exception {
                 terminateAction(false);
             }
         }.doAction();

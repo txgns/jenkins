@@ -1,0 +1,32 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
+         xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt" xmlns:p="/lib/hudson/project">
+    <l:layout title="${it.displayName}">
+        <st:include page="sidepanel.jelly"/>
+        <l:main-panel>
+            <h1>
+                <img src="${imagesURL}/48x48/${it.icon}" width="48" height="48" alt=""/>
+                <st:nbsp/>
+                ${it.displayName}
+            </h1>
+
+            <t:editableDescription permission="${it.CONFIGURE}"/>
+
+            <j:if test="${it.source != null}">
+                <h3>Source</h3>
+                <j:set var="template" value="${it}" />
+                <st:include it="${it.source}" page="summary.jelly" optional="true"/>
+            </j:if>
+
+            <h3>Status</h3>
+            <div id="ajax-status">
+                <st:include page="status.jelly"/>
+            </div>
+
+            <script type="text/javascript">
+                new Ajax.PeriodicalUpdater('ajax-status', './status')
+            </script>
+
+        </l:main-panel>
+    </l:layout>
+</j:jelly>

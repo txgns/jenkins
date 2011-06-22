@@ -1,0 +1,14 @@
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
+         xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+    <j:set var="m" value="${it.connectedMaster}" />
+
+    <j:choose>
+      <j:when test="${m != null}">
+          <p>Master <a href="${rootURL}/${m.url}">${it.masterName}</a></p>
+      </j:when>
+      <j:otherwise>
+          <p>Deleted master ${it.masterName}</p>
+      </j:otherwise>
+    </j:choose>
+
+</j:jelly>

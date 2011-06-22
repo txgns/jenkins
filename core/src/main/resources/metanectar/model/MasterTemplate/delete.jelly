@@ -1,7 +1,7 @@
 <!--
 The MIT License
 
-Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Erik Ramfelt, Tom Huybrechts, id:cactusman, Yahoo! Inc.
+Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,19 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -->
 
-<!--
-  Side panel for the project view.
--->
-<j:jelly xmlns:j="jelly:core" xmlns:x="jelly:xml" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
-         xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-    <l:ajax>
-        <l:isAdmin>
-
-            <j:forEach var="action" items="${it.actionSet}">
-                <l:task icon="images/24x24/${action.icon}" href="${action.href}" title="${action.displayName}"
-                        enabled="${it.canDoAction(action)}"/>
-            </j:forEach>
-
-        </l:isAdmin>
-    </l:ajax>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
+  <l:layout>
+		<st:include page="sidepanel.jelly" />
+		<l:main-panel>
+		  <form method="post" action="doDelete">
+		    ${%Are you sure about deleting the template?}
+        <f:submit value="${%Yes}" />
+		  </form>
+		</l:main-panel>
+	</l:layout>
 </j:jelly>

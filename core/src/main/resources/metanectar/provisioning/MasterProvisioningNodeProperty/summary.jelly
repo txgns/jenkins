@@ -28,7 +28,7 @@ THE SOFTWARE.
       <div>
         ${%Provisioned masters:}
         <j:forEach var="item" items="${it.provisioned}">
-          <a class="${item.className}" href="${rootURL}/job/${item.name}">${item.name}</a>
+          <a class="${item.className}" href="${rootURL}/${item.url}">${item.name}</a>
           <st:nbsp/>
         </j:forEach>
       </div>

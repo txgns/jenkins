@@ -3,11 +3,11 @@ package metanectar.provisioning;
 import com.google.common.collect.Maps;
 import hudson.*;
 import hudson.model.Computer;
-import hudson.model.Descriptor;
 import hudson.model.TaskListener;
 import hudson.remoting.LocalChannel;
 import hudson.remoting.VirtualChannel;
 import metanectar.Config;
+import metanectar.model.ConnectedMaster;
 import metanectar.model.MasterServer;
 import metanectar.model.MetaNectar;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -67,6 +67,8 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
 
     private final int timeOut;
 
+    private final String archive;
+
     private final String provisionCommand;
 
     private final String startCommand;
@@ -77,10 +79,12 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
 
     @DataBoundConstructor
     public CommandMasterProvisioningService(int basePort, String homeLocation, int timeOut,
+                                            String archive,
                                             String provisionCommand, String startCommand, String stopCommand, String terminateCommand) {
         this.basePort = basePort;
         this.homeLocation = homeLocation;
         this.timeOut = timeOut;
+        this.archive = archive;
         this.provisionCommand = provisionCommand;
         this.startCommand = startCommand;
         this.stopCommand = stopCommand;
@@ -97,6 +101,10 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
 
     public int getTimeOut() {
         return timeOut;
+    }
+
+    public String getArchive() {
+        return archive;
     }
 
     public String getProvisionCommand() {
@@ -138,6 +146,8 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
         provisionVariables.put(Variable.MASTER_PORT.name(), Integer.toString(getPort(ms.getNodeId())));
         provisionVariables.put(Variable.MASTER_METANECTAR_ENDPOINT.name(), metaNectarEndpoint.toExternalForm());
         provisionVariables.put(Variable.MASTER_GRANT_ID.name(), ms.getGrantId());
+
+        final URL snapshot = ms.getSnapshot();
         if (ms.getSnapshot() != null) {
             provisionVariables.put(Variable.MASTER_SNAPSHOT.name(), ms.getSnapshot().toExternalForm());
         }
@@ -151,6 +161,28 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
         return Computer.threadPoolForRemoting.submit(new Callable<Provisioned>() {
             public Provisioned call() throws Exception {
                 final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+                // Copy the local snapshot to new remote snapshot in the archive directory
+                // Note that the snapshot is always normalized to a file in the archive directory that is
+                // valid locally and remotely
+
+                if (snapshot != null) {
+                    final FilePath remote = new FilePath(channel, snapshot.getPath() + ".tmp");
+                    final FilePath local = new FilePath(new File(snapshot.getPath()));
+
+                    try {
+                        remote.delete();
+                        remote.copyFrom(local);
+                        remote.renameTo(new FilePath(channel, snapshot.getPath()));
+                    } catch (Exception e) {
+                        try {
+                            remote.delete();
+                        } catch (Exception _e) {}
+
+                        e.printStackTrace(listener.error(String.format("Error copying snapshot from local file %s to remote file %s", local.getRemote(), remote.getRemote())));
+                        throw e;
+                    }
+                }
 
                 listener.getLogger().println(String.format("Executing provisioning command \"%s\" with environment variables %s", getProvisionCommand(), provisionVariables));
                 final Proc provisionProcess = getLauncher(channel, listener).launch().
@@ -303,14 +335,57 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
                     throw new IOException(msg);
                 }
 
+                final URL snapshot;
                 try {
-                    return new Terminated(new URL(properties.getProperty(Property.MASTER_SNAPSHOT.toString())));
+                    // This is the URL local to the master
+                    snapshot = new URL(properties.getProperty(Property.MASTER_SNAPSHOT.toString()));
                 } catch (MalformedURLException e) {
-                    e.printStackTrace(listener.error(String.format("The property \"%s\" of value \"%s\" is not a valid", Property.MASTER_ENDPOINT.toString(), properties.get(Property.MASTER_ENDPOINT.toString()))));
+                    e.printStackTrace(listener.error(String.format("The property \"%s\" of value \"%s\" is not a valid URL", Property.MASTER_ENDPOINT.toString(), properties.get(Property.MASTER_ENDPOINT.toString()))));
                     throw e;
                 }
+
+                if (!snapshot.getProtocol().equals("file")) {
+                    final String errMsg = String.format("The property \"%s\" of value \"%s\" is not a valid file-based URL", Property.MASTER_ENDPOINT.toString(), properties.get(Property.MASTER_ENDPOINT.toString()));
+                    listener.error(errMsg);
+                    throw new IllegalArgumentException(errMsg);
+                }
+
+
+                // Copy the remote snapshot to new local snapshot in the archive directory
+
+                final String path = snapshot.getPath();
+                final FilePath remote = new FilePath(channel, path);
+                final FilePath local = new FilePath(ConnectedMaster.createMasterSnapshotFile(archive, getSuffix(path)));
+
+                try {
+                    remote.copyTo(local);
+                } catch (Exception e) {
+                    try {
+                        local.delete();
+                    } catch (Exception _e) {}
+
+                    e.printStackTrace(listener.error(String.format("Error copying snapshot from remote file %s to local file %s", remote.getRemote(), local.getRemote())));
+                    throw e;
+                }
+
+                try {
+                    remote.delete();
+                } catch (Exception e) {
+                    e.printStackTrace(listener.error(String.format("Error deleting snapshot of remote file %s", remote.getRemote())));
+                }
+
+                return new Terminated(new URL("file", null, local.getRemote()));
             }
         });
+    }
+
+    private String getSuffix(String path) {
+        int i = path.lastIndexOf('.');
+        return (i > 0) ? path.substring(i) : "";
+    }
+
+    private void copySnapshotFromRemoteToLocal() {
+
     }
 
     private CommandProvisioningError commandError(TaskListener listener, String message, int result) {
