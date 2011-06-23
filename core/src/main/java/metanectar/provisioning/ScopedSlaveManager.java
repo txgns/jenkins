@@ -123,7 +123,13 @@ public class ScopedSlaveManager implements SlaveManager {
             for (Item item : scope.getItems()) {
                 if (item instanceof SlaveManager) {
                     final SlaveManager slaveManager = (SlaveManager) item;
-                    if (slaveManager.isProvisioned(allocatedSlave.getLeaseId())) {
+                    boolean provisioned = slaveManager.isProvisioned(allocatedSlave.getLeaseId());
+                    LOGGER.log(Level.INFO, "{0}[{1}]->[{3}].isProvisioned({2}) -> {4}",
+                            new Object[]{
+                                    ScopedSlaveManager.class.getSimpleName(), scope.getUrl(),
+                                    allocatedSlave.getLeaseId(), item.getUrl(), provisioned
+                            });
+                    if (provisioned) {
                         LOGGER.log(Level.INFO, "{0}[{1}].release({2}) -> {3}",
                                 new Object[]{
                                         ScopedSlaveManager.class.getSimpleName(), scope.getUrl(),
