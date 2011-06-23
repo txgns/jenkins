@@ -47,7 +47,7 @@ public class ConnectedMasterUpdateCenterProperty extends ConnectedMasterProperty
     @Override
     public void onConnected() {
         LOGGER.info("Checking to see if we need to set the update center...");
-        if (source != null) {
+        if (source != null && owner != null) {
             String url = source.getUrl();
             if (url != null) {
                 try {
