@@ -46,7 +46,10 @@ public class ConnectedMasterUpdateCenterProperty extends ConnectedMasterProperty
 
     @Override
     public void onConnected() {
-        LOGGER.info("Checking to see if we need to set the update center...");
+            pushUpdateSource();
+    }
+
+    private void pushUpdateSource() {
         if (source != null && owner != null) {
             String url = source.getUrl();
             if (url != null) {
@@ -58,6 +61,12 @@ public class ConnectedMasterUpdateCenterProperty extends ConnectedMasterProperty
                 }
             }
         }
+    }
+
+    @Override
+    public void setOwner(ConnectedMaster owner) {
+        super.setOwner(owner);
+        pushUpdateSource();
     }
 
     public UpdateSource getSource() {
@@ -84,10 +93,10 @@ public class ConnectedMasterUpdateCenterProperty extends ConnectedMasterProperty
                 return null;
             }
 
-            return req.bindJSON(ConnectedMasterUpdateCenterProperty.class,usingUpdateCenter);
+            return req.bindJSON(ConnectedMasterUpdateCenterProperty.class, usingUpdateCenter);
         }
 
-        public DescriptorExtensionList<UpdateSource,UpdateSourceDescriptor> getUpdateSources() {
+        public DescriptorExtensionList<UpdateSource, UpdateSourceDescriptor> getUpdateSources() {
             return Hudson.getInstance().getDescriptorList(UpdateSource.class);
         }
     }
