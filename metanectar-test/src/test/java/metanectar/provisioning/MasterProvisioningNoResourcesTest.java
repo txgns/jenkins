@@ -2,6 +2,7 @@ package metanectar.provisioning;
 
 import metanectar.LatchConnectedMasterListener;
 import metanectar.model.MasterServer;
+import metanectar.model.MetaNectar;
 
 import java.util.concurrent.TimeUnit;
 
@@ -70,6 +71,8 @@ public class MasterProvisioningNoResourcesTest extends AbstractMasterProvisionin
         assertTrue(ms.cancelProvisionAction());
 
         assertFalse(metaNectar.masterProvisioner.hasPendingRequests());
+
+        assertFalse(metaNectar.masterProvisioner.cancelPendingRequest(ms));
     }
 
 }

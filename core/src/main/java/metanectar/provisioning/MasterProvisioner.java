@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -105,13 +106,7 @@ public class MasterProvisioner {
         if (pmr == null)
             return false;
 
-        if (pmr.cancel()) {
-            ms.cancelPreProvisionState();
-            pendingMasterRequests.remove(pmr);
-            return true;
-        } else {
-            return false;
-        }
+        return pmr.tryCancel();
     }
 
     private PlannedMasterRequest getPlannedMasterRequest(MasterServer ms) {
@@ -188,54 +183,47 @@ public class MasterProvisioner {
 
     // Provisioning
 
-    private static final class PlannedMasterRequest {
-        enum State {
-            Pending,
-            Cancelled,
-            Processed
-        }
+    private final class PlannedMasterRequest {
+        private final Semaphore acquiredState = new Semaphore(1);
 
         private final MasterServer ms;
         private final URL metaNectarEndpoint;
         private final Map<String, Object> properties;
         private final boolean start;
 
-        private State state = State.Pending;
-
         public PlannedMasterRequest(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties, boolean start) {
             this.ms = ms;
             this.metaNectarEndpoint = metaNectarEndpoint;
             this.properties = properties;
             this.start = start;
-            this.state = State.Pending;
         }
 
-        /**
-         * Cancel a request.
-         *
-         * @return true if the request is cancelled, otherwise false and the request is processed and cannot be cancelled
-         */
-        public synchronized boolean cancel() {
-            if (state != State.Processed) {
-                state = State.Cancelled;
-                return true;
-            }
-
-            return false;
+        private boolean tryAcquire() {
+            return acquiredState.tryAcquire();
         }
 
-        /**
-         * Process a request.
-         *
-         * @return true if the request is processed, otherwise false and the request is cancelled and cannot be processed
-         */
-        public synchronized boolean process() {
-            if (state != State.Cancelled) {
-                state = State.Processed;
-                return true;
-            }
+        public boolean tryCancel() throws IOException {
+            if (!tryAcquire())
+                return false;
 
-            return false;
+            pendingMasterRequests.remove(this);
+            ms.cancelPreProvisionState();
+            return true;
+        }
+
+        public boolean tryProcess(final Node n) throws Exception {
+            if (!tryAcquire())
+                return false;
+
+            final int id = MasterServer.NODE_IDENTIFIER_FINDER.getUnusedIdentifier(nodesWithMasters.get(n));
+            final MasterProvisionTask mpt = (start)
+                    ? new MasterProvisionThenStartTask(ms, metaNectarEndpoint, properties, n, id)
+                    : new MasterProvisionTask(ms, metaNectarEndpoint, properties, n, id);
+
+            mpt.start();
+            masterServerTaskQueue.getQueue().add(mpt);
+
+            return true;
         }
     }
 
@@ -279,18 +267,7 @@ public class MasterProvisioner {
                             continue;
                         }
 
-                        // Ignore if the planned master request was cancelled
-                        if (!pmr.process()) {
-                            continue;
-                        }
-
-                        final int id = MasterServer.NODE_IDENTIFIER_FINDER.getUnusedIdentifier(nodesWithMasters.get(n));
-                        final MasterProvisionTask mpt = (pmr.start)
-                                ? new MasterProvisionThenStartTask(pmr.ms, pmr.metaNectarEndpoint, pmr.properties, n, id)
-                                : new MasterProvisionTask(pmr.ms, pmr.metaNectarEndpoint, pmr.properties, n, id);
-
-                        mpt.start();
-                        masterServerTaskQueue.getQueue().add(mpt);
+                        pmr.tryProcess(n);
                     } catch (Exception e) {
                         // Ignore
                     } finally {
