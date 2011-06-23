@@ -18,6 +18,7 @@
       <groupId>com.cloudbees.plugins</groupId>
       <artifactId>cloudbees-update-center-plugin</artifactId>
       <version>0.6</version>
+      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.main</groupId>
