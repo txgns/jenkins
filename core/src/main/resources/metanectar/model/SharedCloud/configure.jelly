@@ -43,23 +43,8 @@ THE SOFTWARE.
 
 
         <j:invokeStatic var="cloudDescriptors"
-                        className="metanectar.cloud.AbstractProvisioningCloud"
-                        method="getMasterProvisioningCloudDescriptors"/>
-        <tr>
-          <td colspan="3">${cloudDescriptors}</td>
-        </tr>
-        <j:invokeStatic var="cloudDescriptors"
-                        className="metanectar.cloud.AbstractProvisioningCloud"
-                        method="getSlaveProvisioningCloudDescriptors"/>
-        <tr>
-          <td colspan="3">${cloudDescriptors}</td>
-        </tr>
-        <j:invokeStatic var="cloudDescriptors"
                         className="hudson.slaves.Cloud"
                         method="all"/>
-        <tr>
-          <td colspan="3">${cloudDescriptors}</td>
-        </tr>
 
         <f:dropdownDescriptorSelector field="cloud" descriptors="${cloudDescriptors}" title="${%Cloud}"/>
 

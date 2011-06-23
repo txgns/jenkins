@@ -44,6 +44,10 @@ THE SOFTWARE.
           <f:textarea name="description" value="${it.description}"/>
         </f:entry>
 
+        <j:invokeStatic var="ds" className="metanectar.model.ConnectedMasterProperty"
+                      method="all"/>
+        <f:descriptorList title="${%Properties}" descriptors="${ds}" field="properties" forceRowSet="true"/>
+
         <j:if test="${h.hasPermission(it,it.CONFIGURE)}">
           <f:block>
             <f:submit value="${%Save}" />

@@ -4,6 +4,7 @@ import hudson.DescriptorExtensionList;
 import hudson.ExtensionList;
 import hudson.ExtensionPoint;
 import hudson.model.Action;
+import hudson.model.Describable;
 import hudson.model.Descriptor;
 import hudson.model.Hudson;
 import hudson.model.ReconfigurableDescribable;
@@ -18,20 +19,21 @@ import java.util.logging.Logger;
 /**
  * @author Stephen Connolly
  */
-public abstract class ConnectedMasterProperty<S extends ConnectedMaster> implements ReconfigurableDescribable<ConnectedMasterProperty<?>>, ExtensionPoint {
+public abstract class ConnectedMasterProperty implements
+        ReconfigurableDescribable<ConnectedMasterProperty>, ExtensionPoint {
     private static final Logger LOGGER = Logger.getLogger(ConnectedMasterProperty.class.getName());
 
-    protected transient S owner;
+    protected transient ConnectedMaster owner;
 
-    public void setOwner(S owner) {
+    public void setOwner(ConnectedMaster owner) {
         this.owner = owner;
     }
 
-    public Descriptor<ConnectedMasterProperty<?>> getDescriptor() {
+    public ConnectedMasterPropertyDescriptor getDescriptor() {
         return (ConnectedMasterPropertyDescriptor)Hudson.getInstance().getDescriptorOrDie(getClass());
     }
 
-    public ConnectedMasterProperty<?> reconfigure(StaplerRequest req, JSONObject form) throws Descriptor.FormException {
+    public ConnectedMasterProperty reconfigure(StaplerRequest req, JSONObject form) throws Descriptor.FormException {
         return form==null ? null : getDescriptor().newInstance(req, form);
     }
 
@@ -40,8 +42,8 @@ public abstract class ConnectedMasterProperty<S extends ConnectedMaster> impleme
     /**
      * Lists up all the registered {@link ConnectedMasterPropertyDescriptor}s in the system.
      */
-    public static DescriptorExtensionList<ConnectedMasterProperty<?>,ConnectedMasterPropertyDescriptor> all() {
-        return (DescriptorExtensionList) Hudson.getInstance().getDescriptorList(ConnectedMasterProperty.class);
+    public static List<ConnectedMasterPropertyDescriptor>  all() {
+        return Hudson.getInstance().getDescriptorList(ConnectedMasterProperty.class);
     }
 
     /**
@@ -62,15 +64,15 @@ public abstract class ConnectedMasterProperty<S extends ConnectedMaster> impleme
      */
     public void onDisconnected() {}
 
-    /* package */ static void fireOnConnected(final ConnectedMaster<?> cm) {
+    /* package */ static void fireOnConnected(final ConnectedMaster cm) {
         fire (cm, new FireLambda() {
-            public void f(ConnectedMasterProperty<?> property) {
+            public void f(ConnectedMasterProperty property) {
                 property.onConnected();
             }
         });
     }
 
-    /* package */ static void fireOnDisconnected(final ConnectedMaster<?> cm) {
+    /* package */ static void fireOnDisconnected(final ConnectedMaster cm) {
         fire (cm, new FireLambda() {
             public void f(ConnectedMasterProperty property) {
                 property.onDisconnected();
@@ -79,11 +81,11 @@ public abstract class ConnectedMasterProperty<S extends ConnectedMaster> impleme
     }
 
     private interface FireLambda {
-        void f(ConnectedMasterProperty<?> cml);
+        void f(ConnectedMasterProperty cml);
     }
 
-    private static void fire(ConnectedMaster<?> cm, FireLambda l) {
-        for (ConnectedMasterProperty<?> property : cm.properties) {
+    private static void fire(ConnectedMaster cm, FireLambda l) {
+        for (ConnectedMasterProperty property : cm.properties) {
             try {
                 l.f(property);
             } catch (Throwable e) {

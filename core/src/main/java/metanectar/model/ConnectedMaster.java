@@ -39,7 +39,7 @@ import java.util.logging.Logger;
  *
  * @author Kohsuke Kawaguchi, Paul Sandoz
  */
-public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends AbstractItem implements TopLevelItem {
+public abstract class ConnectedMaster extends AbstractItem implements TopLevelItem {
 
     /**
      * A unique number that is always less than the total number of masters created.
@@ -108,7 +108,7 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
 
     // property state
 
-    protected volatile DescribableList<ConnectedMasterProperty<?>,ConnectedMasterPropertyDescriptor> properties =
+    protected volatile DescribableList<ConnectedMasterProperty,ConnectedMasterPropertyDescriptor> properties =
             new PropertyList(this);
 
     protected ConnectedMaster(ItemGroup parent, String name) {
@@ -170,13 +170,13 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
 
     // Properties
 
-    public DescribableList<ConnectedMasterProperty<?>,ConnectedMasterPropertyDescriptor> getProperties() {
+    public DescribableList<ConnectedMasterProperty,ConnectedMasterPropertyDescriptor> getProperties() {
         return properties;
     }
 
     public List<hudson.model.Action> getPropertyActions() {
         ArrayList<hudson.model.Action> result = new ArrayList<hudson.model.Action>();
-        for (ConnectedMasterProperty<?> prop: properties) {
+        for (ConnectedMasterProperty prop: properties) {
             result.addAll(prop.getConnectedMasterActions(this));
         }
         return result;
@@ -256,7 +256,7 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
      *
      * @param f the function to query the master state.
      */
-    public synchronized void query(Function<T, Void> f) {
+    public synchronized <T extends ConnectedMaster> void query(Function<T, Void> f) {
         f.apply((T)this);
     }
 
@@ -526,7 +526,7 @@ public abstract class ConnectedMaster<T extends ConnectedMaster<T>> extends Abst
         return UUID.randomUUID().toString();
     }
 
-    public static class PropertyList extends DescribableList<ConnectedMasterProperty<?>,ConnectedMasterPropertyDescriptor> {
+    public static class PropertyList extends DescribableList<ConnectedMasterProperty,ConnectedMasterPropertyDescriptor> {
         private PropertyList(ConnectedMaster owner) {
             super(owner);
         }

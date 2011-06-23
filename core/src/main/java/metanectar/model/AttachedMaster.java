@@ -6,6 +6,8 @@ import hudson.model.Descriptor;
 import hudson.model.ItemGroup;
 import hudson.model.TopLevelItem;
 import hudson.model.TopLevelItemDescriptor;
+import hudson.util.DescribableList;
+import net.sf.json.JSONObject;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
@@ -25,7 +27,7 @@ import static metanectar.model.AttachedMaster.State.*;
  *
  * @author Kohsuke Kawaguchi, Paul Sandoz
  */
-public class AttachedMaster extends ConnectedMaster<AttachedMaster> {
+public class AttachedMaster extends ConnectedMaster {
 
     /**
      * The states of the master.
@@ -223,6 +225,18 @@ public class AttachedMaster extends ConnectedMaster<AttachedMaster> {
         checkPermission(CONFIGURE);
 
         description = req.getParameter("description");
+
+        JSONObject json = req.getSubmittedForm();
+
+        DescribableList<ConnectedMasterProperty, ConnectedMasterPropertyDescriptor> t =
+                new DescribableList<ConnectedMasterProperty, ConnectedMasterPropertyDescriptor>(NOOP,getProperties().toList());
+        t.rebuild(req,json.optJSONObject("properties"),ConnectedMasterProperty.all());
+        properties.clear();
+        for (ConnectedMasterProperty p : t) {
+            p.setOwner(this);
+            properties.add(p);
+        }
+
         save();
 
         rsp.sendRedirect(".");

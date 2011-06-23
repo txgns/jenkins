@@ -5,9 +5,15 @@ import com.google.common.collect.ImmutableSet;
 import hudson.AbortException;
 import hudson.Extension;
 import hudson.model.*;
+import hudson.util.DescribableList;
 import metanectar.Config;
 import metanectar.provisioning.IdentifierFinder;
-import org.kohsuke.stapler.*;
+import net.sf.json.JSONObject;
+import org.kohsuke.stapler.HttpResponse;
+import org.kohsuke.stapler.HttpResponses;
+import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
 
 import javax.servlet.ServletException;
@@ -31,7 +37,7 @@ import static metanectar.model.MasterServer.State.*;
  *
  * @author Kohsuke Kawaguchi, Paul Sandoz
  */
-public class MasterServer extends ConnectedMaster<MasterServer> {
+public class MasterServer extends ConnectedMaster {
 
     /**
      * The states of the master.
@@ -476,7 +482,8 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
         preConditionAction(Action.Provision);
 
         Map<String, Object> properties = new HashMap<String, Object>();
-        MetaNectar.getInstance().masterProvisioner.provision(this, MetaNectar.getInstance().getMetaNectarPortUrl(), properties);
+        MetaNectar.getInstance().masterProvisioner.provision(this, MetaNectar.getInstance().getMetaNectarPortUrl(),
+                properties);
     }
 
     public synchronized boolean cancelProvisionAction() throws IOException {
@@ -643,6 +650,18 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
         checkPermission(CONFIGURE);
 
         description = req.getParameter("description");
+
+        JSONObject json = req.getSubmittedForm();
+
+        DescribableList<ConnectedMasterProperty, ConnectedMasterPropertyDescriptor> t =
+                new DescribableList<ConnectedMasterProperty, ConnectedMasterPropertyDescriptor>(NOOP,getProperties().toList());
+        t.rebuild(req,json.optJSONObject("properties"),ConnectedMasterProperty.all());
+        properties.clear();
+        for (ConnectedMasterProperty p : t) {
+            p.setOwner(this);
+            properties.add(p);
+        }
+
         save();
 
         rsp.sendRedirect(".");
@@ -688,6 +707,11 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
         public TopLevelItem newInstance(ItemGroup parent, String name) {
             return new MasterServer(parent, name);
         }
+
+        public DescribableList<ConnectedMasterProperty,ConnectedMasterPropertyDescriptor> getDefaultProperties() throws IOException {
+            return new DescribableList<ConnectedMasterProperty,ConnectedMasterPropertyDescriptor>(NOOP);
+        }
+
     }
 
     /**
