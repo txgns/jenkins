@@ -49,4 +49,27 @@ public class MasterProvisioningNoResourcesTest extends AbstractMasterProvisionin
 
         assertEquals(MasterServer.State.Approved, ms.getState());
     }
+
+    public void testProvisionCancel() throws Exception {
+        new WebClient().goTo("/");
+
+        MasterServer ms = metaNectar.createManagedMaster("org");
+
+        LatchMasterServerListener noResources = new LatchMasterServerListener(1) {
+            public void onProvisioningErrorNoResources(MasterServer ms) {
+                countDown();
+            }
+        };
+
+        // Try to provision when there are no resources
+        ms.provisionAndStartAction();
+
+        noResources.await(1, TimeUnit.MINUTES);
+
+        // Cancel the request
+        assertTrue(ms.cancelProvisionAction());
+
+        assertFalse(metaNectar.masterProvisioner.hasPendingRequests());
+    }
+
 }

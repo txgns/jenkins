@@ -14,6 +14,6 @@ public class MasterStopThenTerminateTask extends MasterStopTask {
     public MasterServerTask end() throws Exception {
         super.end();
 
-        return new MasterTerminateTask(ms);
+        return new MasterTerminateTask(ms, false);
     }
 }

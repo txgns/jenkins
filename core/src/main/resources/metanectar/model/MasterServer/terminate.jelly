@@ -4,8 +4,25 @@
         <st:include page="sidepanel.jelly"/>
         <l:main-panel>
             <form method="post" action="terminateAction">
-                Are you sure about terminating master '${it.displayName}'?
-                <f:submit value="${%Yes}"/>
+                <j:choose>
+                    <j:when test="${it.terminatingError}">
+                        <p>
+                            Retry terminating master '${it.displayName} ?
+                            <f:submit value="${%Retry}"/>
+                        </p>
+                        <p>
+                            Or force termination ?
+                            <f:submit name="force" value="${%Force}"/>
+                        </p>
+                        <p class="warning">Note: forcing termination may result in the loss of important information
+                            if a termination error re-occurs.
+                        </p>
+                    </j:when>
+                    <j:otherwise>
+                        Are you sure about terminating master '${it.displayName}'?
+                        <f:submit value="${%Yes}"/>
+                    </j:otherwise>
+                </j:choose>
             </form>
         </l:main-panel>
     </l:layout>

@@ -7,10 +7,7 @@ import hudson.Extension;
 import hudson.model.*;
 import metanectar.Config;
 import metanectar.provisioning.IdentifierFinder;
-import org.kohsuke.stapler.HttpResponse;
-import org.kohsuke.stapler.HttpResponses;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.*;
 import org.kohsuke.stapler.export.Exported;
 
 import javax.servlet.ServletException;
@@ -43,7 +40,7 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
         Created(Action.Provision, Action.Delete),
         PreProvisioning(),
         Provisioning(),
-        ProvisioningErrorNoResources(),   // TODO delete
+        ProvisioningErrorNoResources(), // TODO delete, need remove from pending requests
         ProvisioningError(Action.Provision, Action.Terminate),
         Provisioned(Action.Start, Action.Terminate),
         Starting(),
@@ -170,6 +167,15 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
         fireOnStateChange();
 
         taskListener.getLogger().println("PreProvisioning");
+        taskListener.getLogger().println(toString());
+    }
+
+    public synchronized void cancelPreProvisionState() throws IOException {
+        setState(Created);
+        this.grantId = null;
+        save();
+
+        taskListener.getLogger().println("Cancelled PreProvisioning");
         taskListener.getLogger().println(toString());
     }
 
@@ -409,13 +415,8 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
         return state.ordinal() > Stopped.ordinal();
     }
 
-    /**
-     * Query the master state using a synchronized block.
-     *
-     * @param f the function to query the master state.
-     */
-    public synchronized void query(Function<MasterServer, Void> f) {
-        f.apply(this);
+    public boolean isTerminatingError() {
+        return state == TerminatingError;
     }
 
     // Actions
@@ -478,6 +479,14 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
         MetaNectar.getInstance().masterProvisioner.provision(this, MetaNectar.getInstance().getMetaNectarPortUrl(), properties);
     }
 
+    public synchronized boolean cancelProvisionAction() throws IOException {
+        if (state != State.PreProvisioning && state != State.ProvisioningErrorNoResources) {
+            throw new AbortException(String.format("Cancel of a provision request cannot be performed when in state \"\"", getState().name()));
+        }
+
+        return MetaNectar.getInstance().masterProvisioner.cancelPendingRequest(this);
+    }
+
     public synchronized void startAction() throws IOException {
         preConditionAction(Action.Start);
 
@@ -490,10 +499,10 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
         MetaNectar.getInstance().masterProvisioner.stop(this);
     }
 
-    public synchronized void terminateAction(boolean clean) throws IOException {
+    public synchronized void terminateAction(boolean force) throws IOException {
         preConditionAction(Action.Terminate);
 
-        MetaNectar.getInstance().masterProvisioner.terminate(this);
+        MetaNectar.getInstance().masterProvisioner.terminate(this, force);
     }
 
     @Override
@@ -578,6 +587,14 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
         }.doAction();
     }
 
+    public HttpResponse doCancelProvisionAction() throws Exception {
+        return new DoActionLambda() {
+            public void f() throws Exception {
+                cancelProvisionAction();
+            }
+        }.doAction();
+    }
+
     public HttpResponse doStartAction() throws Exception {
         return new DoActionLambda() {
             public void f() throws Exception {
@@ -594,10 +611,14 @@ public class MasterServer extends ConnectedMaster<MasterServer> {
         }.doAction();
     }
 
-    public HttpResponse doTerminateAction() throws Exception {
+    public HttpResponse doTerminateAction(final @QueryParameter String force) throws Exception {
         return new DoActionLambda() {
             public void f() throws Exception {
-                terminateAction(false);
+                if (isTerminatingError() && force != null) {
+                    terminateAction(true);
+                } else {
+                    terminateAction(false);
+                }
             }
         }.doAction();
     }

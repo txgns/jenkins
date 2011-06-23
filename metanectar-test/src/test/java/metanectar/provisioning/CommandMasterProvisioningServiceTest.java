@@ -71,7 +71,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());
 
-        _testProvisionStartTimeOut(new LatchMasterServerListener(1) {
+        MasterServer ms = _testProvisionStartTimeOut(new LatchMasterServerListener(1) {
                 public void onProvisioningError(MasterServer ms) {
                     countDown();
                 }
@@ -79,6 +79,19 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
 
         assertFalse(getMasterHomeDir().exists());
         assertFalse(new File(getMasterHomeDir(), "started").exists());
+
+        assertEquals(1, metaNectar.masterProvisioner.getProvisionedMasters().size());
+        assertTrue(metaNectar.masterProvisioner.getProvisionedMasters().get(metaNectar).contains(ms));
+
+        // Try again
+        _testProvisionStartTimeOut(ms, new LatchMasterServerListener(1) {
+                public void onProvisioningError(MasterServer ms) {
+                    countDown();
+                }
+            }, MasterServer.State.ProvisioningError);
+
+        assertEquals(1, metaNectar.masterProvisioner.getProvisionedMasters().size());
+        assertTrue(metaNectar.masterProvisioner.getProvisionedMasters().get(metaNectar).contains(ms));
     }
 
     public void testStartCommandTimeOut() throws Exception {
@@ -97,14 +110,18 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         assertFalse(new File(getMasterHomeDir(), "started").exists());
     }
 
-    private void _testProvisionStartTimeOut(LatchMasterServerListener error, MasterServer.State state) throws Exception {
-        MasterServer ms = metaNectar.createManagedMaster("org1");
+    private MasterServer _testProvisionStartTimeOut(LatchMasterServerListener error, MasterServer.State state) throws Exception {
+        return _testProvisionStartTimeOut(metaNectar.createManagedMaster("org1"), error, state);
+    }
+
+    private MasterServer _testProvisionStartTimeOut(MasterServer ms, LatchMasterServerListener error, MasterServer.State state) throws Exception {
         ms.provisionAndStartAction();
 
         error.await(1, TimeUnit.MINUTES);
 
         assertEquals(state, ms.getState());
         assertEquals(CommandMasterProvisioningService.CommandProvisioningError.class, ms.getError().getClass());
+        return ms;
     }
 
     public void testStopCommandTimeOut() throws Exception {
@@ -129,7 +146,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         // Reset the labels
         metaNectar.setNodes(metaNectar.getNodes());
 
-        _testStopTerminateTimeOut(new LatchMasterServerListener(1) {
+        MasterServer ms = _testStopTerminateTimeOut(new LatchMasterServerListener(1) {
                 public void onTerminatingError(MasterServer ms) {
                     countDown();
                 }
@@ -137,16 +154,40 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
 
         assertTrue(getMasterHomeDir().exists());
         assertFalse(new File(getMasterHomeDir(), "started").exists());
+
+        assertEquals(1, metaNectar.masterProvisioner.getProvisionedMasters().size());
+        assertTrue(metaNectar.masterProvisioner.getProvisionedMasters().get(metaNectar).contains(ms));
+
+        // Try again
+        _testTerminateTimeOut(ms, new LatchMasterServerListener(1) {
+                public void onTerminatingError(MasterServer ms) {
+                    countDown();
+                }
+            }, MasterServer.State.TerminatingError);
+
+        assertTrue(getMasterHomeDir().exists());
+        assertFalse(new File(getMasterHomeDir(), "started").exists());
+
+        assertEquals(1, metaNectar.masterProvisioner.getProvisionedMasters().size());
+        assertTrue(metaNectar.masterProvisioner.getProvisionedMasters().get(metaNectar).contains(ms));
+
+        // Force termination
+        _testForceTerminateTimeOut(ms, new LatchMasterServerListener(2) {
+                public void onTerminatingError(MasterServer ms) {
+                    countDown();
+                }
+
+                public void onTerminated(MasterServer ms) {
+                    countDown();
+                }
+            }, MasterServer.State.Terminated);
+
+        assertEquals(0, metaNectar.masterProvisioner.getProvisionedMasters().size());
+        assertFalse(metaNectar.masterProvisioner.getProvisionedMasters().get(metaNectar).contains(ms));
     }
 
-    private void _testStopTerminateTimeOut(LatchMasterServerListener error, MasterServer.State state) throws Exception {
+    private MasterServer _testStopTerminateTimeOut(LatchMasterServerListener error, MasterServer.State state) throws Exception {
         MasterServer ms = provision();
-
-        LatchMasterServerListener terminatingError = new LatchMasterServerListener(1) {
-            public void onTerminatingError(MasterServer ms) {
-                countDown();
-            }
-        };
 
         ms.stopAndTerminateAction();
 
@@ -154,8 +195,26 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
 
         assertEquals(state, ms.getState());
         assertEquals(CommandMasterProvisioningService.CommandProvisioningError.class, ms.getError().getClass());
+
+        return ms;
     }
 
+    private void _testTerminateTimeOut(MasterServer ms, LatchMasterServerListener error, MasterServer.State state) throws Exception {
+        ms.terminateAction(false);
+
+        error.await(1, TimeUnit.MINUTES);
+
+        assertEquals(state, ms.getState());
+        assertEquals(CommandMasterProvisioningService.CommandProvisioningError.class, ms.getError().getClass());
+    }
+
+    private void _testForceTerminateTimeOut(MasterServer ms, LatchMasterServerListener error, MasterServer.State state) throws Exception {
+        ms.terminateAction(true);
+
+        error.await(1, TimeUnit.MINUTES);
+
+        assertEquals(state, ms.getState());
+    }
 
     private MasterServer ms;
 

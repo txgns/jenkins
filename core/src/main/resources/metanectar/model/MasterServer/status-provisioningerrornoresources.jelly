@@ -27,5 +27,8 @@ THE SOFTWARE.
 -->
 <j:jelly xmlns:j="jelly:core" xmlns:x="jelly:xml" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-    <p><img src="${imagesURL}/24x24/red.png"/> Provisioning error, no resources. Please configure provisioning resources.</p>
+    <p><img src="${imagesURL}/24x24/red.png"/> Provisioning error, no resources.</p>
+    <form method="post" action="cancelProvisionAction">
+        <p>Please configure provisioning resources or <f:submit value="${%Cancel}"/> the provisioning request</p>
+    </form>
 </j:jelly>

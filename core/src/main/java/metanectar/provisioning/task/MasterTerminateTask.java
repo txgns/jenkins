@@ -16,8 +16,11 @@ import java.util.logging.Logger;
 public class MasterTerminateTask extends MasterServerTask<MasterProvisioningService.Terminated> {
     private static final Logger LOGGER = Logger.getLogger(MasterTerminateTask.class.getName());
 
-    public MasterTerminateTask(MasterServer ms) {
+    private final boolean force;
+
+    public MasterTerminateTask(MasterServer ms, boolean force) {
         super(ms, MasterServer.Action.Terminate);
+        this.force = force;
     }
 
     public void start() throws Exception {
@@ -36,6 +39,9 @@ public class MasterTerminateTask extends MasterServerTask<MasterProvisioningServ
             LOGGER.log(Level.WARNING, "Terminating error for master " + ms.getName() + " on node " + node.getNodeName(), e);
 
             ms.setTerminateErrorState(e);
+            if (force) {
+                ms.setTerminateCompletedState(null);
+            }
             throw e;
         }
     }
@@ -55,6 +61,9 @@ public class MasterTerminateTask extends MasterServerTask<MasterProvisioningServ
             LOGGER.log(Level.WARNING, "Terminating completion error for master " + ms.getName() + " on node " + node.getNodeName(), cause);
 
             ms.setTerminateErrorState(cause);
+            if (force) {
+                ms.setTerminateCompletedState(null);
+            }
             throw e;
         }
 

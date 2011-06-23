@@ -49,14 +49,21 @@ public class MasterProvisioner {
     private class NodeUpdateListener extends MasterServerListener {
         @Override
         public void onStateChange(final MasterServer ms) {
+            // The modification of nodesWithMasters is guaranteed to occur on the same thread
+            // as the periodic timer, thus no synchronization is required.
             switch (ms.getState())  {
+                // Assign the node for provisioning or a provisioning error
+                // The latter is important for cases when the error needs to be resolved on the node
+                // If the information is removed on a provisioning error the node, if provisioned, from a cloud
+                // will be terminated
                 case Provisioning:
-                case ProvisioningError:
+                case ProvisioningError: {
                     final Node n = ms.getNode();
                     if (!nodesWithMasters.containsEntry(n, ms)) {
                         nodesWithMasters.put(n, ms);
                     }
                     break;
+                }
 
                 case Terminated:
                     nodesWithMasters.values().remove(ms);
@@ -93,6 +100,29 @@ public class MasterProvisioner {
         return !pendingMasterRequests.isEmpty();
     }
 
+    public boolean cancelPendingRequest(MasterServer ms) throws IOException {
+        PlannedMasterRequest pmr = getPlannedMasterRequest(ms);
+        if (pmr == null)
+            return false;
+
+        if (pmr.cancel()) {
+            ms.cancelPreProvisionState();
+            pendingMasterRequests.remove(pmr);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private PlannedMasterRequest getPlannedMasterRequest(MasterServer ms) {
+        for (PlannedMasterRequest pmr : pendingMasterRequests) {
+            if (pmr.ms == ms) {
+                return pmr;
+            }
+        }
+        return null;
+    }
+
     public void provisionAndStart(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
         ms.setPreProvisionState();
         pendingMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties, true));
@@ -115,8 +145,8 @@ public class MasterProvisioner {
         masterServerTaskQueue.start(new MasterStopTask(ms));
     }
 
-    public void terminate(MasterServer ms) {
-        masterServerTaskQueue.start(new MasterTerminateTask(ms));
+    public void terminate(MasterServer ms, boolean force) {
+        masterServerTaskQueue.start(new MasterTerminateTask(ms, force));
     }
 
     public void cloneTemplateFromSource(MasterTemplate mt) {
@@ -136,6 +166,17 @@ public class MasterProvisioner {
         // Process node tasks
         nodeTaskQueue.process();
 
+        // Clean up the node/masters map
+        for (PlannedMasterRequest pmr : pendingMasterRequests) {
+            // If re-provisioning from a state that set the node
+            // This can happen for a provisioning error, we don't want to remove information when a provisioning
+            // error occurs as we may need to resolve the error on the provisioning node
+            final Node n = pmr.ms.getNode();
+            if (n != null && nodesWithMasters.containsKey(n)) {
+                nodesWithMasters.get(n).remove(pmr.ms);
+            }
+        }
+
         // Take a copy of the planned master requests to ignore any requests added while processing
         // TODO this could be achieve by a forwarding queue impl that forwards all modification requests to the delegate
         // but defers read requests to the copy
@@ -148,16 +189,53 @@ public class MasterProvisioner {
     // Provisioning
 
     private static final class PlannedMasterRequest {
-        public final MasterServer ms;
-        public final URL metaNectarEndpoint;
-        public final Map<String, Object> properties;
-        public final boolean start;
+        enum State {
+            Pending,
+            Cancelled,
+            Processed
+        }
+
+        private final MasterServer ms;
+        private final URL metaNectarEndpoint;
+        private final Map<String, Object> properties;
+        private final boolean start;
+
+        private State state = State.Pending;
 
         public PlannedMasterRequest(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties, boolean start) {
             this.ms = ms;
             this.metaNectarEndpoint = metaNectarEndpoint;
             this.properties = properties;
             this.start = start;
+            this.state = State.Pending;
+        }
+
+        /**
+         * Cancel a request.
+         *
+         * @return true if the request is cancelled, otherwise false and the request is processed and cannot be cancelled
+         */
+        public synchronized boolean cancel() {
+            if (state != State.Processed) {
+                state = State.Cancelled;
+                return true;
+            }
+
+            return false;
+        }
+
+        /**
+         * Process a request.
+         *
+         * @return true if the request is processed, otherwise false and the request is cancelled and cannot be processed
+         */
+        public synchronized boolean process() {
+            if (state != State.Cancelled) {
+                state = State.Processed;
+                return true;
+            }
+
+            return false;
         }
     }
 
@@ -194,19 +272,23 @@ public class MasterProvisioner {
                 for (Iterator<PlannedMasterRequest> itr = Iterators.limit(currentMasterRequests.iterator(), freeSlots); itr.hasNext();) {
                     final PlannedMasterRequest pmr = itr.next();
 
-                    // Ignore request if advanced from the pre-provisioning state
-                    if (pmr.ms.getState().ordinal() > MasterServer.State.PreProvisioning.ordinal() &&
-                            pmr.ms.getState() != MasterServer.State.ProvisioningErrorNoResources) {
-                        currentMasterRequests.remove(pmr);
-                        pendingMasterRequests.remove(pmr);
-                        continue;
-                    }
-
-                    final int id = MasterServer.NODE_IDENTIFIER_FINDER.getUnusedIdentifier(nodesWithMasters.get(n));
-                    final MasterProvisionTask mpt = (pmr.start)
-                            ? new MasterProvisionThenStartTask(pmr.ms, pmr.metaNectarEndpoint, pmr.properties, n, id)
-                            : new MasterProvisionTask(pmr.ms, pmr.metaNectarEndpoint, pmr.properties, n, id);
                     try {
+                        // Ignore request if advanced from the pre-provisioning state
+                        if (pmr.ms.getState().ordinal() > MasterServer.State.PreProvisioning.ordinal() &&
+                                pmr.ms.getState() != MasterServer.State.ProvisioningErrorNoResources) {
+                            continue;
+                        }
+
+                        // Ignore if the planned master request was cancelled
+                        if (!pmr.process()) {
+                            continue;
+                        }
+
+                        final int id = MasterServer.NODE_IDENTIFIER_FINDER.getUnusedIdentifier(nodesWithMasters.get(n));
+                        final MasterProvisionTask mpt = (pmr.start)
+                                ? new MasterProvisionThenStartTask(pmr.ms, pmr.metaNectarEndpoint, pmr.properties, n, id)
+                                : new MasterProvisionTask(pmr.ms, pmr.metaNectarEndpoint, pmr.properties, n, id);
+
                         mpt.start();
                         masterServerTaskQueue.getQueue().add(mpt);
                     } catch (Exception e) {
