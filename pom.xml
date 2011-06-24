@@ -54,7 +54,6 @@ THE SOFTWARE.
     <module>metanectar-test</module>
     <module>cli</module>
     <module>plugins</module>
-    <module>update-center-support</module>
   </modules>
 
   <scm>

@@ -1,9 +1,0 @@
-<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
-         xmlns:t="/lib/hudson" xmlns:f="/lib/form">
-  <f:optionalBlock name="usingUpdateCenter" title="${%Specify update center for Master}"
-          checked="${instance!=null}">
-    <f:nested>
-      <f:hetero-radio descriptors="${descriptor.updateSources}" field="source"/>
-    </f:nested>
-  </f:optionalBlock>
-</j:jelly>
