@@ -28,7 +28,7 @@ THE SOFTWARE.
   <parent>
     <groupId>com.cloudbees.metanectar</groupId>
     <artifactId>pom</artifactId>
-    <version>1.400.2-SNAPSHOT</version>
+    <version>1.400.2</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -479,7 +479,7 @@ THE SOFTWARE.
                 <configuration>
                   <tasks>
                     <copy todir="${basedir}/work/plugins" flatten="true">
-                      <fileset dir="${project.build.directory}/generated-resources" includes="**/*.hp?"/>
+                      <fileset dir="${project.build.directory}/generated-resources" includes="**/*.hp?" />
                     </copy>
                   </tasks>
                 </configuration>
