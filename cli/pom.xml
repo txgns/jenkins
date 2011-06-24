@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <artifactId>pom</artifactId>
+    <artifactId>dev-at-cloud-private</artifactId>
     <groupId>com.cloudbees.metanectar</groupId>
     <version>1.400.7-SNAPSHOT</version>
   </parent>

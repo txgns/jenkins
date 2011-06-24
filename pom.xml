@@ -32,11 +32,11 @@ THE SOFTWARE.
   </parent>
 
   <groupId>com.cloudbees.metanectar</groupId>
-  <artifactId>pom</artifactId>
+  <artifactId>dev-at-cloud-private</artifactId>
   <version>1.400.7-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>Jenkins main module</name>
+  <name>DEV@Cloud Private Edition Parent Project</name>
   <description>The module that constitutes the main metanectar.war</description>
   <licenses>
     <license>
