@@ -6,7 +6,7 @@
       <j:set var="url" value="${h.getNearestAncestorUrl(request,it)}"/>
       <l:task icon="images/24x24/up.png" href="${rootURL}/" title="${%Back to Dashboard}"/>
       <l:task icon="images/24x24/search.png" href="${url}/" title="${%Status}"/>
-      <l:task icon="images/24x24/edit-delete.gif" href="delete" title="${%Delete Slave}" permission="${it.DELETE}"/>
+      <l:task icon="images/24x24/edit-delete.gif" href="delete" title="${%Delete Cloud}" permission="${it.DELETE}"/>
       <l:isAdmin>
         <l:task icon="images/24x24/setting.gif" href="configure" title="${%Configure}"/>
         <l:task icon="images/24x24/clipboard.gif" href="log" title="${%Log}"/>
