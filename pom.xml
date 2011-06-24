@@ -33,7 +33,7 @@ THE SOFTWARE.
 
   <groupId>com.cloudbees.metanectar</groupId>
   <artifactId>pom</artifactId>
-  <version>1.400.3-SNAPSHOT</version>
+  <version>1.400.3</version>
   <packaging>pom</packaging>
 
   <name>Jenkins main module</name>
