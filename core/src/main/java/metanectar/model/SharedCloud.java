@@ -738,7 +738,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
 
         @Override
         public long getRecurrencePeriod() {
-            return TimeUnit.SECONDS.toMillis(1);
+            return TimeUnit.SECONDS.toMillis(10);
         }
 
         @Override
