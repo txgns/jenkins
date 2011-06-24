@@ -73,6 +73,7 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
@@ -437,24 +438,52 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
 //                            }
 //                        }
                         LeaseIdImpl leaseId = new LeaseIdImpl(UUID.randomUUID().toString());
-                        Collection<NodeProvisioner.PlannedNode> provision = cloud.provision(label, 1);
+
+                        int excessWorkload = 1; // TODO allow larger workloads
+
+                        Collection<NodeProvisioner.PlannedNode> provision = cloud.provision(label, excessWorkload);
+                        int plannedExecutorCount = 0;
                         for (NodeProvisioner.PlannedNode n : provision) {
-                            LOGGER.log(Level.INFO, "SharedCloud[{0}] waiting for provisioning of {2} executors on {1}",
-                                    new Object[]{getUrl(), n.displayName, 1});
-                            Node node = n.future.get();
-                            synchronized (SharedCloud.this) {
+                            plannedExecutorCount += n.numExecutors;
+                        }
+                        LOGGER.log(Level.INFO,
+                                "SharedCloud[{0}] Asked for {1} executors, got a plan for {2} nodes with a total of {3} executors.",
+                                new Object[]{getUrl(), excessWorkload, provision.size(), plannedExecutorCount});
+                        boolean allDone = false;
+                        while (!allDone) {
+                            allDone = true;
+                            for (NodeProvisioner.PlannedNode n : provision) {
+                                LOGGER.log(Level.INFO,
+                                        "SharedCloud[{0}] waiting for provisioning of {2} executors on {1}",
+                                        new Object[]{getUrl(), n.displayName, excessWorkload});
                                 try {
-                                    leaseIds.put(leaseId, node);
-                                    LOGGER.log(Level.INFO, "SharedCloud[{0}] lent out {2} on lease {1}",
-                                            new Object[]{getUrl(), leaseId, node.getNodeName()});
-                                    return newComputerLauncherFactory(leaseId);
-                                } finally {
-                                    try {
-                                        save();
-                                    } catch (IOException e) {
-                                        LOGGER.log(Level.INFO, "SharedCloud[{0}] could not persist", getUrl());
+                                    Node node = n.future.get(excessWorkload, TimeUnit.SECONDS);
+                                    synchronized (SharedCloud.this) {
+                                        try {
+                                            leaseIds.put(leaseId, node);
+                                            LOGGER.log(Level.INFO, "SharedCloud[{0}] lent out {2} on lease {1}",
+                                                    new Object[]{getUrl(), leaseId, node.getNodeName()});
+                                            return newComputerLauncherFactory(leaseId);
+                                        } finally {
+                                            try {
+                                                save();
+                                            } catch (IOException e) {
+                                                LOGGER.log(Level.INFO, "SharedCloud[{0}] could not persist", getUrl());
+                                            }
+                                        }
                                     }
+                                } catch (TimeoutException e) {
+                                    LogRecord r = new LogRecord(Level.FINE, "SharedCloud[{0}] timed out while waiting for provisioning of {2} executors on {1}");
+                                    r.setThrown(e);
+                                    r.setParameters(new Object[]{getUrl(), n.displayName, excessWorkload});
+                                    LOGGER.log(r);
+                                } catch (ExecutionException e) {
+                                    LogRecord r = new LogRecord(Level.FINE, "SharedCloud[{0}] failed to provision {2} executors on {1}");
+                                    r.setThrown(e);
+                                    r.setParameters(new Object[]{getUrl(), n.displayName, excessWorkload});
+                                    LOGGER.log(r);
                                 }
+                                allDone = allDone && n.future.isDone();
                             }
                         }
                         throw new ProvisioningException("Could not provision node");
@@ -736,7 +765,9 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
             this.clouds = Hudson.getInstance().getAllItems(SharedCloud.class).iterator();
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         public synchronized boolean hasNext() {
             if (delegate != null && delegate.hasNext()) {
                 return true;
@@ -755,7 +786,9 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
             return false;
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         public synchronized Node next() {
             if (!hasNext()) {
                 throw new NoSuchElementException();
@@ -763,7 +796,9 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
             return delegate.next();
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         public void remove() {
             throw new UnsupportedOperationException();
         }
