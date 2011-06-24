@@ -428,6 +428,7 @@ THE SOFTWARE.
         <version>1.0</version>
         <executions>
           <execution>
+            <inherited>false</inherited>
             <goals>
               <goal>enforce</goal>
             </goals>
