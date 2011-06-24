@@ -1,7 +1,8 @@
 <!--
 The MIT License
 
-Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Erik Ramfelt, Tom Huybrechts, id:cactusman, Yahoo! Inc.
+Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Erik Ramfelt, Tom Huybrechts, id:cactusman,
+Yahoo! Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,13 +29,21 @@ THE SOFTWARE.
 <j:jelly xmlns:j="jelly:core" xmlns:x="jelly:xml" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
   <l:ajax>
-    <j:if test="${it.leaseId == null}">
-      <p><img src="${imagesURL}/24x24/blue.gif"/> Available for lease</p>
+    <j:if test="${empty(it.leaseIds)}">
+      <p>
+        <img src="${imagesURL}/24x24/blue.gif"/>
+        Available for lease
+      </p>
     </j:if>
-    <j:if test="${it.leaseId != null}">
-      <p><img src="${imagesURL}/24x24/blue_anime.gif"/> On lease to ${it.leaseId}</p>
+    <j:if test="${!empty(it.leaseIds)}">
+      <j:forEach var="entry" items="${it.leaseIds}">
+        <p>
+          <img src="${imagesURL}/24x24/blue_anime.gif"/>
+          ${entry.value.nodeName} lease to ${entry.key}
+        </p>
+      </j:forEach>
       <form method="post" action="forceRelease">
-        <f:submit value="${%Force release}" />
+        <f:submit value="${%Force release}"/>
       </form>
     </j:if>
 

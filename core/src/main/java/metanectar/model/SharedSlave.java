@@ -323,6 +323,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
         }
     }
 
+    @CLIMethod(name = "force-release")
     public void doForceRelease(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException, InterruptedException {
         synchronized (this) {
@@ -333,7 +334,10 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
                 LOGGER.log(Level.INFO, "SharedSlave[{0}] could not persist", getUrl());
             }
         }
-        rsp.sendRedirect(".");  // go to the top page
+        if (rsp != null) // null for CLI
+        {
+            rsp.sendRedirect(".");  // go to the top page
+        }
     }
 
     /**

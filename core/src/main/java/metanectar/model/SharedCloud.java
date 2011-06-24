@@ -63,12 +63,11 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -93,7 +92,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
             new PropertyList(this);
 
     @GuardedBy("this")
-    private Map<LeaseId, Node> leaseIds = new HashMap<LeaseId, Node>();
+    private Map<LeaseId, Node> leaseIds = new LinkedHashMap<LeaseId, Node>();
 
     private final Object nodeLock = new Object();
 
@@ -111,9 +110,18 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
         super(parent, name);
     }
 
+    private Object readResolve() {
+        synchronized (this) {
+            if (leaseIds == null) {
+                leaseIds = new LinkedHashMap<LeaseId, Node>();
+            }
+        }
+        return this;
+    }
+
     public boolean isBuilding() {
         synchronized (this) {
-            return !leaseIds.isEmpty();
+            return leaseIds != null && !leaseIds.isEmpty();
         }
     }
 
@@ -170,7 +178,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
             if (instanceCap < Integer.MAX_VALUE) {
                 int instanceCount;
                 synchronized (this) {
-                    instanceCount = leaseIds.size();
+                    instanceCount = leaseIds == null ? 0 : leaseIds.size();
                 }
                 result.add(new HealthReport(100 - (instanceCount * 100 / instanceCap),
                         Messages._SharedCloud_ActiveInstanceCountWithRespectToCap(instanceCount,
@@ -276,7 +284,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
     /**
      * Deletes this item.
      */
-    @CLIMethod(name = "delete-job")
+    @CLIMethod(name = "delete-cloud")
     public void doDoDelete(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException, InterruptedException {
         requirePOST();
@@ -296,17 +304,25 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
         }
     }
 
+    @CLIMethod(name = "force-release")
     public void doForceRelease(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException, InterruptedException {
         synchronized (this) {
-            leaseIds = null;
+            if (leaseIds == null) {
+                leaseIds = new LinkedHashMap<LeaseId, Node>();
+            } else {
+                leaseIds.clear();
+            }
             try {
                 save();
             } catch (IOException e) {
                 LOGGER.log(Level.INFO, "SharedCloud[{0}] could not persist", getUrl());
             }
         }
-        rsp.sendRedirect(".");  // go to the top page
+        if (rsp != null) // null for CLI
+        {
+            rsp.sendRedirect(".");  // go to the top page
+        }
     }
 
     /**
@@ -368,7 +384,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
     }
 
     public ComputerLauncherFactory newComputerLauncherFactory(LeaseId leaseId) {
-        synchronized (nodeLock) {
+        synchronized (this) {
             Node node = leaseIds.get(leaseId);
             if (node instanceof Slave) {
                 final Slave slave = (Slave) node;
@@ -447,7 +463,8 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
                             plannedExecutorCount += n.numExecutors;
                         }
                         LOGGER.log(Level.INFO,
-                                "SharedCloud[{0}] Asked for {1} executors, got a plan for {2} nodes with a total of {3} executors.",
+                                "SharedCloud[{0}] Asked for {1} executors, got a plan for {2} nodes with a total of "
+                                        + "{3} executors.",
                                 new Object[]{getUrl(), excessWorkload, provision.size(), plannedExecutorCount});
                         boolean allDone = false;
                         while (!allDone) {
@@ -473,12 +490,15 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
                                         }
                                     }
                                 } catch (TimeoutException e) {
-                                    LogRecord r = new LogRecord(Level.FINE, "SharedCloud[{0}] timed out while waiting for provisioning of {2} executors on {1}");
+                                    LogRecord r = new LogRecord(Level.FINE,
+                                            "SharedCloud[{0}] timed out while waiting for provisioning of {2} "
+                                                    + "executors on {1}");
                                     r.setThrown(e);
                                     r.setParameters(new Object[]{getUrl(), n.displayName, excessWorkload});
                                     LOGGER.log(r);
                                 } catch (ExecutionException e) {
-                                    LogRecord r = new LogRecord(Level.FINE, "SharedCloud[{0}] failed to provision {2} executors on {1}");
+                                    LogRecord r = new LogRecord(Level.FINE,
+                                            "SharedCloud[{0}] failed to provision {2} executors on {1}");
                                     r.setThrown(e);
                                     r.setParameters(new Object[]{getUrl(), n.displayName, excessWorkload});
                                     LOGGER.log(r);
@@ -528,9 +548,10 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
         }
     }
 
-    public Set<LeaseId> getLeaseIds() {
+    public Map<LeaseId, Node> getLeaseIds() {
         synchronized (this) {
-            return leaseIds.keySet();
+            Map<LeaseId, Node> result = new LinkedHashMap<LeaseId, Node>(leaseIds);
+            return result;
         }
     }
 
