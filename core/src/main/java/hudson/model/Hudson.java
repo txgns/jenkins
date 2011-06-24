@@ -239,7 +239,7 @@ import java.util.regex.Pattern;
  * @author Kohsuke Kawaguchi
  */
 @ExportedBean
-public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProxy, StaplerFallback, ViewGroup, AccessControlled, DescriptorByNameOwner {
+public class Hudson extends Node implements ModifiableItemGroup<TopLevelItem>, StaplerProxy, StaplerFallback, ViewGroup, AccessControlled, DescriptorByNameOwner {
     private transient final Queue queue;
 
     /**
@@ -439,6 +439,13 @@ public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProx
      * @since 1.269
      */
     private volatile String primaryView;
+
+    private transient final ViewGroupMixIn viewGroupMixIn = new ViewGroupMixIn(this) {
+        protected List<View> views() { return views; }
+        protected String primaryView() { return primaryView; }
+        protected void primaryView(String name) { primaryView=name; }
+    };
+
 
     private transient final FingerprintMap fingerprintMap = new FingerprintMap();
 
@@ -1249,6 +1256,10 @@ public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProx
         return actions;
     }
 
+    public List<Action> getViewActions() {
+        return getActions();
+    }
+
     /**
      * Gets just the immediate children of {@link Hudson}.
      *
@@ -1329,7 +1340,7 @@ public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProx
      * no need to search recursively.
      */
     public List<Project> getProjects() {
-        return Util.createSubList(items.values(),Project.class);
+        return Util.createSubList(items.values(), Project.class);
     }
 
     /**
@@ -1353,17 +1364,7 @@ public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProx
     }
 
     public synchronized View getView(String name) {
-        for (View v : views) {
-            if(v.getViewName().equals(name))
-                return v;
-        }
-        if (name != null && !name.equals(primaryView)) {
-            // Fallback to subview of primary view if it is a ViewGroup
-            View pv = getPrimaryView();
-            if (pv instanceof ViewGroup)
-                return ((ViewGroup)pv).getView(name);
-        }
-        return null;
+        return viewGroupMixIn.getView(name);
     }
 
     /**
@@ -1371,30 +1372,39 @@ public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProx
      */
     @Exported
     public synchronized Collection<View> getViews() {
-        List<View> copy = new ArrayList<View>(views);
-        Collections.sort(copy, View.SORTER);
-        return copy;
+        return viewGroupMixIn.getViews();
     }
 
     public void addView(View v) throws IOException {
-        v.owner = this;
-        views.add(v);
-        save();
+        viewGroupMixIn.addView(v);
     }
 
     public boolean canDelete(View view) {
-        return !view.isDefault();  // Cannot delete primary view
+        return viewGroupMixIn.canDelete(view);
     }
 
     public synchronized void deleteView(View view) throws IOException {
-        if (views.size() <= 1)
-            throw new IllegalStateException("Cannot delete last view");
-        views.remove(view);
-        save();
+        viewGroupMixIn.deleteView(view);
+    }
+
+    public void onViewRenamed(View view, String oldName, String newName) {
+        viewGroupMixIn.onViewRenamed(view,oldName,newName);
+    }
+
+    /**
+     * Returns the primary {@link View} that renders the top-page of Hudson.
+     */
+    @Exported
+    public View getPrimaryView() {
+        return viewGroupMixIn.getPrimaryView();
     }
 
     public ViewsTabBar getViewsTabBar() {
         return viewsTabBar;
+    }
+
+    public Hudson getItemGroup() {
+        return this;
     }
 
     public MyViewsTabBar getMyViewsTabBar() {
@@ -1739,13 +1749,6 @@ public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProx
         return "";
     }
 
-    public void onViewRenamed(View view, String oldName, String newName) {
-        // If this view was the default view, change reference
-        if (oldName.equals(primaryView)) {
-            primaryView = newName;
-        }
-    }
-
     @Override
     public SearchIndexBuilder makeSearchIndex() {
         return super.makeSearchIndex()
@@ -1765,17 +1768,6 @@ public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProx
                 protected View get(String key) { return getView(key); }
                 protected Collection<View> all() { return views; }
             });
-    }
-
-    /**
-     * Returns the primary {@link View} that renders the top-page of Hudson.
-     */
-    @Exported
-    public View getPrimaryView() {
-        View v = getView(primaryView);
-        if(v==null) // fallback
-            v = views.get(0);
-        return v;
     }
 
     public String getUrlChildPrefix() {
@@ -2596,7 +2588,7 @@ public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProx
             clouds.rebuildHetero(req,json, Cloud.all(), "cloud");
 
             JSONObject np = json.getJSONObject("globalNodeProperties");
-            if (np != null) {
+            if (!np.isNullObject()) {
                 globalNodeProperties.rebuild(req, np, NodeProperty.for_(this));
             }
 
@@ -2719,7 +2711,7 @@ public class Hudson extends Node implements ItemGroup<TopLevelItem>, StaplerProx
         rsp.sendRedirect2("threadDump");
     }
 
-    public synchronized Item doCreateItem( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
+    public synchronized TopLevelItem doCreateItem( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
         return itemGroupMixIn.createTopLevelItem(req, rsp);
     }
 

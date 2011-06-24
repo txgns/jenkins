@@ -45,6 +45,7 @@ import java.util.Map;
  * implementations. Not meant for a consumption from outside {@link ItemGroup}s.
  *
  * @author Kohsuke Kawaguchi
+ * @see ViewGroupMixIn
  */
 public abstract class ItemGroupMixIn {
     /**
@@ -170,7 +171,7 @@ public abstract class ItemGroupMixIn {
                     throw new Failure("No mode given");
 
                 // create empty job and redirect to the project config screen
-                result = createProject(Items.getDescriptor(mode), name, true);
+                result = createProject(Items.all().findByName(mode), name, true);
             }
         }
 
@@ -206,6 +207,7 @@ public abstract class ItemGroupMixIn {
 
         add(result);
         ItemListener.fireOnCopied(src,result);
+        Hudson.getInstance().rebuildDependencyGraph();
 
         return result;
     }
