@@ -5,7 +5,7 @@
   <parent>
     <artifactId>pom</artifactId>
     <groupId>com.cloudbees.metanectar</groupId>
-    <version>1.400.5-SNAPSHOT</version>
+    <version>1.400.5</version>
   </parent>
 
   <artifactId>cli</artifactId>
