@@ -29,5 +29,5 @@ THE SOFTWARE.
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
     <p><img src="${imagesURL}/24x24/red.png"/> Cloning error</p>
     <p class="warning">${it.error}</p>
-    <p>Try to <a href="cloneFromSource">clone</a> from source again, or <a href="configure">re-configure</a> the source</p>
+    <p>Try to <a href="clonefromsource">clone</a> from source again, or <a href="configure">re-configure</a> the source</p>
 </j:jelly>
