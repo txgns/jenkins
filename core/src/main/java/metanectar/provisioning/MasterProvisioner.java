@@ -132,6 +132,10 @@ public class MasterProvisioner {
         pendingMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties, false));
     }
 
+    public void reProvision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) {
+        masterServerTaskQueue.start(new MasterProvisionTask(ms, metaNectarEndpoint, properties, ms.getNode(), ms.getNodeId()));
+    }
+
     public void start(MasterServer ms) {
         masterServerTaskQueue.start(new MasterStartTask(ms));
     }
@@ -160,17 +164,6 @@ public class MasterProvisioner {
 
         // Process node tasks
         nodeTaskQueue.process();
-
-        // Clean up the node/masters map
-        for (PlannedMasterRequest pmr : pendingMasterRequests) {
-            // If re-provisioning from a state that set the node
-            // This can happen for a provisioning error, we don't want to remove information when a provisioning
-            // error occurs as we may need to resolve the error on the provisioning node
-            final Node n = pmr.ms.getNode();
-            if (n != null && nodesWithMasters.containsKey(n)) {
-                nodesWithMasters.get(n).remove(pmr.ms);
-            }
-        }
 
         // Take a copy of the planned master requests to ignore any requests added while processing
         // TODO this could be achieve by a forwarding queue impl that forwards all modification requests to the delegate

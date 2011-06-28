@@ -44,10 +44,10 @@ public class MasterServer extends ConnectedMaster {
      */
     public static enum State {
         Created(Action.Provision, Action.Delete),
-        PreProvisioning(),
+        PreProvisioning(Action.CancelProvision),
         Provisioning(),
-        ProvisioningErrorNoResources(), // TODO delete, need remove from pending requests
-        ProvisioningError(Action.Provision, Action.Terminate),
+        ProvisioningErrorNoResources(Action.CancelProvision),
+        ProvisioningError(Action.ReProvision, Action.Terminate),
         Provisioned(Action.Start, Action.Terminate),
         Starting(),
         StartingError(Action.Start, Action.Stop),
@@ -77,6 +77,8 @@ public class MasterServer extends ConnectedMaster {
      */
     public static enum Action {
         Provision("new-computer.png"),
+        CancelProvision("trash-computer.png", false),
+        ReProvision("new-computer.png", false),
         Start("start-computer.png"),
         Stop("stop-computer.png"),
         Terminate("terminate-computer.png"),
@@ -84,21 +86,33 @@ public class MasterServer extends ConnectedMaster {
 
         public final String icon;
 
+        public final boolean visible;
+
         public final String displayName;
 
         public final String href;
 
         Action(String icon) {
             this.icon = icon;
+            this.visible = true;
             this.displayName = name();
             this.href = name().toLowerCase();
         }
 
-        Action(String icon, String displayName) {
+        Action(String icon, boolean visible) {
             this.icon = icon;
+            this.visible = visible;
+            this.displayName = name();
+            this.href = name().toLowerCase();
+        }
+
+        Action(String icon, boolean visible, String displayName) {
+            this.icon = icon;
+            this.visible = visible;
             this.displayName = displayName;
             this.href = name().toLowerCase();
         }
+
     }
 
     /**
@@ -371,12 +385,14 @@ public class MasterServer extends ConnectedMaster {
         this.globalEndpoint = null;
         this.identity = null;
 
-        // Remove the old snapshot if present
-        if (this.snapshot != null) {
-            File f = new File(this.snapshot.getPath());
-            f.delete();
+        if (snapshot != null) {
+            // Remove the old snapshot if present
+            if (this.snapshot != null) {
+                File f = new File(this.snapshot.getPath());
+                f.delete();
+            }
+            this.snapshot = snapshot;
         }
-        this.snapshot = snapshot;
 
         save();
         fireOnStateChange();
@@ -486,10 +502,16 @@ public class MasterServer extends ConnectedMaster {
                 properties);
     }
 
+    public synchronized void reProvisionAction() throws IOException  {
+        preConditionAction(Action.ReProvision);
+
+        Map<String, Object> properties = new HashMap<String, Object>();
+        MetaNectar.getInstance().masterProvisioner.reProvision(this, MetaNectar.getInstance().getMetaNectarPortUrl(),
+                properties);
+    }
+
     public synchronized boolean cancelProvisionAction() throws IOException {
-        if (state != State.PreProvisioning && state != State.ProvisioningErrorNoResources) {
-            throw new AbortException(String.format("Cancel of a provision request cannot be performed when in state \"\"", getState().name()));
-        }
+        preConditionAction(Action.CancelProvision);
 
         return MetaNectar.getInstance().masterProvisioner.cancelPendingRequest(this);
     }
@@ -598,6 +620,14 @@ public class MasterServer extends ConnectedMaster {
         return new DoActionLambda() {
             public void f() throws Exception {
                 cancelProvisionAction();
+            }
+        }.doAction();
+    }
+
+    public HttpResponse doReProvisionAction() throws Exception {
+        return new DoActionLambda() {
+            public void f() throws Exception {
+                reProvisionAction();
             }
         }.doAction();
     }

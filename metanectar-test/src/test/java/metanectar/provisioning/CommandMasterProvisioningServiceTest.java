@@ -84,7 +84,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         assertTrue(metaNectar.masterProvisioner.getProvisionedMasters().get(metaNectar).contains(ms));
 
         // Try again
-        _testProvisionStartTimeOut(ms, new LatchMasterServerListener(1) {
+        _testReProvisionTimeOut(ms, new LatchMasterServerListener(1) {
                 public void onProvisioningError(MasterServer ms) {
                     countDown();
                 }
@@ -116,6 +116,16 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
 
     private MasterServer _testProvisionStartTimeOut(MasterServer ms, LatchMasterServerListener error, MasterServer.State state) throws Exception {
         ms.provisionAndStartAction();
+
+        error.await(1, TimeUnit.MINUTES);
+
+        assertEquals(state, ms.getState());
+        assertEquals(CommandMasterProvisioningService.CommandProvisioningError.class, ms.getError().getClass());
+        return ms;
+    }
+
+    private MasterServer _testReProvisionTimeOut(MasterServer ms, LatchMasterServerListener error, MasterServer.State state) throws Exception {
+        ms.reProvisionAction();
 
         error.await(1, TimeUnit.MINUTES);
 
