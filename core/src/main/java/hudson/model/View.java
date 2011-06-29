@@ -38,6 +38,8 @@ import hudson.security.ACL;
 import hudson.security.AccessControlled;
 import hudson.security.Permission;
 import hudson.security.PermissionGroup;
+import hudson.util.AlternativeUiTextProvider;
+import hudson.util.AlternativeUiTextProvider.Message;
 import hudson.util.DescribableList;
 import hudson.util.DescriptorList;
 import hudson.util.RunList;
@@ -139,7 +141,7 @@ public abstract class View extends AbstractModelObject implements AccessControll
      * Gets the {@link TopLevelItem} of the given name.
      */
     public TopLevelItem getItem(String name) {
-        return Hudson.getInstance().getItem(name);
+        return getOwnerItemGroup().getItem(name);
     }
 
     /**
@@ -182,6 +184,49 @@ public abstract class View extends AbstractModelObject implements AccessControll
      */
     public ViewGroup getOwner() {
         return owner;
+    }
+
+    /**
+     * Backward-compatible way of getting {@code getOwner().getItemGroup()}
+     */
+    public ItemGroup<? extends TopLevelItem> getOwnerItemGroup() {
+        try {
+            return _getOwnerItemGroup();
+        } catch (AbstractMethodError e) {
+            return Hudson.getInstance();
+        }
+    }
+
+    /**
+     * A pointless function to work around what appears to be a HotSpot problem. See JENKINS-5756 and bug 6933067
+     * on BugParade for more details.
+     */
+    private ItemGroup<? extends TopLevelItem> _getOwnerItemGroup() {
+        return owner.getItemGroup();
+    }
+
+    public View getOwnerPrimaryView() {
+        try {
+            return _getOwnerPrimaryView();
+        } catch (AbstractMethodError e) {
+            return null;
+        }
+    }
+
+    private View _getOwnerPrimaryView() {
+        return owner.getPrimaryView();
+    }
+
+    public List<Action> getOwnerViewActions() {
+        try {
+            return _getOwnerViewActions();
+        } catch (AbstractMethodError e) {
+            return Hudson.getInstance().getActions();
+        }
+    }
+
+    private List<Action> _getOwnerViewActions() {
+        return owner.getViewActions();
     }
 
     /**
@@ -251,6 +296,10 @@ public abstract class View extends AbstractModelObject implements AccessControll
         return getViewName();
     }
 
+    public String getNewPronoun() {
+        return AlternativeUiTextProvider.get(NEW_PRONOUN, this, Messages.AbstractItem_Pronoun());
+    }
+
     /**
      * By default, return true to render the "Edit view" link on the page.
      * This method is really just for the default "All" view to hide the edit link
@@ -290,7 +339,7 @@ public abstract class View extends AbstractModelObject implements AccessControll
      * If true, this is a view that renders the top page of Hudson.
      */
     public boolean isDefault() {
-        return Hudson.getInstance().getPrimaryView()==this;
+        return getOwnerPrimaryView()==this;
     }
     
     public List<Computer> getComputers() {
@@ -350,7 +399,7 @@ public abstract class View extends AbstractModelObject implements AccessControll
      * empty string when this is the default view).
      */
     public String getUrl() {
-        return isDefault() ? "" : getViewUrl();
+        return isDefault() ? (owner!=null ? owner.getUrl() : "") : getViewUrl();
     }
 
     /**
@@ -376,7 +425,7 @@ public abstract class View extends AbstractModelObject implements AccessControll
      */
     public List<Action> getActions() {
     	List<Action> result = new ArrayList<Action>();
-    	result.addAll(Hudson.getInstance().getActions());
+    	result.addAll(getOwnerViewActions());
     	synchronized (this) {
     		if (transientActions == null) {
     			transientActions = TransientViewActionFactory.createAllFor(this); 
@@ -672,7 +721,7 @@ public abstract class View extends AbstractModelObject implements AccessControll
      * Creates a new {@link Item} in this collection.
      *
      * <p>
-     * This method should call {@link Hudson#doCreateItem(StaplerRequest, StaplerResponse)}
+     * This method should call {@link ModifiableItemGroup#doCreateItem(StaplerRequest, StaplerResponse)}
      * and then add the newly created item to this view.
      * 
      * @return
@@ -726,6 +775,14 @@ public abstract class View extends AbstractModelObject implements AccessControll
      */
     public static DescriptorExtensionList<View,ViewDescriptor> all() {
         return Hudson.getInstance().<View,ViewDescriptor>getDescriptorList(View.class);
+    }
+
+    public static List<ViewDescriptor> allInstantiable() {
+        List<ViewDescriptor> r = new ArrayList<ViewDescriptor>();
+        for (ViewDescriptor d : all())
+            if(d.isInstantiable())
+                r.add(d);
+        return r;
     }
 
     public static final Comparator<View> SORTER = new Comparator<View>() {
@@ -786,4 +843,10 @@ public abstract class View extends AbstractModelObject implements AccessControll
                 p.setView(getOwner());
         }
     }
+
+    /**
+     * "Job" in "New Job". When a view is used in a context that restricts the child type,
+     * It might be useful to override this.
+     */
+    public static final Message<View> NEW_PRONOUN = new Message<View>();
 }
