@@ -19,7 +19,7 @@ public class StringConverterTest extends TestCase {
         assertTrue(b);
     }
 
-    public void testBooleane() throws StringConverter.StringConverterException {
+    public void testBoolean() throws StringConverter.StringConverterException {
         boolean b = StringConverter.valueOf(Boolean.class, "true");
 
         assertTrue(b);

@@ -7,12 +7,26 @@ import java.util.concurrent.Future;
  */
 public abstract class FutureTask<F, T extends Task> implements Task<T> {
 
-    protected Future<F> future;
+    private final long timeout;
 
-    public FutureTask() {
+    private Future<F> future;
+
+    private long startTime;
+
+    public FutureTask(long timeout) {
+        this.timeout = timeout;
     }
 
-    public FutureTask(Future<F> future) {
+    public long getTimeout() {
+        return timeout;
+    }
+
+    protected Future<F> getFuture() {
+        return future;
+    }
+
+    protected void setFuture(Future<F> future) {
+        this.startTime = System.currentTimeMillis();
         this.future = future;
     }
 
@@ -21,6 +35,11 @@ public abstract class FutureTask<F, T extends Task> implements Task<T> {
     }
 
     public boolean isDone() {
+        // Try to cancel the future if the task is running longer than the timeout duration
+        if ((startTime + timeout) < System.currentTimeMillis()) {
+            future.cancel(true);
+        }
+
         return future.isDone();
     }
 

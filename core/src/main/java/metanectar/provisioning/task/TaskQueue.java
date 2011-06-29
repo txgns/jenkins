@@ -17,6 +17,15 @@ public class TaskQueue<T extends Task> {
         for (Iterator<T> itr = queue.iterator(); itr.hasNext();) {
             final T t = itr.next();
 
+            if (!t.isStarted()) {
+                try {
+                    t.start();
+                } catch (Exception e) {
+                    itr.remove();
+                    continue;
+                }
+            }
+
             if (t.isDone()) {
                 T next = null;
                 try {
@@ -29,12 +38,6 @@ public class TaskQueue<T extends Task> {
 
                 if (next != null) {
                     start(next);
-                }
-            } else if (!t.isStarted()) {
-                try {
-                    t.start();
-                } catch (Exception e) {
-                    itr.remove();
                 }
             }
         }

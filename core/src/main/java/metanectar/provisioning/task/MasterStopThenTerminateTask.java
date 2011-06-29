@@ -7,13 +7,13 @@ import metanectar.model.MasterServer;
  */
 public class MasterStopThenTerminateTask extends MasterStopTask {
 
-    public MasterStopThenTerminateTask(MasterServer ms) {
-        super(ms);
+    public MasterStopThenTerminateTask(long timeout, MasterServer ms) {
+        super(timeout, ms);
     }
 
     public MasterServerTask end() throws Exception {
         super.end();
 
-        return new MasterTerminateTask(ms, false);
+        return new MasterTerminateTask(getTimeout(), ms, false);
     }
 }

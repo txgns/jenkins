@@ -43,6 +43,10 @@ public class MasterProvisioner {
 
     private final MetaNectar mn;
 
+    private final long masterTimeout;
+
+    private final long cloudTimout;
+
     private Label masterLabel;
 
     private final ListMultimap<Node, MasterServer> nodesWithMasters = ArrayListMultimap.create();
@@ -73,8 +77,10 @@ public class MasterProvisioner {
         }
     }
 
-    public MasterProvisioner(MetaNectar mn) {
+    public MasterProvisioner(MetaNectar mn, long masterTimeout, long cloudTimeout) {
         this.mn = mn;
+        this.masterTimeout = masterTimeout;
+        this.cloudTimout = cloudTimeout;
 
         // TODO normalize states
 
@@ -124,7 +130,7 @@ public class MasterProvisioner {
     }
 
     public void stopAndTerminate(MasterServer ms) {
-        masterServerTaskQueue.start(new MasterStopThenTerminateTask(ms));
+        masterServerTaskQueue.start(new MasterStopThenTerminateTask(masterTimeout, ms));
     }
 
     public void provision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
@@ -133,23 +139,23 @@ public class MasterProvisioner {
     }
 
     public void reProvision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) {
-        masterServerTaskQueue.start(new MasterProvisionTask(ms, metaNectarEndpoint, properties, ms.getNode(), ms.getNodeId()));
+        masterServerTaskQueue.start(new MasterProvisionTask(masterTimeout, ms, metaNectarEndpoint, properties, ms.getNode(), ms.getNodeId()));
     }
 
     public void start(MasterServer ms) {
-        masterServerTaskQueue.start(new MasterStartTask(ms));
+        masterServerTaskQueue.start(new MasterStartTask(masterTimeout, ms));
     }
 
     public void stop(MasterServer ms) {
-        masterServerTaskQueue.start(new MasterStopTask(ms));
+        masterServerTaskQueue.start(new MasterStopTask(masterTimeout, ms));
     }
 
     public void terminate(MasterServer ms, boolean force) {
-        masterServerTaskQueue.start(new MasterTerminateTask(ms, force));
+        masterServerTaskQueue.start(new MasterTerminateTask(masterTimeout, ms, force));
     }
 
     public void cloneTemplateFromSource(MasterTemplate mt) {
-        masterServerTaskQueue.start(new TemplateCloneTask(mt));
+        masterServerTaskQueue.start(new TemplateCloneTask(masterTimeout, mt));
     }
 
     private void process() throws Exception {
@@ -210,8 +216,8 @@ public class MasterProvisioner {
 
             final int id = MasterServer.NODE_IDENTIFIER_FINDER.getUnusedIdentifier(nodesWithMasters.get(n));
             final MasterProvisionTask mpt = (start)
-                    ? new MasterProvisionThenStartTask(ms, metaNectarEndpoint, properties, n, id)
-                    : new MasterProvisionTask(ms, metaNectarEndpoint, properties, n, id);
+                    ? new MasterProvisionThenStartTask(masterTimeout, ms, metaNectarEndpoint, properties, n, id)
+                    : new MasterProvisionTask(masterTimeout, ms, metaNectarEndpoint, properties, n, id);
 
             mpt.start();
             masterServerTaskQueue.getQueue().add(mpt);
@@ -288,7 +294,7 @@ public class MasterProvisioner {
                 if (!pns.isEmpty()) {
                     for (PlannedNode pn : pns) {
                         try {
-                            NodeProvisionThenOnlineTask npt = new NodeProvisionThenOnlineTask(mn, c, pn);
+                            NodeProvisionThenOnlineTask npt = new NodeProvisionThenOnlineTask(cloudTimout, mn, c, pn);
                             npt.start();
                             nodeTaskQueue.add(npt);
                         } catch (Exception e) {

@@ -11,7 +11,8 @@ public abstract class MasterServerTask<F> extends FutureTask<F, MasterServerTask
 
     protected final MasterServer.Action action;
 
-    public MasterServerTask(MasterServer ms, MasterServer.Action action) {
+    public MasterServerTask(long timeout, MasterServer ms, MasterServer.Action action) {
+        super(timeout);
         this.ms = ms;
         this.action = action;
     }

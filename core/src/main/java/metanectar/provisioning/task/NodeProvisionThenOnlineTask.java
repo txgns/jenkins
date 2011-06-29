@@ -16,8 +16,8 @@ import java.util.logging.Logger;
  */
 public class NodeProvisionThenOnlineTask extends NodeProvisionTask {
 
-    public NodeProvisionThenOnlineTask(MetaNectar mn, Cloud c, NodeProvisioner.PlannedNode pn) {
-        super(mn, c, pn);
+    public NodeProvisionThenOnlineTask(long timeout, MetaNectar mn, Cloud c, NodeProvisioner.PlannedNode pn) {
+        super(timeout, mn, c, pn);
     }
 
     public Task end() throws Exception {
@@ -25,6 +25,6 @@ public class NodeProvisionThenOnlineTask extends NodeProvisionTask {
 
         final Node n = getNode();
 
-        return new NodeOnlineTask(n);
+        return new NodeOnlineTask(getTimeout(), n);
     }
 }

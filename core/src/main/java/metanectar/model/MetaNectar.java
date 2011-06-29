@@ -35,6 +35,7 @@ import java.security.PublicKey;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
@@ -143,7 +144,8 @@ public class MetaNectar extends Hudson {
 
         ExtensionFilter.defaultFilter(this);
 
-        this.masterProvisioner = new MasterProvisioner(this);
+        // TODO, the timeouts should be configurable
+        this.masterProvisioner = new MasterProvisioner(this, TimeUnit.MINUTES.toMillis(5), TimeUnit.MINUTES.toMillis(5));
 
         configureNectarAgentListener(new AgentProtocolListener(this));
 

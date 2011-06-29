@@ -26,8 +26,8 @@ public class MasterProvisionTask extends MasterServerTask<MasterProvisioningServ
 
     private final int id;
 
-    public MasterProvisionTask(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties, Node node, int id) {
-        super(ms, MasterServer.Action.Provision);
+    public MasterProvisionTask(long timeout, MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties, Node node, int id) {
+        super(timeout, ms, MasterServer.Action.Provision);
 
         this.metaNectarEndpoint = metaNectarEndpoint;
         this.properties = properties;
@@ -45,7 +45,7 @@ public class MasterProvisionTask extends MasterServerTask<MasterProvisioningServ
             final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(node);
 
             Map<String, Object> provisionProperties = new HashMap<String, Object>(properties);
-            this.future = p.getProvisioningService().provision(ms, metaNectarEndpoint, provisionProperties);
+            setFuture(p.getProvisioningService().provision(ms, metaNectarEndpoint, provisionProperties));
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Provisioning error for master " + ms.getName() + " on node " + node.getNodeName(), e);
 
@@ -56,7 +56,7 @@ public class MasterProvisionTask extends MasterServerTask<MasterProvisioningServ
 
     public MasterServerTask end() throws Exception {
         try {
-            final MasterProvisioningService.Provisioned provisioned = future.get();
+            final MasterProvisioningService.Provisioned provisioned = getFuture().get();
 
             LOGGER.info("Provisioning completed for master " + ms.getName() + " on node " + node.getNodeName());
 

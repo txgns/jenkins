@@ -15,7 +15,8 @@ public class NodeOnlineTask extends FutureTask<Object, Task> {
 
     private final Node node;
 
-    public NodeOnlineTask(Node n) {
+    public NodeOnlineTask(long timeout, Node n) {
+        super(timeout);
         this.node = n;
     }
 
@@ -23,7 +24,7 @@ public class NodeOnlineTask extends FutureTask<Object, Task> {
         try {
             LOGGER.info("Connecting to node " + node.getNodeName());
 
-            this.future = (Future)node.toComputer().connect(false);
+            setFuture((Future)node.toComputer().connect(false));
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Connecting error to node " + node.getNodeName(), e);
 
@@ -33,7 +34,7 @@ public class NodeOnlineTask extends FutureTask<Object, Task> {
 
     public Task end() throws Exception {
         try {
-            future.get();
+            getFuture().get();
 
             LOGGER.info("Connecting completed to node " + node.getNodeName());
         } catch (Exception e) {

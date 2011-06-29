@@ -16,7 +16,8 @@ public class TemplateCloneTask extends FutureTask<String, TemplateCloneTask> {
 
     private final MasterTemplate mt;
 
-    public TemplateCloneTask(MasterTemplate mt) {
+    public TemplateCloneTask(long timeout, MasterTemplate mt) {
+        super(timeout);
         this.mt = mt;
     }
 
@@ -26,11 +27,11 @@ public class TemplateCloneTask extends FutureTask<String, TemplateCloneTask> {
 
             mt.setCloningState();
 
-            this.future = Computer.threadPoolForRemoting.submit(new Callable<String>() {
+            setFuture(Computer.threadPoolForRemoting.submit(new Callable<String>() {
                 public String call() throws Exception {
                     return mt.getSource().toTemplate().getAbsolutePath();
                 }
-            });
+            }));
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Cloning error for " + getTemplateAndSourceDescription(), e);
 
@@ -41,7 +42,7 @@ public class TemplateCloneTask extends FutureTask<String, TemplateCloneTask> {
 
     public TemplateCloneTask end() throws Exception {
         try {
-            final String templatePath = future.get();
+            final String templatePath = getFuture().get();
 
             LOGGER.info("Cloning completed for " + getTemplateAndSourceDescription());
 

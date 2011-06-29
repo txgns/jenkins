@@ -18,8 +18,8 @@ public class MasterTerminateTask extends MasterServerTask<MasterProvisioningServ
 
     private final boolean force;
 
-    public MasterTerminateTask(MasterServer ms, boolean force) {
-        super(ms, MasterServer.Action.Terminate);
+    public MasterTerminateTask(long timeout, MasterServer ms, boolean force) {
+        super(timeout, ms, MasterServer.Action.Terminate);
         this.force = force;
     }
 
@@ -34,7 +34,7 @@ public class MasterTerminateTask extends MasterServerTask<MasterProvisioningServ
 
             final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(node);
 
-            this.future = p.getProvisioningService().terminate(ms);
+            setFuture(p.getProvisioningService().terminate(ms));
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Terminating error for master " + ms.getName() + " on node " + node.getNodeName(), e);
 
@@ -50,7 +50,7 @@ public class MasterTerminateTask extends MasterServerTask<MasterProvisioningServ
         final Node node = ms.getNode();
 
         try {
-            final MasterProvisioningService.Terminated terminated = future.get();
+            final MasterProvisioningService.Terminated terminated = getFuture().get();
 
             LOGGER.info("Terminating completed for master " + ms.getName() + " on node " + node.getNodeName());
 

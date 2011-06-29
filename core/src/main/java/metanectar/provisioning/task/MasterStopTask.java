@@ -14,8 +14,8 @@ import java.util.logging.Logger;
 public class MasterStopTask extends MasterServerTask {
     private static final Logger LOGGER = Logger.getLogger(MasterStopTask.class.getName());
 
-    public MasterStopTask(MasterServer ms) {
-        super(ms, MasterServer.Action.Stop);
+    public MasterStopTask(long timeout, MasterServer ms) {
+        super(timeout, ms, MasterServer.Action.Stop);
     }
 
     public void start() throws Exception {
@@ -29,7 +29,7 @@ public class MasterStopTask extends MasterServerTask {
 
             final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(node);
 
-            this.future = p.getProvisioningService().stop(ms);
+            setFuture(p.getProvisioningService().stop(ms));
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Stopping error for master " + ms.getName() + " on node " + node.getNodeName(), e);
 
@@ -42,7 +42,7 @@ public class MasterStopTask extends MasterServerTask {
         final Node node = ms.getNode();
 
         try {
-            future.get();
+            getFuture().get();
 
             LOGGER.info("Stopping completed for master " + ms.getName() + " on node " + node.getNodeName());
 

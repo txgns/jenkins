@@ -16,8 +16,8 @@ import java.util.logging.Logger;
 public class MasterStartTask extends MasterServerTask {
     private static final Logger LOGGER = Logger.getLogger(MasterStartTask.class.getName());
 
-    public MasterStartTask(MasterServer ms) {
-        super(ms, MasterServer.Action.Start);
+    public MasterStartTask(long timeout, MasterServer ms) {
+        super(timeout, ms, MasterServer.Action.Start);
     }
 
     public void start() throws Exception {
@@ -31,7 +31,7 @@ public class MasterStartTask extends MasterServerTask {
 
             final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(node);
 
-            this.future = p.getProvisioningService().start(ms);
+            setFuture(p.getProvisioningService().start(ms));
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Starting error for master " + ms.getName() + " on node " + node.getNodeName(), e);
 
@@ -44,7 +44,7 @@ public class MasterStartTask extends MasterServerTask {
         final Node node = ms.getNode();
 
         try {
-            future.get();
+            getFuture().get();
 
             LOGGER.info("Starting completed for master " + ms.getName() + " on node " + node.getNodeName());
 
