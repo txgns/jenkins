@@ -13,6 +13,7 @@ import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.Util;
 import hudson.cli.declarative.CLIMethod;
+import hudson.cli.declarative.CLIResolver;
 import hudson.model.AbstractItem;
 import hudson.model.Action;
 import hudson.model.Computer;
@@ -43,6 +44,8 @@ import metanectar.provisioning.SharedSlaveRetentionStrategy;
 import net.jcip.annotations.GuardedBy;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
+import org.kohsuke.args4j.Argument;
+import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
@@ -69,6 +72,10 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 
 /**
  * Represents a slave
+ *
+ * TODO either abstract out leasing into shared base class then the @CLIMethod("force-release") will
+ * be common to both, otherwise split into separate commands "shared-slave-force-release" and
+ * "shared-cloud-force-release" and the CLI will pick just one if the name is common.
  *
  * @author Stephen Connolly
  */
@@ -303,7 +310,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
     /**
      * Deletes this item.
      */
-    @CLIMethod(name = "delete-job")
+    @CLIMethod(name = "delete-slave")
     public void doDoDelete(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException, InterruptedException {
         requirePOST();
@@ -639,6 +646,15 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
         public synchronized ComputerLauncher getOrCreateLauncher() throws IOException, InterruptedException {
             return launcher;
         }
+    }
+
+    @CLIResolver
+    public static SharedSlave resolveForCLI(
+            @Argument(required=true, metaVar="NAME", usage="Shared slave name") String name) throws CmdLineException {
+        SharedSlave sharedSlave = MetaNectar.getInstance().getItemByFullName(name, SharedSlave.class);
+        if (sharedSlave == null)
+            throw new CmdLineException(null,"No such shared slave exists: " + name);
+        return sharedSlave;
     }
 
 }

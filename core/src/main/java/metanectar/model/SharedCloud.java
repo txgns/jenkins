@@ -14,6 +14,7 @@ import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.Util;
 import hudson.cli.declarative.CLIMethod;
+import hudson.cli.declarative.CLIResolver;
 import hudson.model.AbstractItem;
 import hudson.model.Action;
 import hudson.model.Computer;
@@ -49,6 +50,8 @@ import metanectar.provisioning.SharedSlaveRetentionStrategy;
 import net.jcip.annotations.GuardedBy;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
+import org.kohsuke.args4j.Argument;
+import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
@@ -824,6 +827,15 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
             throw new UnsupportedOperationException();
         }
 
+    }
+
+    @CLIResolver
+    public static SharedCloud resolveForCLI(
+            @Argument(required=true, metaVar="NAME", usage="Shared cloud name") String name) throws CmdLineException {
+        SharedCloud sharedCloud = MetaNectar.getInstance().getItemByFullName(name, SharedCloud.class);
+        if (sharedCloud == null)
+            throw new CmdLineException(null,"No such shared cloud exists: " + name);
+        return sharedCloud;
     }
 
 }
