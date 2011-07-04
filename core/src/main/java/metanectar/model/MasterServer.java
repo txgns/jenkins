@@ -4,11 +4,16 @@ import com.google.common.base.Function;
 import com.google.common.collect.ImmutableSet;
 import hudson.AbortException;
 import hudson.Extension;
+import hudson.cli.declarative.CLIMethod;
+import hudson.cli.declarative.CLIResolver;
 import hudson.model.*;
 import hudson.util.DescribableList;
 import metanectar.Config;
 import metanectar.provisioning.IdentifierFinder;
 import net.sf.json.JSONObject;
+import org.kohsuke.args4j.Argument;
+import org.kohsuke.args4j.CmdLineException;
+import org.kohsuke.args4j.Option;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.QueryParameter;
@@ -58,7 +63,7 @@ public class MasterServer extends ConnectedMaster {
         StoppingError(Action.Stop, Action.Terminate),
         Stopped(Action.Start, Action.Terminate),
         Terminating(),
-        TerminatingError(Action.Terminate, Action.Delete),
+        TerminatingError(Action.Terminate),
         Terminated(Action.Provision, Action.Delete);
 
         public ImmutableSet<Action> actions;
@@ -477,10 +482,11 @@ public class MasterServer extends ConnectedMaster {
 
     private void preConditionAction(Action a) throws AbortException {
         if (!canDoAction(a)) {
-            throw new AbortException(String.format("Action \"%s\" cannot be performed when in state \"\"", a.name(), getState().name()));
+            throw new AbortException(String.format("Action \"%s\" cannot be performed when in state \"%s\"", a.name(), getState().name()));
         }
     }
 
+    @CLIMethod(name="managed-master-provision-and-start")
     public synchronized void provisionAndStartAction() throws IOException  {
         preConditionAction(Action.Provision);
 
@@ -488,12 +494,14 @@ public class MasterServer extends ConnectedMaster {
         MetaNectar.getInstance().masterProvisioner.provisionAndStart(this, MetaNectar.getInstance().getMetaNectarPortUrl(), properties);
     }
 
+    @CLIMethod(name="managed-master-stop-and-terminate")
     public synchronized void stopAndTerminateAction() throws IOException {
         preConditionAction(Action.Stop);
 
         MetaNectar.getInstance().masterProvisioner.stopAndTerminate(this);
     }
 
+    @CLIMethod(name="managed-master-provision")
     public synchronized void provisionAction() throws IOException  {
         preConditionAction(Action.Provision);
 
@@ -502,6 +510,7 @@ public class MasterServer extends ConnectedMaster {
                 properties);
     }
 
+    @CLIMethod(name="managed-master-re-provision")
     public synchronized void reProvisionAction() throws IOException  {
         preConditionAction(Action.ReProvision);
 
@@ -510,31 +519,37 @@ public class MasterServer extends ConnectedMaster {
                 properties);
     }
 
+    @CLIMethod(name="managed-master-cancel-provision")
     public synchronized boolean cancelProvisionAction() throws IOException {
         preConditionAction(Action.CancelProvision);
 
         return MetaNectar.getInstance().masterProvisioner.cancelPendingRequest(this);
     }
 
+    @CLIMethod(name="managed-master-start")
     public synchronized void startAction() throws IOException {
         preConditionAction(Action.Start);
 
         MetaNectar.getInstance().masterProvisioner.start(this);
     }
 
+    @CLIMethod(name="managed-master-stop")
     public synchronized void stopAction() throws IOException {
         preConditionAction(Action.Stop);
 
         MetaNectar.getInstance().masterProvisioner.stop(this);
     }
 
-    public synchronized void terminateAction(boolean force) throws IOException {
+    @CLIMethod(name="managed-master-terminate")
+    public synchronized void terminateAction(
+            @Option(name="-f", usage="Force termination if a termination error occurs") boolean force) throws IOException {
         preConditionAction(Action.Terminate);
 
         MetaNectar.getInstance().masterProvisioner.terminate(this, force);
     }
 
     @Override
+    @CLIMethod(name="managed-master-delete")
     public synchronized void delete() throws IOException, InterruptedException {
         preConditionAction(Action.Delete);
 
@@ -742,6 +757,15 @@ public class MasterServer extends ConnectedMaster {
             return new DescribableList<ConnectedMasterProperty,ConnectedMasterPropertyDescriptor>(NOOP);
         }
 
+    }
+
+    @CLIResolver
+    public static MasterServer resolveForCLI(
+            @Argument(required=true, metaVar="NAME", usage="Managed master name") String name) throws CmdLineException {
+        MasterServer master = MetaNectar.getInstance().getItemByFullName(name, MasterServer.class);
+        if (master == null)
+            throw new CmdLineException(null,"No such managed master exists: " + name);
+        return master;
     }
 
     /**
