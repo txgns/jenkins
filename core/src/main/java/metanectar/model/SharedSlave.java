@@ -71,11 +71,7 @@ import java.util.logging.Logger;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 
 /**
- * Represents a slave
- *
- * TODO either abstract out leasing into shared base class then the @CLIMethod("force-release") will
- * be common to both, otherwise split into separate commands "shared-slave-force-release" and
- * "shared-cloud-force-release" and the CLI will pick just one if the name is common.
+ * Represents a shared slave
  *
  * @author Stephen Connolly
  */
@@ -310,7 +306,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
     /**
      * Deletes this item.
      */
-    @CLIMethod(name = "delete-slave")
+    @CLIMethod(name = "shared-slave-delete")
     public void doDoDelete(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException, InterruptedException {
         requirePOST();
@@ -330,7 +326,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
         }
     }
 
-    @CLIMethod(name = "force-release")
+    @CLIMethod(name = "shared-slave-force-release")
     public void doForceRelease(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException, InterruptedException {
         synchronized (this) {

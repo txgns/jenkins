@@ -83,7 +83,7 @@ import java.util.logging.Logger;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 
 /**
- * Represents a slave
+ * Represents a shared cloud
  *
  * @author Stephen Connolly
  */
@@ -287,7 +287,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
     /**
      * Deletes this item.
      */
-    @CLIMethod(name = "delete-cloud")
+    @CLIMethod(name = "shared-cloud-delete")
     public void doDoDelete(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException, InterruptedException {
         requirePOST();
@@ -307,7 +307,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
         }
     }
 
-    @CLIMethod(name = "force-release")
+    @CLIMethod(name = "shared-cloud-force-release")
     public void doForceRelease(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException, InterruptedException {
         synchronized (this) {
