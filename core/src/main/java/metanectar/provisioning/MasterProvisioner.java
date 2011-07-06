@@ -124,6 +124,10 @@ public class MasterProvisioner {
         return null;
     }
 
+    public void provisionAndStart(MasterServer ms, URL metaNectarEndpoint) throws IOException {
+        provisionAndStart(ms, metaNectarEndpoint, new HashMap<String, Object>());
+    }
+
     public void provisionAndStart(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
         ms.setPreProvisionState();
         pendingMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties, true));
@@ -133,9 +137,17 @@ public class MasterProvisioner {
         masterServerTaskQueue.start(new MasterStopThenTerminateTask(masterTimeout, ms));
     }
 
+    public void provision(MasterServer ms, URL metaNectarEndpoint) throws IOException {
+        provision(ms, metaNectarEndpoint, new HashMap<String, Object>());
+    }
+
     public void provision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
         ms.setPreProvisionState();
         pendingMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties, false));
+    }
+
+    public void reProvision(MasterServer ms, URL metaNectarEndpoint) {
+        reProvision(ms, metaNectarEndpoint, new HashMap<String, Object>());
     }
 
     public void reProvision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) {
@@ -219,8 +231,7 @@ public class MasterProvisioner {
                     ? new MasterProvisionThenStartTask(masterTimeout, ms, metaNectarEndpoint, properties, n, id)
                     : new MasterProvisionTask(masterTimeout, ms, metaNectarEndpoint, properties, n, id);
 
-            mpt.start();
-            masterServerTaskQueue.getQueue().add(mpt);
+            masterServerTaskQueue.start(mpt);
 
             return true;
         }

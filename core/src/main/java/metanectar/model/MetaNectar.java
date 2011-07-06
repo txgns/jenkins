@@ -36,6 +36,7 @@ import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -166,6 +167,15 @@ public class MetaNectar extends Hudson {
 
             // Prod on initialization
             rpp.prod();
+        }
+
+        // Initiate recovery for all recoverable items
+        for (RecoverableTopLevelItem ri : getAllItems(RecoverableTopLevelItem.class)) {
+            try {
+                ri.initiateRecovery();
+            } catch (Exception e) {
+                LOGGER.log(Level.SEVERE, "Error initiating recovery for top-level item " + ri.getFullName(), e);
+            }
         }
     }
 

@@ -368,11 +368,12 @@ public class CommandMasterProvisioningService extends MasterProvisioningService 
                     throw e;
                 }
 
-                try {
-                    remote.delete();
-                } catch (Exception e) {
-                    e.printStackTrace(listener.error(String.format("Error deleting snapshot of remote file %s", remote.getRemote())));
-                }
+                // TODO should we delete the remote file?
+//                try {
+//                    remote.delete();
+//                } catch (Exception e) {
+//                    e.printStackTrace(listener.error(String.format("Error deleting snapshot of remote file %s", remote.getRemote())));
+//                }
 
                 return new Terminated(new URL("file", null, local.getRemote()));
             }

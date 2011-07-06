@@ -10,6 +10,7 @@ import hudson.model.*;
 import hudson.util.DescribableList;
 import metanectar.Config;
 import metanectar.provisioning.IdentifierFinder;
+import metanectar.provisioning.MasterProvisioner;
 import net.sf.json.JSONObject;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.CmdLineException;
@@ -42,7 +43,7 @@ import static metanectar.model.MasterServer.State.*;
  *
  * @author Kohsuke Kawaguchi, Paul Sandoz
  */
-public class MasterServer extends ConnectedMaster {
+public class MasterServer extends ConnectedMaster implements RecoverableTopLevelItem {
 
     /**
      * The states of the master.
@@ -171,7 +172,6 @@ public class MasterServer extends ConnectedMaster {
                 add("state", state).
                 toString();
     }
-
 
     // Methods for modifying state
 
@@ -326,6 +326,14 @@ public class MasterServer extends ConnectedMaster {
     }
 
     public synchronized void setStoppingState() throws IOException {
+        if (isOnline()) {
+            try {
+                this.channel.close();
+            } catch (Exception ex) {
+                error.printStackTrace(taskListener.error("Error when attempting to close the channel"));
+            }
+        }
+
         setState(Stopping);
         save();
         fireOnStateChange();
@@ -355,10 +363,6 @@ public class MasterServer extends ConnectedMaster {
     }
 
     public synchronized void setTerminateStartedState() throws IOException {
-        if (isOnline()) {
-            this.channel.close();
-        }
-
         setState(Terminating);
         save();
         fireOnStateChange();
@@ -490,8 +494,7 @@ public class MasterServer extends ConnectedMaster {
     public synchronized void provisionAndStartAction() throws IOException  {
         preConditionAction(Action.Provision);
 
-        Map<String, Object> properties = new HashMap<String, Object>();
-        MetaNectar.getInstance().masterProvisioner.provisionAndStart(this, MetaNectar.getInstance().getMetaNectarPortUrl(), properties);
+        MetaNectar.getInstance().masterProvisioner.provisionAndStart(this, MetaNectar.getInstance().getMetaNectarPortUrl());
     }
 
     @CLIMethod(name="managed-master-stop-and-terminate")
@@ -505,18 +508,14 @@ public class MasterServer extends ConnectedMaster {
     public synchronized void provisionAction() throws IOException  {
         preConditionAction(Action.Provision);
 
-        Map<String, Object> properties = new HashMap<String, Object>();
-        MetaNectar.getInstance().masterProvisioner.provision(this, MetaNectar.getInstance().getMetaNectarPortUrl(),
-                properties);
+        MetaNectar.getInstance().masterProvisioner.provision(this, MetaNectar.getInstance().getMetaNectarPortUrl());
     }
 
     @CLIMethod(name="managed-master-re-provision")
     public synchronized void reProvisionAction() throws IOException  {
         preConditionAction(Action.ReProvision);
 
-        Map<String, Object> properties = new HashMap<String, Object>();
-        MetaNectar.getInstance().masterProvisioner.reProvision(this, MetaNectar.getInstance().getMetaNectarPortUrl(),
-                properties);
+        MetaNectar.getInstance().masterProvisioner.reProvision(this, MetaNectar.getInstance().getMetaNectarPortUrl());
     }
 
     @CLIMethod(name="managed-master-cancel-provision")
@@ -559,6 +558,36 @@ public class MasterServer extends ConnectedMaster {
         }
 
         super.delete();
+    }
+
+    // Recover
+
+    public void initiateRecovery() throws Exception {
+        final State unstableState = state;
+        switch (state) {
+            case PreProvisioning:
+            case ProvisioningErrorNoResources:
+                MetaNectar.getInstance().masterProvisioner.provision(this, MetaNectar.getInstance().getMetaNectarPortUrl());
+                break;
+            case Provisioning:
+                MetaNectar.getInstance().masterProvisioner.reProvision(this, MetaNectar.getInstance().getMetaNectarPortUrl());
+                break;
+            case Starting:
+                MetaNectar.getInstance().masterProvisioner.start(this);
+                break;
+            case Stopping:
+                MetaNectar.getInstance().masterProvisioner.stop(this);
+                break;
+            case Terminating:
+                MetaNectar.getInstance().masterProvisioner.terminate(this, false);
+                break;
+            default:
+                return;
+        }
+
+        final String message = String.format("Initiating recovery of managed master %s from state \"%s\"", this.getName(), unstableState);
+        LOGGER.info(message);
+        taskListener.getLogger().println(message);
     }
 
     // Methods for accessing state
