@@ -261,6 +261,18 @@ public class MasterProvisioner {
 
     private Queue<PlannedMasterRequest> currentMasterRequests;
 
+    /* package */ TaskQueue<NodeProvisionTask> getNodeTaskQueue() {
+        return nodeTaskQueue;
+    }
+
+    /* package */ MasterServerTaskQueue getMasterServerTaskQueue() {
+        return masterServerTaskQueue;
+    }
+
+    /* package */ ConcurrentLinkedQueue<PlannedMasterRequest> getPendingMasterRequests() {
+        return pendingMasterRequests;
+    }
+
     private void provision() throws Exception {
         provisionMasterRequests();
         provisionFromCloud();
@@ -317,8 +329,10 @@ public class MasterProvisioner {
 
             if (pns.isEmpty()) {
                 for (PlannedMasterRequest pmr : currentMasterRequests) {
-                    pmr.ms.setProvisionErrorNoResourcesState();
-                    LOGGER.log(Level.WARNING, "No resources to provision master " + pmr.ms.getName());
+                    if (pmr.ms.getState() != MasterServer.State.ProvisioningErrorNoResources) {
+                        LOGGER.log(Level.WARNING, "No resources to provision master " + pmr.ms.getName());
+                        pmr.ms.setProvisionErrorNoResourcesState();
+                    }
                 }
             }
         }

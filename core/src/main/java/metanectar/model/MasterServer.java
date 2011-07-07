@@ -564,9 +564,9 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
     // Recover
 
-    public Future<?> initiateRecovery() throws Exception {
+    public Future<MasterServer> initiateRecovery() throws Exception {
         final State unstableState = state;
-        final Future<?> f = _initiateRecovery();
+        final Future<MasterServer> f = _initiateRecovery();
         if (f != null) {
             final String message = String.format("Initiating recovery of managed master %s from state \"%s\"", this.getName(), unstableState);
             LOGGER.info(message);
@@ -577,7 +577,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
         }
     }
 
-    private Future<?> _initiateRecovery() throws Exception {
+    private Future<MasterServer> _initiateRecovery() throws Exception {
         switch (state) {
             case PreProvisioning:
             case ProvisioningErrorNoResources:

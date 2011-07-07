@@ -199,6 +199,12 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
         save();
     }
 
+    public synchronized void setConfiguredState(MasterTemplateSource source) throws IOException {
+        setState(State.Configured);
+        this.source = source;
+        save();
+    }
+
     public synchronized void setCloningErrorState(Throwable error) throws IOException {
         setState(State.CloningError);
         this.error = error;
@@ -251,21 +257,21 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
         }
     }
 
-    public Future<?> cloneFromSourceAction() throws IOException {
+    public Future<MasterTemplate> cloneFromSourceAction() throws IOException {
         preConditionAction(Action.CloneFromSource);
 
         return MetaNectar.getInstance().masterProvisioner.cloneTemplateFromSource(this);
     }
 
-    public Future<?> cloneToNewMasterAction() throws IOException {
+    public Future<MasterTemplate> cloneToNewMasterAction() throws IOException {
         throw new UnsupportedOperationException("To be implemented");
     }
 
     // Recover
 
-    public Future<?> initiateRecovery() throws Exception {
+    public Future<MasterTemplate> initiateRecovery() throws Exception {
         final State unstableState = state;
-        final Future<?> f = _initiateRecovery();
+        final Future<MasterTemplate> f = _initiateRecovery();
         if (f != null) {
             final String message = String.format("Initiating recovery of master template %s from state \"%s\"", this.getName(), unstableState);
             LOGGER.info(message);
@@ -339,11 +345,8 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
             JSONObject json = req.getSubmittedForm();
 
             if (isSourceConfigurable()) {
-                state = State.Configured;
-                source = req.bindJSON(MasterTemplateSource.class, json.getJSONObject("source"));
+                setConfiguredState(req.bindJSON(MasterTemplateSource.class, json.getJSONObject("source")));
             }
-
-            save();
 
             String newName = req.getParameter("name");
             if (newName != null && !newName.equals(name)) {

@@ -311,24 +311,32 @@ public class MetaNectar extends Hudson {
     // Master creation
 
     public MasterServer createManagedMaster(String name) throws IOException {
-        checkMasterName(name);
+        checkItemName(name);
 
         return createProject(MasterServer.class, name);
     }
 
     public AttachedMaster createAttachedMaster(String name) throws IOException {
-        checkMasterName(name);
+        checkItemName(name);
 
         return createProject(AttachedMaster.class, name);
     }
 
-    private void checkMasterName(String name) {
+    // Template creation
+
+    public MasterTemplate createMasterTemplate(String name) throws IOException {
+        checkItemName(name);
+
+        return createProject(MasterTemplate.class, name);
+    }
+
+    private void checkItemName(String name) {
         checkPermission(Item.CREATE);
 
         checkGoodName(name);
         name = name.trim();
         if (getItem(name) != null)
-            throw new Failure("Master " + name + "already exists");
+            throw new Failure("Item " + name + "already exists");
     }
 
     // Global configuration
