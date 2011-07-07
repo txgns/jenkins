@@ -3,7 +3,6 @@ package metanectar.provisioning.task;
 import hudson.model.Node;
 import hudson.slaves.Cloud;
 import hudson.slaves.NodeProvisioner;
-import metanectar.cloud.MasterProvisioningCloud;
 import metanectar.cloud.MasterProvisioningCloudListener;
 import metanectar.model.MetaNectar;
 
@@ -14,7 +13,7 @@ import java.util.logging.Logger;
 /**
  * @author Paul Sandoz
  */
-public class NodeProvisionTask extends FutureTask<Node, Task> {
+public class NodeProvisionTask extends TaskWithFuture<Node, Task> {
     private static final Logger LOGGER = Logger.getLogger(NodeProvisionTask.class.getName());
 
     private final MetaNectar mn;

@@ -5,7 +5,7 @@ import java.util.concurrent.Future;
 /**
  * @author Paul Sandoz
  */
-public abstract class FutureTask<F, T extends Task> implements Task<T> {
+public abstract class TaskWithFuture<F, T extends Task> implements Task<T> {
 
     private final long timeout;
 
@@ -13,7 +13,7 @@ public abstract class FutureTask<F, T extends Task> implements Task<T> {
 
     private long startTime;
 
-    public FutureTask(long timeout) {
+    public TaskWithFuture(long timeout) {
         this.timeout = timeout;
     }
 
@@ -37,10 +37,24 @@ public abstract class FutureTask<F, T extends Task> implements Task<T> {
     public boolean isDone() {
         // Try to cancel the future if the task is running longer than the timeout duration
         if ((startTime + timeout) < System.currentTimeMillis()) {
-            future.cancel(true);
+            cancel();
         }
 
         return future.isDone();
+    }
+
+    public boolean isCancelled() {
+        if (!isStarted())
+            return false;
+
+        return future.isCancelled();
+    }
+
+    public boolean cancel() {
+        if (!isStarted())
+            return false;
+
+        return future.cancel(true);
     }
 
 }

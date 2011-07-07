@@ -7,33 +7,23 @@ import java.util.concurrent.*;
 /**
  * @author Paul Sandoz
  */
-public class TaskTimeoutTest extends TestCase {
-    ExecutorService es = Executors.newFixedThreadPool(1);
+public class TaskTimeoutTest extends TaskTestBase {
 
-    abstract class SomeTask extends FutureTask<Object, SomeTask>  {
-        Exception caught;
+    class SleepTask extends SomeTask {
 
-        SomeTask(long timeout) {
+        SleepTask(long timeout) {
             super(timeout);
         }
 
-        public void start() throws Exception {
-            setFuture(es.submit(createWork()));
+        public Callable<Object> createWork() {
+            return new Callable<Object>() {
+                public Object call() throws Exception {
+                    Thread.currentThread().sleep(TimeUnit.MINUTES.toMillis(1));
+                    return null;
+                }
+            };
         }
-
-        public SomeTask end() throws Exception {
-            try {
-                getFuture().get();
-            } catch (Exception e) {
-                caught = e;
-                throw e;
-            }
-            return null;
-        }
-
-        public abstract Callable<Object> createWork();
     }
-
 
     class WorkTask extends SomeTask {
 
@@ -57,42 +47,31 @@ public class TaskTimeoutTest extends TestCase {
         _testTask(new WorkTask(100));
     }
 
-
-    class SleepTask extends SomeTask {
-
-        SleepTask(long timeout) {
-            super(timeout);
-        }
-
-        public Callable<Object> createWork() {
-            return new Callable<Object>() {
-                public Object call() throws Exception {
-                    Thread.currentThread().sleep(TimeUnit.MINUTES.toMillis(1));
-                    return null;
-                }
-            };
-        }
-    }
-
     public void testSleepTask() throws Exception {
         _testTask(new SleepTask(100));
     }
 
-
     private void _testTask(SomeTask t) throws Exception {
         TaskQueue q = new TaskQueue();
-        q.add(t);
+        Future<?> ft = q.add(t);
 
-        q.process();
+        Future<?> fq = processQueue(q, 200);
 
-        Thread.currentThread().sleep(200);
-
-        q.process();
+        fq.get(1, TimeUnit.MINUTES);
 
         assertNotNull(t.caught);
         assertTrue(t.caught instanceof CancellationException);
 
-        es.shutdown();
+        assertTrue(ft.isCancelled());
+        Exception caught = null;
+        try {
+            ft.get();
+        } catch(Exception e) {
+            caught = e;
+        }
+
+        assertNotNull(caught);
+        assertTrue(caught instanceof CancellationException);
     }
 
 }

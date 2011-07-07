@@ -10,7 +10,7 @@ import java.util.logging.Logger;
 /**
  * @author Paul Sandoz
  */
-public class NodeOnlineTask extends FutureTask<Object, Task> {
+public class NodeOnlineTask extends TaskWithFuture {
     private static final Logger LOGGER = Logger.getLogger(NodeOnlineTask.class.getName());
 
     private final Node node;

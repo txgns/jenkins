@@ -3,13 +3,7 @@ package metanectar.provisioning.task;
 import hudson.model.Node;
 import hudson.slaves.Cloud;
 import hudson.slaves.NodeProvisioner;
-import metanectar.cloud.MasterProvisioningCloudListener;
-import metanectar.model.MasterServer;
 import metanectar.model.MetaNectar;
-
-import java.util.concurrent.ExecutionException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * @author Paul Sandoz

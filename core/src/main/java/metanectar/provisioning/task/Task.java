@@ -12,4 +12,8 @@ public interface Task<T extends Task> {
     boolean isDone();
 
     T end() throws Exception;
+
+    boolean isCancelled();
+
+    boolean cancel();
 }

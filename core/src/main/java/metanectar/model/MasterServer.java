@@ -2,6 +2,7 @@ package metanectar.model;
 
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.util.concurrent.Futures;
 import hudson.AbortException;
 import hudson.Extension;
 import hudson.cli.declarative.CLIMethod;
@@ -33,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -491,31 +493,31 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
     }
 
     @CLIMethod(name="managed-master-provision-and-start")
-    public synchronized void provisionAndStartAction() throws IOException  {
+    public synchronized Future<MasterServer> provisionAndStartAction() throws IOException  {
         preConditionAction(Action.Provision);
 
-        MetaNectar.getInstance().masterProvisioner.provisionAndStart(this, MetaNectar.getInstance().getMetaNectarPortUrl());
+        return MetaNectar.getInstance().masterProvisioner.provisionAndStart(this, MetaNectar.getInstance().getMetaNectarPortUrl());
     }
 
     @CLIMethod(name="managed-master-stop-and-terminate")
-    public synchronized void stopAndTerminateAction() throws IOException {
+    public synchronized Future<MasterServer> stopAndTerminateAction() throws IOException {
         preConditionAction(Action.Stop);
 
-        MetaNectar.getInstance().masterProvisioner.stopAndTerminate(this);
+        return MetaNectar.getInstance().masterProvisioner.stopAndTerminate(this);
     }
 
     @CLIMethod(name="managed-master-provision")
-    public synchronized void provisionAction() throws IOException  {
+    public synchronized Future<MasterServer> provisionAction() throws IOException  {
         preConditionAction(Action.Provision);
 
-        MetaNectar.getInstance().masterProvisioner.provision(this, MetaNectar.getInstance().getMetaNectarPortUrl());
+        return MetaNectar.getInstance().masterProvisioner.provision(this, MetaNectar.getInstance().getMetaNectarPortUrl());
     }
 
     @CLIMethod(name="managed-master-re-provision")
-    public synchronized void reProvisionAction() throws IOException  {
+    public synchronized Future<MasterServer> reProvisionAction() throws IOException  {
         preConditionAction(Action.ReProvision);
 
-        MetaNectar.getInstance().masterProvisioner.reProvision(this, MetaNectar.getInstance().getMetaNectarPortUrl());
+        return MetaNectar.getInstance().masterProvisioner.reProvision(this, MetaNectar.getInstance().getMetaNectarPortUrl());
     }
 
     @CLIMethod(name="managed-master-cancel-provision")
@@ -526,25 +528,25 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
     }
 
     @CLIMethod(name="managed-master-start")
-    public synchronized void startAction() throws IOException {
+    public synchronized Future<MasterServer> startAction() throws IOException {
         preConditionAction(Action.Start);
 
-        MetaNectar.getInstance().masterProvisioner.start(this);
+        return MetaNectar.getInstance().masterProvisioner.start(this);
     }
 
     @CLIMethod(name="managed-master-stop")
-    public synchronized void stopAction() throws IOException {
+    public synchronized Future<MasterServer> stopAction() throws IOException {
         preConditionAction(Action.Stop);
 
-        MetaNectar.getInstance().masterProvisioner.stop(this);
+        return MetaNectar.getInstance().masterProvisioner.stop(this);
     }
 
     @CLIMethod(name="managed-master-terminate")
-    public synchronized void terminateAction(
+    public synchronized Future<MasterServer> terminateAction(
             @Option(name="-f", usage="Force termination if a termination error occurs") boolean force) throws IOException {
         preConditionAction(Action.Terminate);
 
-        MetaNectar.getInstance().masterProvisioner.terminate(this, force);
+        return MetaNectar.getInstance().masterProvisioner.terminate(this, force);
     }
 
     @Override
@@ -562,32 +564,35 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
     // Recover
 
-    public void initiateRecovery() throws Exception {
+    public Future<?> initiateRecovery() throws Exception {
         final State unstableState = state;
+        final Future<?> f = _initiateRecovery();
+        if (f != null) {
+            final String message = String.format("Initiating recovery of managed master %s from state \"%s\"", this.getName(), unstableState);
+            LOGGER.info(message);
+            taskListener.getLogger().println(message);
+            return f;
+        } else {
+            return Futures.immediateFuture(null);
+        }
+    }
+
+    private Future<?> _initiateRecovery() throws Exception {
         switch (state) {
             case PreProvisioning:
             case ProvisioningErrorNoResources:
-                MetaNectar.getInstance().masterProvisioner.provision(this, MetaNectar.getInstance().getMetaNectarPortUrl());
-                break;
+                return MetaNectar.getInstance().masterProvisioner.provision(this, MetaNectar.getInstance().getMetaNectarPortUrl());
             case Provisioning:
-                MetaNectar.getInstance().masterProvisioner.reProvision(this, MetaNectar.getInstance().getMetaNectarPortUrl());
-                break;
+                return MetaNectar.getInstance().masterProvisioner.reProvision(this, MetaNectar.getInstance().getMetaNectarPortUrl());
             case Starting:
-                MetaNectar.getInstance().masterProvisioner.start(this);
-                break;
+                return MetaNectar.getInstance().masterProvisioner.start(this);
             case Stopping:
-                MetaNectar.getInstance().masterProvisioner.stop(this);
-                break;
+                return MetaNectar.getInstance().masterProvisioner.stop(this);
             case Terminating:
-                MetaNectar.getInstance().masterProvisioner.terminate(this, false);
-                break;
+                return MetaNectar.getInstance().masterProvisioner.terminate(this, false);
             default:
-                return;
+                return null;
         }
-
-        final String message = String.format("Initiating recovery of managed master %s from state \"%s\"", this.getName(), unstableState);
-        LOGGER.info(message);
-        taskListener.getLogger().println(message);
     }
 
     // Methods for accessing state

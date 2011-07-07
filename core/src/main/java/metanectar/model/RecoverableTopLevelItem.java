@@ -2,6 +2,8 @@ package metanectar.model;
 
 import hudson.model.TopLevelItem;
 
+import java.util.concurrent.Future;
+
 /**
  * A recoverable top-level item that can recover when MN is stopped and restarted.
  * <p>
@@ -26,8 +28,8 @@ public interface RecoverableTopLevelItem extends TopLevelItem {
      * If in a stable stable then this method shall perform no action.
      * </p>
      *
-     * TODO return Future to track recovery
+     * @returns Future to track recovery
      * @throws Exception if an error occurs when initiating recovery.
      */
-    void initiateRecovery() throws Exception;
+    Future<?> initiateRecovery() throws Exception;
 }

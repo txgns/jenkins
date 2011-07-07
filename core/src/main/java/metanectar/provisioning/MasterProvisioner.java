@@ -16,7 +16,10 @@ import metanectar.provisioning.task.TaskQueue;
 import java.io.IOException;
 import java.net.URL;
 import java.util.*;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -124,50 +127,60 @@ public class MasterProvisioner {
         return null;
     }
 
-    public void provisionAndStart(MasterServer ms, URL metaNectarEndpoint) throws IOException {
-        provisionAndStart(ms, metaNectarEndpoint, new HashMap<String, Object>());
+    public Future<MasterServer> provisionAndStart(MasterServer ms, URL metaNectarEndpoint) throws IOException {
+        return provisionAndStart(ms, metaNectarEndpoint, new HashMap<String, Object>());
     }
 
-    public void provisionAndStart(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
+    public Future<MasterServer> provisionAndStart(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
         ms.setPreProvisionState();
-        pendingMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties, true));
+        final PlannedMasterRequest pmr = new PlannedMasterRequest(ms, metaNectarEndpoint, properties, true);
+        pendingMasterRequests.add(pmr);
+        return pmr.ft;
     }
 
-    public void stopAndTerminate(MasterServer ms) {
-        masterServerTaskQueue.start(new MasterStopThenTerminateTask(masterTimeout, ms));
+    public Future<MasterServer> stopAndTerminate(MasterServer ms) {
+        return masterServerTaskQueue.start(new MasterStopThenTerminateTask(masterTimeout, ms),
+                FutureTaskEx.createValueFutureTask(ms));
     }
 
-    public void provision(MasterServer ms, URL metaNectarEndpoint) throws IOException {
-        provision(ms, metaNectarEndpoint, new HashMap<String, Object>());
+    public Future<MasterServer> provision(MasterServer ms, URL metaNectarEndpoint) throws IOException {
+        return provision(ms, metaNectarEndpoint, new HashMap<String, Object>());
     }
 
-    public void provision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
+    public Future<MasterServer> provision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws IOException {
         ms.setPreProvisionState();
-        pendingMasterRequests.add(new PlannedMasterRequest(ms, metaNectarEndpoint, properties, false));
+        final PlannedMasterRequest pmr = new PlannedMasterRequest(ms, metaNectarEndpoint, properties, false);
+        pendingMasterRequests.add(pmr);
+        return pmr.ft;
     }
 
-    public void reProvision(MasterServer ms, URL metaNectarEndpoint) {
-        reProvision(ms, metaNectarEndpoint, new HashMap<String, Object>());
+    public Future<MasterServer> reProvision(MasterServer ms, URL metaNectarEndpoint) {
+        return reProvision(ms, metaNectarEndpoint, new HashMap<String, Object>());
     }
 
-    public void reProvision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) {
-        masterServerTaskQueue.start(new MasterProvisionTask(masterTimeout, ms, metaNectarEndpoint, properties, ms.getNode(), ms.getNodeId()));
+    public Future<MasterServer> reProvision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) {
+        return masterServerTaskQueue.start(new MasterProvisionTask(masterTimeout, ms, metaNectarEndpoint, properties, ms.getNode(), ms.getNodeId()),
+                FutureTaskEx.createValueFutureTask(ms));
     }
 
-    public void start(MasterServer ms) {
-        masterServerTaskQueue.start(new MasterStartTask(masterTimeout, ms));
+    public Future<MasterServer> start(MasterServer ms) {
+        return masterServerTaskQueue.start(new MasterStartTask(masterTimeout, ms),
+                FutureTaskEx.createValueFutureTask(ms));
     }
 
-    public void stop(MasterServer ms) {
-        masterServerTaskQueue.start(new MasterStopTask(masterTimeout, ms));
+    public Future<MasterServer> stop(MasterServer ms) {
+        return masterServerTaskQueue.start(new MasterStopTask(masterTimeout, ms),
+                FutureTaskEx.createValueFutureTask(ms));
     }
 
-    public void terminate(MasterServer ms, boolean force) {
-        masterServerTaskQueue.start(new MasterTerminateTask(masterTimeout, ms, force));
+    public Future<MasterServer> terminate(MasterServer ms, boolean force) {
+        return masterServerTaskQueue.start(new MasterTerminateTask(masterTimeout, ms, force),
+                FutureTaskEx.createValueFutureTask(ms));
     }
 
-    public void cloneTemplateFromSource(MasterTemplate mt) {
-        masterServerTaskQueue.start(new TemplateCloneTask(masterTimeout, mt));
+    public Future<MasterTemplate> cloneTemplateFromSource(MasterTemplate mt) {
+        return masterServerTaskQueue.start(new TemplateCloneTask(masterTimeout, mt),
+                FutureTaskEx.createValueFutureTask(mt));
     }
 
     private void process() throws Exception {
@@ -186,7 +199,7 @@ public class MasterProvisioner {
         // Take a copy of the planned master requests to ignore any requests added while processing
         // TODO this could be achieve by a forwarding queue impl that forwards all modification requests to the delegate
         // but defers read requests to the copy
-        currentMasterRequests = Lists.newArrayList(pendingMasterRequests);
+        currentMasterRequests = Lists.newLinkedList(pendingMasterRequests);
 
         provision();
         terminateNodes();
@@ -201,12 +214,14 @@ public class MasterProvisioner {
         private final URL metaNectarEndpoint;
         private final Map<String, Object> properties;
         private final boolean start;
+        private final FutureTaskEx<MasterServer> ft;
 
         public PlannedMasterRequest(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties, boolean start) {
             this.ms = ms;
             this.metaNectarEndpoint = metaNectarEndpoint;
             this.properties = properties;
             this.start = start;
+            this.ft = FutureTaskEx.createValueFutureTask(ms);
         }
 
         private boolean tryAcquire() {
@@ -219,10 +234,11 @@ public class MasterProvisioner {
 
             pendingMasterRequests.remove(this);
             ms.cancelPreProvisionState();
+            ft.cancel(true);
             return true;
         }
 
-        public boolean tryProcess(final Node n) throws Exception {
+        public boolean tryProcess(final Node n) {
             if (!tryAcquire())
                 return false;
 
@@ -231,7 +247,7 @@ public class MasterProvisioner {
                     ? new MasterProvisionThenStartTask(masterTimeout, ms, metaNectarEndpoint, properties, n, id)
                     : new MasterProvisionTask(masterTimeout, ms, metaNectarEndpoint, properties, n, id);
 
-            masterServerTaskQueue.start(mpt);
+            masterServerTaskQueue.start(mpt, ft);
 
             return true;
         }
@@ -243,7 +259,7 @@ public class MasterProvisioner {
 
     private final ConcurrentLinkedQueue<PlannedMasterRequest> pendingMasterRequests = new ConcurrentLinkedQueue<PlannedMasterRequest>();
 
-    private Collection<PlannedMasterRequest> currentMasterRequests;
+    private Queue<PlannedMasterRequest> currentMasterRequests;
 
     private void provision() throws Exception {
         provisionMasterRequests();
@@ -260,8 +276,6 @@ public class MasterProvisioner {
             // as temporarily offline?
             if (n.toComputer().isOnline()) {
 
-                // TODO check if masters are already provisioned, if so this means a re-provision.
-                //
                 final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(n);
                 final int freeSlots = p.getMaxMasters() - nodesWithMasters.get(n).size();
                 if (freeSlots < 1)
@@ -269,21 +283,10 @@ public class MasterProvisioner {
 
                 for (Iterator<PlannedMasterRequest> itr = Iterators.limit(currentMasterRequests.iterator(), freeSlots); itr.hasNext();) {
                     final PlannedMasterRequest pmr = itr.next();
+                    pendingMasterRequests.remove(pmr);
+                    itr.remove();
 
-                    try {
-                        // Ignore request if advanced from the pre-provisioning state
-                        if (pmr.ms.getState().ordinal() > MasterServer.State.PreProvisioning.ordinal() &&
-                                pmr.ms.getState() != MasterServer.State.ProvisioningErrorNoResources) {
-                            continue;
-                        }
-
-                        pmr.tryProcess(n);
-                    } catch (Exception e) {
-                        // Ignore
-                    } finally {
-                        pendingMasterRequests.remove(pmr);
-                        itr.remove();
-                    }
+                    pmr.tryProcess(n);
                 }
             }
         }
@@ -304,13 +307,8 @@ public class MasterProvisioner {
 
                 if (!pns.isEmpty()) {
                     for (PlannedNode pn : pns) {
-                        try {
-                            NodeProvisionThenOnlineTask npt = new NodeProvisionThenOnlineTask(cloudTimout, mn, c, pn);
-                            npt.start();
-                            nodeTaskQueue.add(npt);
-                        } catch (Exception e) {
-                            // Ignore
-                        }
+                        NodeProvisionThenOnlineTask npt = new NodeProvisionThenOnlineTask(cloudTimout, mn, c, pn);
+                        nodeTaskQueue.start(npt);
                     }
 
                     break;

@@ -5,7 +5,7 @@ import metanectar.model.MasterServer;
 /**
  * @author Paul Sandoz
  */
-public abstract class MasterServerTask<F> extends FutureTask<F, MasterServerTask> {
+public abstract class MasterServerTask<F> extends TaskWithFuture<F, MasterServerTask> {
 
     protected final MasterServer ms;
 

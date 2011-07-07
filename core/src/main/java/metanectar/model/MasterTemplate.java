@@ -2,6 +2,7 @@ package metanectar.model;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.util.concurrent.Futures;
 import hudson.AbortException;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
@@ -20,6 +21,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URLEncoder;
 import java.util.*;
+import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
@@ -29,7 +31,7 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
  *
  * @author Paul Sandoz
  */
-public class MasterTemplate extends AbstractItem implements TopLevelItem {
+public class MasterTemplate extends AbstractItem implements RecoverableTopLevelItem {
 
     /**
      * The states of the master.
@@ -249,14 +251,37 @@ public class MasterTemplate extends AbstractItem implements TopLevelItem {
         }
     }
 
-    public synchronized void cloneFromSourceAction() throws IOException {
+    public Future<?> cloneFromSourceAction() throws IOException {
         preConditionAction(Action.CloneFromSource);
 
-        MetaNectar.getInstance().masterProvisioner.cloneTemplateFromSource(this);
+        return MetaNectar.getInstance().masterProvisioner.cloneTemplateFromSource(this);
     }
 
-    public synchronized void cloneToNewMasterAction() throws IOException {
+    public Future<?> cloneToNewMasterAction() throws IOException {
         throw new UnsupportedOperationException("To be implemented");
+    }
+
+    // Recover
+
+    public Future<?> initiateRecovery() throws Exception {
+        final State unstableState = state;
+        final Future<?> f = _initiateRecovery();
+        if (f != null) {
+            final String message = String.format("Initiating recovery of master template %s from state \"%s\"", this.getName(), unstableState);
+            LOGGER.info(message);
+            return f;
+        } else {
+            return Futures.immediateFuture(null);
+        }
+    }
+
+    private Future<MasterTemplate> _initiateRecovery() throws Exception {
+        switch (state) {
+            case Cloning:
+                return MetaNectar.getInstance().masterProvisioner.cloneTemplateFromSource(this);
+            default:
+                return null;
+        }
     }
 
     // UI actions

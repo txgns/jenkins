@@ -11,7 +11,7 @@ import java.util.logging.Logger;
 /**
  * @author Paul Sandoz
  */
-public class TemplateCloneTask extends FutureTask<String, TemplateCloneTask> {
+public class TemplateCloneTask extends TaskWithFuture<String, TemplateCloneTask> {
     private static final Logger LOGGER = Logger.getLogger(TemplateCloneTask.class.getName());
 
     private final MasterTemplate mt;
