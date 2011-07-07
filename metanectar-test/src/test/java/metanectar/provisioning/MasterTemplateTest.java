@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author Paul Sandoz
  */
-public class ManagedTemplateTest extends AbstractMasterProvisioningTestCase {
+public class MasterTemplateTest extends AbstractMasterProvisioningTestCase {
 
     public void testTemplate() throws Exception {
         MasterTemplate mt = metaNectar.createMasterTemplate("mt");
