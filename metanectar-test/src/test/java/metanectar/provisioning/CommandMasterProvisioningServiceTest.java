@@ -101,10 +101,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     }
 
     private MasterServer _testProvisionStartTimeOut(MasterServer ms, MasterServer.State state) throws Exception {
-        try {
-            ms.provisionAndStartAction().get(1, TimeUnit.MINUTES);
-        } catch (ExecutionException e) {
-        }
+        ms.provisionAndStartAction().get(1, TimeUnit.MINUTES);
 
         assertEquals(state, ms.getState());
         assertEquals(CommandMasterProvisioningService.CommandProvisioningError.class, ms.getError().getClass());
@@ -112,10 +109,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     }
 
     private MasterServer _testReProvisionTimeOut(MasterServer ms, MasterServer.State state) throws Exception {
-        try {
-            ms.reProvisionAction().get(1, TimeUnit.MINUTES);
-        } catch (ExecutionException e) {
-        }
+        ms.reProvisionAction().get(1, TimeUnit.MINUTES);
 
         assertEquals(state, ms.getState());
         assertEquals(CommandMasterProvisioningService.CommandProvisioningError.class, ms.getError().getClass());
@@ -167,10 +161,7 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     private MasterServer _testStopTerminateTimeOut(MasterServer.State state) throws Exception {
         MasterServer ms = provision();
 
-        try {
-            ms.stopAndTerminateAction().get(1, TimeUnit.MINUTES);
-        } catch (ExecutionException e) {
-        }
+        ms.stopAndTerminateAction().get(1, TimeUnit.MINUTES);
 
         assertEquals(state, ms.getState());
         assertEquals(CommandMasterProvisioningService.CommandProvisioningError.class, ms.getError().getClass());
@@ -179,20 +170,14 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     }
 
     private void _testTerminateTimeOut(MasterServer ms, MasterServer.State state) throws Exception {
-        try {
-            ms.terminateAction(false).get(1, TimeUnit.MINUTES);
-        } catch (ExecutionException e) {
-        }
+        ms.terminateAction(false).get(1, TimeUnit.MINUTES);
 
         assertEquals(state, ms.getState());
         assertEquals(CommandMasterProvisioningService.CommandProvisioningError.class, ms.getError().getClass());
     }
 
     private void _testForceTerminateTimeOut(MasterServer ms, MasterServer.State state) throws Exception {
-        try {
-            ms.terminateAction(true).get(1, TimeUnit.MINUTES);
-        } catch (ExecutionException e) {
-        }
+        ms.terminateAction(true).get(1, TimeUnit.MINUTES);
 
         assertEquals(state, ms.getState());
     }

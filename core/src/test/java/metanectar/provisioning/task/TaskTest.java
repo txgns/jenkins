@@ -118,14 +118,7 @@ public class TaskTest extends TaskTestBase {
         fq.get(1, TimeUnit.MINUTES);
         assertFalse(fq.isCancelled());
 
-        Throwable caught = null;
-        try {
-            ft.get(1, TimeUnit.MINUTES);
-        } catch (ExecutionException e) {
-            caught = e.getCause();
-        }
-        assertNotNull(caught);
-        assertTrue(caught instanceof SleepTaskException);
+        ft.get(1, TimeUnit.MINUTES);
     }
 
     public void testOneTaskWithCancelBeforeStart() throws Exception {
@@ -141,13 +134,7 @@ public class TaskTest extends TaskTestBase {
         fq.get(1, TimeUnit.MINUTES);
         assertFalse(fq.isCancelled());
 
-        Throwable caught = null;
-        try {
-            ft.get(1, TimeUnit.MINUTES);
-        } catch (Exception e) {
-            caught = e;
-        }
-        assertNull(caught);
+        ft.get(1, TimeUnit.MINUTES);
 
         assertTrue(st.isDone());
     }
@@ -180,13 +167,7 @@ public class TaskTest extends TaskTestBase {
         fq.get(1, TimeUnit.MINUTES);
         assertFalse(fq.isCancelled());
 
-        Throwable caught = null;
-        try {
-            ft.get(1, TimeUnit.MINUTES);
-        } catch (Exception e) {
-            caught = e;
-        }
-        assertNull(caught);
+        ft.get(1, TimeUnit.MINUTES);
 
         assertTrue(st.isDone());
     }
@@ -206,15 +187,7 @@ public class TaskTest extends TaskTestBase {
         fq.get(1, TimeUnit.MINUTES);
         assertFalse(fq.isCancelled());
 
-        assertTrue(ft.isCancelled());
-        Throwable caught = null;
-        try {
-            ft.get(1, TimeUnit.MINUTES);
-        } catch (Exception e) {
-            caught = e;
-        }
-        assertNotNull(caught);
-        assertTrue(caught instanceof CancellationException);
+        ft.get(1, TimeUnit.MINUTES);
 
         assertTrue(st.isStarted());
         assertTrue(st.isCancelled());

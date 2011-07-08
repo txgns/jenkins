@@ -42,16 +42,11 @@ public class TaskQueue<T extends Task> {
             final FutureTaskEx<?> ft = th.ft;
 
             if (!t.isStarted()) {
-                if (ft.isCancelled()) {
-                    itr.remove();
-                    continue;
-                }
-
                 try {
                     t.start();
                 } catch (Exception e) {
                     itr.remove();
-                    setExceptionOnStart(ft, e);
+                    ft.run();
                     continue;
                 }
             }
@@ -61,7 +56,7 @@ public class TaskQueue<T extends Task> {
                 try {
                     next = (T) t.end();
                 } catch (Exception e) {
-                    setExceptionOnEnd(ft, e);
+                    ft.run();
                     continue;
                 } finally {
                     itr.remove();
@@ -72,23 +67,7 @@ public class TaskQueue<T extends Task> {
                 } else {
                     ft.run();
                 }
-            } else if (ft.isCancelled() && !t.isCancelled()) {
-                t.cancel();
             }
-        }
-    }
-
-    private void setExceptionOnStart(FutureTaskEx<?> ft, Throwable t) {
-        ft._setException(t);
-    }
-
-    private void setExceptionOnEnd(FutureTaskEx<?> ft, Throwable t) {
-        if (t instanceof ExecutionException) {
-            ft._setException(t.getCause());
-        } else if (t instanceof CancellationException) {
-            ft._cancel(true);
-        }  else {
-            ft._setException(t);
         }
     }
 
@@ -101,7 +80,7 @@ public class TaskQueue<T extends Task> {
             t.start();
             queue.add(new TaskHolder(t, ft));
         } catch (Exception e) {
-            ft._setException(e);
+            ft.run();
         }
 
         return ft;
