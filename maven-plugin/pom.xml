@@ -61,9 +61,9 @@ THE SOFTWARE.
     </dependency>
     
     <dependency>
-      <groupId>${project.groupId}</groupId>
+      <groupId>org.jenkins-ci.main.maven</groupId>
       <artifactId>maven-agent</artifactId>
-      <version>${project.version}</version>
+      <version>${mavenInterceptorsVersion}</version>
       <exclusions>
         <exclusion>
           <groupId>classworlds</groupId>
@@ -73,9 +73,9 @@ THE SOFTWARE.
     </dependency>
      
     <dependency>
-      <groupId>org.jenkins-ci.main</groupId>
+      <groupId>org.jenkins-ci.main.maven</groupId>
       <artifactId>maven-interceptor</artifactId>
-      <version>${project.version}</version>
+      <version>${mavenInterceptorsVersion}</version>
       <exclusions>
         <exclusion>
           <groupId>classworlds</groupId>
@@ -91,15 +91,15 @@ THE SOFTWARE.
     </dependency>
     
     <dependency>
-      <groupId>org.jenkins-ci.main</groupId>
+      <groupId>org.jenkins-ci.main.maven</groupId>
       <artifactId>maven3-agent</artifactId>
-      <version>${project.version}</version>
+      <version>${mavenInterceptorsVersion}</version>
     </dependency>    
     
     <dependency>
-      <groupId>org.jenkins-ci.main</groupId>
+      <groupId>org.jenkins-ci.main.maven</groupId>
       <artifactId>maven3-interceptor</artifactId>
-      <version>${project.version}</version>
+      <version>${mavenInterceptorsVersion}</version>
     </dependency>    
     
     <dependency>
@@ -109,26 +109,50 @@ THE SOFTWARE.
     <dependency>
       <groupId>org.apache.maven</groupId>
       <artifactId>maven-core</artifactId>
+      <version>${mavenVersion}</version>
     </dependency>  
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-compat</artifactId>
+      <version>${mavenVersion}</version>
+    </dependency>     
+    
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-aether-provider</artifactId>
+      <version>${mavenVersion}</version>
+    </dependency>      
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-embedder</artifactId>
+      <version>${mavenVersion}</version>
+    </dependency>   
+    
+    
     <dependency>
       <groupId>org.sonatype.aether</groupId>
       <artifactId>aether-api</artifactId>
+      <version>${aetherVersion}</version>
     </dependency>
     <dependency>
       <groupId>org.sonatype.aether</groupId>
       <artifactId>aether-impl</artifactId>
+      <version>${aetherVersion}</version>
     </dependency>
     <dependency>
       <groupId>org.sonatype.aether</groupId>
       <artifactId>aether-spi</artifactId>
+      <version>${aetherVersion}</version>
     </dependency>
     <dependency>
       <groupId>org.sonatype.aether</groupId>
       <artifactId>aether-util</artifactId>
+      <version>${aetherVersion}</version>
     </dependency>                                   
     <dependency>
       <groupId>org.sonatype.aether</groupId>
       <artifactId>aether-connector-wagon</artifactId>
+      <version>${aetherVersion}</version>
       <exclusions>
         <exclusion>
           <groupId>org.codehaus.plexus</groupId>
@@ -140,16 +164,19 @@ THE SOFTWARE.
     <dependency>
       <groupId>org.sonatype.sisu</groupId>
       <artifactId>sisu-inject-plexus</artifactId>
+      <version>${sisuInjectVersion}</version>
     </dependency> 
     
     <dependency>
       <groupId>org.sonatype.sisu</groupId>
       <artifactId>sisu-inject-bean</artifactId>
+      <version>${sisuInjectVersion}</version>
     </dependency> 
     
     <dependency>
       <groupId>org.apache.maven.wagon</groupId>
       <artifactId>wagon-http-lightweight</artifactId>
+      <version>${wagonVersion}</version>
       <exclusions>
         <exclusion>
           <groupId>nekohtml</groupId>
@@ -164,6 +191,7 @@ THE SOFTWARE.
     <dependency>
       <groupId>org.apache.maven.wagon</groupId>
       <artifactId>wagon-file</artifactId>
+      <version>${wagonVersion}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.maven.wagon</groupId>
@@ -184,6 +212,7 @@ THE SOFTWARE.
     <dependency>
       <groupId>org.apache.maven.wagon</groupId>
       <artifactId>wagon-provider-api</artifactId>
+      <version>${wagonVersion}</version>
     </dependency>    
     <dependency>
       <groupId>org.apache.maven.reporting</groupId>
@@ -191,12 +220,9 @@ THE SOFTWARE.
       <version>3.0</version>
     </dependency>  
     <dependency>
-      <groupId>org.apache.maven</groupId>
-      <artifactId>maven-compat</artifactId>
-    </dependency>     
-    <dependency>
       <groupId>org.codehaus.plexus</groupId>
       <artifactId>plexus-classworlds</artifactId>
+      <version>2.3</version>
     </dependency>  
     <dependency>
       <groupId>org.jenkins-ci.lib</groupId>

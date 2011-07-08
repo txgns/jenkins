@@ -133,6 +133,19 @@ public class DescriptorExtensionList<T extends Describable<T>, D extends Descrip
         return null;
     }
 
+    @Override
+    public boolean add(D d) {
+        boolean r = super.add(d);
+        hudson.getExtensionList(Descriptor.class).add(d);
+        return r;
+    }
+
+    @Override
+    public boolean remove(Object o) {
+        hudson.getExtensionList(Descriptor.class).remove(o);
+        return super.remove(o);
+    }
+
     /**
      * {@link #load()} in the descriptor is not a real load activity, so locking against "this" is enough.
      */
@@ -162,12 +175,6 @@ public class DescriptorExtensionList<T extends Describable<T>, D extends Descrip
             }
         }
         return r;
-    }
-
-    @Override
-    public boolean add(D d) {
-        hudson.getExtensionList(Descriptor.class).add(d); // add it to the master descriptor list as well
-        return super.add(d);
     }
 
     /**
