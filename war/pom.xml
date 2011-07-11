@@ -194,7 +194,7 @@ THE SOFTWARE.
                 <artifactItem>
                   <groupId>com.cloudbees.plugins</groupId>
                   <artifactId>cloudbees-slave-provisioning-plugin</artifactId>
-                  <version>0.4</version>
+                  <version>0.5</version>
                   <type>hpi</type>
                 </artifactItem>
               </artifactItems>
