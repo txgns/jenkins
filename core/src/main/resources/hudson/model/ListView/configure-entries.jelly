@@ -40,7 +40,7 @@ THE SOFTWARE.
   -->
 
   <f:entry title="${%Items}">
-    <j:forEach var="job" items="${app.items}">
+    <j:forEach var="job" items="${it.ownerItemGroup.items}">
       <f:checkbox name="${job.name}" checked="${it.contains(job)}" title="${job.name}" />
       <br/>
     </j:forEach>

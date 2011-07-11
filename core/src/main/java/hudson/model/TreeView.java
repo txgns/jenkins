@@ -50,6 +50,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *
  * <p>
  * Until this class is sufficiently stable, there's no need for l10n.
+ * TODO: use ViewGroupMixIn
  *
  * @author Kohsuke Kawaguchi
  */
@@ -104,13 +105,17 @@ public class TreeView extends View implements ViewGroup {
 //        return jobNames.contains(item.getName());
     }
 
-    public Item doCreateItem(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
-        Item item = Hudson.getInstance().doCreateItem(req, rsp);
-        if(item!=null) {
-            jobNames.add(item.getName());
-            owner.save();
+    public TopLevelItem doCreateItem(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
+        ItemGroup<? extends TopLevelItem> ig = getOwnerItemGroup();
+        if (ig instanceof ModifiableItemGroup) {
+            TopLevelItem item = ((ModifiableItemGroup<? extends TopLevelItem>)ig).doCreateItem(req, rsp);
+            if(item!=null) {
+                jobNames.add(item.getName());
+                owner.save();
+            }
+            return item;
         }
-        return item;
+        return null;
     }
 
     @Override
@@ -144,6 +149,10 @@ public class TreeView extends View implements ViewGroup {
         return null;
     }
 
+    public View getPrimaryView() {
+        return null;
+    }
+
     public void onViewRenamed(View view, String oldName, String newName) {
         // noop
     }
@@ -171,5 +180,13 @@ public class TreeView extends View implements ViewGroup {
 
     public ViewsTabBar getViewsTabBar() {
         return Hudson.getInstance().getViewsTabBar();
+    }
+
+    public ItemGroup<? extends TopLevelItem> getItemGroup() {
+        return getOwnerItemGroup();
+    }
+
+    public List<Action> getViewActions() {
+        return owner.getViewActions();
     }
 }

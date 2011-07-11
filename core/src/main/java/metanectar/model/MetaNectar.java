@@ -5,9 +5,12 @@ import com.cloudbees.commons.metanectar.agent.AgentStatusListener;
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol.GracefulConnectionRefusalException;
 import com.google.common.base.Predicate;
+import com.sun.org.apache.xml.internal.security.Init;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.PluginManager;
+import hudson.init.InitMilestone;
+import hudson.init.Initializer;
 import hudson.model.*;
 import hudson.remoting.Channel;
 import hudson.util.AdministrativeError;
@@ -38,6 +41,8 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static hudson.init.InitMilestone.JOB_LOADED;
 
 /**
  * The root object of MetaNectar.
@@ -142,8 +147,6 @@ public class MetaNectar extends Hudson {
 
     public MetaNectar(File root, ServletContext context, PluginManager pluginManager, Config config) throws IOException, InterruptedException, ReactorException {
         super(root, context, pluginManager);
-
-        ExtensionFilter.defaultFilter(this);
 
         // TODO, the timeouts should be configurable
         this.masterProvisioner = new MasterProvisioner(this, TimeUnit.MINUTES.toMillis(5), TimeUnit.MINUTES.toMillis(5));
@@ -417,5 +420,17 @@ public class MetaNectar extends Hudson {
             }
             return null;
         }
+    }
+
+    /**
+     * Initialize the extension filters.
+     * <p>
+     * Potentially another plugin/component could explicitly add extensions within the PLUGINS_STARTED and
+     * EXTENSIONS_AUGMENTED milestones, but since this functionality is deprecated it might be rare.
+     * </p>
+     */
+    @Initializer(after = InitMilestone.PLUGINS_STARTED, before = InitMilestone.EXTENSIONS_AUGMENTED)
+    public static void initializeExtensionFilters(Hudson hudson) throws IOException {
+        ExtensionFilter.defaultFilter(hudson);
     }
 }

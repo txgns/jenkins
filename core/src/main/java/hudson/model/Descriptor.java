@@ -667,7 +667,7 @@ public abstract class Descriptor<T extends Describable<T>> implements Saveable {
     }
 
     private String getViewPage(Class<?> clazz, String pageName, String defaultValue) {
-        while(clazz!=Object.class) {
+        while(clazz!=Object.class && clazz!=null) {
             String name = clazz.getName().replace('.', '/').replace('$', '/') + "/" + pageName;
             if(clazz.getClassLoader().getResource(name)!=null)
                 return '/'+name;
@@ -839,6 +839,12 @@ public abstract class Descriptor<T extends Describable<T>> implements Saveable {
     public static <T extends Descriptor> T find(Collection<? extends T> list, String className) {
         for (T d : list) {
             if(d.getClass().getName().equals(className))
+                return d;
+        }
+        // Since we introduced Descriptor.getId(), it is a preferred method of identifying descriptor by a string.
+        // To make that migration easier without breaking compatibility, let's also match up with the id.
+        for (T d : list) {
+            if(d.getId().equals(className))
                 return d;
         }
         return null;

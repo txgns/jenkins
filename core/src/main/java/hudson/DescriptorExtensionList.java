@@ -126,11 +126,24 @@ public class DescriptorExtensionList<T extends Describable<T>, D extends Descrip
      *
      * If none is found, null is returned.
      */
-    public Descriptor<T> findByName(String id) {
-        for (Descriptor<T> d : this)
+    public D findByName(String id) {
+        for (D d : this)
             if(d.getId().equals(id))
                 return d;
         return null;
+    }
+
+    @Override
+    public boolean add(D d) {
+        boolean r = super.add(d);
+        hudson.getExtensionList(Descriptor.class).add(d);
+        return r;
+    }
+
+    @Override
+    public boolean remove(Object o) {
+        hudson.getExtensionList(Descriptor.class).remove(o);
+        return super.remove(o);
     }
 
     /**

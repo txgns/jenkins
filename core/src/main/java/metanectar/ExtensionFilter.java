@@ -29,12 +29,12 @@ import java.util.logging.Logger;
 public class ExtensionFilter {
     private static final Logger LOGGER = Logger.getLogger(ExtensionFilter.class.getName());
 
-    private final MetaNectar mn;
+    private final Hudson hudson;
 
     private final Multimap<Class, Predicate<Class>> rules;
 
-    public ExtensionFilter(MetaNectar mn) {
-        this.mn = mn;
+    public ExtensionFilter(Hudson hudson) {
+        this.hudson = hudson;
         this.rules = HashMultimap.create();
     }
 
@@ -44,19 +44,19 @@ public class ExtensionFilter {
             final Class extensionType = e.getKey();
 
             if (extensionType == Descriptor.class) {
-                final ExtensionList<Descriptor> el = mn.getExtensionList(Descriptor.class);
+                final ExtensionList<Descriptor> el = hudson.getExtensionList(Descriptor.class);
                 for (final Descriptor de : el) {
                     if (!e.getValue().apply(de.clazz)) {
                         removedExtensions.add(de.clazz);
                         el.remove(de);
                         try {
-                            mn.getDescriptorList(de.getT()).remove(de);
+                            hudson.getDescriptorList(de.getT()).remove(de);
                         } catch (IllegalStateException ex) {
                         }
                     }
                 }
             } else {
-                final ExtensionList el = mn.getExtensionList(extensionType);
+                final ExtensionList el = hudson.getExtensionList(extensionType);
                 for (final Object o : el) {
                     if (!e.getValue().apply(o.getClass())) {
                         removedExtensions.add(o.getClass());
@@ -64,12 +64,12 @@ public class ExtensionFilter {
                     }
                 }
 
-                final DescriptorExtensionList<? extends Describable, ? extends Descriptor> del = mn.getDescriptorList(e.getKey());
+                final DescriptorExtensionList<? extends Describable, ? extends Descriptor> del = hudson.getDescriptorList(e.getKey());
                 for (final Descriptor de : del) {
                     if (!e.getValue().apply(de.clazz)) {
                         removedExtensions.add(de.clazz);
                         del.remove(de);
-                        mn.getExtensionList(Descriptor.class).remove(de);
+                        hudson.getExtensionList(Descriptor.class).remove(de);
                     }
                 }
             }
@@ -124,8 +124,8 @@ public class ExtensionFilter {
 
 
     private static class DefaultExtensionFilter extends ExtensionFilter {
-        public DefaultExtensionFilter(MetaNectar mn) {
-            super(mn);
+        public DefaultExtensionFilter(Hudson hudson) {
+            super(hudson);
 
             rule(NodeProperty.class, new BlackListRule(Lists.<Class>newArrayList(
                     EnvironmentVariablesNodeProperty.class,
@@ -151,10 +151,14 @@ public class ExtensionFilter {
             rule(ManagementLink.class, new BlackListRule(Lists.<Class>newArrayList(
                     AboutJenkins.class
             )));
+
+            rule(RootAction.class, new BlackListRule(Lists.<Class>newArrayList(
+                    ManageJenkinsAction.class
+            )));
         }
     }
 
-    public static void defaultFilter(MetaNectar mn) {
-        new DefaultExtensionFilter(mn).filter();
+    public static void defaultFilter(Hudson hudson) {
+        new DefaultExtensionFilter(hudson).filter();
     }
 }
