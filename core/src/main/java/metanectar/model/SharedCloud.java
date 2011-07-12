@@ -1,6 +1,7 @@
 package metanectar.model;
 
 import antlr.ANTLRException;
+import com.cloudbees.commons.futures.CompletedFuture;
 import com.cloudbees.commons.metanectar.provisioning.ComputerLauncherFactory;
 import com.cloudbees.commons.metanectar.provisioning.FutureComputerLauncherFactory;
 import com.cloudbees.commons.metanectar.provisioning.LeaseId;
@@ -9,6 +10,7 @@ import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import com.cloudbees.commons.nectar.nodeiterator.NodeIterator;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.Util;
@@ -32,7 +34,6 @@ import hudson.model.StockStatusIcon;
 import hudson.model.TaskListener;
 import hudson.model.TopLevelItem;
 import hudson.model.TopLevelItemDescriptor;
-import hudson.model.labels.LabelExpression;
 import hudson.slaves.AbstractCloudImpl;
 import hudson.slaves.AbstractCloudSlave;
 import hudson.slaves.Cloud;
@@ -40,6 +41,7 @@ import hudson.slaves.ComputerLauncher;
 import hudson.slaves.NodePropertyDescriptor;
 import hudson.slaves.NodeProvisioner;
 import hudson.util.DescribableList;
+import hudson.util.TimeUnit2;
 import metanectar.provisioning.LeaseIdImpl;
 import metanectar.provisioning.SharedSlaveRetentionStrategy;
 import net.jcip.annotations.GuardedBy;
@@ -98,9 +100,14 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
     @GuardedBy("nodeLock")
     private List<NodeProvisioner.PlannedNode> plannedNodes = new ArrayList<NodeProvisioner.PlannedNode>();
 
+    @GuardedBy("nodeLock")
+    private List<ReturnedNode> returnedNodes = new ArrayList<ReturnedNode>();
+
     private Cloud cloud;
 
     private transient Runnable periodicWork;
+
+    private int lazyDeprovisionDelayMin = 1;
 
     protected SharedCloud(ItemGroup parent, String name) {
         super(parent, name);
@@ -111,6 +118,18 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
             if (leaseIds == null) {
                 leaseIds = new LinkedHashMap<LeaseId, Node>();
             }
+            if (provisionedNodes == null) {
+                provisionedNodes = new ArrayList<Node>();
+            }
+            if (plannedNodes == null) {
+                plannedNodes = new ArrayList<NodeProvisioner.PlannedNode>();
+            }
+            if (returnedNodes == null) {
+                returnedNodes = new ArrayList<ReturnedNode>();
+            }
+        }
+        if (lazyDeprovisionDelayMin == 0) {
+            lazyDeprovisionDelayMin = 1;
         }
         return this;
     }
@@ -395,12 +414,29 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
     }
 
     public boolean canProvision(String labelExpression) {
+        final Label label;
+        try {
+            label = labelExpression == null ? null : Label.parseExpression(labelExpression);
+        } catch (ANTLRException e) {
+            // if we don't understand the label expression we cannot provision it (might be a new syntax... our
+            // problem)
+            return false;
+        }
+
+        synchronized (nodeLock) {
+            for (final ReturnedNode returnedNode : returnedNodes) {
+                Node node = returnedNode.getNode();
+                if (label == null
+                        ? !Node.Mode.EXCLUSIVE.equals(node.getMode())
+                        : label.matches(node.getAssignedLabels())) {
+                    return true;
+                }
+            }
+        }
+
         synchronized (this) {
             try {
-                if (labelExpression == null) {
-                    return cloud.canProvision(null);
-                }
-                return cloud.canProvision(LabelExpression.parseExpression(labelExpression));
+                return cloud.canProvision(label);
             } catch (NullPointerException e) {
                 LogRecord r = new LogRecord(Level.WARNING,
                         "{0} does not comply with the contract for canProvision(null)");
@@ -409,10 +445,6 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
                 LOGGER.log(r);
                 // if the cloud impl does not get that a null label implies no assigned label, then we cannot provision
                 // a slave with no label
-                return false;
-            } catch (ANTLRException e) {
-                // if we don't understand the label expression we cannot provision it (might be a new syntax... our
-                // problem)
                 return false;
             }
         }
@@ -453,7 +485,41 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
 
                         int excessWorkload = 1; // TODO allow larger workloads
 
-                        Collection<NodeProvisioner.PlannedNode> provision = cloud.provision(label, excessWorkload);
+                        Collection<NodeProvisioner.PlannedNode> provision =
+                                new ArrayList<NodeProvisioner.PlannedNode>();
+
+                        LOGGER.info("Checking returned nodes for fast re-use...");
+                        try {
+                            synchronized (nodeLock) {
+                                for (Iterator<ReturnedNode> itr = returnedNodes.iterator(); itr.hasNext(); ) {
+                                    final ReturnedNode returnedNode = itr.next();
+                                    Node node = returnedNode.getNode();
+                                    if (label == null
+                                            ? !Node.Mode.EXCLUSIVE.equals(node.getMode())
+                                            : label.matches(node.getAssignedLabels())) {
+                                        LOGGER.log(Level.INFO, "SharedCloud[{0}] Quick reuse of node {1}",
+                                                new Object[]{getUrl(), node.getNodeName()});
+                                        provision.add(
+                                                new NodeProvisioner.PlannedNode(
+                                                        node.getDisplayName(),
+                                                        new CompletedFuture<Node>(node), node.getNumExecutors()));
+                                        itr.remove();
+                                        excessWorkload -= node.getNumExecutors();
+                                    }
+                                }
+                            }
+                        } catch (Throwable t) {
+                            LOGGER.log(Level.WARNING, "Uncaught", t);
+                        }
+                        LOGGER.log(Level.INFO,
+                                "Checked returned nodes for fast re-use... {0} nodes being reused, "
+                                        + "{1} will be provisioned",
+                                new Object[]{provision.size(), Math.max(0, excessWorkload)});
+
+
+                        if (excessWorkload > 0) {
+                            provision.addAll(cloud.provision(label, excessWorkload));
+                        }
                         int plannedExecutorCount = 0;
                         for (NodeProvisioner.PlannedNode n : provision) {
                             plannedExecutorCount += n.numExecutors;
@@ -513,19 +579,8 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
                 LOGGER.log(Level.INFO, "SharedCloud[{0}] returned from lease {1}", new Object[]{getUrl(), leaseIds});
                 Node node = leaseIds.remove(allocatedSlave.getLeaseId());
                 if (node != null) {
-                    if (node instanceof AbstractCloudSlave) {
-                        final AbstractCloudSlave cloudSlave = (AbstractCloudSlave) node;
-                        Computer.threadPoolForRemoting.submit(new Runnable() {
-                            public void run() {
-                                try {
-                                    cloudSlave.terminate();
-                                } catch (InterruptedException e) {
-                                    LOGGER.log(Level.INFO, "Interrupted during release", e);
-                                } catch (IOException e) {
-                                    LOGGER.log(Level.INFO, "IOException during release", e);
-                                }
-                            }
-                        });
+                    synchronized (nodeLock) {
+                        returnedNodes.add(new ReturnedNode(node));
                     }
                 }
                 this.notifyAll();
@@ -666,6 +721,29 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
                         itr.remove();
                     }
                 }
+                for (Iterator<ReturnedNode> itr = returnedNodes.iterator(); itr.hasNext(); ) {
+                    final ReturnedNode returnedNode = itr.next();
+                    if (returnedNode.getTimestamp() + TimeUnit2.MINUTES.toMillis(lazyDeprovisionDelayMin) < System
+                            .currentTimeMillis()) {
+                        Node node = returnedNode.getNode();
+                        LOGGER.info(node.getNodeName() + " is being deprovisioned.");
+                        if (node instanceof AbstractCloudSlave) {
+                            final AbstractCloudSlave cloudSlave = (AbstractCloudSlave) node;
+                            Computer.threadPoolForRemoting.submit(new Runnable() {
+                                public void run() {
+                                    try {
+                                        cloudSlave.terminate();
+                                    } catch (InterruptedException e) {
+                                        LOGGER.log(Level.INFO, "Interrupted during release", e);
+                                    } catch (IOException e) {
+                                        LOGGER.log(Level.INFO, "IOException during release", e);
+                                    }
+                                }
+                            });
+                        }
+                        itr.remove();
+                    }
+                }
             }
         }
     }
@@ -722,11 +800,60 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
 
     @CLIResolver
     public static SharedCloud resolveForCLI(
-            @Argument(required=true, metaVar="NAME", usage="Shared cloud name") String name) throws CmdLineException {
+            @Argument(required = true, metaVar = "NAME", usage = "Shared cloud name") String name)
+            throws CmdLineException {
         SharedCloud sharedCloud = MetaNectar.getInstance().getItemByFullName(name, SharedCloud.class);
-        if (sharedCloud == null)
-            throw new CmdLineException(null,"No such shared cloud exists: " + name);
+        if (sharedCloud == null) {
+            throw new CmdLineException(null, "No such shared cloud exists: " + name);
+        }
         return sharedCloud;
+    }
+
+    /**
+     * Keeps track of returned nodes before being requested for deprovisioning.
+     */
+    private static class ReturnedNode {
+        @NonNull
+        private final Node node;
+        private final long timestamp;
+
+        public ReturnedNode(@NonNull Node node) {
+            node.getClass();
+            this.node = node;
+            timestamp = System.currentTimeMillis();
+        }
+
+        @NonNull
+        public Node getNode() {
+            return node;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+
+            ReturnedNode that = (ReturnedNode) o;
+
+            if (!node.equals(that.node)) {
+                return false;
+            }
+
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            return node.hashCode();
+        }
+
+        public long getTimestamp() {
+            return timestamp;
+        }
     }
 
 }
