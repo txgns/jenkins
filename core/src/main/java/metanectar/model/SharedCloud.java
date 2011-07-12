@@ -9,7 +9,6 @@ import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import com.cloudbees.commons.nectar.nodeiterator.NodeIterator;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import com.thoughtworks.xstream.XStreamException;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.Util;
@@ -38,14 +37,10 @@ import hudson.slaves.AbstractCloudImpl;
 import hudson.slaves.AbstractCloudSlave;
 import hudson.slaves.Cloud;
 import hudson.slaves.ComputerLauncher;
-import hudson.slaves.NodeProperty;
 import hudson.slaves.NodePropertyDescriptor;
 import hudson.slaves.NodeProvisioner;
-import hudson.slaves.RetentionStrategy;
 import hudson.util.DescribableList;
-import hudson.util.IOException2;
 import metanectar.provisioning.LeaseIdImpl;
-import metanectar.provisioning.NotSecretXStream;
 import metanectar.provisioning.SharedSlaveRetentionStrategy;
 import net.jcip.annotations.GuardedBy;
 import net.sf.json.JSONException;
@@ -58,8 +53,6 @@ import org.kohsuke.stapler.export.Exported;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URLEncoder;
@@ -391,7 +384,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
             Node node = leaseIds.get(leaseId);
             if (node instanceof Slave) {
                 final Slave slave = (Slave) node;
-                return new ComputerLauncherFactoryImpl(leaseId, node.getNodeName(), node.getNodeDescription(),
+                return new SharedNodeComputerLauncherFactory(leaseId, node.getNodeName(), node.getNodeDescription(),
                         node.getNumExecutors(), node.getLabelString(), slave.getRemoteFS(), node.getMode(),
                         new SharedSlaveRetentionStrategy(), node.getNodeProperties().toList(),
                         slave.getLauncher());
@@ -608,108 +601,6 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
             for (SharedCloudProperty p : this) {
                 p.setOwner(getOwner());
             }
-        }
-    }
-
-    public static class ComputerLauncherFactoryImpl extends ComputerLauncherFactory {
-
-        private String remoteFS;
-        private int numExecutors;
-        private Node.Mode mode;
-        private String labelString;
-        private RetentionStrategy<? extends Computer> retentionStrategy;
-        private List<? extends NodeProperty<?>> nodeProperties;
-        private transient ComputerLauncher launcher;
-        private Class<? extends ComputerLauncher> launcherClass;
-        private String name;
-        private String description;
-
-        public ComputerLauncherFactoryImpl(LeaseId leaseId, String name, String description, int numExecutors,
-                                           String labelString,
-                                           String remoteFS, Node.Mode mode,
-                                           RetentionStrategy<? extends Computer> retentionStrategy,
-                                           List<? extends NodeProperty<?>> nodeProperties, ComputerLauncher launcher) {
-            super(leaseId);
-            this.name = name;
-            this.description = description;
-            this.numExecutors = numExecutors;
-            this.labelString = labelString;
-            this.remoteFS = remoteFS;
-            this.mode = mode;
-            this.retentionStrategy = retentionStrategy;
-            this.nodeProperties = nodeProperties;
-            this.launcherClass = launcher.getClass();
-            this.launcher = launcher; // save init on this JVM
-        }
-
-        /**
-         * Constructor for the de-serialization path
-         */
-        protected ComputerLauncherFactoryImpl() {
-        }
-
-        private void writeObject(ObjectOutputStream stream) throws IOException {
-            // fill in the latest data for the launcher
-            stream.defaultWriteObject();
-            try {
-                stream.writeUTF(NotSecretXStream.INSTANCE.toXML(launcher));
-            } catch (XStreamException e) {
-                throw new IOException2(e);
-            }
-        }
-
-        private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-            stream.defaultReadObject();
-            try {
-                launcher = launcherClass.cast(NotSecretXStream.INSTANCE.fromXML(stream.readUTF()));
-            } catch (XStreamException e) {
-                throw new IOException2(e);
-            }
-        }
-
-        @Override
-        public String getNodeDescription() {
-            return description;
-        }
-
-        @Override
-        public Node.Mode getMode() {
-            return mode;
-        }
-
-        @Override
-        public RetentionStrategy getRetentionStrategy() {
-            return retentionStrategy;
-        }
-
-        @Override
-        public List<? extends NodeProperty<?>> getNodeProperties() {
-            return nodeProperties == null ? Collections.<NodeProperty<?>>emptyList() : nodeProperties;
-        }
-
-        @Override
-        public String getNodeName() {
-            return name;
-        }
-
-        @Override
-        public String getRemoteFS() {
-            return remoteFS;
-        }
-
-        @Override
-        public int getNumExecutors() {
-            return numExecutors;
-        }
-
-        @Override
-        public String getLabelString() {
-            return labelString;
-        }
-
-        @Override
-        public synchronized ComputerLauncher getOrCreateLauncher() throws IOException, InterruptedException {
-            return launcher;
         }
     }
 
