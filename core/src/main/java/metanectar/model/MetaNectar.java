@@ -5,7 +5,6 @@ import com.cloudbees.commons.metanectar.agent.AgentStatusListener;
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol.GracefulConnectionRefusalException;
 import com.google.common.base.Predicate;
-import com.sun.org.apache.xml.internal.security.Init;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.PluginManager;
