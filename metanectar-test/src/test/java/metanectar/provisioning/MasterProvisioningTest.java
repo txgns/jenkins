@@ -72,7 +72,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
         pl.await(1, TimeUnit.MINUTES);
 
         assertEquals(nodes, cl.provisioned);
-        assertEquals(nodes, metaNectar.masterProvisioner.getLabel().getNodes().size());
+        assertEquals(nodes, metaNectar.masterProvisioner.getProvisionedMasters().keySet().size());
         assertEquals(masters, metaNectar.masterProvisioner.getProvisionedMasters().size());
         return l;
     }
@@ -117,7 +117,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
 
         cloudTl.await(1, TimeUnit.MINUTES);
 
-        assertEquals(0, metaNectar.masterProvisioner.getLabel().getNodes().size());
+        assertEquals(0, metaNectar.masterProvisioner.getProvisionedMasters().keySet().size());
         assertEquals(0, metaNectar.masterProvisioner.getProvisionedMasters().size());
     }
 
@@ -130,8 +130,6 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
         int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
 
         metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(nodesPerMaster, new DummyMasterProvisioningService(100)));
-        // Reset the labels
-        metaNectar.setNodes(metaNectar.getNodes());
 
         ProvisionAndStartListener pl = new ProvisionAndStartListener(4 * masters);
 
@@ -144,7 +142,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
 
         pl.await(1, TimeUnit.MINUTES);
 
-        assertEquals(nodes, metaNectar.masterProvisioner.getLabel().getNodes().size());
+        assertEquals(nodes, metaNectar.masterProvisioner.getProvisionedMasters().keySet().size());
         assertEquals(masters, metaNectar.masterProvisioner.getProvisionedMasters().size());
 
         return l;

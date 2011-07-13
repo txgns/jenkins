@@ -42,8 +42,6 @@ public class MasterProvisioningNoResourcesTest extends AbstractMasterProvisionin
         // Add provisioning resources
         TestMasterProvisioningService s = new TestMasterProvisioningService(100);
         metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(4, s));
-        // Reset the labels
-        metaNectar.setNodes(metaNectar.getNodes());
 
         approved.await(1, TimeUnit.MINUTES);
         connected.await(1, TimeUnit.MINUTES);

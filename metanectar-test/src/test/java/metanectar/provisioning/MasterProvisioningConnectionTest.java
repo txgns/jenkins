@@ -103,8 +103,6 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
             public void configure() throws Exception {
                 TestMasterProvisioningService s = new TestMasterProvisioningService(100);
                 metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(4, s));
-                // Reset the labels
-                metaNectar.setNodes(metaNectar.getNodes());
             }
         }).get(0);
     }
@@ -187,7 +185,7 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
 
         cloudTl.await(1, TimeUnit.MINUTES);
 
-        assertEquals(0, metaNectar.masterProvisioner.getLabel().getNodes().size());
+        assertEquals(0, metaNectar.masterProvisioner.getProvisionedMasters().keySet().size());
         assertEquals(0, metaNectar.masterProvisioner.getProvisionedMasters().size());
     }
 

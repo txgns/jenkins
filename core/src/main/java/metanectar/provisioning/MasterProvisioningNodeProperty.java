@@ -111,20 +111,4 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
             return null;
 		}
     }
-
-    /**
-     * Automatically add the master provisioning label
-     */
-    @Extension
-    public static class MasterLabelFinder extends LabelFinder {
-        @Override
-        public Collection<LabelAtom> findLabels(Node node) {
-
-            if (MasterProvisioningNodeProperty.get(node) != null) {
-                return Collections.singleton(MetaNectar.getInstance().getLabelAtom(MasterProvisioner.MASTER_LABEL_ATOM_STRING));
-            } else {
-                return Collections.emptySet();
-            }
-        }
-    }
 }

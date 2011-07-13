@@ -1,5 +1,6 @@
 package metanectar.model;
 
+import antlr.ANTLRException;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.Futures;
@@ -8,6 +9,8 @@ import hudson.Extension;
 import hudson.cli.declarative.CLIMethod;
 import hudson.cli.declarative.CLIResolver;
 import hudson.model.*;
+import hudson.model.labels.LabelAtom;
+import hudson.model.labels.LabelExpression;
 import hudson.util.DescribableList;
 import metanectar.Config;
 import metanectar.provisioning.IdentifierFinder;
@@ -134,6 +137,13 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
     protected transient volatile URL globalEndpoint;
 
     /**
+     * The label expression to restrict provisioning of this master to nodes/clouds that match this expression.
+     *
+     * If the value is null then there is no restriction.
+     */
+    private volatile String labelExpression;
+
+    /**
      * The name of the node where the master is provisioned
      */
     private volatile String nodeName;
@@ -185,6 +195,11 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
         taskListener.getLogger().println("Created");
         taskListener.getLogger().println(toString());
+    }
+
+    public void setLabelExpression(String labelExpression) throws IOException {
+        this.labelExpression = labelExpression;
+        save();
     }
 
     public synchronized void setPreProvisionState() throws IOException {
@@ -599,6 +614,25 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
     public State getState() {
         return state;
+    }
+
+    /**
+     * Get the label expression that restricts provisioning of this master to nodes/clouds that match this expression.
+     *
+     * @return the label expression, otherwise null which indicates there is no restriction.
+     */
+    public String getLabelExpression() {
+        return labelExpression;
+    }
+
+    /**
+     * Get the label that restricts provisioning of this master to nodes/clouds that match this label.
+     * <p>This is obtained from the label expression</p>
+     *
+     * @return the label, otherwise null which indicates there is no restriction.
+     */
+    public Label getLabel() {
+        return Hudson.getInstance().getLabel(getLabelExpression());
     }
 
     public URL getEndpoint() {

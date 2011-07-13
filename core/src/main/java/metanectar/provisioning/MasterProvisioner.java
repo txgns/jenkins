@@ -1,9 +1,13 @@
 package metanectar.provisioning;
 
+import com.google.common.base.Predicate;
+import com.google.common.base.Predicates;
 import com.google.common.collect.*;
 import hudson.Extension;
 import hudson.model.*;
 import hudson.slaves.Cloud;
+import metanectar.cloud.MasterProvisioningCloud;
+import metanectar.cloud.MasterProvisioningCloudProxy;
 import metanectar.cloud.NodeTerminatingRetentionStrategy;
 import metanectar.cloud.MasterProvisioningCloudListener;
 import metanectar.model.MasterServer;
@@ -13,13 +17,14 @@ import metanectar.model.MetaNectar;
 import metanectar.provisioning.task.*;
 import metanectar.provisioning.task.TaskQueue;
 
+import javax.annotation.Nullable;
+import javax.swing.event.ListSelectionEvent;
 import java.io.IOException;
 import java.net.URL;
 import java.util.*;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -40,8 +45,6 @@ import static hudson.slaves.NodeProvisioner.PlannedNode;
  */
 public class MasterProvisioner {
 
-    public static final String MASTER_LABEL_ATOM_STRING = "_masters_";
-
     private static final Logger LOGGER = Logger.getLogger(MasterProvisioner.class.getName());
 
     private final MetaNectar mn;
@@ -49,8 +52,6 @@ public class MasterProvisioner {
     private final long masterTimeout;
 
     private final long cloudTimout;
-
-    private Label masterLabel;
 
     private final ListMultimap<Node, MasterServer> nodesWithMasters = ArrayListMultimap.create();
 
@@ -99,11 +100,6 @@ public class MasterProvisioner {
 
     public ListMultimap<Node, MasterServer> getProvisionedMasters() {
         return Multimaps.unmodifiableListMultimap(nodesWithMasters);
-    }
-
-    public Label getLabel() {
-        // TODO make configurable
-        return MetaNectar.getInstance().getLabel(MASTER_LABEL_ATOM_STRING);
     }
 
     public boolean hasPendingRequests() {
@@ -184,12 +180,6 @@ public class MasterProvisioner {
     }
 
     private void process() throws Exception {
-        // It is not possible to hold onto the reference as the label will be removed from Hudson
-        // on a configuration change when labels are trimmed and if the  label does not contain
-        // any nodes or clouds. Once removed the label will not be updated if/when new clouds/nodes are
-        // added.
-        masterLabel = getLabel();
-
         // Process master tasks
         masterServerTaskQueue.process();
 
@@ -283,23 +273,33 @@ public class MasterProvisioner {
         if (currentMasterRequests.isEmpty())
             return;
 
-        for (Node n : masterLabel.getNodes()) {
+        for (final Node n : Iterables.concat(mn.getNodes(), Collections.singleton(mn))) {
             // TODO should the offline cause be checked, should an attempt be made go online if not marked
             // as temporarily offline?
-            if (n.toComputer().isOnline()) {
+            final Computer c = n.toComputer();
+            if (c == null || c.isOffline())
+                continue;
 
-                final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(n);
-                final int freeSlots = p.getMaxMasters() - nodesWithMasters.get(n).size();
-                if (freeSlots < 1)
-                    continue;
+            // Ignore if node does not have a master provisioning node property
+            final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(n);
+            if (p == null)
+                continue;
 
-                for (Iterator<PlannedMasterRequest> itr = Iterators.limit(currentMasterRequests.iterator(), freeSlots); itr.hasNext();) {
-                    final PlannedMasterRequest pmr = itr.next();
-                    pendingMasterRequests.remove(pmr);
-                    itr.remove();
+            final int freeSlots = p.getMaxMasters() - nodesWithMasters.get(n).size();
+            if (freeSlots < 1)
+                continue;
 
-                    pmr.tryProcess(n);
-                }
+            for (Iterator<PlannedMasterRequest> itr = Iterators.limit(currentMasterRequests.iterator(), freeSlots); itr.hasNext();) {
+                final PlannedMasterRequest pmr = itr.next();
+
+                // Ignore if the label expression does not match the labels assigned to the node
+                final Label label = pmr.ms.getLabel();
+                if (label != null && !label.contains(n)) continue;
+
+                pendingMasterRequests.remove(pmr);
+                itr.remove();
+
+                pmr.tryProcess(n);
             }
         }
     }
@@ -310,34 +310,65 @@ public class MasterProvisioner {
 
         // If there are still pending requests and no pending nodes
         if (currentMasterRequests.size() > 0 && nodeTaskQueue.getQueue().isEmpty()) {
-            // Check clouds to see if a new masters node can be provisioned
-            Collection<PlannedNode> pns = Collections.emptySet();
-            for (Cloud c : masterLabel.getClouds()) {
-                pns = c.provision(masterLabel, 1);
-                if (pns == null)
-                    pns = Collections.emptySet();
+            final Collection<PlannedMasterRequest> matched = provisionFromCloud(currentMasterRequests);
 
-                if (!pns.isEmpty()) {
-                    for (PlannedNode pn : pns) {
-                        NodeProvisionThenOnlineTask npt = new NodeProvisionThenOnlineTask(cloudTimout, mn, c, pn);
-                        nodeTaskQueue.start(npt);
-                    }
-
-                    break;
+            final Collection<PlannedMasterRequest> unmatched = Collections2.filter(currentMasterRequests, new Predicate<PlannedMasterRequest>() {
+                public boolean apply(@Nullable PlannedMasterRequest input) {
+                    return !matched.contains(input);
                 }
-            }
+            });
 
-            if (pns.isEmpty()) {
-                for (PlannedMasterRequest pmr : currentMasterRequests) {
-                    if (pmr.ms.getState() != MasterServer.State.ProvisioningErrorNoResources) {
-                        LOGGER.log(Level.WARNING, "No resources to provision master " + pmr.ms.getName());
-                        pmr.ms.setProvisionErrorNoResourcesState();
-                    }
+            for (final PlannedMasterRequest pmr : unmatched) {
+                if (pmr.ms.getState() != MasterServer.State.ProvisioningErrorNoResources) {
+                    LOGGER.log(Level.WARNING, "No resources to provision master " + pmr.ms.getName());
+                    pmr.ms.setProvisionErrorNoResourcesState();
                 }
             }
         }
     }
 
+    private Collection<PlannedMasterRequest> provisionFromCloud(final Iterable<PlannedMasterRequest> requests) {
+        final Collection<PlannedMasterRequest> matched = Sets.newHashSet();
+
+        final Multimap<Cloud, PlannedMasterRequest> matches = matchCloudsToRequests(requests);
+        for (final Cloud c : matches.keySet()) {
+            /*
+             * Pass in null as the label. This assumes that the label assigned to a provisioned node will be
+             * a default label based on what can be provisioned. Thus the node can still be used to provisioning
+             * additional masters with a different matching label expression to those that are currently matched.
+             */
+            final Collection<PlannedNode> pns = c.provision(null, 1);
+
+            if (pns != null && !pns.isEmpty()) {
+                for (PlannedNode pn : pns) {
+                    NodeProvisionThenOnlineTask npt = new NodeProvisionThenOnlineTask(cloudTimout, mn, c, pn);
+                    nodeTaskQueue.start(npt);
+                }
+                matched.addAll(matches.get(c));
+            }
+        }
+
+        return matched;
+    }
+
+    private Multimap<Cloud, PlannedMasterRequest> matchCloudsToRequests(final Iterable<PlannedMasterRequest> requests) {
+        final Multimap<Cloud, PlannedMasterRequest> matches = LinkedListMultimap.create();
+
+        for (final PlannedMasterRequest pmr : requests) {
+            final Label label = pmr.ms.getLabel();
+
+            for (final Cloud c : mn.clouds) {
+                if (!(c instanceof MasterProvisioningCloudProxy))
+                    continue;
+
+                if (label == null || c.canProvision(label)) {
+                    matches.put(c, pmr);
+                }
+            }
+        }
+
+        return matches;
+    }
 
     // Terminating
 
@@ -346,7 +377,7 @@ public class MasterProvisioner {
         // then check if nodes with no provisioned masters can be terminated
         if (pendingMasterRequests.isEmpty() && nodeTaskQueue.getQueue().isEmpty()) {
             // Reap nodes with no provisioned masters
-            for (Node n : masterLabel.getNodes()) {
+            for (Node n : mn.getNodes()) {
                 if (!nodesWithMasters.containsKey(n) || nodesWithMasters.get(n).isEmpty()) {
                     final Computer c = n.toComputer();
 

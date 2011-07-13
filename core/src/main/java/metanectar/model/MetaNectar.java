@@ -11,6 +11,7 @@ import hudson.PluginManager;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import hudson.model.*;
+import hudson.model.labels.LabelAtom;
 import hudson.remoting.Channel;
 import hudson.util.AdministrativeError;
 import hudson.util.AlternativeUiTextProvider;
@@ -181,6 +182,11 @@ public class MetaNectar extends Hudson {
         }
     }
 
+    @Override
+    public LabelAtom getSelfLabel() {
+        return getLabelAtom("metamaster");
+    }
+
     public void configureNectarAgentListener(MetaNectarAgentProtocol.Listener l) throws IOException {
         if (nectarAgentListener != null)
             nectarAgentListener.shutdown();
@@ -338,18 +344,8 @@ public class MetaNectar extends Hudson {
         checkGoodName(name);
         name = name.trim();
         if (getItem(name) != null)
-            throw new Failure("Item " + name + "already exists");
+            throw new Failure("Item " + name + " already exists");
     }
-
-    // Global configuration
-
-    @Override
-    public synchronized void doConfigSubmit(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, Descriptor.FormException {
-        super.doConfigSubmit(req, rsp);
-        // Override and trim the labels in case master provisioning on MetaNectar configuration was added or removed.
-        trimLabels();
-    }
-
 
     //
 

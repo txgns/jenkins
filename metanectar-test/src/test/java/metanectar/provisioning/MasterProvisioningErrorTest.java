@@ -80,8 +80,6 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTestC
         // Add provisioning resources
         ErrorProvisioningService s = new ErrorProvisioningService(100);
         metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(4, s));
-        // Reset the labels
-        metaNectar.setNodes(metaNectar.getNodes());
 
         ms.provisionAndStartAction();
         provisioningError.await(1, TimeUnit.MINUTES);
@@ -126,8 +124,6 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTestC
         // Add provisioning resources
         ErrorTerminatingService s = new ErrorTerminatingService(100);
         metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(4, s));
-        // Reset the labels
-        metaNectar.setNodes(metaNectar.getNodes());
 
         ms.provisionAndStartAction();
         approved.await(1, TimeUnit.MINUTES);

@@ -127,8 +127,6 @@ public class ManagedMasterRecoveryTest extends AbstractMasterProvisioningTestCas
     private WaitingService init(WaitingService.Wait type) throws Exception {
         WaitingService ws = new WaitingService(type);
         metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(1, ws));
-        // Reset the labels
-        metaNectar.setNodes(metaNectar.getNodes());
         return ws;
     }
 
@@ -137,8 +135,6 @@ public class ManagedMasterRecoveryTest extends AbstractMasterProvisioningTestCas
         metaNectar.masterProvisioner.getMasterServerTaskQueue().getQueue().clear();
         metaNectar.getNodeProperties().clear();
         metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(1, new WaitingService(WaitingService.Wait.none)));
-        // Reset the labels
-        metaNectar.setNodes(metaNectar.getNodes());
     }
 
     private MasterServer terminate(MasterServer ms) throws Exception {
