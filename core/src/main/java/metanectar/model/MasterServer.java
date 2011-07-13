@@ -6,12 +6,14 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.Futures;
 import hudson.AbortException;
 import hudson.Extension;
+import hudson.Util;
 import hudson.cli.declarative.CLIMethod;
 import hudson.cli.declarative.CLIResolver;
 import hudson.model.*;
 import hudson.model.labels.LabelAtom;
 import hudson.model.labels.LabelExpression;
 import hudson.util.DescribableList;
+import hudson.util.FormValidation;
 import metanectar.Config;
 import metanectar.provisioning.IdentifierFinder;
 import metanectar.provisioning.MasterProvisioner;
@@ -31,15 +33,11 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 import static metanectar.model.MasterServer.State.*;
 
@@ -181,6 +179,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
                 add("nodeId", nodeId).
                 add("snapshot", snapshot).
                 add("globalEndpoint", globalEndpoint).
+                add("labelExpression", labelExpression).
                 add("state", state).
                 toString();
     }
@@ -762,13 +761,20 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
             StaplerResponse rsp) throws IOException, ServletException, Descriptor.FormException {
         checkPermission(CONFIGURE);
 
+        final JSONObject formData = req.getSubmittedForm();
+
         description = req.getParameter("description");
 
-        JSONObject json = req.getSubmittedForm();
+        if (formData.has("hasNodeAffinity")) {
+            final JSONObject nodeAffinity = formData.getJSONObject("hasNodeAffinity");
+            labelExpression = Util.fixEmptyAndTrim(nodeAffinity.getString("labelExpression"));
+        } else {
+            labelExpression = null;
+        }
 
         DescribableList<ConnectedMasterProperty, ConnectedMasterPropertyDescriptor> t =
                 new DescribableList<ConnectedMasterProperty, ConnectedMasterPropertyDescriptor>(NOOP,getProperties().toList());
-        t.rebuild(req,json.optJSONObject("properties"),ConnectedMasterProperty.all());
+        t.rebuild(req,formData.optJSONObject("properties"),ConnectedMasterProperty.all());
         properties.clear();
         for (ConnectedMasterProperty p : t) {
             p.setOwner(this);
@@ -823,6 +829,78 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
         public DescribableList<ConnectedMasterProperty,ConnectedMasterPropertyDescriptor> getDefaultProperties() throws IOException {
             return new DescribableList<ConnectedMasterProperty,ConnectedMasterPropertyDescriptor>(NOOP);
+        }
+
+        public FormValidation doCheckLabelExpression(@QueryParameter String value) {
+            if (Util.fixEmpty(value)==null)
+                return FormValidation.ok(); // nothing typed yet
+            try {
+                Label.parseExpression(value);
+            } catch (ANTLRException e) {
+                return FormValidation.error(e,
+                        hudson.model.Messages.AbstractProject_AssignedLabelString_InvalidBooleanExpression(e.getMessage()));
+            }
+            // TODO: if there's an atom in the expression that is empty, report it
+            if (Hudson.getInstance().getLabel(value).isEmpty())
+                return FormValidation.warning(hudson.model.Messages.AbstractProject_AssignedLabelString_NoMatch());
+            return FormValidation.ok();
+        }
+
+        public AutoCompletionCandidates doAutoCompleteLabelExpression(@QueryParameter String value) {
+            AutoCompletionCandidates c = new AutoCompletionCandidates();
+            Set<Label> labels = Hudson.getInstance().getLabels();
+            List<String> queries = new AutoCompleteSeeder(value).getSeeds();
+
+            for (String term : queries) {
+                for (Label l : labels) {
+                    if (l.getName().startsWith(term)) {
+                        c.add(l.getName());
+                    }
+                }
+            }
+            return c;
+        }
+
+        /**
+        * Utility class for taking the current input value and computing a list
+        * of potential terms to match against the list of defined labels.
+         */
+        static class AutoCompleteSeeder {
+            private String source;
+            private Pattern quoteMatcher = Pattern.compile("(\\\"?)(.+?)(\\\"?+)(\\s*)");
+
+            AutoCompleteSeeder(String source) {
+                this.source = source;
+            }
+
+            List<String> getSeeds() {
+                ArrayList<String> terms = new ArrayList();
+                boolean trailingQuote = source.endsWith("\"");
+                boolean leadingQuote = source.startsWith("\"");
+                boolean trailingSpace = source.endsWith(" ");
+
+                if (trailingQuote || (trailingSpace && !leadingQuote)) {
+                    terms.add("");
+                } else {
+                    if (leadingQuote) {
+                        int quote = source.lastIndexOf('"');
+                        if (quote == 0) {
+                            terms.add(source.substring(1));
+                        } else {
+                            terms.add("");
+                        }
+                    } else {
+                        int space = source.lastIndexOf(' ');
+                        if (space > -1) {
+                            terms.add(source.substring(space+1));
+                        } else {
+                            terms.add(source);
+                        }
+                    }
+                }
+
+                return terms;
+            }
         }
 
     }

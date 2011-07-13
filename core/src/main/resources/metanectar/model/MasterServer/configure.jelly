@@ -45,6 +45,14 @@ THE SOFTWARE.
                     <f:textarea name="description" value="${it.description}"/>
                 </f:entry>
 
+                <j:if test="${app.labels.size() gt 1 || app.clouds.size() gt 0 || (it.label != null and it.label != app.selfLabel)}">
+                  <f:optionalBlock name="hasNodeAffinity" title="${%Restrict where this master can be provisioned}" checked="${it.label != null}">
+                    <f:entry title="${%Label Expression}" field="labelExpression">
+                      <f:textbox autoCompleteDelimChar=" "/>
+                    </f:entry>
+                  </f:optionalBlock>
+                </j:if>
+
                 <j:invokeStatic var="ds" className="metanectar.model.ConnectedMasterProperty"
                               method="all"/>
                 <f:descriptorList title="${%Properties}" descriptors="${ds}" field="properties" forceRowSet="true"/>
