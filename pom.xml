@@ -33,7 +33,7 @@ THE SOFTWARE.
 
   <groupId>com.cloudbees.metanectar</groupId>
   <artifactId>dev-at-cloud-private</artifactId>
-  <version>1.400.10-SNAPSHOT</version>
+  <version>1.400.10</version>
   <packaging>pom</packaging>
 
   <name>DEV@Cloud Private Edition Parent Project</name>
