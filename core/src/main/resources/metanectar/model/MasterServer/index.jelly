@@ -24,23 +24,10 @@ THE SOFTWARE.
 
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt" xmlns:p="/lib/hudson/project">
-    <l:layout title="${it.displayName}">
-        <st:include page="sidepanel.jelly"/>
-        <l:main-panel>
-            <h1 id="ajax-title">
-                <st:include page="title.jelly"/>
-            </h1>
-
-            <t:editableDescription permission="${it.CONFIGURE}"/>
-
-            <div id="ajax-status">
-                <st:include page="status.jelly"/>
-            </div>
-
-            <script type="text/javascript">
-                new Ajax.PeriodicalUpdater('ajax-title', './title')
-                new Ajax.PeriodicalUpdater('ajax-status', './status')
-            </script>
-        </l:main-panel>
-    </l:layout>
+  <j:if test="${it.approved and it.online}">
+    <st:redirect url="${it.endpoint}"/>
+  </j:if>
+  <j:if test="${!(it.approved and it.online)}">
+    <st:redirect url="manage"/>
+  </j:if>
 </j:jelly>

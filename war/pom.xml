@@ -182,13 +182,13 @@ THE SOFTWARE.
                 <artifactItem>
                   <groupId>org.jenkins-ci.main</groupId>
                   <artifactId>jenkins-war</artifactId>
-                  <version>1.415-alpha-cb-1</version>
+                  <version>1.415</version>
                   <type>war</type>
                 </artifactItem>
                 <artifactItem>
                   <groupId>com.cloudbees.nectar.plugins</groupId>
                   <artifactId>cloudbees-metanectar-plugin</artifactId>
-                  <version>1.12</version>
+                  <version>1.15</version>
                   <type>hpi</type>
                 </artifactItem>
                 <artifactItem>

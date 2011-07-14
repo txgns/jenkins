@@ -1,9 +1,12 @@
 package metanectar.model;
 
+import com.cloudbees.common.metanectar.context.Breadcrumb;
+import com.cloudbees.common.metanectar.context.BreadcrumbImpl;
+import com.cloudbees.common.metanectar.context.NodeContext;
+import com.cloudbees.common.metanectar.context.ItemNodeContext;
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import com.google.common.base.Function;
 import com.google.common.base.Objects;
-import com.google.common.collect.Sets;
 import hudson.FilePath;
 import hudson.Util;
 import hudson.console.AnnotatedLargeText;
@@ -12,7 +15,6 @@ import hudson.remoting.Callable;
 import hudson.remoting.Channel;
 import hudson.util.DescribableList;
 import hudson.util.DirScanner;
-import hudson.util.FileVisitor;
 import hudson.util.StreamTaskListener;
 import hudson.util.io.ArchiverFactory;
 import hudson.util.io.ReopenableFileOutputStream;
@@ -23,6 +25,7 @@ import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
+import javax.servlet.ServletException;
 import java.io.*;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -110,6 +113,8 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
 
     protected volatile DescribableList<ConnectedMasterProperty,ConnectedMasterPropertyDescriptor> properties =
             new PropertyList(this);
+
+    private transient NodeContext nodeContext;
 
     protected ConnectedMaster(ItemGroup parent, String name) {
         super(parent, name);
@@ -244,10 +249,16 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         slaveManager = new ScopedSlaveManager(getParent());
         channel.setProperty(SlaveManager.class.getName(), channel.export(SlaveManager.class, slaveManager));
 
+        nodeContext = createNodeContext(getParent());
+        channel.setProperty(NodeContext.class.getName(), nodeContext);
+
         taskListener.getLogger().println("Connected");
         taskListener.getLogger().println(toString());
     }
 
+    private NodeContext createNodeContext(ItemGroup parent) {
+        return new ItemNodeContext(MetaNectar.getInstance().getRootUrl().toString(), this);
+    }
 
     // State querying
 
@@ -410,6 +421,7 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
             public void onClosed(Channel c, IOException cause) {
                 ConnectedMaster.this.channel = null;
                 ConnectedMaster.this.slaveManager = null;
+                ConnectedMaster.this.nodeContext = null;
 
                 // Orderly shutdown will have null exception
                 try {

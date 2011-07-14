@@ -33,7 +33,7 @@ THE SOFTWARE.
 
         <j:choose>
             <j:when test="${it.endpoint!=null}">
-                <a href="${it.endpoint}">${it.displayName}</a> (<a href="${it.endpoint}">${it.endpoint}</a>)
+                <a href="${it.endpoint}">${it.displayName}</a>
             </j:when>
             <j:otherwise>
                 ${it.displayName}

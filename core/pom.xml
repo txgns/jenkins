@@ -538,6 +538,12 @@ THE SOFTWARE.
     </dependency>
 
     <dependency>
+      <groupId>com.cloudbees.commons.metanectar</groupId>
+      <artifactId>cloudbees-commons-metanectar-context</artifactId>
+      <version>0.7</version>
+    </dependency>
+
+    <dependency>
       <groupId>com.cloudbees.commons.nectar</groupId>
       <artifactId>cloudbees-commons-node-iterator</artifactId>
       <version>0.3</version>

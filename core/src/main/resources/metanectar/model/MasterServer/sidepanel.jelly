@@ -31,14 +31,20 @@ THE SOFTWARE.
         <l:tasks>
             <j:set var="url" value="${h.getNearestAncestorUrl(request,it)}"/>
             <l:task icon="images/24x24/up.png" href="${rootURL}/" title="${%Back to Dashboard}"/>
-            <l:task icon="images/24x24/search.png" href="${url}/" title="${%Status}"/>
-
-            <div id="ajax-sidepanel">
-                <st:include page="sidepanel-ajax.jelly"/>
-            </div>
+            <l:task icon="images/24x24/search.png" href="${url}/" title="${%View}"/>
 
             <l:isAdmin>
-                <l:task icon="images/24x24/setting.gif" href="configure" title="${%Configure}"/>
+                <l:task icon="images/24x24/gear.png" href="manage" title="${%Manage}">
+                </l:task>
+              <j:if test="${h.hyperlinkMatchesCurrentPage('manage')}">
+                <div id="ajax-sidepanel" class="subtasks">
+                  <st:include page="sidepanel-ajax.jelly"/>
+                </div>
+                <script type="text/javascript">
+                  new Ajax.PeriodicalUpdater('ajax-sidepanel', './sidepanel-ajax')
+                </script>
+              </j:if>
+              <l:task icon="images/24x24/setting.png" href="configure" title="${%Configure}"/>
                 <l:task icon="images/24x24/clipboard.gif" href="log" title="${%Log}" />
             </l:isAdmin>
 
@@ -47,7 +53,4 @@ THE SOFTWARE.
           </j:forEach>
         </l:tasks>
     </l:side-panel>
-    <script type="text/javascript">
-        new Ajax.PeriodicalUpdater('ajax-sidepanel', './sidepanel-ajax')
-    </script>
 </j:jelly>

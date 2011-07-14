@@ -41,18 +41,6 @@ THE SOFTWARE.
     </j:choose>
 
     <j:choose>
-        <j:when test="${it.online}">
-            <form method="post" action="disconnect">
-                <f:submit value="TEST: disconnect"/>
-            </form>
-            <!--
-            <h1>${%Thread Dump}</h1>
-            <j:forEach var="t" items="${it.getThreadDump().entrySet()}">
-                <h2>${t.key}</h2>
-                <pre>${t.value}</pre>
-            </j:forEach>
-            -->
-        </j:when>
         <j:otherwise>
             <j:if test="${it.offline and it.error!=null}">
                 <p>${it.error}</p>

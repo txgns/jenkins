@@ -36,6 +36,7 @@ THE SOFTWARE.
                 <st:include page="sidepanel-ajax.jelly"/>
             </div>
             <l:isAdmin>
+                <l:task icon="images/24x24/setting.gif" href="manage" title="${%Manage}"/>
                 <l:task icon="images/24x24/setting.gif" href="configure" title="${%Configure}"/>
                 <l:task icon="images/24x24/clipboard.gif" href="log" title="${%Log}" />
             </l:isAdmin>
