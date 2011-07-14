@@ -41,12 +41,7 @@ THE SOFTWARE.
           <f:textarea name="description" value="${it.description}"/>
         </f:entry>
 
-
-        <j:invokeStatic var="cloudDescriptors"
-                        className="hudson.slaves.Cloud"
-                        method="all"/>
-
-        <f:dropdownDescriptorSelector field="cloud" descriptors="${cloudDescriptors}" title="${%Cloud}"/>
+        <f:dropdownDescriptorSelector field="cloud" descriptors="${descriptor.getCloudDescriptors()}" title="${%Cloud}"/>
 
         <f:descriptorList title="${%Slave Properties}" descriptors="${descriptor.getSlavePropertyDescriptors()}" field="properties" />
 
