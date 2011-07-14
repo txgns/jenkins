@@ -285,7 +285,7 @@ public class MasterProvisioner {
             if (p == null)
                 continue;
 
-            final int freeSlots = p.getMaxMasters() - nodesWithMasters.get(n).size();
+            final int freeSlots = p.geCapacityService().getFree(n, nodesWithMasters.get(n));
             if (freeSlots < 1)
                 continue;
 

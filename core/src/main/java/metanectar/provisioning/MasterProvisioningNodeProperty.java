@@ -27,11 +27,9 @@ import java.util.Map;
 public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
 
     /**
-     * The maximum number of masters that can be provisioned for this node.
-     * <p>
-     * TODO should this be an implementation detail? should there be a method on MasterProvisioningService?
+     * The master provisioning capacity service.
      */
-    private int maxMasters;
+    private MasterProvisioningCapacity capacityService;
 
     /**
      * The master provisioning service.
@@ -44,17 +42,22 @@ public class MasterProvisioningNodeProperty extends NodeProperty<Node> {
     private MasterProvisioningService provisioningService;
 
     @DataBoundConstructor
-    public MasterProvisioningNodeProperty(int maxMasters, MasterProvisioningService provisioningService) {
-        this.maxMasters = maxMasters;
+    public MasterProvisioningNodeProperty(MasterProvisioningCapacity capacityService, MasterProvisioningService provisioningService) {
+        this.capacityService = capacityService;
         this.provisioningService = provisioningService;
     }
 
-    public MasterProvisioningNodeProperty clone() {
-        return new MasterProvisioningNodeProperty(maxMasters, provisioningService);
+    public MasterProvisioningNodeProperty(int maxMasters, MasterProvisioningService provisioningService) {
+        this(new FixedSizeMasterProvisioningCapacity(maxMasters), provisioningService);
+        this.capacityService = capacityService;
     }
 
-    public int getMaxMasters() {
-        return maxMasters;
+    public MasterProvisioningNodeProperty clone() {
+        return new MasterProvisioningNodeProperty(capacityService, provisioningService);
+    }
+
+    public MasterProvisioningCapacity geCapacityService() {
+        return capacityService;
     }
 
     public MasterProvisioningService getProvisioningService() {

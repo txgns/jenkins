@@ -9,7 +9,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
  * A template for the slave master provisioning node property.
  * <p>
  * This template is used to create new instances of the slave master provisioning property, and for UI
- * configuration. It provides a level of indirection since {@link metanectar.provisioning.SlaveMasterProvisioningNodeProperty} should
+ * configuration. It provides a level of indirection since {@link metanectar.provisioning.MasterProvisioningNodeProperty} should
  * not be configured using the UI such that that property will not be presented in any UI configuration of
  * node properties of nodes.
  *
@@ -18,11 +18,9 @@ import org.kohsuke.stapler.DataBoundConstructor;
 public class MasterProvisioningNodePropertyTemplate extends AbstractDescribableImpl<MasterProvisioningNodePropertyTemplate> {
 
     /**
-     * The maximum number of masters that can be provisioned for this node.
-     * <p>
-     * TODO should this be an implementation detail? should there be a method on MasterProvisioningService?
+     * The master provisioning capacity service.
      */
-    private int maxMasters;
+    private MasterProvisioningCapacity capacityService;
 
     /**
      * The master provisioning service.
@@ -35,13 +33,17 @@ public class MasterProvisioningNodePropertyTemplate extends AbstractDescribableI
     private MasterProvisioningService provisioningService;
 
     @DataBoundConstructor
-    public MasterProvisioningNodePropertyTemplate(int maxMasters, MasterProvisioningService provisioningService) {
-        this.maxMasters = maxMasters;
+    public MasterProvisioningNodePropertyTemplate(MasterProvisioningCapacity capacityService, MasterProvisioningService provisioningService) {
+        this.capacityService = capacityService;
         this.provisioningService = provisioningService;
     }
 
-    public int getMaxMasters() {
-        return maxMasters;
+    public MasterProvisioningNodePropertyTemplate(int maxMasters, MasterProvisioningService provisioningService) {
+        this(new FixedSizeMasterProvisioningCapacity(maxMasters), provisioningService);
+    }
+
+    public MasterProvisioningCapacity getCapacityService() {
+        return capacityService;
     }
 
     public MasterProvisioningService getProvisioningService() {
@@ -49,7 +51,7 @@ public class MasterProvisioningNodePropertyTemplate extends AbstractDescribableI
     }
 
     public MasterProvisioningNodeProperty toMasterProvisioningNodeProperty() {
-        return new MasterProvisioningNodeProperty(maxMasters, provisioningService);
+        return new MasterProvisioningNodeProperty(capacityService, provisioningService);
     }
 
     @Extension
