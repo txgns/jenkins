@@ -626,6 +626,10 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
             return SharedCloudPropertyDescriptor.all();
         }
 
+        public List<Descriptor<Cloud>> getCloudDescriptors() {
+            return MetaNectar.allWithoutMetaNectarExtensions(Cloud.class);
+        }
+
         public List<Descriptor<ComputerLauncher>> getComputerLauncherDescriptors() {
             DescriptorExtensionList<ComputerLauncher, Descriptor<ComputerLauncher>> unfiltered =
                     Hudson.getInstance().getDescriptorList(ComputerLauncher.class);
