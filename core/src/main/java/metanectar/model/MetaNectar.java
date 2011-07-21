@@ -168,6 +168,7 @@ public class MetaNectar extends Hudson {
         }
 
         // Initiate recovery for all recoverable items
+        // TODO check initiate recovery implementations to see if they require that a node or master is connected to metanectar
         for (RecoverableTopLevelItem ri : getAllItems(RecoverableTopLevelItem.class)) {
             try {
                 ri.initiateRecovery();

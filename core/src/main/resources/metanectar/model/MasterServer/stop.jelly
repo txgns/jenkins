@@ -4,9 +4,20 @@
         <st:include page="sidepanel.jelly"/>
         <l:main-panel>
             <form method="post" action="stopAction">
-                Are you sure about stopping master '${it.displayName}'?
-
-                <f:submit value="${%Yes}"/>
+                <p>
+                    Stop master '${it.displayName}'
+                </p>
+                <p>
+                    Wait for quiet down and stop?
+                    <f:submit value="${%Wait}"/>
+                </p>
+                <p>
+                    Force stop?
+                    <f:submit name="force" value="${%Force}"/>
+                </p>
+                <p class="warning">Note: force stop of the master will result in the termination of any jobs
+                    running on that master.
+                </p>
             </form>
         </l:main-panel>
     </l:layout>

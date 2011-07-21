@@ -17,6 +17,7 @@ import hudson.util.FormValidation;
 import metanectar.Config;
 import metanectar.provisioning.IdentifierFinder;
 import metanectar.provisioning.MasterProvisioner;
+import metanectar.provisioning.task.MasterWaitForQuietDownTask;
 import net.sf.json.JSONObject;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.CmdLineException;
@@ -63,6 +64,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
         Started(Action.Stop),
         ApprovalError(Action.Stop),
         Approved(Action.Stop),
+        WaitingForQuietDown(Action.CancelWaitingForQuietDown),
         Stopping(),
         StoppingError(Action.Stop, Action.Terminate),
         Stopped(Action.Start, Action.Terminate),
@@ -90,6 +92,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
         ReProvision("new-computer.png", false),
         Start("start-computer.png"),
         Stop("stop-computer.png"),
+        CancelWaitingForQuietDown("trash-computer.png", false),
         Terminate("terminate-computer.png"),
         Delete("trash-computer.png");
 
@@ -341,6 +344,18 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
         error.printStackTrace(taskListener.error("Approval Error"));
     }
 
+    public synchronized void setWaitingForQuietDownState() throws IOException {
+        if (isOffline())
+            return;
+
+        setState(WaitingForQuietDown);
+        save();
+        fireOnStateChange();
+
+        taskListener.getLogger().println("Waiting for quiet down");
+        taskListener.getLogger().println(toString());
+    }
+
     public synchronized void setStoppingState() throws IOException {
         if (isOnline()) {
             try {
@@ -506,6 +521,12 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
         }
     }
 
+    private void preConditionOnline(Action a) throws AbortException {
+        if (isOffline()) {
+            throw new AbortException(String.format("Action \"%s\" cannot be performed when offline", a.name()));
+        }
+    }
+
     @CLIMethod(name="managed-master-provision-and-start")
     public synchronized Future<MasterServer> provisionAndStartAction() throws IOException  {
         preConditionAction(Action.Provision);
@@ -548,11 +569,28 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
         return MetaNectar.getInstance().masterProvisioner.start(this);
     }
 
-    @CLIMethod(name="managed-master-stop")
     public synchronized Future<MasterServer> stopAction() throws IOException {
         preConditionAction(Action.Stop);
 
-        return MetaNectar.getInstance().masterProvisioner.stop(this);
+        return MetaNectar.getInstance().masterProvisioner.stop(this, true);
+    }
+
+    @CLIMethod(name="managed-master-stop")
+    public synchronized Future<MasterServer> stopAction(
+            @Option(name="-f", usage="Force stop and do not wait for quiet down") boolean force) throws IOException {
+        preConditionAction(Action.Stop);
+
+        return MetaNectar.getInstance().masterProvisioner.stop(this, force);
+    }
+
+    @CLIMethod(name="managed-master-cancel-waiting-for-quiet-down")
+    public synchronized boolean cancelWaitingForQuietDown() throws IOException {
+        preConditionAction(Action.CancelWaitingForQuietDown);
+        preConditionOnline(Action.CancelWaitingForQuietDown);
+
+        getChannel().callAsync(new MasterWaitForQuietDownTask.CancelQuietDown());
+
+        return MetaNectar.getInstance().masterProvisioner.cancelPendingRequest(this);
     }
 
     @CLIMethod(name="managed-master-terminate")
@@ -600,8 +638,11 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
                 return MetaNectar.getInstance().masterProvisioner.reProvision(this, MetaNectar.getInstance().getMetaNectarPortUrl());
             case Starting:
                 return MetaNectar.getInstance().masterProvisioner.start(this);
+            case WaitingForQuietDown:
+                // TODO this requires that the master is connected to metanectar
+                return MetaNectar.getInstance().masterProvisioner.stop(this, false);
             case Stopping:
-                return MetaNectar.getInstance().masterProvisioner.stop(this);
+                return MetaNectar.getInstance().masterProvisioner.stop(this, true);
             case Terminating:
                 return MetaNectar.getInstance().masterProvisioner.terminate(this, false);
             default:
@@ -722,10 +763,18 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
         }.doAction();
     }
 
-    public HttpResponse doStopAction() throws Exception {
+    public HttpResponse doStopAction(final @QueryParameter String force) throws Exception {
         return new DoActionLambda() {
             public void f() throws Exception {
-                stopAction();
+                stopAction(force != null);
+            }
+        }.doAction();
+    }
+
+    public HttpResponse doCancelWaitingForQuietDown() throws Exception {
+        return new DoActionLambda() {
+            public void f() throws Exception {
+                cancelWaitingForQuietDown();
             }
         }.doAction();
     }
@@ -803,7 +852,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
         if (getState().name().toLowerCase().contains("error")) {
             return Arrays.asList(new HealthReport(0, getState().name()));
         } else if (State.Approved.equals(getState())) {
-        return Arrays.asList(new HealthReport(100, Messages._SharedCloud_PerfectHealth()));
+            return Arrays.asList(new HealthReport(100, Messages._SharedCloud_PerfectHealth()));
         } else if (State.Starting.equals(getState())) {
             return Arrays.asList(new HealthReport(75, Messages._SharedCloud_PerfectHealth()));
         } else if (State.Provisioned.equals(getState())) {

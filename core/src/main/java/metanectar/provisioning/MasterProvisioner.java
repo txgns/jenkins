@@ -164,8 +164,10 @@ public class MasterProvisioner {
                 FutureTaskEx.createValueFutureTask(ms));
     }
 
-    public Future<MasterServer> stop(MasterServer ms) {
-        return masterServerTaskQueue.start(new MasterStopTask(masterTimeout, ms),
+    public Future<MasterServer> stop(MasterServer ms, boolean force) {
+
+        return masterServerTaskQueue.start(
+                (force) ? new MasterStopTask(masterTimeout, ms) : new MasterWaitForQuietDownThenStopTask(masterTimeout, ms),
                 FutureTaskEx.createValueFutureTask(ms));
     }
 
