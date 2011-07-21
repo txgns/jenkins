@@ -1,12 +1,11 @@
 package metanectar.model;
 
-import com.cloudbees.common.metanectar.context.Breadcrumb;
-import com.cloudbees.common.metanectar.context.BreadcrumbImpl;
-import com.cloudbees.common.metanectar.context.NodeContext;
-import com.cloudbees.common.metanectar.context.ItemNodeContext;
+import com.cloudbees.commons.metanectar.context.NodeContext;
+import com.cloudbees.commons.metanectar.context.ItemNodeContext;
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import com.google.common.base.Function;
 import com.google.common.base.Objects;
+import hudson.Extension;
 import hudson.FilePath;
 import hudson.Util;
 import hudson.console.AnnotatedLargeText;
@@ -25,7 +24,6 @@ import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
-import javax.servlet.ServletException;
 import java.io.*;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -34,6 +32,7 @@ import java.security.KeyFactory;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -249,15 +248,31 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         slaveManager = new ScopedSlaveManager(getParent());
         channel.setProperty(SlaveManager.class.getName(), channel.export(SlaveManager.class, slaveManager));
 
-        nodeContext = createNodeContext(getParent());
-        channel.setProperty(NodeContext.class.getName(), nodeContext);
+        updateNodeContext();
 
         taskListener.getLogger().println("Connected");
         taskListener.getLogger().println(toString());
     }
 
-    private NodeContext createNodeContext(ItemGroup parent) {
-        return new ItemNodeContext(MetaNectar.getInstance().getRootUrl().toString(), this);
+    protected NodeContext createNodeContext(ItemGroup parent) {
+        return new ItemNodeContext(MetaNectar.getInstance().getSecurityRealm(),
+                MetaNectar.getInstance().getAuthorizationStrategy(),
+                MetaNectar.getInstance().getRootUrl(), this);
+    }
+
+    protected boolean isNodeContextOutOfDate() {
+        if (nodeContext == null) return true;
+        if (nodeContext.getAuthenticationRealm() != MetaNectar.getInstance().getSecurityRealm()) return true;
+        if (nodeContext.getAuthorizationStrategy() != MetaNectar.getInstance().getAuthorizationStrategy()) return true;
+        return !nodeContext.getObjectUrl().equals(ItemNodeContext.getUrl(MetaNectar.getInstance().getRootUrl(), this));
+    }
+
+    protected void updateNodeContext() {
+        if (channel != null && isNodeContextOutOfDate()) {
+            LOGGER.log(Level.INFO, "Updating context for {0} as it was out of date", this);
+            nodeContext = createNodeContext(getParent());
+            channel.setProperty(NodeContext.class.getName(), nodeContext);
+        }
     }
 
     // State querying
@@ -562,6 +577,27 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
             return ms.getId();
         }
     };
+
+    /**
+     * Updates the node contexts on a periodic basis.
+     */
+    @Extension
+    public static class UpdateNodeContexts extends PeriodicWork {
+
+        @Override
+        public long getRecurrencePeriod() {
+            return TimeUnit.SECONDS.toMillis(30);
+        }
+
+        @Override
+        protected void doRun() throws Exception {
+            for (ConnectedMaster master : MetaNectar.getInstance().getAllItems(ConnectedMaster.class)) {
+                master.updateNodeContext();
+            }
+        }
+    }
+
+
 
     private static final Logger LOGGER = Logger.getLogger(ConnectedMaster.class.getName());
 }

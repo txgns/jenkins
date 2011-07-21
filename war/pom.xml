@@ -79,6 +79,20 @@ THE SOFTWARE.
       <scope>provided</scope>
     </dependency>
     <dependency>
+      <groupId>com.cloudbees.nectar.plugins</groupId>
+      <artifactId>cloudbees-metanectar-plugin</artifactId>
+      <version>1.16</version>
+      <type>hpi</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.cloudbees.plugins</groupId>
+      <artifactId>cloudbees-slave-provisioning-plugin</artifactId>
+      <version>0.6</version>
+      <type>hpi</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <!--
         not actually used by test but used by antrun plugin to include it inside the war.
       -->
@@ -188,13 +202,11 @@ THE SOFTWARE.
                 <artifactItem>
                   <groupId>com.cloudbees.nectar.plugins</groupId>
                   <artifactId>cloudbees-metanectar-plugin</artifactId>
-                  <version>1.15</version>
                   <type>hpi</type>
                 </artifactItem>
                 <artifactItem>
                   <groupId>com.cloudbees.plugins</groupId>
                   <artifactId>cloudbees-slave-provisioning-plugin</artifactId>
-                  <version>0.5</version>
                   <type>hpi</type>
                 </artifactItem>
               </artifactItems>

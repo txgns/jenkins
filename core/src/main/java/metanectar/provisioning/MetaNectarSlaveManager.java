@@ -11,7 +11,6 @@ import hudson.model.TaskListener;
 import hudson.model.labels.LabelAtom;
 import hudson.model.labels.LabelExpression;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;

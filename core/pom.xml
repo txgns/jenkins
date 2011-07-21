@@ -533,14 +533,8 @@ THE SOFTWARE.
 
     <dependency>
       <groupId>com.cloudbees.commons.metanectar</groupId>
-      <artifactId>cloudbees-commons-metanectar-provisioning</artifactId>
-      <version>1.2</version>
-    </dependency>
-
-    <dependency>
-      <groupId>com.cloudbees.commons.metanectar</groupId>
       <artifactId>cloudbees-commons-metanectar-context</artifactId>
-      <version>0.7</version>
+      <version>0.9</version>
     </dependency>
 
     <dependency>

@@ -22,12 +22,9 @@ import metanectar.provisioning.*;
 import metanectar.proxy.ReverseProxyProdder;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 import org.jvnet.hudson.reactor.ReactorException;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
 
 import javax.annotation.Nullable;
 import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
 import java.io.File;
 import java.io.IOException;
 import java.net.BindException;
@@ -41,8 +38,6 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import static hudson.init.InitMilestone.JOB_LOADED;
 
 /**
  * The root object of MetaNectar.

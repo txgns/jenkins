@@ -20,7 +20,6 @@ import hudson.util.StreamTaskListener;
 import hudson.util.VariableResolver;
 import metanectar.test.MetaNectarTestCase;
 
-import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.util.Collection;
 import java.util.Collections;
