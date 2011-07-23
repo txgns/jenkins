@@ -209,7 +209,7 @@ public final class ComputerSet extends AbstractModelObject {
                                            @QueryParameter String name, @QueryParameter String mode,
                                            @QueryParameter String from ) throws IOException, ServletException {
         final Hudson app = Hudson.getInstance();
-        app.checkPermission(Hudson.ADMINISTER);  // TODO: new permission?
+        app.checkPermission(Computer.CREATE);
 
         if(mode!=null && mode.equals("copy")) {
             name = checkName(name);
@@ -253,7 +253,7 @@ public final class ComputerSet extends AbstractModelObject {
                                            @QueryParameter String name,
                                            @QueryParameter String type ) throws IOException, ServletException, FormException {
         final Hudson app = Hudson.getInstance();
-        app.checkPermission(Hudson.ADMINISTER);  // TODO: new permission?
+        app.checkPermission(Computer.CREATE);
         checkName(name);
 
         Node result = NodeDescriptor.all().find(type).newInstance(req, req.getSubmittedForm());
@@ -285,7 +285,7 @@ public final class ComputerSet extends AbstractModelObject {
      * Makes sure that the given name is good as a slave name.
      */
     public FormValidation doCheckName(@QueryParameter String value) throws IOException, ServletException {
-        Hudson.getInstance().checkPermission(Hudson.ADMINISTER);
+        Hudson.getInstance().checkPermission(Computer.CREATE);
 
         if(Util.fixEmpty(value)==null)
             return FormValidation.ok();
