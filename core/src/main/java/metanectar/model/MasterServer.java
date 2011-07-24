@@ -318,6 +318,10 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
     @Override
     public synchronized void setReapprovedState() throws IOException {
+        setReapprovedState(null);
+    }
+
+    public synchronized void setReapprovedState(Throwable error) throws IOException {
         if (state == State.Approved)
             return;
 
@@ -325,6 +329,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
             throw new IllegalStateException();
 
         setState(Approved);
+        this.error = error;
         save();
         fireOnStateChange();
 

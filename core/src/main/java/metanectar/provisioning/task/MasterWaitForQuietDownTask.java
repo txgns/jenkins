@@ -6,6 +6,7 @@ import hudson.remoting.Callable;
 import hudson.remoting.Channel;
 import metanectar.model.MasterServer;
 
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -29,7 +30,7 @@ public class MasterWaitForQuietDownTask extends MasterServerTask<Boolean> {
 
     public void start() throws Exception {
         try {
-            LOGGER.info("Waiting for master " + ms.getName() + " to quiet down");
+            LOGGER.info("Waiting to quiet down for master " + ms.getName());
 
             // Set the waiting for quiet down state
             ms.setWaitingForQuietDownState();
@@ -37,10 +38,9 @@ public class MasterWaitForQuietDownTask extends MasterServerTask<Boolean> {
             final Channel c = ms.getChannel();
             setFuture(c.callAsync(new WaitForQuietDown(getTimeout())));
         } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Waiting error for master " + ms.getName() + " to quiet down");
+            LOGGER.log(Level.WARNING, "Waiting to quiet down error for master" + ms.getName(), e);
 
-            // TODO on error
-            ms.setReapprovedState();
+            ms.setReapprovedState(e);
             throw e;
         }
     }
@@ -50,22 +50,21 @@ public class MasterWaitForQuietDownTask extends MasterServerTask<Boolean> {
             cancelled = getFuture().get();
 
             if (cancelled) {
-                LOGGER.info("Waiting for master  " + ms.getName() + " to quiet down cancelled");
+                LOGGER.info("Waiting to quiet down cancelled for master " + ms.getName());
 
-                // TODO inform that quiet down was cancelled
+                // Inform that quiet down was cancelled
+                ms.setReapprovedState(new CancellationException("Quiet down was cancelled"));
             } else {
-                LOGGER.info("Waiting for master  " + ms.getName() + " to quiet down completed");
+                LOGGER.info("Waiting to quiet down completed for master " + ms.getName());
+                ms.setReapprovedState();
             }
 
-            ms.setReapprovedState();
         } catch (Exception e) {
             final Throwable cause = (e instanceof ExecutionException) ? e.getCause() : e;
 
-            LOGGER.log(Level.WARNING, "Waiting completion error for master " + ms.getName() + " to quiet down");
+            LOGGER.log(Level.WARNING, "Waiting to quiet down error for master" + ms.getName(), cause);
 
-            // TODO on error
-            // TODO timeout
-            ms.setReapprovedState();
+            ms.setReapprovedState(cause);
             throw e;
         }
 

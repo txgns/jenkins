@@ -40,12 +40,4 @@ THE SOFTWARE.
         </j:otherwise>
     </j:choose>
 
-    <j:choose>
-        <j:otherwise>
-            <j:if test="${it.offline and it.error!=null}">
-                <p>${it.error}</p>
-            </j:if>
-        </j:otherwise>
-    </j:choose>
-
 </j:jelly>
