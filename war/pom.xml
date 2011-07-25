@@ -161,8 +161,12 @@ THE SOFTWARE.
               <excludeDefaultDirectories>true</excludeDefaultDirectories>
               <filesets>
                 <fileset>
-                  <directory>${basedir}/work</directory>
                   <directory>${basedir}/work-node</directory>
+                </fileset>
+                <fileset>
+                  <directory>${basedir}/work</directory>
+                </fileset>
+                <fileset>
                   <directory>${basedir}/work-masters</directory>
                 </fileset>
               </filesets>
