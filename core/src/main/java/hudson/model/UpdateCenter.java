@@ -92,6 +92,9 @@ import org.acegisecurity.context.SecurityContextHolder;
  * @since 1.220
  */
 public class UpdateCenter extends AbstractModelObject implements Saveable {
+	
+    private static final String UPDATE_CENTER_URL = System.getProperty(UpdateCenter.class.getName()+".updateCenterUrl","http://updates.jenkins-ci.org/");
+	
     /**
      * {@link ExecutorService} that performs installation.
      */
@@ -623,7 +626,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
          *      Absolute URL that ends with '/'.
          */
         public String getUpdateCenterUrl() {
-            return "http://updates.jenkins-ci.org/";
+            return UPDATE_CENTER_URL;
         }
 
         /**
