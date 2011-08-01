@@ -26,8 +26,6 @@ package hudson;
 import com.thoughtworks.xstream.converters.reflection.PureJavaReflectionProvider;
 import com.thoughtworks.xstream.core.JVM;
 import com.sun.jna.Native;
-import hudson.license.LicenseManager;
-import hudson.license.RegistrationHandler;
 import hudson.model.Hudson;
 import hudson.model.User;
 import hudson.triggers.SafeTimerTask;
@@ -223,13 +221,8 @@ public final class WebAppMain implements ServletContextListener {
                 @Override
                 public void run() {
                     try {
-                        Hudson theInstance = new Hudson(home, context);
-                        RegistrationHandler rh = new RegistrationHandler(context);
-                        // is this licenseKey valid for this installation?
-                        if (!LicenseManager.getInstance().isExpired() || Main.isUnitTest)
-                            context.setAttribute(APP, theInstance);
-                        else
-                            context.setAttribute(APP, rh);
+                        Hudson instance = new Hudson(home, context);
+                        context.setAttribute(APP, instance);
 
                         // trigger the loading of changelogs in the background,
                         // but give the system 10 seconds so that the first page

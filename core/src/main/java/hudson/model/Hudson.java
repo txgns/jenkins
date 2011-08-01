@@ -61,7 +61,6 @@ import hudson.cli.declarative.CLIResolver;
 import hudson.init.InitMilestone;
 import hudson.init.InitReactorListener;
 import hudson.init.InitStrategy;
-import hudson.license.LicenseManager;
 import hudson.lifecycle.Lifecycle;
 import hudson.logging.LogRecorderManager;
 import hudson.lifecycle.RestartNotSupportedException;
@@ -3515,10 +3514,6 @@ public class Hudson extends Node implements ModifiableItemGroup<TopLevelItem>, S
             throw e;
         }
         return this;
-    }
-    
-    public LicenseManager getLicense() {
-        return ManagementLink.all().get(LicenseManager.class);
     }
 
     /**
