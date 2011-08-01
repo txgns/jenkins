@@ -53,7 +53,7 @@ THE SOFTWARE.
         <h2>${%Result}</h2>
         <pre><st:out value="${output}"/></pre>
       </j:if>
+</j:if>
     </l:main-panel>
- </j:if>
   </l:layout>
 </j:jelly>
