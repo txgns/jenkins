@@ -40,7 +40,6 @@ import hudson.Main;
 import hudson.PluginManager;
 import hudson.Util;
 import hudson.WebAppMain;
-import hudson.license.LicenseManager;
 import hudson.matrix.MatrixBuild;
 import hudson.matrix.MatrixProject;
 import hudson.matrix.MatrixRun;
