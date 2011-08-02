@@ -562,13 +562,14 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         }
 
         public ConnectedMaster getOwner() {
-            return (ConnectedMaster)owner;
+            return owner == NOOP ? null : (ConnectedMaster) owner;
         }
 
         @Override
         protected void onModified() throws IOException {
-            for (ConnectedMasterProperty p : this)
+            for (ConnectedMasterProperty p : this) {
                 p.setOwner(getOwner());
+            }
         }
     }
 

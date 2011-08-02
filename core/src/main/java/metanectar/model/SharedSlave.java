@@ -526,13 +526,13 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
         }
 
         public SharedSlave getOwner() {
-            return (SharedSlave) owner;
+            return owner == NOOP ? null : (SharedSlave)owner;
         }
 
         @Override
         protected void onModified() throws IOException {
             for (SharedSlaveProperty p : this) {
-                p.setOwner(getOwner());
+                p.setOwner(SharedSlave.class.cast(owner));
             }
         }
     }

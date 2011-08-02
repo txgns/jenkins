@@ -652,7 +652,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
         }
 
         public SharedCloud getOwner() {
-            return (SharedCloud) owner;
+            return owner == NOOP ? null : (SharedCloud) owner;
         }
 
         @Override
