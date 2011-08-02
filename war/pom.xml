@@ -81,7 +81,7 @@ THE SOFTWARE.
     <dependency>
       <groupId>com.cloudbees.nectar.plugins</groupId>
       <artifactId>cloudbees-metanectar-plugin</artifactId>
-      <version>1.17</version>
+      <version>1.18</version>
       <type>hpi</type>
       <scope>test</scope>
     </dependency>
@@ -200,7 +200,7 @@ THE SOFTWARE.
                 <artifactItem>
                   <groupId>org.jenkins-ci.main</groupId>
                   <artifactId>jenkins-war</artifactId>
-                  <version>1.415</version>
+                  <version>1.425-cb-3</version>
                   <type>war</type>
                 </artifactItem>
                 <artifactItem>
