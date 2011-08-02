@@ -39,7 +39,6 @@ import com.gargoylesoftware.htmlunit.javascript.HtmlUnitContextFactory;
 import com.gargoylesoftware.htmlunit.javascript.host.xml.XMLHttpRequest;
 import hudson.*;
 import hudson.Util;
-import hudson.license.LicenseManager;
 import hudson.model.AbstractBuild;
 import hudson.model.Computer;
 import hudson.model.Executor;
