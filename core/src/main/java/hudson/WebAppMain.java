@@ -25,8 +25,7 @@ package hudson;
 
 import com.thoughtworks.xstream.converters.reflection.PureJavaReflectionProvider;
 import com.thoughtworks.xstream.core.JVM;
-import hudson.license.LicenseManager;
-import hudson.license.RegistrationHandler;
+import com.sun.jna.Native;
 import hudson.model.Hudson;
 import hudson.model.ManagementLink;
 import hudson.model.User;
@@ -224,16 +223,6 @@ public class WebAppMain implements ServletContextListener {
                 public void run() {
                     try {
                         Hudson theInstance = createHudson(home, context);
-                        // Comment out license checking for now, makes it easier for development purposes
-                        // TODO revert back later with a way to support a development mode where a
-                        // license is automatically registered.
-//                        RegistrationHandler rh = new RegistrationHandler(context);
-//                        // is this licenseKey valid for this installation?
-//                        if (!LicenseManager.getInstance().isExpired() || Main.isUnitTest)
-//                            context.setAttribute(APP, theInstance);
-//                        else
-//                            context.setAttribute(APP, rh);
-                        ManagementLink.all().remove(theInstance.getLicense());
                         context.setAttribute(APP, theInstance);
 
                         // trigger the loading of changelogs in the background,
