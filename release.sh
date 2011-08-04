@@ -23,7 +23,7 @@ fi
 cd "$ws"
 # svn update
 # if left-over hudson.war for Debian build from the last time, delete it.
-rm hudson.war || true
+rm nectar.war || true
 
 tag=nectar-$(show-pom-version pom.xml | sed -e "s/-SNAPSHOT//g" -e "s/\\./_/g")
 export MAVEN_OPTS="-Xmx512m -XX:MaxPermSize=256m"
