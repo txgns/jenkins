@@ -228,14 +228,7 @@ public class AttachedMaster extends ConnectedMaster {
 
         JSONObject json = req.getSubmittedForm();
 
-        DescribableList<ConnectedMasterProperty, ConnectedMasterPropertyDescriptor> t =
-                new DescribableList<ConnectedMasterProperty, ConnectedMasterPropertyDescriptor>(NOOP,getProperties().toList());
-        t.rebuild(req,json.optJSONObject("properties"),ConnectedMasterProperty.all());
-        properties.clear();
-        for (ConnectedMasterProperty p : t) {
-            p.setOwner(this);
-            properties.add(p);
-        }
+        properties.rebuild(req,json.optJSONObject("properties"),ConnectedMasterProperty.all());
 
         save();
 

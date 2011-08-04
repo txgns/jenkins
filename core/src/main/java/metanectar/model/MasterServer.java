@@ -826,14 +826,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
             labelExpression = null;
         }
 
-        DescribableList<ConnectedMasterProperty, ConnectedMasterPropertyDescriptor> t =
-                new DescribableList<ConnectedMasterProperty, ConnectedMasterPropertyDescriptor>(NOOP,getProperties().toList());
-        t.rebuild(req,formData.optJSONObject("properties"),ConnectedMasterProperty.all());
-        properties.clear();
-        for (ConnectedMasterProperty p : t) {
-            p.setOwner(this);
-            properties.add(p);
-        }
+        properties.rebuild(req,formData.optJSONObject("properties"),ConnectedMasterProperty.all());
 
         save();
 

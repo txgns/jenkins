@@ -7,6 +7,7 @@ import hudson.AbortException;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.model.*;
+import hudson.util.DescribableList;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.HttpResponse;
@@ -108,6 +109,12 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
      */
     protected volatile String templatePath;
 
+    /**
+     * The properties
+     */
+    protected volatile DescribableList<MasterTemplateProperty, MasterTemplatePropertyDescriptor> properties =
+            new PropertyList(this);
+
     public MasterTemplate(ItemGroup parent, String name) {
         super(parent, name);
     }
@@ -132,6 +139,11 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
     }
 
     private void init() {
+        if (properties == null) {
+            properties = new PropertyList(this);
+        } else {
+            properties.setOwner(this);
+        }
     }
 
     //
@@ -334,6 +346,33 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
     }
 
 
+    // Properties
+
+    public DescribableList<MasterTemplateProperty,MasterTemplatePropertyDescriptor> getProperties() {
+        return properties;
+    }
+
+    public List<hudson.model.Action> getPropertyActions() {
+        ArrayList<hudson.model.Action> result = new ArrayList<hudson.model.Action>();
+        for (MasterTemplateProperty prop: properties) {
+            result.addAll(prop.getMasterTemplateActions(this));
+        }
+        return result;
+    }
+
+    @Override
+    public List<hudson.model.Action> getActions() {
+        List<hudson.model.Action> result = new ArrayList<hudson.model.Action>(super.getActions());
+        result.addAll(getPropertyActions());
+        return Collections.unmodifiableList(result);
+    }
+
+    @Override
+    public void addAction(hudson.model.Action a) {
+        if(a==null) throw new IllegalArgumentException();
+        super.getActions().add(a);
+    }
+
     // Configuration
 
     public synchronized void doConfigSubmit(StaplerRequest req,
@@ -347,6 +386,10 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
             if (isSourceConfigurable()) {
                 setConfiguredState(req.bindJSON(MasterTemplateSource.class, json.getJSONObject("source")));
             }
+
+            properties.rebuild(req,json.optJSONObject("properties"),MasterTemplateProperty.all());
+
+            save();
 
             String newName = req.getParameter("name");
             if (newName != null && !newName.equals(name)) {
@@ -392,6 +435,29 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
     }
 
     //
+    public static class PropertyList extends
+            DescribableList<MasterTemplateProperty,MasterTemplatePropertyDescriptor> {
+        private PropertyList(MasterTemplate owner) {
+            super(owner);
+        }
+
+        public PropertyList() {// needed for XStream deserialization
+        }
+
+        public MasterTemplate getOwner() {
+            return (MasterTemplate) owner;
+        }
+
+        @Override
+        protected void onModified() throws IOException {
+            if (owner instanceof MasterTemplate) {
+                for (MasterTemplateProperty p : this) {
+                    p.setOwner(getOwner());
+                }
+            }
+        }
+    }
+
 
     @Extension
     public static class DescriptorImpl extends TopLevelItemDescriptor {
