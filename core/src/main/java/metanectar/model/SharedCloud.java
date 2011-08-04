@@ -232,6 +232,19 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
         return result;
     }
 
+    @Override
+    public List<Action> getActions() {
+        List<Action> result = new ArrayList<Action>(super.getActions());
+        result.addAll(getPropertyActions());
+        return Collections.unmodifiableList(result);
+    }
+
+    @Override
+    public void addAction(Action a) {
+        if(a==null) throw new IllegalArgumentException();
+        super.getActions().add(a);
+    }
+
     //////// Action methods
 
     public synchronized void doConfigSubmit(StaplerRequest req,
@@ -254,13 +267,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
                 cloud = req.bindJSON(Cloud.class, cloudJson);
             }
 
-            PropertyList t = new PropertyList(properties.toList());
-            t.rebuild(req, json.optJSONObject("properties"), SharedCloudPropertyDescriptor.all());
-            properties.clear();
-            for (SharedCloudProperty p : t) {
-                p.setOwner(this);
-                properties.add(p);
-            }
+            properties.rebuild(req, json.optJSONObject("properties"), SharedCloudPropertyDescriptor.all());
 
             save();
 
@@ -647,18 +654,16 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
         public PropertyList() {// needed for XStream deserialization
         }
 
-        /*package*/ PropertyList(List<SharedCloudProperty<?>> initialList) {
-            super(NOOP, initialList);
-        }
-
         public SharedCloud getOwner() {
-            return owner == NOOP ? null : (SharedCloud) owner;
+            return (SharedCloud) owner;
         }
 
         @Override
         protected void onModified() throws IOException {
-            for (SharedCloudProperty p : this) {
-                p.setOwner(getOwner());
+            if (owner instanceof SharedCloud) {
+                for (SharedCloudProperty p : this) {
+                    p.setOwner(getOwner());
+                }
             }
         }
     }

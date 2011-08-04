@@ -6,13 +6,14 @@
       <j:set var="url" value="${h.getNearestAncestorUrl(request,it)}"/>
       <l:task icon="images/24x24/up.png" href="${rootURL}/" title="${%Back to Dashboard}"/>
       <l:task icon="images/24x24/search.png" href="${url}/" title="${%Status}"/>
-      <l:task icon="images/24x24/edit-delete.gif" href="delete" title="${%Delete Slave}" permission="${it.DELETE}"/>
+      <l:task icon="images/24x24/edit-delete.gif" href="${url}/delete" title="${%Delete Slave}" permission="${it.DELETE}"/>
       <l:isAdmin>
-        <l:task icon="images/24x24/setting.gif" href="configure" title="${%Configure}"/>
-        <l:task icon="images/24x24/clipboard.gif" href="log" title="${%Log}"/>
+        <l:task icon="images/24x24/setting.gif" href="${url}/configure" title="${%Configure}"/>
+        <l:task icon="images/24x24/clipboard.gif" href="${url}/log" title="${%Log}"/>
       </l:isAdmin>
-      <j:forEach var="action" items="${it.propertyActions}">
-        <l:task icon="${action.iconFileName}" href="${action.urlName}" title="${action.displayName}"/>
+      <j:forEach var="action" items="${it.actions}">
+        <l:task icon="${h.getIconFilePath(action)}" title="${action.displayName}"
+                href="${h.getActionUrl(it.url,action)}" />
       </j:forEach>
     </l:tasks>
   </l:side-panel>

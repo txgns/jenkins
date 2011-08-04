@@ -186,6 +186,19 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         return result;
     }
 
+    @Override
+    public List<Action> getActions() {
+        List<Action> result = new ArrayList<Action>(super.getActions());
+        result.addAll(getPropertyActions());
+        return Collections.unmodifiableList(result);
+    }
+
+    @Override
+    public void addAction(Action a) {
+        if(a==null) throw new IllegalArgumentException();
+        super.getActions().add(a);
+    }
+
     // Logging
 
     private File getLogFile() {
@@ -562,13 +575,15 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         }
 
         public ConnectedMaster getOwner() {
-            return owner == NOOP ? null : (ConnectedMaster) owner;
+            return (ConnectedMaster) owner;
         }
 
         @Override
         protected void onModified() throws IOException {
-            for (ConnectedMasterProperty p : this) {
-                p.setOwner(getOwner());
+            if (owner instanceof ConnectedMaster) {
+                for (ConnectedMasterProperty p : this) {
+                    p.setOwner(getOwner());
+                }
             }
         }
     }

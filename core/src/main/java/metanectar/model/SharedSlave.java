@@ -235,12 +235,25 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
         this.properties = properties;
     }
 
-    public List<hudson.model.Action> getPropertyActions() {
+    public List<Action> getPropertyActions() {
         ArrayList<Action> result = new ArrayList<hudson.model.Action>();
         for (SharedSlaveProperty<?> prop : properties) {
             result.addAll(prop.getSlaveActions(this));
         }
         return result;
+    }
+
+    @Override
+    public List<Action> getActions() {
+        List<Action> result = new ArrayList<Action>(super.getActions());
+        result.addAll(getPropertyActions());
+        return Collections.unmodifiableList(result);
+    }
+
+    @Override
+    public void addAction(Action a) {
+        if(a==null) throw new IllegalArgumentException();
+        super.getActions().add(a);
     }
 
     //////// Action methods
@@ -256,13 +269,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
 
             req.bindJSON(this, json.getJSONObject("node"));
 
-            PropertyList t = new PropertyList(properties.toList());
-            t.rebuild(req, json.optJSONObject("properties"), SharedSlavePropertyDescriptor.all());
-            properties.clear();
-            for (SharedSlaveProperty p : t) {
-                p.setOwner(this);
-                properties.add(p);
-            }
+            properties.rebuild(req, json.optJSONObject("properties"), SharedSlavePropertyDescriptor.all());
 
             save();
 
@@ -521,18 +528,16 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
         public PropertyList() {// needed for XStream deserialization
         }
 
-        /*package*/ PropertyList(List<SharedSlaveProperty<?>> initialList) {
-            super(NOOP, initialList);
-        }
-
         public SharedSlave getOwner() {
-            return owner == NOOP ? null : (SharedSlave)owner;
+            return (SharedSlave)owner;
         }
 
         @Override
         protected void onModified() throws IOException {
-            for (SharedSlaveProperty p : this) {
-                p.setOwner(SharedSlave.class.cast(owner));
+            if (owner instanceof SharedSlave) {
+                for (SharedSlaveProperty p : this) {
+                    p.setOwner(getOwner());
+                }
             }
         }
     }

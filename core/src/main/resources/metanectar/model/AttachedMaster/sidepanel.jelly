@@ -1,7 +1,8 @@
 <!--
 The MIT License
 
-Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Erik Ramfelt, Tom Huybrechts, id:cactusman, Yahoo! Inc.
+Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Erik Ramfelt, Tom Huybrechts, id:cactusman,
+Yahoo! Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,25 +28,31 @@ THE SOFTWARE.
 -->
 <j:jelly xmlns:j="jelly:core" xmlns:x="jelly:xml" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-    <l:side-panel>
-        <l:tasks>
-            <j:set var="url" value="${h.getNearestAncestorUrl(request,it)}"/>
-            <l:task icon="images/24x24/up.png" href="${rootURL}/" title="${%Back to Dashboard}"/>
-            <l:task icon="images/24x24/search.png" href="${url}/" title="${%Status}"/>
-            <div id="ajax-sidepanel">
-                <st:include page="sidepanel-ajax.jelly"/>
-            </div>
-            <l:isAdmin>
-                <l:task icon="images/24x24/setting.gif" href="manage" title="${%Manage}"/>
-                <l:task icon="images/24x24/setting.gif" href="configure" title="${%Configure}"/>
-                <l:task icon="images/24x24/clipboard.gif" href="log" title="${%Log}" />
-            </l:isAdmin>
-          <j:forEach var="action" items="${it.propertyActions}">
-            <l:task icon="${action.iconFileName}" href="${action.urlName}" title="${action.displayName}" />
-          </j:forEach>
-        </l:tasks>
-    </l:side-panel>
-    <script type="text/javascript">
-        new Ajax.PeriodicalUpdater('ajax-sidepanel', './sidepanel-ajax')
-    </script>
+  <l:side-panel>
+    <l:tasks>
+      <j:set var="url" value="${h.getNearestAncestorUrl(request,it)}"/>
+      <l:task icon="images/24x24/up.png" href="${rootURL}/" title="${%Back to Dashboard}"/>
+      <l:task icon="images/24x24/search.png" href="${url}/" title="${%View}"/>
+
+      <l:isAdmin>
+        <l:task icon="images/24x24/gear.png" href="${url}/manage" title="${%Manage}">
+        </l:task>
+        <j:if test="${h.hyperlinkMatchesCurrentPage('manage')}">
+          <div id="ajax-sidepanel" class="subtasks">
+            <st:include page="sidepanel-ajax.jelly"/>
+          </div>
+          <script type="text/javascript">
+            new Ajax.PeriodicalUpdater('ajax-sidepanel', './sidepanel-ajax')
+          </script>
+        </j:if>
+        <l:task icon="images/24x24/setting.png" href="${url}/configure" title="${%Configure}"/>
+        <l:task icon="images/24x24/clipboard.gif" href="${url}/log" title="${%Log}"/>
+      </l:isAdmin>
+
+      <j:forEach var="action" items="${it.actions}">
+        <l:task icon="${h.getIconFilePath(action)}" title="${action.displayName}"
+                href="${h.getActionUrl(it.url,action)}"/>
+      </j:forEach>
+    </l:tasks>
+  </l:side-panel>
 </j:jelly>
