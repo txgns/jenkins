@@ -1,3 +1,9 @@
+jenkins (1.400.0.9) unstable; urgency=low
+
+  * See http://jenkins-ci.org/changelog for more details.
+
+ -- Kohsuke Kawaguchi <kkawaguchi@cloudbees.com>  Thu, 04 Aug 2011 13:29:56 -0700
+
 jenkins (1.400.0.7) unstable; urgency=low
 
   * See http://jenkins-ci.org/changelog for more details.
