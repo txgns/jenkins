@@ -47,21 +47,6 @@ import hudson.tasks.Maven.MavenInstallation;
 import hudson.util.ArgumentListBuilder;
 import hudson.util.IOUtils;
 import hudson.util.ReflectionUtils;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.Serializable;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.maven.BuildFailureException;
 import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.apache.maven.execution.MavenSession;
@@ -72,6 +57,20 @@ import org.apache.maven.project.MavenProject;
 import org.kohsuke.stapler.Ancestor;
 import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.export.Exported;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * {@link Run} for {@link MavenModule}.
@@ -194,9 +193,7 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
     @Override
     public EnvVars getEnvironment(TaskListener log) throws IOException, InterruptedException {
         EnvVars envs = super.getEnvironment(log);
-        String opts = project.getParent().getMavenOpts();
-        if(opts!=null)
-            envs.put("MAVEN_OPTS", opts);
+
         // We need to add M2_HOME and the mvn binary to the PATH so if Maven
         // needs to run Maven it will pick the correct one.
         // This can happen if maven calls ANT which itself calls Maven
@@ -623,25 +620,14 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
             
             listener.getLogger().println("Found mavenVersion " + mavenVersion + " from file " + mavenInformation.getVersionResourcePath());
             
-            ProcessCache.MavenProcess process = null;
-            
-            boolean maven3orLater = new ComparableVersion (mavenVersion).compareTo( new ComparableVersion ("3.0") ) >= 0;
-           
-            if ( maven3orLater )
-            {
-                process =
-                    MavenBuild.mavenProcessCache.get( launcher.getChannel(), listener,
-                                                      new Maven3ProcessFactory( getParent().getParent(), launcher,
-                                                                                envVars, getMavenOpts(listener), null ) );
-            }
-            else
-            {
-                process =
-                    MavenBuild.mavenProcessCache.get( launcher.getChannel(), listener,
-                                                      new MavenProcessFactory( getParent().getParent(), launcher,
-                                                                               envVars, getMavenOpts(listener), null ) );
-            }
 
+            boolean maven3orLater = new ComparableVersion(mavenVersion).compareTo( new ComparableVersion ("3.0") ) >= 0;
+
+            ProcessCache.MavenProcess process = MavenBuild.mavenProcessCache.get( launcher.getChannel(), listener, maven3orLater
+                ? new Maven3ProcessFactory(
+                        getParent().getParent(), launcher, envVars, getMavenOpts(listener, envVars), null )
+                : new MavenProcessFactory(
+                        getParent().getParent(), launcher, envVars, getMavenOpts(listener, envVars), null ));
 
             ArgumentListBuilder margs = new ArgumentListBuilder("-N","-B");
             if(mms.usesPrivateRepository())
@@ -708,27 +694,8 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
 
     }
 
-    public String getMavenOpts(TaskListener listener) {
-        MavenModuleSet mms = getProject().getParent();
-        String opts = mms.getMavenOpts();
-        if (opts == null ) return null;
-        try {
-            Class<?> clazz = Class.forName( "org.jenkinsci.plugins.tokenmacro.TokenMacro" );
-            Method expandMethod =
-                ReflectionUtils.findMethod(clazz, "expand", new Class[]{ AbstractBuild.class, TaskListener.class, String.class} );
-            opts = (String) expandMethod.invoke( null, this, listener, opts );
-            //opts = TokenMacro.expand(this, listener, opts);
-        //} catch (MacroEvaluationException e) {
-        //    listener.error( "Ignore MacroEvaluationException " + e.getMessage() );            
-        }
-        catch(Exception tokenException) {
-            listener.error("Ignore Problem expanding maven opts macros " + tokenException.getMessage());
-        }
-        catch(LinkageError linkageError) {
-            // Token plugin not present. Ignore, this is OK.
-        }
-
-        return opts;
+    public String getMavenOpts(TaskListener listener, EnvVars envVars) {
+        return envVars.expand(expandTokens(listener, getProject().getParent().getMavenOpts()));
     }
 
     private static final int MAX_PROCESS_CACHE = 5;

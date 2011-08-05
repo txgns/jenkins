@@ -27,6 +27,7 @@ package hudson.maven;
 import static hudson.Util.fixEmpty;
 import static hudson.model.ItemGroupMixIn.loadChildren;
 import hudson.CopyOnWrite;
+import hudson.EnvVars;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Indenter;
@@ -718,6 +719,11 @@ public final class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,Ma
      * to be used to launch Maven process.
      *
      * If mavenOpts is null or empty, we'll return the globally-defined MAVEN_OPTS.
+     *
+     * <p>
+     * This method returns a configured value as-is, which can include variabl references.
+     * At runtime, use {@link AbstractMavenBuild#getMavenOpts(TaskListener, EnvVars)} to obtain
+     * a fully resolved value.
      */
     public String getMavenOpts() {
         if ((mavenOpts!=null) && (mavenOpts.trim().length()>0)) { 
