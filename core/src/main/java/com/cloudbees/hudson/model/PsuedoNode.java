@@ -98,7 +98,7 @@ public class PsuedoNode extends Node {
 
     @Override
     public String getNodeName() {
-        throw new UnsupportedOperationException();
+        return "psuedonode";
     }
 
     @Override
