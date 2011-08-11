@@ -119,11 +119,11 @@ THE SOFTWARE.
                   </sequential>
                 </macrodef>
 
-                <resolvePlugin groupId="com.infradna.hudson.plugins" artifactId="infradna-backup" version="1.5" />
+                <resolvePlugin groupId="com.infradna.hudson.plugins" artifactId="infradna-backup" version="1.6" />
                 <resolvePlugin groupId="com.cloudbees.nectar" artifactId="nectar-vmware" version="1.2" />
-                <resolvePlugin groupId="com.cloudbees.nectar" artifactId="nectar-rbac" version="1.1" />
-                <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="cloudbees-folder" version="1.2" />
-                <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="wikitext" version="1.4" />
+                <resolvePlugin groupId="com.cloudbees.nectar" artifactId="nectar-rbac" version="1.2" />
+                <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="cloudbees-folder" version="1.4" />
+                <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="wikitext" version="1.5" />
                 <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="nectar-license" version="1.1" />
                 <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="cloudbees-license" version="1.1" />
               </tasks>
