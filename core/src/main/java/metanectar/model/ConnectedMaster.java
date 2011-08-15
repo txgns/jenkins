@@ -1,15 +1,28 @@
 package metanectar.model;
 
-import com.cloudbees.commons.metanectar.context.NodeContext;
 import com.cloudbees.commons.metanectar.context.ItemNodeContext;
+import com.cloudbees.commons.metanectar.context.NodeContext;
+import com.cloudbees.commons.metanectar.context.NodeContextContributor;
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import com.google.common.base.Function;
 import com.google.common.base.Objects;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Util;
 import hudson.console.AnnotatedLargeText;
-import hudson.model.*;
+import hudson.model.AbstractItem;
+import hudson.model.Action;
+import hudson.model.Hudson;
+import hudson.model.Item;
+import hudson.model.ItemGroup;
+import hudson.model.Job;
+import hudson.model.PeriodicWork;
+import hudson.model.StatusIcon;
+import hudson.model.StockStatusIcon;
+import hudson.model.TaskListener;
+import hudson.model.TopLevelItem;
+import hudson.model.TopLevelItemDescriptor;
 import hudson.remoting.Callable;
 import hudson.remoting.Channel;
 import hudson.util.DescribableList;
@@ -19,21 +32,31 @@ import hudson.util.io.ArchiverFactory;
 import hudson.util.io.ReopenableFileOutputStream;
 import metanectar.provisioning.IdentifierFinder;
 import metanectar.provisioning.ScopedSlaveManager;
+import net.jcip.annotations.GuardedBy;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
-import java.io.*;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
 /**
@@ -113,7 +136,11 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
     protected volatile DescribableList<ConnectedMasterProperty,ConnectedMasterPropertyDescriptor> properties =
             new PropertyList(this);
 
+    @GuardedBy("this")
     private transient NodeContext nodeContext;
+
+    @GuardedBy("this")
+    private transient byte[] remoteNodeContextDigest;
 
     protected ConnectedMaster(ItemGroup parent, String name) {
         super(parent, name);
@@ -267,24 +294,58 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         taskListener.getLogger().println(toString());
     }
 
-    protected NodeContext createNodeContext(ItemGroup parent) {
-        return new ItemNodeContext(MetaNectar.getInstance().getSecurityRealm(),
+    @SuppressWarnings("unchecked")
+    protected NodeContext createNodeContext() {
+        final ItemNodeContext result = new ItemNodeContext(MetaNectar.getInstance().getSecurityRealm(),
                 MetaNectar.getInstance().getAuthorizationStrategy(),
                 MetaNectar.getInstance().getRootUrl(), this);
+        for (NodeContextContributor c : Hudson.getInstance().getExtensionList(NodeContextContributor.class)) {
+            if (c.canContribute(this)) {
+                try {
+                    c.contribute(this, result);
+                } catch (Throwable t) {
+                    LogRecord r = new LogRecord(Level.WARNING, "Uncaught exception from {0} on {1}");
+                    r.setThrown(t);
+                    r.setParameters(new Object[]{c, this});
+                    LOGGER.log(r);
+                }
+            }
+        }
+        return result;
     }
 
-    protected boolean isNodeContextOutOfDate() {
-        if (nodeContext == null) return true;
-        if (nodeContext.getAuthenticationRealm() != MetaNectar.getInstance().getSecurityRealm()) return true;
-        if (nodeContext.getAuthorizationStrategy() != MetaNectar.getInstance().getAuthorizationStrategy()) return true;
-        return !nodeContext.getObjectUrl().equals(ItemNodeContext.getUrl(MetaNectar.getInstance().getRootUrl(), this));
+    @NonNull
+    public synchronized NodeContext getNodeContext() {
+        if (nodeContext == null) {
+            nodeContext = createNodeContext();
+            remoteNodeContextDigest = null;
+        }
+        return nodeContext;
     }
 
-    protected void updateNodeContext() {
-        if (channel != null && isNodeContextOutOfDate()) {
-            LOGGER.log(Level.INFO, "Updating context for {0} as it was out of date", this);
-            nodeContext = createNodeContext(getParent());
-            channel.setProperty(NodeContext.class.getName(), nodeContext);
+    protected synchronized void updateNodeContext() {
+        if (channel != null) {
+            final NodeContext nodeContext = getNodeContext();
+            // make sure we are following the same instance
+            if (nodeContext.getAuthenticationRealm() != Hudson.getInstance().getSecurityRealm()) {
+                nodeContext.setAuthenticationRealm(Hudson.getInstance().getSecurityRealm());
+            }
+            // make sure we are following the same instance
+            if (nodeContext.getAuthorizationStrategy() != Hudson.getInstance().getAuthorizationStrategy()) {
+                nodeContext.setAuthorizationStrategy(Hudson.getInstance().getAuthorizationStrategy());
+            }
+            final byte[] currentDigest = nodeContext.digest();
+            if (!Arrays.equals(currentDigest, remoteNodeContextDigest)) {
+                LOGGER.log(Level.INFO, "Updating context for {0} as it was out of date", this);
+
+                channel.setProperty(NodeContext.class.getName(), nodeContext);
+                remoteNodeContextDigest = currentDigest;
+            } else {
+                LOGGER.log(Level.INFO, "Context for {0} has not changed since last updated", this);
+            }
+        } else {
+            LOGGER.log(Level.INFO, "Cannot update context for {0} as no connection available", this);
+            remoteNodeContextDigest = null;
         }
     }
 
@@ -449,7 +510,7 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
             public void onClosed(Channel c, IOException cause) {
                 ConnectedMaster.this.channel = null;
                 ConnectedMaster.this.slaveManager = null;
-                ConnectedMaster.this.nodeContext = null;
+                updateNodeContext();
 
                 // Orderly shutdown will have null exception
                 try {
@@ -612,7 +673,6 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
             }
         }
     }
-
 
 
     private static final Logger LOGGER = Logger.getLogger(ConnectedMaster.class.getName());
