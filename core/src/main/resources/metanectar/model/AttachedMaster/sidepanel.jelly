@@ -50,8 +50,10 @@ THE SOFTWARE.
       </l:isAdmin>
 
       <j:forEach var="action" items="${it.actions}">
-        <l:task icon="${h.getIconFilePath(action)}" title="${action.displayName}"
-                href="${h.getActionUrl(it.url,action)}"/>
+        <j:if test="${action.url!=null}">
+          <l:task icon="${h.getIconFilePath(action)}" title="${action.displayName}"
+                  href="${h.getActionUrl(it.url,action)}"/>
+        </j:if>
       </j:forEach>
     </l:tasks>
   </l:side-panel>
