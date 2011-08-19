@@ -80,7 +80,7 @@
     <dependency>
       <groupId>com.cloudbees.metanectar</groupId>
       <artifactId>metanectar-war</artifactId>
-      <type>war</type>
+      <classifier>war-for-test</classifier>
       <version>1.400.11-SNAPSHOT</version>
       <scope>test</scope>
     </dependency>
