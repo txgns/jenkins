@@ -81,7 +81,21 @@ THE SOFTWARE.
     <dependency>
       <groupId>com.cloudbees.nectar.plugins</groupId>
       <artifactId>cloudbees-metanectar-plugin</artifactId>
-      <version>1.18</version>
+      <version>1.19-SNAPSHOT</version>
+      <type>hpi</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.cloudbees.nectar</groupId>
+      <artifactId>nectar-rbac</artifactId>
+      <version>2.0</version>
+      <type>hpi</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.cloudbees.nectar.plugins</groupId>
+      <artifactId>cloudbees-license</artifactId>
+      <version>1.1</version>
       <type>hpi</type>
       <scope>test</scope>
     </dependency>
@@ -209,6 +223,16 @@ THE SOFTWARE.
                   <type>hpi</type>
                 </artifactItem>
                 <artifactItem>
+                  <groupId>com.cloudbees.nectar</groupId>
+                  <artifactId>nectar-rbac</artifactId>
+                  <type>hpi</type>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>com.cloudbees.nectar.plugins</groupId>
+                  <artifactId>cloudbees-license</artifactId>
+                  <type>hpi</type>
+                </artifactItem>
+                <artifactItem>
                   <groupId>com.cloudbees.plugins</groupId>
                   <artifactId>cloudbees-slave-provisioning-plugin</artifactId>
                   <type>hpi</type>
@@ -278,13 +302,15 @@ THE SOFTWARE.
 
                 <resolvePlugin groupId="com.infradna.hudson.plugins" artifactId="infradna-backup" version="1.2" />
                 <resolvePlugin groupId="com.cloudbees.nectar" artifactId="nectar-vmware" version="1.11" />
-                <resolvePlugin groupId="com.cloudbees.plugins" artifactId="cloudbees-update-center-plugin" version="0.10" />
+                <resolvePlugin groupId="com.cloudbees.plugins" artifactId="cloudbees-update-center-plugin" version="0.11" />
                 <resolvePlugin groupId="com.cloudbees.metanectar" artifactId="metanectar-updatecenter-plugin" version="0.4" />
                 <resolvePlugin groupId="com.cloudbees.metanectar" artifactId="metanectar-vmware" version="0.1" />
-                <resolvePlugin groupId="com.cloudbees.nectar" artifactId="nectar-rbac" version="1.1" />
+                <resolvePlugin groupId="com.cloudbees.nectar" artifactId="nectar-rbac" version="2.0" />
                 <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="cloudbees-folder" version="1.3" />
                 <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="metanectar-license" version="1.1" />
                 <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="cloudbees-license" version="1.2" />
+                <!--<resolvePlugin groupId="com.cloudbees.metanectar.plugins" artifactId="cloudbees-metanectar-rbac-plugin" version="0.1-SNAPSHOT" />-->
+
               </tasks>
             </configuration>
           </execution>
