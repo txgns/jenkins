@@ -383,7 +383,7 @@ THE SOFTWARE.
     <plugins>
       <plugin>
         <artifactId>maven-release-plugin</artifactId>
-        <version>2.1</version>
+        <version>2.2.1</version>
         <configuration>
           <!-- use quick prepare, which may result in preparation of a borked tag, but will speed up the release -->
           <preparationGoals>clean validate</preparationGoals>
