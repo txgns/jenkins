@@ -76,7 +76,7 @@ THE SOFTWARE.
     <maven.version>${mavenVersion}</maven.version>
     <aetherVersion>1.9</aetherVersion>
     <sisuInjectVersion>1.4.3.1</sisuInjectVersion>
-    <wagonVersion>1.0-beta-7</wagonVersion>
+    <wagonVersion>1.0</wagonVersion>
     <!-- *.html files are in UTF-8, and *.properties are in iso-8859-1, so this configuration is acturally incorrect,
     but this suppresses a warning from Maven, and as long as we don't do filtering we should be OK. -->
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -289,8 +289,8 @@ THE SOFTWARE.
           <dependencies>
             <dependency>
               <groupId>org.apache.maven.wagon</groupId>
-              <artifactId>wagon-webdav</artifactId>
-              <version>1.0-beta-2</version>
+              <artifactId>wagon-webdav-jackrabbit</artifactId>
+              <version>1.0</version>
             </dependency>
           </dependencies>
         </plugin>        
