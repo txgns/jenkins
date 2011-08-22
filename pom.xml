@@ -480,14 +480,13 @@ THE SOFTWARE.
       <extension>
         <groupId>org.apache.maven.wagon</groupId>
         <artifactId>wagon-http</artifactId>
-        <version>1.0-beta-5</version>
+        <version>1.0</version>
       </extension>
-<!--
       <extension>
         <groupId>org.apache.maven.wagon</groupId>
         <artifactId>wagon-webdav</artifactId>
+        <version>1.0</version>
       </extension>
--->
     </extensions>
   </build>
 
