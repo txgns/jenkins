@@ -94,8 +94,15 @@ THE SOFTWARE.
     </dependency>
     <dependency>
       <groupId>com.cloudbees.nectar.plugins</groupId>
+      <artifactId>cloudbees-folder</artifactId>
+      <version>1.5</version>
+      <type>hpi</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.cloudbees.nectar.plugins</groupId>
       <artifactId>cloudbees-license</artifactId>
-      <version>1.1</version>
+      <version>1.2</version>
       <type>hpi</type>
       <scope>test</scope>
     </dependency>
@@ -225,6 +232,11 @@ THE SOFTWARE.
                 <artifactItem>
                   <groupId>com.cloudbees.nectar</groupId>
                   <artifactId>nectar-rbac</artifactId>
+                  <type>hpi</type>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>com.cloudbees.nectar.plugins</groupId>
+                  <artifactId>cloudbees-folder</artifactId>
                   <type>hpi</type>
                 </artifactItem>
                 <artifactItem>
