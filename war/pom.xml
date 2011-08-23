@@ -81,7 +81,7 @@ THE SOFTWARE.
     <dependency>
       <groupId>com.cloudbees.nectar.plugins</groupId>
       <artifactId>cloudbees-metanectar-plugin</artifactId>
-      <version>1.20</version>
+      <version>1.21</version>
       <type>hpi</type>
       <scope>test</scope>
     </dependency>
@@ -109,7 +109,7 @@ THE SOFTWARE.
     <dependency>
       <groupId>com.cloudbees.plugins</groupId>
       <artifactId>cloudbees-slave-provisioning-plugin</artifactId>
-      <version>0.6</version>
+      <version>0.7</version>
       <type>hpi</type>
       <scope>test</scope>
     </dependency>

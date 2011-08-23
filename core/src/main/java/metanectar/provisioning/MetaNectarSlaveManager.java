@@ -2,10 +2,12 @@ package metanectar.provisioning;
 
 import antlr.ANTLRException;
 import com.cloudbees.commons.metanectar.provisioning.ComputerLauncherFactory;
+import com.cloudbees.commons.metanectar.provisioning.DefaultLeaseId;
 import com.cloudbees.commons.metanectar.provisioning.FutureComputerLauncherFactory;
 import com.cloudbees.commons.metanectar.provisioning.LeaseId;
 import com.cloudbees.commons.metanectar.provisioning.ProvisioningException;
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
+import com.sun.xml.internal.ws.api.streaming.XMLStreamWriterFactory;
 import hudson.model.Label;
 import hudson.model.TaskListener;
 import hudson.model.labels.LabelAtom;
@@ -32,7 +34,7 @@ public class MetaNectarSlaveManager implements SlaveManager {
 
     private static final Logger LOGGER = Logger.getLogger(MetaNectarSlaveManager.class.getName());
 
-    private Set<LeaseIdImpl> leases = Collections.synchronizedSet(new HashSet<LeaseIdImpl>());
+    private Set<DefaultLeaseId> leases = Collections.synchronizedSet(new HashSet<DefaultLeaseId>());
 
     private int n;
 
@@ -71,7 +73,7 @@ public class MetaNectarSlaveManager implements SlaveManager {
             Label label = LabelExpression.parseExpression(labelExpression);
             for (Set<String> hostLabels : hosts) {
                 if (label.matches(asLabelAtoms(hostLabels))) {
-                    LeaseIdImpl leaseId = new LeaseIdImpl(UUID.randomUUID().toString());
+                    DefaultLeaseId leaseId = new DefaultLeaseId(UUID.randomUUID().toString());
                     LOGGER.log(Level.INFO, "Response: provisioning as locally forked slave: {0}", leaseId);
                     listener.getLogger().println("MN: Provisioning locally forked slave id:" + leaseId.getUuid());
                     FutureComputerLauncherFactory result = new FutureComputerLauncherFactory(
@@ -105,7 +107,7 @@ public class MetaNectarSlaveManager implements SlaveManager {
     }
 
     public boolean isProvisioned(LeaseId id) {
-        return id instanceof LeaseIdImpl && leases.contains(id);
+        return id instanceof DefaultLeaseId && leases.contains(id);
     }
 
     private static String asSpaceSeparatedString(Set<String> hostLabels) {

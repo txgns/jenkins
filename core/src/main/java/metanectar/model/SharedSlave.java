@@ -2,6 +2,7 @@ package metanectar.model;
 
 import antlr.ANTLRException;
 import com.cloudbees.commons.metanectar.provisioning.ComputerLauncherFactory;
+import com.cloudbees.commons.metanectar.provisioning.DefaultLeaseId;
 import com.cloudbees.commons.metanectar.provisioning.FutureComputerLauncherFactory;
 import com.cloudbees.commons.metanectar.provisioning.LeaseId;
 import com.cloudbees.commons.metanectar.provisioning.ProvisioningException;
@@ -36,7 +37,6 @@ import hudson.slaves.NodeProperty;
 import hudson.slaves.NodePropertyDescriptor;
 import hudson.slaves.RetentionStrategy;
 import hudson.util.DescribableList;
-import metanectar.provisioning.LeaseIdImpl;
 import metanectar.provisioning.SharedSlaveRetentionStrategy;
 import net.jcip.annotations.GuardedBy;
 import net.sf.json.JSONException;
@@ -88,6 +88,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
 
     protected SharedSlave(ItemGroup parent, String name) {
         super(parent, name);
+        new Throwable("\n\n\n\n\n\n\n\n\n\n\n\n\n\nNEW SHARED SLAVE").printStackTrace();
     }
 
     public boolean isBuilding() {
@@ -448,7 +449,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
                                 SharedSlave.this.wait();
                             }
                             try {
-                                leaseId = new LeaseIdImpl(UUID.randomUUID().toString());
+                                leaseId = new DefaultLeaseId(UUID.randomUUID().toString());
                                 LOGGER.log(Level.INFO, "SharedSlave[{0}] lent out on lease {1}",
                                         new Object[]{getUrl(), leaseId});
                                 return newComputerLauncherFactory(leaseId);

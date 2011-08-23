@@ -3,10 +3,12 @@ package metanectar.model;
 import antlr.ANTLRException;
 import com.cloudbees.commons.futures.CompletedFuture;
 import com.cloudbees.commons.metanectar.provisioning.ComputerLauncherFactory;
+import com.cloudbees.commons.metanectar.provisioning.DefaultLeaseId;
 import com.cloudbees.commons.metanectar.provisioning.FutureComputerLauncherFactory;
 import com.cloudbees.commons.metanectar.provisioning.LeaseId;
 import com.cloudbees.commons.metanectar.provisioning.ProvisioningException;
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
+import com.cloudbees.commons.metanectar.provisioning.SlaveManifest;
 import com.cloudbees.commons.nectar.nodeiterator.NodeIterator;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -34,6 +36,7 @@ import hudson.model.StockStatusIcon;
 import hudson.model.TaskListener;
 import hudson.model.TopLevelItem;
 import hudson.model.TopLevelItemDescriptor;
+import hudson.remoting.Channel;
 import hudson.slaves.AbstractCloudImpl;
 import hudson.slaves.AbstractCloudSlave;
 import hudson.slaves.Cloud;
@@ -42,7 +45,6 @@ import hudson.slaves.NodePropertyDescriptor;
 import hudson.slaves.NodeProvisioner;
 import hudson.util.DescribableList;
 import hudson.util.TimeUnit2;
-import metanectar.provisioning.LeaseIdImpl;
 import metanectar.provisioning.SharedSlaveRetentionStrategy;
 import net.jcip.annotations.GuardedBy;
 import net.sf.json.JSONException;
@@ -61,11 +63,13 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -241,7 +245,9 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
 
     @Override
     public void addAction(Action a) {
-        if(a==null) throw new IllegalArgumentException();
+        if (a == null) {
+            throw new IllegalArgumentException();
+        }
         super.getActions().add(a);
     }
 
@@ -329,16 +335,23 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
     @CLIMethod(name = "shared-cloud-force-release")
     public void doForceRelease(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException, InterruptedException {
+        final ArrayList<Node> nodes = new ArrayList<Node>();
         synchronized (this) {
             if (leaseIds == null) {
                 leaseIds = new LinkedHashMap<LeaseId, Node>();
             } else {
+                nodes.addAll(leaseIds.values());
                 leaseIds.clear();
             }
             try {
                 save();
             } catch (IOException e) {
                 LOGGER.log(Level.INFO, "SharedCloud[{0}] could not persist", getUrl());
+            }
+        }
+        synchronized (nodeLock) {
+            for (Node node : nodes) {
+                returnedNodes.add(new ReturnedNode(node, true));
             }
         }
         if (rsp != null) // null for CLI
@@ -488,7 +501,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
 //                                }
 //                            }
 //                        }
-                        LeaseIdImpl leaseId = new LeaseIdImpl(UUID.randomUUID().toString());
+                        LeaseId leaseId = new DefaultLeaseId(UUID.randomUUID().toString());
 
                         int excessWorkload = 1; // TODO allow larger workloads
 
@@ -754,6 +767,69 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
                     }
                 }
             }
+            boolean allConnected = true;
+            Set<LeaseId> inUse = new HashSet<LeaseId>();
+            for (ConnectedMaster master : MetaNectar.getInstance().getAllItems(ConnectedMaster.class)) {
+                if (master.isOnline()) {
+                    Channel channel = master.getChannel();
+                    SlaveManifest slaveManifest;
+                    try {
+                        slaveManifest = (SlaveManifest) channel.getRemoteProperty(SlaveManifest.class);
+                    } catch (ClassCastException e) {
+                        allConnected = false;
+                        LogRecord lr = new LogRecord(Level.INFO, "Class cast exception trying to talk to master {0}");
+                        lr.setThrown(e);
+                        lr.setParameters(new Object[]{master});
+                        LOGGER.log(lr);
+                        continue;
+                    } catch (Throwable e) {
+                        allConnected = false;
+                        LogRecord lr = new LogRecord(Level.WARNING, "Unexpected exception from master {0}");
+                        lr.setThrown(e);
+                        lr.setParameters(new Object[]{master});
+                        LOGGER.log(lr);
+                        continue;
+                    }
+                    if (slaveManifest != null) {
+                        inUse.addAll(slaveManifest.getSlaves());
+                    } else {
+                        allConnected = false;
+                    }
+                } else {
+                    allConnected = false;
+                }
+            }
+            Set<LeaseId> lentOut;
+            synchronized (this) {
+                lentOut = new HashSet<LeaseId>(leaseIds.keySet());
+            }
+            Set<LeaseId> missing = new HashSet<LeaseId>(lentOut);
+            missing.removeAll(inUse);
+            if (!missing.isEmpty()) {
+                if (allConnected) {
+                    LOGGER.log(Level.WARNING, "Some slave leases are missing: {0}", missing);
+                    // if all connected we have the definitive list, so any missing can be returned
+                    for (LeaseId missingId : missing) {
+                        Node removed;
+                        synchronized (this) {
+                            removed = leaseIds.remove(missingId);
+                        }
+                        if (removed != null) {
+                            synchronized (nodeLock) {
+                                returnedNodes.add(new ReturnedNode(removed, true));
+                            }
+                        }
+                        LOGGER.log(Level.INFO, "Recovered missing slave lease: {0}", missing);
+                    }
+                } else {
+                    LOGGER.log(Level.INFO, "Some slave leases may be missing: {0}", missing);
+                }
+            }
+            Set<LeaseId> unknown = new HashSet<LeaseId>(inUse);
+            missing.removeAll(lentOut);
+            if (!missing.isEmpty()) {
+                LOGGER.log(Level.WARNING, "Some slave leases are unknown: {0}", unknown);
+            }
         }
     }
 
@@ -827,9 +903,13 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
         private final long timestamp;
 
         public ReturnedNode(@NonNull Node node) {
+            this(node, false);
+        }
+
+        public ReturnedNode(@NonNull Node node, boolean immediate) {
             node.getClass();
             this.node = node;
-            timestamp = System.currentTimeMillis();
+            timestamp = immediate ? Long.MIN_VALUE : System.currentTimeMillis();
         }
 
         @NonNull
