@@ -33,7 +33,7 @@ public class ScopedSlaveManager implements SlaveManager {
     public boolean canProvision(String labelExpression) {
         ItemGroup<? extends Item> scope = this.scope;
         while (scope != null) {
-            LOGGER.log(Level.INFO, "{0}[{1}].canProvision({2})?",
+            LOGGER.log(Level.FINE, "{0}[{1}].canProvision({2})?",
                     new Object[]{ScopedSlaveManager.class.getSimpleName(), scope.getUrl(), labelExpression});
             for (Item item : scope.getItems()) {
                 if (item instanceof SlaveManager) {

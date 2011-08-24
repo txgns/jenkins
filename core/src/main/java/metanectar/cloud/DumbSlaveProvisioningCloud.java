@@ -143,9 +143,11 @@ public class DumbSlaveProvisioningCloud extends AbstractCloudImpl {
 
     @Override
     public boolean canProvision(Label label) {
-        LOGGER.log(Level.INFO, "canProvision({0}) on {1}", new Object[]{label, labelString});
-        return (label == null ? Node.Mode.NORMAL.equals(mode) : label.matches(Label.parse(labelString)))
+        boolean result = (label == null ? Node.Mode.NORMAL.equals(mode) : label.matches(Label.parse(labelString)))
                 && provisionedNodes.size() < getInstanceCap();
+        LOGGER.log(Level.INFO, "canProvision({0}) from labels \"{1}\" with mode {2} is {3}",
+                new Object[]{label, labelString, mode, result});
+        return result;
     }
 
     @Extension

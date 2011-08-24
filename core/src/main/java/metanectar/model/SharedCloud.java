@@ -793,9 +793,11 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
                     if (slaveManifest != null) {
                         inUse.addAll(slaveManifest.getSlaves());
                     } else {
+                        LOGGER.log(Level.INFO, "No slave manifest available from master {0}", master);
                         allConnected = false;
                     }
                 } else {
+                    LOGGER.log(Level.INFO, "No connection to master {0}", master);
                     allConnected = false;
                 }
             }
