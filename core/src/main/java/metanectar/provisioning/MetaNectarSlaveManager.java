@@ -7,7 +7,6 @@ import com.cloudbees.commons.metanectar.provisioning.FutureComputerLauncherFacto
 import com.cloudbees.commons.metanectar.provisioning.LeaseId;
 import com.cloudbees.commons.metanectar.provisioning.ProvisioningException;
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
-import com.sun.xml.internal.ws.api.streaming.XMLStreamWriterFactory;
 import hudson.model.Label;
 import hudson.model.TaskListener;
 import hudson.model.labels.LabelAtom;
