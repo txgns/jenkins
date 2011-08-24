@@ -284,7 +284,9 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
 
     //
 
-    public synchronized void setConnectedState(Channel channel) throws IOException {
+    public void setConnectedState(Channel channel) throws IOException {
+        TaskListener taskListener;
+        synchronized (this) {
         if (!setChannel(channel))
             return;
 
@@ -294,7 +296,8 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
 
         slaveManager = new ScopedSlaveManager(getParent());
         channel.setProperty(SlaveManager.class.getName(), channel.export(SlaveManager.class, slaveManager));
-
+            taskListener = this.taskListener;
+        }
         updateNodeContext();
 
         taskListener.getLogger().println("Connected");
