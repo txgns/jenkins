@@ -14,7 +14,7 @@ import java.util.Arrays;
  */
 public class MasterServerTest extends MetaNectarTestCase {
     /**
-     * Makes sure that the key round-trips in {@link MasterServer#getIdentity()}.
+     * Makes sure that the key round-trips in {@link MasterServer#getIdentityPublicKey()}.
      */
     public void testAcknowledgement() throws Exception {
         final MasterServer s = metaNectar.createManagedMaster("org");
@@ -25,7 +25,7 @@ public class MasterServerTest extends MetaNectarTestCase {
         PublicKey original = userKey.getPublic();
 
         s.setApprovedState((RSAPublicKey) original, getURL());
-        final RSAPublicKey current = s.getIdentity();
+        final RSAPublicKey current = s.getIdentityPublicKey();
 
         assertTrue(Arrays.equals(original.getEncoded(), current.getEncoded()));
     }

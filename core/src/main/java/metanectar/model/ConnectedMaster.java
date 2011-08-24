@@ -117,7 +117,14 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
     /**
      * The encoded image of the public key that indicates the identity of the master.
      */
-    protected volatile byte[] identity;
+    @GuardedBy("this")
+    private byte[] identity;
+
+    /**
+     * The encoded image of the public key that indicates the identity of the master.
+     */
+    @GuardedBy("this")
+    private transient RSAPublicKey identityPublicKey;
 
     // connected state
 
@@ -148,7 +155,7 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
     }
 
     public Objects.ToStringHelper toStringHelper() {
-        final RSAPublicKey key = getIdentity();
+        final RSAPublicKey key = getIdentityPublicKey();
         return Objects.toStringHelper(this).
                 add("id", id).
                 add("name", name).
@@ -315,26 +322,47 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
     }
 
     @NonNull
-    public synchronized NodeContext getNodeContext() {
-        if (nodeContext == null) {
-            nodeContext = createNodeContext();
-            remoteNodeContextDigest = null;
+    public NodeContext getNodeContext() {
+        while (true) {
+            NodeContext nodeContext;
+            synchronized (this) {
+                nodeContext = this.nodeContext;
+            }
+            if (nodeContext == null) {
+                NodeContext newNodeContext = createNodeContext();
+                synchronized (this) {
+                    if (nodeContext == this.nodeContext) {
+                        this.nodeContext = newNodeContext;
+                        remoteNodeContextDigest = null;
+                        return this.nodeContext;
+                    }
+                }
+            } else {
+                return nodeContext;
+            }
         }
-        return nodeContext;
     }
 
-    protected synchronized void updateNodeContext() {
-        if (channel != null) {
-            final NodeContext nodeContext = getNodeContext();
-            // make sure we are following the same instance
-            if (nodeContext.getAuthenticationRealm() != Hudson.getInstance().getSecurityRealm()) {
-                nodeContext.setAuthenticationRealm(Hudson.getInstance().getSecurityRealm());
+    protected void updateNodeContext() {
+        final Channel channel = this.channel;
+        if (channel == null) {
+            LOGGER.log(Level.INFO, "Cannot update context for {0} as no connection available", this);
+            synchronized (this) {
+                remoteNodeContextDigest = null;
             }
-            // make sure we are following the same instance
-            if (nodeContext.getAuthorizationStrategy() != Hudson.getInstance().getAuthorizationStrategy()) {
-                nodeContext.setAuthorizationStrategy(Hudson.getInstance().getAuthorizationStrategy());
-            }
-            final byte[] currentDigest = nodeContext.digest();
+            return;
+        }
+        final NodeContext nodeContext = getNodeContext();
+        // make sure we are following the same instance
+        if (nodeContext.getAuthenticationRealm() != Hudson.getInstance().getSecurityRealm()) {
+            nodeContext.setAuthenticationRealm(Hudson.getInstance().getSecurityRealm());
+        }
+        // make sure we are following the same instance
+        if (nodeContext.getAuthorizationStrategy() != Hudson.getInstance().getAuthorizationStrategy()) {
+            nodeContext.setAuthorizationStrategy(Hudson.getInstance().getAuthorizationStrategy());
+        }
+        final byte[] currentDigest = nodeContext.digest();
+        synchronized (this) {
             if (!Arrays.equals(currentDigest, remoteNodeContextDigest)) {
                 LOGGER.log(Level.INFO, "Updating context for {0} as it was out of date", this);
 
@@ -343,9 +371,6 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
             } else {
                 LOGGER.log(Level.INFO, "Context for {0} has not changed since last updated", this);
             }
-        } else {
-            LOGGER.log(Level.INFO, "Cannot update context for {0} as no connection available", this);
-            remoteNodeContextDigest = null;
         }
     }
 
@@ -398,16 +423,44 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         return localEndpoint;
     }
 
-    public synchronized RSAPublicKey getIdentity() {
-        try {
-            if (identity == null)
-                return null;
+    public synchronized byte[] getIdentity() {
+        return identity;
+    }
 
-            return (RSAPublicKey)KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(identity));
-        } catch (GeneralSecurityException e) {
-            LOGGER.log(Level.WARNING, "Failed to load the key", identity);
-            identity = null;
-            return null;
+    public synchronized void setIdentity(byte[] identity) {
+        this.identity = identity == null ? null : identity.clone();
+        this.identityPublicKey = null;
+    }
+
+    public RSAPublicKey getIdentityPublicKey() {
+        while (true) {
+            byte[] identity;
+            synchronized (this) {
+                if (identityPublicKey != null) return identityPublicKey;
+                identity = getIdentity();
+            }
+            try {
+                if (identity == null) {
+                    return null;
+                }
+
+                final RSAPublicKey rsa =
+                        (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(identity));
+                synchronized (this) {
+                    if (identity == this.identity) {
+                        identityPublicKey = rsa;
+                        return rsa;
+                    }
+                }
+            } catch (GeneralSecurityException e) {
+                LOGGER.log(Level.WARNING, "Failed to load the key", identity);
+                synchronized (this) {
+                    if (this.identity == identity) {
+                        this.identity = null;
+                        return null;
+                    }
+                }
+            }
         }
     }
 

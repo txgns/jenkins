@@ -79,7 +79,7 @@ public class MetaNectar extends Hudson {
             }
 
             if (master.isApproved()) {
-                if (master.getIdentity().equals(identity.getPublicKey())) {
+                if (master.getIdentityPublicKey().equals(identity.getPublicKey())) {
                     master.setReapprovedState();
                     LOGGER.info("Master is identified and approved: " + name + " " + address);
                     return;
@@ -266,7 +266,7 @@ public class MetaNectar extends Hudson {
 
     public ConnectedMaster getConnectedMasterByIdentity(PublicKey identity) {
         for (ConnectedMaster js : getConnectedMasters())
-            if (js.getIdentity().equals(identity))
+            if (js.getIdentityPublicKey().equals(identity))
                 return js;
         return null;
     }
@@ -288,7 +288,7 @@ public class MetaNectar extends Hudson {
 
     public MasterServer getManagedMasterByIdentity(PublicKey identity) {
         for (MasterServer js : getManagedMasters())
-            if (js.getIdentity().equals(identity))
+            if (js.getIdentityPublicKey().equals(identity))
                 return js;
         return null;
     }

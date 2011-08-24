@@ -107,7 +107,7 @@ public class AttachedMaster extends ConnectedMaster {
     @Override
     public synchronized void setApprovedState(RSAPublicKey pk, URL endpoint) throws IOException {
         setState(Approved);
-        this.identity = pk.getEncoded();
+        setIdentity(pk.getEncoded());
         this.localEndpoint = endpoint;
         this.approved = true;
         save();
@@ -122,7 +122,7 @@ public class AttachedMaster extends ConnectedMaster {
         if (state == State.Approved)
             return;
 
-        if (identity == null || localEndpoint == null || approved == false)
+        if (getIdentity() == null || localEndpoint == null || approved == false)
             throw new IllegalStateException();
 
         setState(Approved);

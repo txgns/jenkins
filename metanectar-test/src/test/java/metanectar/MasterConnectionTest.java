@@ -158,7 +158,7 @@ public class MasterConnectionTest extends MetaNectarTestCase {
         }).start();
 
         onConnected.await();
-        assertNotNull(ms.getIdentity());
+        assertNotNull(ms.getIdentityPublicKey());
         assertNotNull(ms.getLocalEndpoint());
 
         // this should create an unapproved Jenkins instance on the server
