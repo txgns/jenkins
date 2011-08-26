@@ -2,6 +2,7 @@ package metanectar.model;
 
 import com.cloudbees.commons.metanectar.provisioning.ComputerLauncherFactory;
 import com.cloudbees.commons.metanectar.provisioning.LeaseId;
+import com.cloudbees.commons.metanectar.utils.NotSecretXStream;
 import com.thoughtworks.xstream.XStreamException;
 import hudson.model.Computer;
 import hudson.model.Node;
@@ -9,7 +10,6 @@ import hudson.slaves.ComputerLauncher;
 import hudson.slaves.NodeProperty;
 import hudson.slaves.RetentionStrategy;
 import hudson.util.IOException2;
-import metanectar.provisioning.NotSecretXStream;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -66,7 +66,7 @@ public class SharedNodeComputerLauncherFactory extends ComputerLauncherFactory {
         // fill in the latest data for the launcher
         stream.defaultWriteObject();
         try {
-            stream.writeUTF(NotSecretXStream.INSTANCE.toXML(launcher));
+            stream.writeUTF(NotSecretXStream.currentThreadInstance().toXML(launcher));
         } catch (XStreamException e) {
             throw new IOException2(e);
         }
@@ -75,7 +75,7 @@ public class SharedNodeComputerLauncherFactory extends ComputerLauncherFactory {
     private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
         stream.defaultReadObject();
         try {
-            launcher = launcherClass.cast(NotSecretXStream.INSTANCE.fromXML(stream.readUTF()));
+            launcher = launcherClass.cast(NotSecretXStream.currentThreadInstance().fromXML(stream.readUTF()));
         } catch (XStreamException e) {
             throw new IOException2(e);
         }
