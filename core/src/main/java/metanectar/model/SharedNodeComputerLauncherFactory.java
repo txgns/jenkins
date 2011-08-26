@@ -3,13 +3,16 @@ package metanectar.model;
 import com.cloudbees.commons.metanectar.provisioning.ComputerLauncherFactory;
 import com.cloudbees.commons.metanectar.provisioning.LeaseId;
 import com.cloudbees.commons.metanectar.utils.NotSecretXStream;
+import com.cloudbees.commons.metanectar.utils.SecretOverChannelConverterImpl;
 import com.thoughtworks.xstream.XStreamException;
 import hudson.model.Computer;
+import hudson.model.Hudson;
 import hudson.model.Node;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.NodeProperty;
 import hudson.slaves.RetentionStrategy;
 import hudson.util.IOException2;
+import hudson.util.XStream2;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -66,7 +69,14 @@ public class SharedNodeComputerLauncherFactory extends ComputerLauncherFactory {
         // fill in the latest data for the launcher
         stream.defaultWriteObject();
         try {
-            stream.writeUTF(NotSecretXStream.currentThreadInstance().toXML(launcher));
+            // we always write from the über classloader
+            ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+            try {
+                Thread.currentThread().setContextClassLoader(Hudson.getInstance().getPluginManager().uberClassLoader);
+                stream.writeUTF(NotSecretXStream.uberClassloaderInstance().toXML(launcher));
+            } finally {
+                Thread.currentThread().setContextClassLoader(classLoader);
+            }
         } catch (XStreamException e) {
             throw new IOException2(e);
         }
@@ -75,6 +85,7 @@ public class SharedNodeComputerLauncherFactory extends ComputerLauncherFactory {
     private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
         stream.defaultReadObject();
         try {
+            // we always read from the context classloader version.
             launcher = launcherClass.cast(NotSecretXStream.currentThreadInstance().fromXML(stream.readUTF()));
         } catch (XStreamException e) {
             throw new IOException2(e);
