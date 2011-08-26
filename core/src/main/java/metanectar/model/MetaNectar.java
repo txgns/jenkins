@@ -4,6 +4,7 @@ import com.cloudbees.commons.metanectar.agent.AgentListener;
 import com.cloudbees.commons.metanectar.agent.AgentStatusListener;
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol.GracefulConnectionRefusalException;
+import com.cloudbees.commons.metanectar.utils.NotSecretXStream;
 import com.google.common.base.Predicate;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
@@ -423,5 +424,10 @@ public class MetaNectar extends Hudson {
     @Initializer(after = InitMilestone.PLUGINS_STARTED, before = InitMilestone.EXTENSIONS_AUGMENTED)
     public static void initializeExtensionFilters(Hudson hudson) throws IOException {
         ExtensionFilter.defaultFilter(hudson);
+    }
+
+    static {
+        // TODO sort out classloading so that we don't have to preload this class
+        Logger.getLogger(NotSecretXStream.class.getName()).log(Level.INFO, "Loaded class {0}", NotSecretXStream.class);
     }
 }
