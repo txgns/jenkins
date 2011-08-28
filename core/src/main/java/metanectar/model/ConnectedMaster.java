@@ -114,16 +114,18 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
      */
     protected volatile URL localEndpoint;
 
+    private Object identityLock = new Object();
+
     /**
      * The encoded image of the public key that indicates the identity of the master.
      */
-    @GuardedBy("this")
+    @GuardedBy("identityLock")
     private byte[] identity;
 
     /**
      * The encoded image of the public key that indicates the identity of the master.
      */
-    @GuardedBy("this")
+    @GuardedBy("identityLock")
     private transient RSAPublicKey identityPublicKey;
 
     // connected state
@@ -427,44 +429,33 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         return localEndpoint;
     }
 
-    public synchronized byte[] getIdentity() {
+    public byte[] getIdentity() {
         return identity;
     }
 
-    public synchronized void setIdentity(byte[] identity) {
-        this.identity = identity == null ? null : identity.clone();
-        this.identityPublicKey = null;
+    public void setIdentity(byte[] identity) {
+        synchronized (identityLock) {
+            this.identity = identity == null ? null : identity.clone();
+            this.identityPublicKey = null;
+        }
     }
 
     public RSAPublicKey getIdentityPublicKey() {
-        while (true) {
-            byte[] identity;
-            synchronized (this) {
-                if (identityPublicKey != null) return identityPublicKey;
-                identity = getIdentity();
-            }
-            try {
-                if (identity == null) {
-                    return null;
-                }
+        synchronized (identityLock) {
+            if (identity == null)
+                return null;
 
-                final RSAPublicKey rsa =
-                        (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(identity));
-                synchronized (this) {
-                    if (identity == this.identity) {
-                        identityPublicKey = rsa;
-                        return rsa;
-                    }
-                }
+            if (identityPublicKey != null)
+                return identityPublicKey;
+
+            try {
+                identityPublicKey = (RSAPublicKey)KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(identity));
             } catch (GeneralSecurityException e) {
-                LOGGER.log(Level.WARNING, "Failed to load the key", identity);
-                synchronized (this) {
-                    if (this.identity == identity) {
-                        this.identity = null;
-                        return null;
-                    }
-                }
+                LOGGER.log(Level.SEVERE, "Failed to load the key", identity);
+                identityPublicKey = null;
             }
+
+            return identityPublicKey;
         }
     }
 
