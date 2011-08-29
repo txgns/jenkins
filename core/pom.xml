@@ -29,7 +29,7 @@ THE SOFTWARE.
   <parent>
     <groupId>com.cloudbees.metanectar</groupId>
     <artifactId>dev-at-cloud-private</artifactId>
-    <version>1.400.17-SNAPSHOT</version>
+    <version>1.400.17</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
