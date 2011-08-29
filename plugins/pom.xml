@@ -10,7 +10,7 @@
 
   <groupId>com.cloudbees.metanectar</groupId>
   <artifactId>plugin</artifactId>
-  <version>1.400.17</version>
+  <version>1.400.18-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Jenkins plugin POM</name>
@@ -81,19 +81,19 @@
       <groupId>com.cloudbees.metanectar</groupId>
       <artifactId>metanectar-war</artifactId>
       <classifier>war-for-test</classifier>
-      <version>1.400.17</version>
+      <version>1.400.18-SNAPSHOT</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.cloudbees.metanectar</groupId>
       <artifactId>jenkins-core</artifactId>
-      <version>1.400.17</version>
+      <version>1.400.18-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>com.cloudbees.metanectar</groupId>
       <artifactId>jenkins-test-harness</artifactId>
-      <version>1.400.17</version>
+      <version>1.400.18-SNAPSHOT</version>
       <scope>test</scope>
     </dependency>
     <dependency>
