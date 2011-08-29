@@ -69,14 +69,7 @@ public class SharedNodeComputerLauncherFactory extends ComputerLauncherFactory {
         // fill in the latest data for the launcher
         stream.defaultWriteObject();
         try {
-            // we always write from the über classloader
-            ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-            try {
-                Thread.currentThread().setContextClassLoader(Hudson.getInstance().getPluginManager().uberClassLoader);
-                stream.writeUTF(NotSecretXStream.uberClassloaderInstance().toXML(launcher));
-            } finally {
-                Thread.currentThread().setContextClassLoader(classLoader);
-            }
+            stream.writeUTF(NotSecretXStream.currentThreadInstance().toXML(launcher));
         } catch (XStreamException e) {
             throw new IOException2(e);
         }

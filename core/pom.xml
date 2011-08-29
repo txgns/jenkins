@@ -528,13 +528,13 @@ THE SOFTWARE.
     <dependency>
       <groupId>com.cloudbees.commons.metanectar</groupId>
       <artifactId>cloudbees-commons-metanectar-agent</artifactId>
-      <version>1.7</version>
+      <version>1.8</version>
     </dependency>
 
     <dependency>
       <groupId>com.cloudbees.commons.metanectar</groupId>
       <artifactId>cloudbees-commons-metanectar-context</artifactId>
-      <version>0.23</version>
+      <version>0.24</version>
     </dependency>
 
     <dependency>
