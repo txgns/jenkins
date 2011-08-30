@@ -374,14 +374,6 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
             }
         }
 
-//        // make sure we are following the same instance
-//        if (nodeContext.getAuthenticationRealm() != Hudson.getInstance().getSecurityRealm()) {
-//            nodeContext.setAuthenticationRealm(Hudson.getInstance().getSecurityRealm());
-//        }
-//        // make sure we are following the same instance
-//        if (nodeContext.getAuthorizationStrategy() != Hudson.getInstance().getAuthorizationStrategy()) {
-//            nodeContext.setAuthorizationStrategy(Hudson.getInstance().getAuthorizationStrategy());
-//        }
         final byte[] currentDigest = nodeContext.digest();
         synchronized (this) {
             if (!Arrays.equals(currentDigest, remoteNodeContextDigest)) {
