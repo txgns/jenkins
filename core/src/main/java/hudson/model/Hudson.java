@@ -1794,7 +1794,10 @@ public class Hudson extends Node implements ModifiableItemGroup<TopLevelItem>, S
     public String getRootUrl() {
         // for compatibility. the actual data is stored in Mailer
         String url = Mailer.descriptor().getUrl();
-        if(url!=null)   return url;
+        if(url!=null) {
+            if (!url.endsWith("/")) url += '/';
+            return url;
+        }
 
         StaplerRequest req = Stapler.getCurrentRequest();
         if(req!=null)
