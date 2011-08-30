@@ -90,9 +90,11 @@ THE SOFTWARE.
       <local:feature icon="monitor.gif"    href="load-statistics"         title="${%Load Statistics}">
         ${%LoadStatisticsText}
       </local:feature>
-      <local:feature icon="/images/24x24/notepad.gif"          href="script"       title="${%Script Console}">
-        ${%Execute Groovy script on server}
-       </local:feature>
+      <l:hasPermission permission="${it.EXECUTE_SCRIPT}">
+        <local:feature icon="/images/24x24/notepad.gif"          href="script"       title="${%Script Console}">
+          ${%Execute Groovy script on server}
+        </local:feature>
+      </l:hasPermission>
       <!--<local:feature icon="terminal.gif"    href="cli"         title="${%Hudson CLI}">-->
         <!--${%HudsonCliText}-->
       <!--</local:feature>-->

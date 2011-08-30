@@ -3185,7 +3185,7 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
 
     private void doScript(StaplerRequest req, StaplerResponse rsp, RequestDispatcher view) throws IOException, ServletException {
         // ability to run arbitrary script is dangerous
-        checkPermission(ADMINISTER);
+        checkPermission(EXECUTE_SCRIPT);
 
         String text = req.getParameter("script");
         if (text != null) {
@@ -3794,7 +3794,8 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
     public static final PermissionGroup PERMISSIONS = Permission.HUDSON_PERMISSIONS;
     public static final Permission ADMINISTER = Permission.HUDSON_ADMINISTER;
     public static final Permission READ = new Permission(PERMISSIONS,"Read",Messages._Hudson_ReadPermission_Description(),Permission.READ);
-
+    public static final Permission EXECUTE_SCRIPT = new Permission(PERMISSIONS, "ExecuteScript", Messages._Hudson_ExecuteScriptPermission_Description(),ADMINISTER);
+    
     /**
      * {@link Authentication} object that represents the anonymous user.
      * Because Acegi creates its own {@link AnonymousAuthenticationToken} instances, the code must not
