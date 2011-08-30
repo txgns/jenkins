@@ -90,12 +90,9 @@ THE SOFTWARE.
       <local:feature icon="monitor.gif"    href="load-statistics"         title="${%Load Statistics}">
         ${%LoadStatisticsText}
       </local:feature>
-
-      <j:if test="${h.getSystemProperty('enable-groovy-console')!=null &amp;&amp; h.getSystemProperty('enable-groovy-console')=='true'}">
-            <local:feature icon="/images/24x24/notepad.gif"          href="script"       title="${%Script Console}">
-                ${%Execute Groovy script on server}
-            </local:feature>
-        </j:if>  
+      <local:feature icon="/images/24x24/notepad.gif"          href="script"       title="${%Script Console}">
+        ${%Execute Groovy script on server}
+       </local:feature>
       <!--<local:feature icon="terminal.gif"    href="cli"         title="${%Hudson CLI}">-->
         <!--${%HudsonCliText}-->
       <!--</local:feature>-->
