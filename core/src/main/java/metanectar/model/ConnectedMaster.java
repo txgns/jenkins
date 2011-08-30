@@ -359,14 +359,28 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
             return;
         }
         final NodeContext nodeContext = getNodeContext();
-        // make sure we are following the same instance
-        if (nodeContext.getAuthenticationRealm() != Hudson.getInstance().getSecurityRealm()) {
-            nodeContext.setAuthenticationRealm(Hudson.getInstance().getSecurityRealm());
+
+        for (NodeContextContributor c : Hudson.getInstance().getExtensionList(NodeContextContributor.class)) {
+            if (c.canContribute(this)) {
+                try {
+                    c.update(this, nodeContext);
+                } catch (Throwable t) {
+                    LogRecord r = new LogRecord(Level.WARNING, "Uncaught exception from {0} on {1}");
+                    r.setThrown(t);
+                    r.setParameters(new Object[]{c, this});
+                    LOGGER.log(r);
+                }
+            }
         }
-        // make sure we are following the same instance
-        if (nodeContext.getAuthorizationStrategy() != Hudson.getInstance().getAuthorizationStrategy()) {
-            nodeContext.setAuthorizationStrategy(Hudson.getInstance().getAuthorizationStrategy());
-        }
+
+//        // make sure we are following the same instance
+//        if (nodeContext.getAuthenticationRealm() != Hudson.getInstance().getSecurityRealm()) {
+//            nodeContext.setAuthenticationRealm(Hudson.getInstance().getSecurityRealm());
+//        }
+//        // make sure we are following the same instance
+//        if (nodeContext.getAuthorizationStrategy() != Hudson.getInstance().getAuthorizationStrategy()) {
+//            nodeContext.setAuthorizationStrategy(Hudson.getInstance().getAuthorizationStrategy());
+//        }
         final byte[] currentDigest = nodeContext.digest();
         synchronized (this) {
             if (!Arrays.equals(currentDigest, remoteNodeContextDigest)) {
