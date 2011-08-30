@@ -1209,10 +1209,8 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
                 if (!settingsLoc.exists() && mrSettingsLoc.exists())
                     settingsLoc = mrSettingsLoc;
             }
-            if (debug)
-            {
+            if (verbose)
                 logger.println("use settingsLoc " + settingsLoc + " , privateRepository " + privateRepository);
-            }
             if ((settingsLoc != null) && (!settingsLoc.exists())) {
                 throw new AbortException(Messages.MavenModuleSetBuild_NoSuchAlternateSettings(settingsLoc.getAbsolutePath()));
             }
