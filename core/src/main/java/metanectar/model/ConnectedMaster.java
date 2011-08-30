@@ -114,7 +114,7 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
      */
     protected volatile URL localEndpoint;
 
-    private Object identityLock = new Object();
+    private /*almost final*/ transient Object identityLock;
 
     /**
      * The encoded image of the public key that indicates the identity of the master.
@@ -200,6 +200,7 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
     private void init() {
         log = new ReopenableFileOutputStream(getLogFile());
         taskListener = new StreamTaskListener(log);
+        identityLock = new Object();
 
         if (properties == null) {
             properties = new PropertyList(this);
