@@ -23,7 +23,7 @@ public class NoSecurityEnforcer extends SecurityEnforcer {
     public static class DescriptorImpl extends SecurityEnforcerDescriptor {
         @Override
         public String getDisplayName() {
-            return "Do not enforce security setting on masters";
+            return Messages.NoSecurityEnforcer_DisplayName();
         }
     }
 }

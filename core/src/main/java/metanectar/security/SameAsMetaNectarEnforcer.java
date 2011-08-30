@@ -32,7 +32,7 @@ public class SameAsMetaNectarEnforcer extends SecurityEnforcer {
     public static class DescriptorImpl extends SecurityEnforcerDescriptor {
         @Override
         public String getDisplayName() {
-            return "Use the same setting as MetaNectar";
+            return Messages.SameAsMetaNectarEnforcer_DisplayName();
         }
     }
 }
