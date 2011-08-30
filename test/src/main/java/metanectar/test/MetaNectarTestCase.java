@@ -26,6 +26,7 @@
 package metanectar.test;
 
 import hudson.model.Hudson;
+import hudson.tasks.Mailer;
 import metanectar.Config;
 import metanectar.model.MetaNectar;
 import org.jvnet.hudson.test.HudsonTestCase;
@@ -61,7 +62,7 @@ public class MetaNectarTestCase extends HudsonTestCase {
         metaNectar = new MetaNectar(home, createWebServer(),
                 useLocalPluginManager ? null : TestPluginManager.INSTANCE,
                 config == null ? Config.getInstance() : config);
-        metaNectar.setRootUrl(getURL().toExternalForm());
+        Mailer.descriptor().setHudsonUrl(getURL().toExternalForm());
         return metaNectar;
     }
 }
