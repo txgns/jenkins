@@ -75,6 +75,9 @@ public class TaskQueue<T extends Task> {
         return start(t, FutureTaskEx.createNoOpFutureTask());
     }
 
+    /**
+     * Adds the task to the queue and starts it right away.
+     */
     public <V> Future<V> start(T t, FutureTaskEx<V> ft) {
         try {
             t.start();
