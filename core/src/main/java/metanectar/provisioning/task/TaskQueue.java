@@ -26,13 +26,16 @@ public class TaskQueue<T extends Task> {
         private final T t;
 
         /**
-         * Represents the fact that the task is currently executing.
+         * When non-null, represents the fact that the task is currently executing (or has finished executing.)
          */
         volatile Future<?> execution;
 
-        private final FutureTaskEx<V> ft;
+        /**
+         * Callback that gets invoked when the chain of tasks has fully finished executing.
+         */
+        private final FutureTask<V> ft;
 
-        private TaskHolder(T t, FutureTaskEx<V> ft) {
+        private TaskHolder(T t, FutureTask<V> ft) {
             this.t = t;
             this.ft = ft;
         }
@@ -79,7 +82,7 @@ public class TaskQueue<T extends Task> {
         for (Iterator<TaskHolder<?>> itr = queue.iterator(); itr.hasNext(); ) {
             final TaskHolder<?> th = itr.next();
             final T t = th.t;
-            final FutureTaskEx<?> ft = th.ft;
+            final FutureTask<?> ft = th.ft;
 
             if (!th.isStarted()) {
                 try {
@@ -150,7 +153,7 @@ public class TaskQueue<T extends Task> {
      * @return
      *      The future that waits for the completion of the task and the given {@link FutureTaskEx}.
      */
-    public <V> Future<V> add(T t, FutureTaskEx<V> ft) {
+    public <V> Future<V> add(T t, FutureTask<V> ft) {
         TaskHolder<V> h = new TaskHolder<V>(t, ft);
         queue.add(h);
         return h;
