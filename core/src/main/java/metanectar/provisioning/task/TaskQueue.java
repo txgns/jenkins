@@ -1,6 +1,7 @@
 package metanectar.provisioning.task;
 
 import com.google.common.util.concurrent.Futures;
+import hudson.util.ThreadPoolExecutorWithCallback.FutureWithCallback;
 
 import java.util.Iterator;
 import java.util.concurrent.*;
@@ -21,6 +22,20 @@ public class TaskQueue<T extends Task> {
      *
      * As a {@link Future} it represents the whole chain of event from the dispatching
      * of a chain of tasks to the invocation of the completion handler.
+     *
+     * TaskHolder goes through four state.
+     * First it gets created,
+     * then it gets started (starting this state, execution!=null),
+     * then it gets completed (starting this state, isDone()==true),
+     * then it gets joined (starting this state, joined==true)
+     *
+     * During the transition from created to started, the asynchronous computation gets going.
+     * The completion of that triggers transition from started to completed. This either happens
+     * through polling, or via callback of {@link FutureWithCallback}.
+     * The transition from completed to joined will fire off a chained task, if needed.
+     * Once the task gets to the joined state, it can be removed from {@link TaskQueue#queue} any time.
+     *
+     * State transition is guarded by the synchronized(this) to ensure atomicity.
      */
     public final class TaskHolder<V> implements Future<V> {
         private final T t;
@@ -28,12 +43,15 @@ public class TaskQueue<T extends Task> {
         /**
          * When non-null, represents the fact that the task is currently executing (or has finished executing.)
          */
-        volatile Future<?> execution;
+        private volatile Future<?> execution;
 
         /**
-         * Callback that gets invoked when the chain of tasks has fully finished executing.
+         * Callback that gets invoked when the chain of tasks has fully finished executing, and
+         * defines the ultimate result (the output from Future.)
          */
         private final FutureTask<V> ft;
+
+        private volatile boolean joined;
 
         private TaskHolder(T t, FutureTask<V> ft) {
             this.t = t;
@@ -44,12 +62,48 @@ public class TaskQueue<T extends Task> {
             return t;
         }
 
-        public Future<?> getFuture() {
+        public Future<V> getFuture() {
             return ft;
+        }
+
+        private synchronized void start() {
+            if (isStarted())    throw new IllegalStateException();
+            try {
+                execution = t.start();
+            } catch (Exception e) {
+                // if the task failed to start, then this holder goes straight to the joined state
+                execution = ft;
+                joined = true;
+                ft.run();
+            }
+        }
+
+        private synchronized void join() {
+            if (!isDone())    throw new IllegalStateException();
+            if (joined) return;
+            joined = true;
+
+            T next;
+            try {
+                next = (T)t.end(execution);
+            } catch (Exception e) {
+                ft.run();
+                return;
+            }
+
+            if (next != null) {
+                TaskQueue.this.add(next, ft);
+            } else {
+                ft.run();
+            }
         }
 
         public boolean isStarted() {
             return execution!=null;
+        }
+
+        public boolean isJoined() {
+            return joined;
         }
 
         public boolean cancel(boolean mayInterruptIfRunning) {
@@ -78,39 +132,21 @@ public class TaskQueue<T extends Task> {
 
     private final ConcurrentLinkedQueue<TaskHolder<?>> queue = new ConcurrentLinkedQueue<TaskHolder<?>>();
 
+    /**
+     * Push holders to the next state via polling.
+     */
     public void process() {
         for (Iterator<TaskHolder<?>> itr = queue.iterator(); itr.hasNext(); ) {
             final TaskHolder<?> th = itr.next();
-            final T t = th.t;
-            final FutureTask<?> ft = th.ft;
 
-            if (!th.isStarted()) {
-                try {
-                    th.execution = t.start();
-                } catch (Exception e) {
-                    itr.remove();
-                    ft.run();
-                    continue;
-                }
-            }
+            if (!th.isStarted())
+                th.start();
 
-            if (th.execution.isDone()) {
-                T next = null;
-                try {
-                    next = (T)t.end(th.execution);
-                } catch (Exception e) {
-                    ft.run();
-                    continue;
-                } finally {
-                    itr.remove();
-                }
+            if (th.isDone())
+                th.join();
 
-                if (next != null) {
-                    start(next, ft);
-                } else {
-                    ft.run();
-                }
-            }
+            if (th.isJoined())
+                itr.remove();
         }
     }
 
