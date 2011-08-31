@@ -348,7 +348,7 @@ public abstract class PluginManager extends AbstractModelObject {
     /**
      * Creates a hudson.PluginStrategy, looking at the corresponding system property. 
      */
-    private PluginStrategy createPluginStrategy() {
+    protected PluginStrategy createPluginStrategy() {
 		String strategyName = System.getProperty(PluginStrategy.class.getName());
 		if (strategyName != null) {
 			try {
@@ -606,16 +606,6 @@ public abstract class PluginManager extends AbstractModelObject {
                 if (c!=null)    return c;
                 else            generatedClasses.remove(name,wc);
             }
-
-            // first, use the context classloader so that plugins that are loading
-            // can use its own classloader first.
-            ClassLoader cl = Thread.currentThread().getContextClassLoader();
-            if(cl!=null && cl!=this)
-                try {
-                    return cl.loadClass(name);
-                } catch(ClassNotFoundException e) {
-                    // not found. try next
-                }
 
             for (PluginWrapper p : activePlugins) {
                 try {
