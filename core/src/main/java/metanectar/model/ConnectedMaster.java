@@ -382,7 +382,7 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
                 channel.setProperty(NodeContext.class.getName(), nodeContext);
                 remoteNodeContextDigest = currentDigest;
             } else {
-                LOGGER.log(Level.INFO, "Context for {0} has not changed since last updated", this);
+                LOGGER.log(Level.FINE, "Context for {0} has not changed since last updated", this);
             }
         }
     }
