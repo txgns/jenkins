@@ -1,6 +1,7 @@
 package metanectar.provisioning.task;
 
 import com.google.common.util.concurrent.Futures;
+import hudson.util.ThreadPoolExecutorWithCallback;
 import hudson.util.ThreadPoolExecutorWithCallback.FutureWithCallback;
 
 import java.util.Iterator;
@@ -70,8 +71,17 @@ public class TaskQueue<T extends Task> {
             if (isStarted())    throw new IllegalStateException();
             try {
                 execution = t.start();
+                if (execution instanceof FutureWithCallback) {
+                    // if the future supports callback, use that to quickly move to the completed state
+                    ((FutureWithCallback)execution).addCallback(new ThreadPoolExecutorWithCallback.Callback() {
+                        public void onCompleted(Future v) {
+                            join();
+                        }
+                    });
+                }
             } catch (Exception e) {
                 // if the task failed to start, then this holder goes straight to the joined state
+                // ft.run() is called by design --- the handler get to know whether or not the start worked or failed.
                 execution = ft;
                 joined = true;
                 ft.run();
@@ -150,30 +160,24 @@ public class TaskQueue<T extends Task> {
         }
     }
 
-    public Future<?> start(T t) {
+    public TaskHolder<?> start(T t) {
         return start(t, FutureTaskEx.createNoOpFutureTask());
     }
 
     /**
      * Adds the task to the queue and starts it right away.
      */
-    public <V> Future<V> start(T t, FutureTaskEx<V> ft) {
-        try {
-            TaskHolder<V> h = new TaskHolder<V>(t, ft);
-            h.execution = t.start();
-            queue.add(h);
-            return h;
-        } catch (Exception e) {
-            ft.run();
-            return ft;  // ft conveniently represents a future object that's already completed and returns ft.get()
-        }
+    public <V> TaskHolder<V> start(T t, FutureTaskEx<V> ft) {
+        TaskHolder<V> h = add(t,ft);
+        h.start();
+        return h;
     }
 
-    public <V> Future<V> start(T t, V value) {
+    public <V> TaskHolder<V> start(T t, V value) {
         return start(t,FutureTaskEx.createValueFutureTask(value));
     }
 
-    public Future<?> add(T t) {
+    public TaskHolder<?> add(T t) {
         return add(t, FutureTaskEx.createNoOpFutureTask());
     }
 
@@ -189,7 +193,7 @@ public class TaskQueue<T extends Task> {
      * @return
      *      The future that waits for the completion of the task and the given {@link FutureTaskEx}.
      */
-    public <V> Future<V> add(T t, FutureTask<V> ft) {
+    public <V> TaskHolder<V> add(T t, FutureTask<V> ft) {
         TaskHolder<V> h = new TaskHolder<V>(t, ft);
         queue.add(h);
         return h;
