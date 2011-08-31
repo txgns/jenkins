@@ -4,6 +4,7 @@ import hudson.model.Hudson;
 import hudson.model.RestartListener;
 import hudson.remoting.Callable;
 import hudson.remoting.Channel;
+import hudson.util.Futures;
 import metanectar.model.MasterServer;
 
 import java.util.concurrent.CancellationException;
@@ -37,6 +38,10 @@ public class MasterWaitForQuietDownTask extends MasterServerTask<Boolean> {
             ms.setWaitingForQuietDownState();
 
             final Channel c = ms.getChannel();
+            if (c==null) {
+                LOGGER.fine(ms.getName()+" is already disconnected. Can't skipping the quiet down phase");
+                return Futures.precomputed(false);
+            }
             return c.callAsync(new WaitForQuietDown(getTimeout()));
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Waiting to quiet down error for master" + ms.getName(), e);
