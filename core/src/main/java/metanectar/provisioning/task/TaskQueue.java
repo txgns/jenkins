@@ -89,14 +89,39 @@ public class TaskQueue<T extends Task> {
         return ft;
     }
 
+    public <V> Future<V> start(T t, V value) {
+        return start(t,FutureTaskEx.createValueFutureTask(value));
+    }
+
     public Future<?> add(T t) {
         return add(t, FutureTaskEx.createNoOpFutureTask());
     }
 
+    /**
+     * Adds the task to the queue.
+     *
+     * @param t
+     *      Task. This gets started eventually.
+     * @param ft
+     *      When the task runs its course (including all the successor tasks that it designated
+     *      --- see {@link Task#end()}), this future task is synchronously executed and the value
+     *      of type V is computed, and made available through the future object this method returns.
+     * @return
+     *      The future that waits for the completion of the task and the given {@link FutureTaskEx}.
+     */
     public <V> Future<V> add(T t, FutureTaskEx<V> ft) {
         queue.add(new TaskHolder(t, ft));
         return ft;
     }
+
+    /**
+     * Adds the task to the queue, and returns a future that yields the given pre-existing value
+     * when the given task is fully completed.
+     */
+    public <V> Future<V> add(T t, V value) {
+        return add(t,FutureTaskEx.createValueFutureTask(value));
+    }
+
 
     public ConcurrentLinkedQueue<TaskHolder<T>> getQueue() {
         return queue;

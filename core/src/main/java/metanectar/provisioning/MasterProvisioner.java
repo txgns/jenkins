@@ -136,7 +136,7 @@ public class MasterProvisioner {
 
     public Future<MasterServer> stopAndTerminate(MasterServer ms) {
         return masterServerTaskQueue.start(new MasterStopThenTerminateTask(masterTimeout, ms),
-                FutureTaskEx.createValueFutureTask(ms));
+                ms);
     }
 
     public Future<MasterServer> provision(MasterServer ms, URL metaNectarEndpoint) throws IOException {
@@ -155,30 +155,26 @@ public class MasterProvisioner {
     }
 
     public Future<MasterServer> reProvision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) {
-        return masterServerTaskQueue.start(new MasterProvisionTask(masterTimeout, ms, metaNectarEndpoint, properties, ms.getNode(), ms.getNodeId()),
-                FutureTaskEx.createValueFutureTask(ms));
+        return masterServerTaskQueue.start(new MasterProvisionTask(masterTimeout, ms, metaNectarEndpoint, properties, ms.getNode(), ms.getNodeId()), ms);
     }
 
     public Future<MasterServer> start(MasterServer ms) {
-        return masterServerTaskQueue.start(new MasterStartTask(masterTimeout, ms),
-                FutureTaskEx.createValueFutureTask(ms));
+        return masterServerTaskQueue.start(new MasterStartTask(masterTimeout, ms), ms);
     }
 
     public Future<MasterServer> stop(MasterServer ms, boolean force) {
 
         return masterServerTaskQueue.start(
                 (force) ? new MasterStopTask(masterTimeout, ms) : new MasterWaitForQuietDownThenStopTask(masterTimeout, ms),
-                FutureTaskEx.createValueFutureTask(ms));
+                ms);
     }
 
     public Future<MasterServer> terminate(MasterServer ms, boolean force) {
-        return masterServerTaskQueue.start(new MasterTerminateTask(masterTimeout, ms, force),
-                FutureTaskEx.createValueFutureTask(ms));
+        return masterServerTaskQueue.start(new MasterTerminateTask(masterTimeout, ms, force), ms);
     }
 
     public Future<MasterTemplate> cloneTemplateFromSource(MasterTemplate mt) {
-        return masterServerTaskQueue.start(new TemplateCloneTask(masterTimeout, mt),
-                FutureTaskEx.createValueFutureTask(mt));
+        return masterServerTaskQueue.start(new TemplateCloneTask(masterTimeout, mt), mt);
     }
 
     private void process() throws Exception {
