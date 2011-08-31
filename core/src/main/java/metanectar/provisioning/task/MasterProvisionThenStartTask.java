@@ -17,8 +17,8 @@ public class MasterProvisionThenStartTask extends MasterProvisionTask {
         super(timeout, ms, metaNectarEndpoint, properties, node, id);
     }
 
-    public MasterServerTask end() throws Exception {
-        super.end();
+    public MasterServerTask end(Future<MasterProvisioningService.Provisioned> f) throws Exception {
+        super.end(f);
 
         return new MasterStartTask(getTimeout(), ms);
     }

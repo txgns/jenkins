@@ -3,10 +3,13 @@ package metanectar.provisioning.task;
 import hudson.model.Node;
 import metanectar.model.MasterServer;
 import metanectar.provisioning.MasterProvisioningNodeProperty;
+import metanectar.provisioning.MasterProvisioningService;
+import metanectar.provisioning.MasterProvisioningService.Provisioned;
 
 import java.net.URL;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -20,7 +23,7 @@ public class MasterStartTask extends MasterServerTask {
         super(timeout, ms, MasterServer.Action.Start);
     }
 
-    public void start() throws Exception {
+    public Future doStart() throws Exception {
         final Node node = ms.getNode();
 
         try {
@@ -31,7 +34,7 @@ public class MasterStartTask extends MasterServerTask {
 
             final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(node);
 
-            setFuture(p.getProvisioningService().start(ms));
+            return p.getProvisioningService().start(ms);
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Starting error for master " + ms.getName() + " on node " + node.getNodeName(), e);
 
@@ -40,11 +43,11 @@ public class MasterStartTask extends MasterServerTask {
         }
     }
 
-    public MasterServerTask end() throws Exception {
+    public MasterServerTask end(Future f) throws Exception {
         final Node node = ms.getNode();
 
         try {
-            getFuture().get();
+            f.get();
 
             LOGGER.info("Starting completed for master " + ms.getName() + " on node " + node.getNodeName());
 

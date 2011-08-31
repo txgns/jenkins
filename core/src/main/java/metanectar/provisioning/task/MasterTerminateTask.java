@@ -7,6 +7,7 @@ import metanectar.provisioning.MasterProvisioningService;
 
 import java.net.URL;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -23,7 +24,7 @@ public class MasterTerminateTask extends MasterServerTask<MasterProvisioningServ
         this.force = force;
     }
 
-    public void start() throws Exception {
+    public Future<MasterProvisioningService.Terminated> doStart() throws Exception {
         final Node node = ms.getNode();
 
         try {
@@ -34,7 +35,7 @@ public class MasterTerminateTask extends MasterServerTask<MasterProvisioningServ
 
             final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(node);
 
-            setFuture(p.getProvisioningService().terminate(ms));
+            return p.getProvisioningService().terminate(ms);
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Terminating error for master " + ms.getName() + " on node " + node.getNodeName(), e);
 
@@ -46,11 +47,11 @@ public class MasterTerminateTask extends MasterServerTask<MasterProvisioningServ
         }
     }
 
-    public MasterServerTask end() throws Exception {
+    public MasterServerTask end(Future<MasterProvisioningService.Terminated> f) throws Exception {
         final Node node = ms.getNode();
 
         try {
-            final MasterProvisioningService.Terminated terminated = getFuture().get();
+            final MasterProvisioningService.Terminated terminated = f.get();
 
             LOGGER.info("Terminating completed for master " + ms.getName() + " on node " + node.getNodeName());
 

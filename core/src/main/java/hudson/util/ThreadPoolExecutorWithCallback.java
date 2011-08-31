@@ -50,12 +50,10 @@ import java.util.concurrent.TimeoutException;
 @Restricted(NoExternalUse.class)
 public class ThreadPoolExecutorWithCallback implements ExecutorService {
 
-    @Restricted(NoExternalUse.class)
     public interface Callback<V> {
         void onCompleted(Future<V> v);
     }
 
-    @Restricted(NoExternalUse.class)
     public interface FutureWithCallback<V> extends Future<V> {
         void addCallback(Callback<V> callback);
     }

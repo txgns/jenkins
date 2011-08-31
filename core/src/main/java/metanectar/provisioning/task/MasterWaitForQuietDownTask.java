@@ -8,6 +8,7 @@ import metanectar.model.MasterServer;
 
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -28,7 +29,7 @@ public class MasterWaitForQuietDownTask extends MasterServerTask<Boolean> {
         return cancelled;
     }
 
-    public void start() throws Exception {
+    public Future<Boolean> doStart() throws Exception {
         try {
             LOGGER.info("Waiting to quiet down for master " + ms.getName());
 
@@ -36,7 +37,7 @@ public class MasterWaitForQuietDownTask extends MasterServerTask<Boolean> {
             ms.setWaitingForQuietDownState();
 
             final Channel c = ms.getChannel();
-            setFuture(c.callAsync(new WaitForQuietDown(getTimeout())));
+            return c.callAsync(new WaitForQuietDown(getTimeout()));
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Waiting to quiet down error for master" + ms.getName(), e);
 
@@ -45,9 +46,9 @@ public class MasterWaitForQuietDownTask extends MasterServerTask<Boolean> {
         }
     }
 
-    public MasterServerTask end() throws Exception {
+    public MasterServerTask end(Future<Boolean> f) throws Exception {
         try {
-            cancelled = getFuture().get();
+            cancelled = f.get();
 
             if (cancelled) {
                 LOGGER.info("Waiting to quiet down cancelled for master " + ms.getName());

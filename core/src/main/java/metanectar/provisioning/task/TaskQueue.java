@@ -1,5 +1,7 @@
 package metanectar.provisioning.task;
 
+import com.google.common.util.concurrent.Futures;
+
 import java.util.Iterator;
 import java.util.concurrent.*;
 
@@ -14,12 +16,23 @@ import java.util.concurrent.*;
  * @author Paul Sandoz
  */
 public class TaskQueue<T extends Task> {
-
-    public static final class TaskHolder<T extends Task> {
+    /**
+     * Represents a task and its execution state in the queue.
+     *
+     * As a {@link Future} it represents the whole chain of event from the dispatching
+     * of a chain of tasks to the invocation of the completion handler.
+     */
+    public final class TaskHolder<V> implements Future<V> {
         private final T t;
-        private final FutureTaskEx<?> ft;
 
-        private TaskHolder(T t, FutureTaskEx<?> ft) {
+        /**
+         * Represents the fact that the task is currently executing.
+         */
+        volatile Future<?> execution;
+
+        private final FutureTaskEx<V> ft;
+
+        private TaskHolder(T t, FutureTaskEx<V> ft) {
             this.t = t;
             this.ft = ft;
         }
@@ -31,19 +44,46 @@ public class TaskQueue<T extends Task> {
         public Future<?> getFuture() {
             return ft;
         }
+
+        public boolean isStarted() {
+            return execution!=null;
+        }
+
+        public boolean cancel(boolean mayInterruptIfRunning) {
+            Future<?> e = execution;
+            return e != null && e.cancel(mayInterruptIfRunning);
+        }
+
+        public boolean isCancelled() {
+            Future<?> e = execution;
+            return e != null && e.isCancelled();
+        }
+
+        public boolean isDone() {
+            Future<?> e = execution;
+            return e != null && e.isDone();
+        }
+
+        public V get() throws InterruptedException, ExecutionException {
+            return ft.get();
+        }
+
+        public V get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+            return ft.get(timeout,unit);
+        }
     }
 
-    private final ConcurrentLinkedQueue<TaskHolder<T>> queue = new ConcurrentLinkedQueue<TaskHolder<T>>();
+    private final ConcurrentLinkedQueue<TaskHolder<?>> queue = new ConcurrentLinkedQueue<TaskHolder<?>>();
 
     public void process() {
-        for (Iterator<TaskHolder<T>> itr = queue.iterator(); itr.hasNext(); ) {
-            final TaskHolder<T> th = itr.next();
+        for (Iterator<TaskHolder<?>> itr = queue.iterator(); itr.hasNext(); ) {
+            final TaskHolder<?> th = itr.next();
             final T t = th.t;
             final FutureTaskEx<?> ft = th.ft;
 
-            if (!t.isStarted()) {
+            if (!th.isStarted()) {
                 try {
-                    t.start();
+                    th.execution = t.start();
                 } catch (Exception e) {
                     itr.remove();
                     ft.run();
@@ -51,10 +91,10 @@ public class TaskQueue<T extends Task> {
                 }
             }
 
-            if (t.isDone()) {
+            if (th.execution.isDone()) {
                 T next = null;
                 try {
-                    next = (T) t.end();
+                    next = (T)t.end(th.execution);
                 } catch (Exception e) {
                     ft.run();
                     continue;
@@ -80,13 +120,14 @@ public class TaskQueue<T extends Task> {
      */
     public <V> Future<V> start(T t, FutureTaskEx<V> ft) {
         try {
-            t.start();
+            TaskHolder<V> h = new TaskHolder<V>(t, ft);
+            h.execution = t.start();
+            queue.add(h);
+            return h;
         } catch (Exception e) {
             ft.run();
-            return ft;
+            return ft;  // ft conveniently represents a future object that's already completed and returns ft.get()
         }
-
-        return add(t,ft);
     }
 
     public <V> Future<V> start(T t, V value) {
@@ -104,14 +145,15 @@ public class TaskQueue<T extends Task> {
      *      Task. This gets started eventually.
      * @param ft
      *      When the task runs its course (including all the successor tasks that it designated
-     *      --- see {@link Task#end()}), this future task is synchronously executed and the value
+     *      --- see {@link Task#end(Future)}), this future task is synchronously executed and the value
      *      of type V is computed, and made available through the future object this method returns.
      * @return
      *      The future that waits for the completion of the task and the given {@link FutureTaskEx}.
      */
     public <V> Future<V> add(T t, FutureTaskEx<V> ft) {
-        queue.add(new TaskHolder(t, ft));
-        return ft;
+        TaskHolder<V> h = new TaskHolder<V>(t, ft);
+        queue.add(h);
+        return h;
     }
 
     /**
@@ -123,7 +165,7 @@ public class TaskQueue<T extends Task> {
     }
 
 
-    public ConcurrentLinkedQueue<TaskHolder<T>> getQueue() {
+    public ConcurrentLinkedQueue<TaskHolder<?>> getQueue() {
         return queue;
     }
 }

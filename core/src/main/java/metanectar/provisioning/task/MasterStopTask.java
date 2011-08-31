@@ -5,6 +5,7 @@ import metanectar.model.MasterServer;
 import metanectar.provisioning.MasterProvisioningNodeProperty;
 
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -18,7 +19,7 @@ public class MasterStopTask extends MasterServerTask {
         super(timeout, ms, MasterServer.Action.Stop);
     }
 
-    public void start() throws Exception {
+    public Future doStart() throws Exception {
         final Node node = ms.getNode();
 
         try {
@@ -29,7 +30,7 @@ public class MasterStopTask extends MasterServerTask {
 
             final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(node);
 
-            setFuture(p.getProvisioningService().stop(ms));
+            return p.getProvisioningService().stop(ms);
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Stopping error for master " + ms.getName() + " on node " + node.getNodeName(), e);
 
@@ -38,11 +39,11 @@ public class MasterStopTask extends MasterServerTask {
         }
     }
 
-    public MasterServerTask end() throws Exception {
+    public MasterServerTask end(Future f) throws Exception {
         final Node node = ms.getNode();
 
         try {
-            getFuture().get();
+            f.get();
 
             LOGGER.info("Stopping completed for master " + ms.getName() + " on node " + node.getNodeName());
 

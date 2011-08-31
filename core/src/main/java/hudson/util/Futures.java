@@ -25,7 +25,9 @@ package hudson.util;
 
 import hudson.remoting.Future;
 
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Various {@link Future} implementations.
@@ -33,6 +35,66 @@ import java.util.concurrent.TimeUnit;
  * @author Kohsuke Kawaguchi
  */
 public class Futures {
+    public static <T> Future<T> withTimeout(final java.util.concurrent.Future<T> base, final long timeout) {
+        return new Future<T>() {
+            final long deadline = System.currentTimeMillis()+timeout;
+
+            public boolean cancel(boolean mayInterruptIfRunning) {
+                return base.cancel(mayInterruptIfRunning);
+            }
+
+            public boolean isCancelled() {
+                return base.isCancelled();
+            }
+
+            public boolean isDone() {
+                if (remainingTime()<0)
+                    cancel(true);
+                return base.isDone();
+            }
+
+            public T get() throws ExecutionException, InterruptedException {
+                while (true) {
+                    long rt = remainingTime();
+                    if (rt>0) {
+                        try {
+                            return base.get(rt, TimeUnit.MILLISECONDS);
+                        } catch (TimeoutException e) {
+                            continue;   // dead line reached. cancel and then wait for the outcome
+                        }
+                    } else {
+                        cancel(true);
+                        return base.get();
+                    }
+                }
+            }
+
+            private long remainingTime() {
+                return deadline-System.currentTimeMillis();
+            }
+
+            public T get(long timeout, TimeUnit unit) throws ExecutionException, TimeoutException, InterruptedException {
+                timeout = Math.min(timeout, unit.convert(remainingTime(), TimeUnit.MILLISECONDS));
+                try {
+                    return base.get(timeout, unit);
+                } catch (TimeoutException e) {
+                    cancel(true);
+                    throw e;
+                }
+            }
+        };
+    }
+
+    /**
+     * Casts Future&lt;?> to Future&lt;Void>
+     */
+    public static java.util.concurrent.Future<Void> adaptToVoid(java.util.concurrent.Future<?> f) {
+        // if someone actually assigns the return value of get() to Void, this will fail.
+        // but who does that? If that's the concern, we need to wrap.
+        return (Future)f;
+    }
+
+
     /**
      * Creates a {@link Future} instance that already has its value pre-computed.
      */

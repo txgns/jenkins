@@ -7,13 +7,14 @@ import metanectar.cloud.MasterProvisioningCloudListener;
 import metanectar.model.MetaNectar;
 
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * @author Paul Sandoz
  */
-public class NodeProvisionTask extends TaskWithFuture<Node, Task> {
+public class NodeProvisionTask extends TaskWithTimeout<Node, Task> {
     private static final Logger LOGGER = Logger.getLogger(NodeProvisionTask.class.getName());
 
     private final MetaNectar mn;
@@ -36,16 +37,16 @@ public class NodeProvisionTask extends TaskWithFuture<Node, Task> {
         return n;
     }
 
-    public void start() throws Exception {
+    public Future<Node> doStart() throws Exception {
         LOGGER.info("Provision started for node " + pn.displayName + " on cloud " + c.name);
 
-        setFuture(pn.future);
         MasterProvisioningCloudListener.fireOnProvisioning(c);
+        return pn.future;
     }
 
-    public Task end() throws Exception {
+    public Task end(Future<Node> future) throws Exception {
         try {
-            n = getFuture().get();
+            n = future.get();
             mn.addNode(n);
 
             LOGGER.info("Provision completed for node " + pn.displayName + " on cloud " + c.name + ". There are now " + mn.getComputers().length + " computer(s)");
