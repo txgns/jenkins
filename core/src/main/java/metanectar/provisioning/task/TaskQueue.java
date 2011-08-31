@@ -81,12 +81,12 @@ public class TaskQueue<T extends Task> {
     public <V> Future<V> start(T t, FutureTaskEx<V> ft) {
         try {
             t.start();
-            queue.add(new TaskHolder(t, ft));
         } catch (Exception e) {
             ft.run();
+            return ft;
         }
 
-        return ft;
+        return add(t,ft);
     }
 
     public <V> Future<V> start(T t, V value) {
