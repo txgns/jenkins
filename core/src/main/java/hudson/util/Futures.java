@@ -24,6 +24,8 @@
 package hudson.util;
 
 import hudson.remoting.Future;
+import hudson.util.ThreadPoolExecutorWithCallback.Callback;
+import hudson.util.ThreadPoolExecutorWithCallback.FutureWithCallback;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -36,53 +38,76 @@ import java.util.concurrent.TimeoutException;
  */
 public class Futures {
     public static <T> Future<T> withTimeout(final java.util.concurrent.Future<T> base, final long timeout) {
-        return new Future<T>() {
-            final long deadline = System.currentTimeMillis()+timeout;
+        if (base instanceof FutureWithCallback)
+            return new FutureWithTimeoutWithCallback<T>(timeout, (FutureWithCallback<T>)base);
+        else
+            return new FutureWithTimeout<T>(timeout, base);
+    }
 
-            public boolean cancel(boolean mayInterruptIfRunning) {
-                return base.cancel(mayInterruptIfRunning);
-            }
+    private static class FutureWithTimeoutWithCallback<T> extends FutureWithTimeout<T> implements FutureWithCallback<T> {
+        private FutureWithTimeoutWithCallback(long timeout, FutureWithCallback<T> base) {
+            super(timeout, base);
+        }
 
-            public boolean isCancelled() {
-                return base.isCancelled();
-            }
+        public void addCallback(Callback<T> c) {
+            ((FutureWithCallback<T>)base).addCallback(c);
+        }
+    }
 
-            public boolean isDone() {
-                if (remainingTime()<0)
-                    cancel(true);
-                return base.isDone();
-            }
+    private static class FutureWithTimeout<T> implements Future<T> {
+        final long deadline;
+        private final long timeout;
+        final java.util.concurrent.Future<T> base;
 
-            public T get() throws ExecutionException, InterruptedException {
-                while (true) {
-                    long rt = remainingTime();
-                    if (rt>0) {
-                        try {
-                            return base.get(rt, TimeUnit.MILLISECONDS);
-                        } catch (TimeoutException e) {
-                            continue;   // dead line reached. cancel and then wait for the outcome
-                        }
-                    } else {
-                        cancel(true);
-                        return base.get();
+        public FutureWithTimeout(long timeout, java.util.concurrent.Future<T> base) {
+            this.timeout = timeout;
+            this.base = base;
+            deadline = System.currentTimeMillis() + timeout;
+        }
+
+        public boolean cancel(boolean mayInterruptIfRunning) {
+            return base.cancel(mayInterruptIfRunning);
+        }
+
+        public boolean isCancelled() {
+            return base.isCancelled();
+        }
+
+        public boolean isDone() {
+            if (remainingTime()<0)
+                cancel(true);
+            return base.isDone();
+        }
+
+        public T get() throws ExecutionException, InterruptedException {
+            while (true) {
+                long rt = remainingTime();
+                if (rt>0) {
+                    try {
+                        return base.get(rt, TimeUnit.MILLISECONDS);
+                    } catch (TimeoutException e) {
+                        continue;   // dead line reached. cancel and then wait for the outcome
                     }
-                }
-            }
-
-            private long remainingTime() {
-                return deadline-System.currentTimeMillis();
-            }
-
-            public T get(long timeout, TimeUnit unit) throws ExecutionException, TimeoutException, InterruptedException {
-                timeout = Math.min(timeout, unit.convert(remainingTime(), TimeUnit.MILLISECONDS));
-                try {
-                    return base.get(timeout, unit);
-                } catch (TimeoutException e) {
+                } else {
                     cancel(true);
-                    throw e;
+                    return base.get();
                 }
             }
-        };
+        }
+
+        private long remainingTime() {
+            return deadline-System.currentTimeMillis();
+        }
+
+        public T get(long timeout, TimeUnit unit) throws ExecutionException, TimeoutException, InterruptedException {
+            timeout = Math.min(timeout, unit.convert(remainingTime(), TimeUnit.MILLISECONDS));
+            try {
+                return base.get(timeout, unit);
+            } catch (TimeoutException e) {
+                cancel(true);
+                throw e;
+            }
+        }
     }
 
     /**
