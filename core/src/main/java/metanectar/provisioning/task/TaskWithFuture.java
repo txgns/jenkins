@@ -3,6 +3,16 @@ package metanectar.provisioning.task;
 import java.util.concurrent.Future;
 
 /**
+ * {@link Task} that can provide {@link Future} that represents its asynchronous operation.
+ *
+ * <blockquote>
+ * Kohsuke notes:
+ * I don't see any reason why this abstraction shouldn't be merged into {@link Task} by simplifying
+ * Task to just have a "{@code Future start()}" method. Why duplicate most of the {@link Future} into
+ * Task?
+ * </blockquote>
+ *
+ *
  * @author Paul Sandoz
  */
 public abstract class TaskWithFuture<F, T extends Task> implements Task<T> {
