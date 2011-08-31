@@ -51,6 +51,7 @@ import hudson.util.RemotingDiagnostics;
 import hudson.util.RemotingDiagnostics.HeapDump;
 import hudson.util.RunList;
 import hudson.util.Futures;
+import hudson.util.ThreadPoolExecutorWithCallback;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.QueryParameter;
@@ -919,7 +920,8 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
         private static final long serialVersionUID = 1L;
     }
 
-    public static final ExecutorService threadPoolForRemoting = Executors.newCachedThreadPool(new ExceptionCatchingThreadFactory(new DaemonThreadFactory()));
+    public static final ExecutorService threadPoolForRemoting = new ThreadPoolExecutorWithCallback(
+            Executors.newCachedThreadPool(new ExceptionCatchingThreadFactory(new DaemonThreadFactory())));
 
 //
 //
