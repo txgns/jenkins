@@ -102,6 +102,8 @@ public class ThreadPoolExecutorWithCallback implements ExecutorService {
                 this.callbacks = null;
             }
 
+            if (callbacks==null)    return; // already fired
+
             // TODO surround by try/catch to stop Throwables leaking out?
             for (Callback<V> c : callbacks)
                 c.onCompleted(this);
