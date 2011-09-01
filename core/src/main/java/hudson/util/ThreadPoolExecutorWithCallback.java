@@ -23,6 +23,7 @@
  */
 package hudson.util;
 
+import com.sun.xml.internal.rngom.parse.host.Base;
 import hudson.remoting.AsyncFutureImpl;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -80,7 +81,17 @@ public class ThreadPoolExecutorWithCallback implements ExecutorService {
         }
 
         public boolean cancel(boolean mayInterruptIfRunning) {
-            return base.cancel(mayInterruptIfRunning);
+            boolean cancelled = base.cancel(mayInterruptIfRunning);
+            if (cancelled) {
+                // Subsequent calls to base.cancel should return false
+                setAsCancelled();
+
+                // Invoking the callbacks on the thread that invoked the cancel, not good!, should be run from the
+                // the executor that was running the cancelled task
+                invokeCallbacks();
+            }
+
+            return cancelled;
         }
 
         public void invokeCallbacks() {
@@ -90,6 +101,8 @@ public class ThreadPoolExecutorWithCallback implements ExecutorService {
                 callbacks = this.callbacks;
                 this.callbacks = null;
             }
+
+            // TODO surround by try/catch to stop Throwables leaking out?
             for (Callback<V> c : callbacks)
                 c.onCompleted(this);
         }
@@ -129,9 +142,19 @@ public class ThreadPoolExecutorWithCallback implements ExecutorService {
                 try {
                     r.set(task.call());
                 } catch (Throwable t) {
-                    r.set(t);
+                    if (!r.base.isCancelled()) {
+                        // Avoid the case when an InterruptedException is thrown as a result of the callable
+                        // being cancelled, this assumes that the cancellation state of the future is set before
+                        // that exception occurs.
+                        r.set(t);
+                    }
                 } finally {
-                    r.invokeCallbacks();
+                    if (!r.base.isCancelled()) {
+                        // Only invoke callbacks if not cancelled
+                        // Invocation of callbacks when the cancelled cannot reliably be performed in the callable
+                        // wrapper, since it is not guaranteed that an exception will be thrown.
+                        r.invokeCallbacks();
+                    }
                 }
                 return null;
             }
