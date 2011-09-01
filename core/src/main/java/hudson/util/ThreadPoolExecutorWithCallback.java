@@ -37,6 +37,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * {@link ExecutorService} decorator that returns {@link Future} that allows registration of callbacks,
@@ -103,9 +105,15 @@ public class ThreadPoolExecutorWithCallback implements ExecutorService {
 
             if (callbacks==null)    return; // already fired
 
-            // TODO surround by try/catch to stop Throwables leaking out?
             for (Callback<V> c : callbacks)
-                c.onCompleted(this);
+                try {
+                    c.onCompleted(this);
+                } catch (Exception e) {
+                    // don't let one bad callback penalize other callbacks. keep on going.
+                    // I'm intentionally not catching Throwable to let Errors go through,
+                    // so that we won't eat LinkageError, etc. but reasonable people can disagree about this.
+                    LOGGER.log(Level.INFO, "Callback "+c+" failed",e);
+                }
         }
     }
 
@@ -191,4 +199,6 @@ public class ThreadPoolExecutorWithCallback implements ExecutorService {
     public void execute(Runnable command) {
         core.execute(command);
     }
+
+    private static final Logger LOGGER = Logger.getLogger(ThreadPoolExecutorWithCallback.class.getName());
 }
