@@ -23,7 +23,6 @@
  */
 package hudson.util;
 
-import com.sun.xml.internal.rngom.parse.host.Base;
 import hudson.remoting.AsyncFutureImpl;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
