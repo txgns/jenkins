@@ -12,6 +12,7 @@ import com.cloudbees.commons.metanectar.provisioning.SlaveManifest;
 import com.cloudbees.commons.nectar.nodeiterator.NodeIterator;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.sun.org.apache.regexp.internal.RE;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
@@ -60,17 +61,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -107,11 +98,13 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
     @GuardedBy("nodeLock")
     private List<ReturnedNode> returnedNodes = new ArrayList<ReturnedNode>();
 
+    private boolean reuseNodes;
+
+    private int reuseTimeout;
+
     private Cloud cloud;
 
     private transient Runnable periodicWork;
-
-    private int lazyDeprovisionDelayMin = 1;
 
     protected SharedCloud(ItemGroup parent, String name) {
         super(parent, name);
@@ -132,8 +125,9 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
                 returnedNodes = new ArrayList<ReturnedNode>();
             }
         }
-        if (lazyDeprovisionDelayMin == 0) {
-            lazyDeprovisionDelayMin = 1;
+
+        if (!reuseNodes) {
+            reuseTimeout = 1;
         }
         return this;
     }
@@ -142,6 +136,14 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
         synchronized (this) {
             return leaseIds != null && !leaseIds.isEmpty();
         }
+    }
+
+    public boolean isReuseNodes() {
+        return reuseNodes;
+    }
+
+    public int getReuseTimeout() {
+        return reuseTimeout;
     }
 
     public Cloud getCloud() {
@@ -271,6 +273,16 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
                 ((ReconfigurableDescribable) cloud).reconfigure(req, cloudJson);
             } else {
                 cloud = req.bindJSON(Cloud.class, cloudJson);
+            }
+
+            if (json.has("reuseNodes")) {
+                reuseNodes = true;
+
+                JSONObject j_reuseNodes = json.getJSONObject("reuseNodes");
+                reuseTimeout = j_reuseNodes.getInt("reuseTimeout");
+            } else {
+                reuseNodes = false;
+                reuseTimeout = 1;
             }
 
             properties.rebuild(req, json.optJSONObject("properties"), SharedCloudPropertyDescriptor.all());
@@ -486,91 +498,78 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
         return new FutureComputerLauncherFactory(getName(), numOfExecutors,
                 Computer.threadPoolForRemoting.submit(new Callable<ComputerLauncherFactory>() {
                     public ComputerLauncherFactory call() throws Exception {
-//                        Node node = null;
-//                        while (node == null) {
-//                            synchronized (nodeLock) {
-//                                for (Node n : provisionedNodes) {
-//                                    if ((label == null && n.getMode().equals(Node.Mode.NORMAL))
-//                                            || (label != null && label.matches(n.getAssignedLabels()))) {
-//                                        node = n;
-//                                        break;
-//                                    }
-//                                }
-//                                if (node == null) {
-//                                    nodeLock.wait(TimeUnit.SECONDS.toMillis(10));
-//                                }
-//                            }
-//                        }
-                        LeaseId leaseId = new DefaultLeaseId(UUID.randomUUID().toString());
-
                         int excessWorkload = 1; // TODO allow larger workloads
 
-                        Collection<NodeProvisioner.PlannedNode> provision =
+                        // The collection of nodes that are provisioning
+                        Collection<NodeProvisioner.PlannedNode> provisioning =
                                 new ArrayList<NodeProvisioner.PlannedNode>();
 
-                        LOGGER.info("Checking returned nodes for fast re-use...");
-                        try {
+                        if (reuseNodes) {
+                            LOGGER.info("Checking returned nodes for fast re-use...");
                             synchronized (nodeLock) {
                                 for (Iterator<ReturnedNode> itr = returnedNodes.iterator(); itr.hasNext(); ) {
                                     final ReturnedNode returnedNode = itr.next();
+                                    // Ignore any existing non-reuseable nodes, this can occur if the configuration
+                                    // changes from non-reusable to reusable
+                                    if (!returnedNode.isReuseable())
+                                        continue;
+
                                     Node node = returnedNode.getNode();
                                     if (label == null
                                             ? !Node.Mode.EXCLUSIVE.equals(node.getMode())
                                             : label.matches(node.getAssignedLabels())) {
                                         LOGGER.log(Level.INFO, "SharedCloud[{0}] Quick reuse of node {1}",
                                                 new Object[]{getUrl(), node.getNodeName()});
-                                        provision.add(
+                                        provisioning.add(
                                                 new NodeProvisioner.PlannedNode(
                                                         node.getDisplayName(),
                                                         new CompletedFuture<Node>(node), node.getNumExecutors()));
                                         itr.remove();
                                         excessWorkload -= node.getNumExecutors();
+
+                                        // Avoiding removing more if the workload requirement has been reached
+                                        if (excessWorkload <= 0)
+                                            break;
                                     }
                                 }
                             }
-                        } catch (Throwable t) {
-                            LOGGER.log(Level.WARNING, "Uncaught", t);
+
+                            LOGGER.log(Level.INFO,
+                                    "Checked returned nodes for fast re-use... {0} nodes being reused, "
+                                            + "{1} will be provisioned",
+                                    new Object[]{provisioning.size(), Math.max(0, excessWorkload)});
                         }
-                        LOGGER.log(Level.INFO,
-                                "Checked returned nodes for fast re-use... {0} nodes being reused, "
-                                        + "{1} will be provisioned",
-                                new Object[]{provision.size(), Math.max(0, excessWorkload)});
 
 
+                        // If there is more workload then provision from the cloud
                         if (excessWorkload > 0) {
-                            provision.addAll(cloud.provision(label, excessWorkload));
+                            provisioning.addAll(cloud.provision(label, excessWorkload));
                         }
+
                         int plannedExecutorCount = 0;
-                        for (NodeProvisioner.PlannedNode n : provision) {
+                        for (NodeProvisioner.PlannedNode n : provisioning) {
                             plannedExecutorCount += n.numExecutors;
                         }
                         LOGGER.log(Level.INFO,
                                 "SharedCloud[{0}] Asked for {1} executors, got a plan for {2} nodes with a total of "
                                         + "{3} executors.",
-                                new Object[]{getUrl(), excessWorkload, provision.size(), plannedExecutorCount});
-                        boolean allDone = false;
-                        while (!allDone) {
-                            allDone = true;
-                            for (NodeProvisioner.PlannedNode n : provision) {
+                                new Object[]{getUrl(), excessWorkload, provisioning.size(), plannedExecutorCount});
+
+
+                        // Wait for all nodes to provision and transition from the provisioning to the
+                        // provisioned list if successful
+                        // The cloud.provision method may return more than one node so we need to handle all of them
+                        // even if we only use one
+                        LinkedList<Node> provisioned = new LinkedList<Node>();
+                        while (!provisioning.isEmpty()) {
+                            for (Iterator<NodeProvisioner.PlannedNode> itr = provisioning.iterator(); itr.hasNext(); ) {
+                                NodeProvisioner.PlannedNode n = itr.next();
+
                                 LOGGER.log(Level.INFO,
                                         "SharedCloud[{0}] waiting for provisioning of {2} executors on {1}",
                                         new Object[]{getUrl(), n.displayName, excessWorkload});
                                 try {
-                                    Node node = n.future.get(excessWorkload, TimeUnit.SECONDS);
-                                    synchronized (SharedCloud.this) {
-                                        try {
-                                            leaseIds.put(leaseId, node);
-                                            LOGGER.log(Level.INFO, "SharedCloud[{0}] lent out {2} on lease {1}",
-                                                    new Object[]{getUrl(), leaseId, node.getNodeName()});
-                                            return newComputerLauncherFactory(leaseId);
-                                        } finally {
-                                            try {
-                                                save();
-                                            } catch (IOException e) {
-                                                LOGGER.log(Level.INFO, "SharedCloud[{0}] could not persist", getUrl());
-                                            }
-                                        }
-                                    }
+                                    provisioned.add(n.future.get((excessWorkload >= 0) ? excessWorkload : 0, TimeUnit.SECONDS));
                                 } catch (TimeoutException e) {
                                     LogRecord r = new LogRecord(Level.FINE,
                                             "SharedCloud[{0}] timed out while waiting for provisioning of {2} "
@@ -578,17 +577,50 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
                                     r.setThrown(e);
                                     r.setParameters(new Object[]{getUrl(), n.displayName, excessWorkload});
                                     LOGGER.log(r);
-                                } catch (ExecutionException e) {
+                                    // TODO require a global timeout here
+                                } catch (Exception e) {
+                                    // ExecutionException, CancellationException or InterruptedException
                                     LogRecord r = new LogRecord(Level.FINE,
                                             "SharedCloud[{0}] failed to provision {2} executors on {1}");
                                     r.setThrown(e);
                                     r.setParameters(new Object[]{getUrl(), n.displayName, excessWorkload});
                                     LOGGER.log(r);
                                 }
-                                allDone = allDone && n.future.isDone();
+
+                                if (n.future.isDone()) {
+                                    itr.remove();
+                                }
                             }
                         }
-                        throw new ProvisioningException("Could not provision node");
+
+                        // Process provisioned nodes, pop the first one off and use that, all others will
+                        // be added to the returnedNodes list or the provisionedNodes
+                        if (!provisioned.isEmpty()) {
+                            Node provisionedNode = provisioned.pop();
+                            for (Node n : provisioned) {
+                                synchronized (nodeLock) {
+                                    returnedNodes.add(new ReturnedNode(n, !reuseNodes));
+                                }
+                            }
+
+                            synchronized (SharedCloud.this) {
+                                try {
+                                    LeaseId leaseId = new DefaultLeaseId(UUID.randomUUID().toString());
+                                    leaseIds.put(leaseId, provisionedNode);
+                                    LOGGER.log(Level.INFO, "SharedCloud[{0}] lent out {2} on lease {1}",
+                                            new Object[]{getUrl(), leaseId, provisionedNode.getNodeName()});
+                                    return newComputerLauncherFactory(leaseId);
+                                } finally {
+                                    try {
+                                        save();
+                                    } catch (IOException e) {
+                                        LOGGER.log(Level.INFO, "SharedCloud[{0}] could not persist", getUrl());
+                                    }
+                                }
+                            }
+                        } else {
+                            throw new ProvisioningException("Could not provision node");
+                        }
                     }
                 }));
     }
@@ -600,7 +632,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
                 Node node = leaseIds.remove(allocatedSlave.getLeaseId());
                 if (node != null) {
                     synchronized (nodeLock) {
-                        returnedNodes.add(new ReturnedNode(node));
+                        returnedNodes.add(new ReturnedNode(node, !reuseNodes));
                     }
                 }
                 this.notifyAll();
@@ -745,7 +777,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
                 }
                 for (Iterator<ReturnedNode> itr = returnedNodes.iterator(); itr.hasNext(); ) {
                     final ReturnedNode returnedNode = itr.next();
-                    if (returnedNode.getTimestamp() + TimeUnit2.MINUTES.toMillis(lazyDeprovisionDelayMin) < System
+                    if (!reuseNodes || returnedNode.getTimestamp() + TimeUnit2.MINUTES.toMillis(reuseTimeout) < System
                             .currentTimeMillis()) {
                         Node node = returnedNode.getNode();
                         LOGGER.info(node.getNodeName() + " is being deprovisioned.");
@@ -793,7 +825,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
                     if (slaveManifest != null) {
                         inUse.addAll(slaveManifest.getSlaves());
                     } else {
-                        LOGGER.log(Level.INFO, "No slave manifest available from master {0}", master);
+                        LOGGER.log(Level.FINE, "No slave manifest available from master {0}", master);
                         allConnected = false;
                     }
                 } else {
@@ -917,6 +949,10 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
         @NonNull
         public Node getNode() {
             return node;
+        }
+
+        public boolean isReuseable() {
+            return timestamp != Long.MIN_VALUE;
         }
 
         @Override

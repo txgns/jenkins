@@ -1,0 +1,11 @@
+<div>
+  If selected then a node that has been provisioned to, used by, and then released by a master, will be retained
+  for a period of time. Within that period of time the node may be reused for provisioning in preference to the
+  provisioning of a new node. After that period of time the node will be de-provisioned.
+  <p>
+  If unselected then after a node has been released by a master then that node will be never be reused and will
+  be de-provisioned.
+  <p>
+  For jobs that require some form of isolation between builds, as configured by the cloud implementation for
+  provisioning and de-provisioning behaviour, then this option should not be selected.
+</div>
