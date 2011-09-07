@@ -39,8 +39,8 @@ case $id in
   ;;
 esac
 
-ssh maven@download.infradna.com mkdir /var/www/download.infradna.com/nectar/war/$id
-scp $war maven@download.infradna.com:/var/www/download.infradna.com/nectar/war/$id/jenkins-war-$id.war
+ssh www-data@nectar-download.cloudbees.com mkdir /var/www/nectar-download.cloudbees.com/nectar/war/$id
+scp $war www-data@nectar-download.cloudbees.com:/var/www/nectar-download.cloudbees.com/nectar/war/$id/jenkins-war-$id.war
 
 # TODO: where do we make it available?
 # TODO: make JNLP file available
@@ -64,19 +64,19 @@ for arch in rpm opensuse; do
   gpg -a --detach-sign --yes --no-use-agent --batch --no-tty --passphrase-file ~/.gpg.passphrase $arch/repodata/repomd.xml
   cp infradna.com.key $arch/repodata/repomd.xml.key
   for dir in RPMS repodata; do
-    rsync -avz --delete-after $arch/$dir/ www-data@download.infradna.com:~/download.infradna.com/nectar/$arch/$dir
+    rsync -avz --delete-after $arch/$dir/ www-data@nectar-download.cloudbees.com:~/nectar-download.cloudbees.com/nectar/$arch/$dir
     true
   done
 done
 
 # generate the permalink redirection
 cat > target/.htaccess << EOF
-Redirect /nectar/latest/nectar.war        http://download.infradna.com/nectar/war/$id/jenkins-war-${id}.war
-Redirect /nectar/latest/debian/nectar.deb http://download.infradna.com/nectar/debian/binary/jenkins_${id}_all.deb
-Redirect /nectar/latest/redhat/nectar.rpm http://download.infradna.com/nectar/rpm/RPMS/noarch/jenkins-${id}-1.1.noarch.rpm
+Redirect /nectar/latest/nectar.war        http://nectar-download.cloudbees.com/nectar/war/$id/jenkins-war-${id}.war
+Redirect /nectar/latest/debian/nectar.deb http://nectar-download.cloudbees.com/nectar/debian/binary/jenkins_${id}_all.deb
+Redirect /nectar/latest/redhat/nectar.rpm http://nectar-download.cloudbees.com/nectar/rpm/RPMS/noarch/jenkins-${id}-1.1.noarch.rpm
 EOF
-scp target/.htaccess www-data@infradna.com:/var/www/infradna.com/ichci/latest/.htaccess
+scp target/.htaccess www-data@nectar-download.cloudbees.com:/var/www/nectar-download.cloudbees.com/nectar/latest/.htaccess
 
-scp $ws/rpm/SOURCES/jenkins.repo www-data@infradna.com:/var/www/download.infradna.com/nectar/rpm/
+scp $ws/rpm/SOURCES/jenkins.repo www-data@nectar-download.cloudbees.com:/var/www/nectar-download.cloudbees.com/nectar/rpm/
 
 echo success
