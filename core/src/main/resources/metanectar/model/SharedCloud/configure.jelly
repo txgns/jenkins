@@ -41,9 +41,21 @@ THE SOFTWARE.
           <f:textarea name="description" value="${it.description}"/>
         </f:entry>
 
-        <f:dropdownDescriptorSelector field="cloud" descriptors="${descriptor.getCloudDescriptors()}" title="${%Cloud}"/>
+        <f:section title="Properties">
+          <f:optionalBlock field="reuseNodes" title="${%Reuse provisioned nodes}">
+            <f:entry title="${%Reuse timeout, in minutes}" field="reuseTimeout">
+              <f:textbox/>
+            </f:entry>
+          </f:optionalBlock>
+        </f:section>
 
-        <f:descriptorList title="${%Slave Properties}" descriptors="${descriptor.getSlavePropertyDescriptors()}" field="properties" />
+        <!-- tick box for slave reuse -->
+
+        <f:section title="Cloud configuration">
+          <f:dropdownDescriptorSelector field="cloud" descriptors="${descriptor.getCloudDescriptors()}" title="${%Cloud}"/>
+        </f:section>
+
+        <f:descriptorList title="${%Node Properties}" descriptors="${descriptor.getSlavePropertyDescriptors()}" field="properties" />
 
         <j:if test="${h.hasPermission(it,it.CONFIGURE)}">
           <f:block>

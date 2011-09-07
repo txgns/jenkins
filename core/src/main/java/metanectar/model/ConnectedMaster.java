@@ -352,7 +352,7 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
     protected void updateNodeContext() {
         final Channel channel = this.channel;
         if (channel == null) {
-            LOGGER.log(Level.INFO, "Cannot update context for {0} as no connection available", this);
+            LOGGER.log(Level.FINE, "Cannot update context for {0} as no connection available", this);
             synchronized (this) {
                 remoteNodeContextDigest = null;
             }
@@ -375,7 +375,7 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
                 channel.setProperty(NodeContext.class.getName(), nodeContext);
                 remoteNodeContextDigest = currentDigest;
             } else {
-                LOGGER.log(Level.INFO, "Context for {0} has not changed since last updated", this);
+                LOGGER.log(Level.FINE, "Context for {0} has not changed since last updated", this);
             }
         }
     }
