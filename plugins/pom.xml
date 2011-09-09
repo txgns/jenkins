@@ -10,7 +10,7 @@
 
   <groupId>com.cloudbees.metanectar</groupId>
   <artifactId>plugin</artifactId>
-  <version>1.400.21-SNAPSHOT</version>
+  <version>1.400.22-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Jenkins plugin POM</name>
