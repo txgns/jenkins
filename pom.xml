@@ -49,6 +49,7 @@ THE SOFTWARE.
   <modules>
     <module>core</module>
     <module>war</module>
+    <module>test</module>
     <module>metanectar-test</module>
     <module>cli</module>
     <module>plugins</module>
