@@ -89,6 +89,8 @@ public class ScopedSlaveManager implements SlaveManager {
 
     public FutureComputerLauncherFactory provision(String labelExpression, TaskListener listener, int numOfExecutors)
             throws ProvisioningException {
+        // TODO Stephen, this should implement the future so that scoping checks the entire scope if one
+        // SlaveManage fails or returns an empty collection
         LOGGER.log(Level.INFO, "{0}[{1}].provision({2})",
                 new Object[]{ScopedSlaveManager.class.getSimpleName(), scope.getUrl(), labelExpression});
         ItemGroup<? extends Item> scope = this.scope;
