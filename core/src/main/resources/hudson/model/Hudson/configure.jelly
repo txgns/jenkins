@@ -85,6 +85,9 @@ THE SOFTWARE.
         </f:entry>
       </j:if>
 
+        <f:dropdownDescriptorSelector title="${%Markup Formatter}" field="markupFormatter" />
+
+
         <f:descriptorList title="${%Global properties}"
                           name="globalNodeProperties"
                           descriptors="${h.getNodePropertyDescriptors(it.class)}"

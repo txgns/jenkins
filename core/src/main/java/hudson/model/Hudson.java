@@ -2505,6 +2505,12 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
 
             JSONObject json = req.getSubmittedForm();
 
+            if (json.has("markupFormatter")) {
+                markupFormatter = req.bindJSON(MarkupFormatter.class,json.getJSONObject("markupFormatter"));
+            } else {
+                markupFormatter = null;
+            }
+            
             if (json.has("viewsTabBar")) {
                 viewsTabBar = req.bindJSON(ViewsTabBar.class,json.getJSONObject("viewsTabBar"));
             } else {
