@@ -54,7 +54,13 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
     public void testSnapshot() throws Exception {
         metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(1, getDefaultCommand()));
 
-        provision(terminate(provision()));
+        delete(terminate(provision()));
+    }
+
+    public void testSnapshotReProvision() throws Exception {
+        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(1, getDefaultCommand()));
+
+        delete(terminate(provision(terminate(provision()))));
     }
 
     public void testProvisionCommandTimeOut() throws Exception {
@@ -334,6 +340,14 @@ public class CommandMasterProvisioningServiceTest extends AbstractMasterProvisio
         assertFalse(getMasterHomeDir().exists());
 
         return ms;
+    }
+
+    private void delete(MasterServer ms) throws Exception {
+        URL snapshot = ms.getSnapshot();
+
+        ms.delete();
+
+        assertFalse(new File(snapshot.getPath()).exists());
     }
 
     private MasterServer provision(MasterServer ms) throws Exception {

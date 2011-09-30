@@ -431,11 +431,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
         setIdentity(null);
 
         if (snapshot != null) {
-            // Remove the old snapshot if present
-            if (this.snapshot != null) {
-                File f = new File(this.snapshot.getPath());
-                f.delete();
-            }
+            removeSnapshot();
             this.snapshot = snapshot;
         }
 
@@ -444,6 +440,13 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
         taskListener.getLogger().println("Terminated");
         taskListener.getLogger().println(toString());
+    }
+
+    private void removeSnapshot() {
+        if (this.snapshot != null) {
+            File f = new File(this.snapshot.getPath());
+            f.delete();
+        }
     }
 
     private void setState(State state) {
@@ -615,6 +618,8 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
             // TODO disable this, or only enable for development purposes.
             setTerminateCompletedState(null);
         }
+
+        removeSnapshot();
 
         super.delete();
     }
