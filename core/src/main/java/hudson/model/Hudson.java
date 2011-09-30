@@ -3495,7 +3495,7 @@ public final class Hudson extends Node implements ItemGroup<TopLevelItem>, Stapl
 
             for (Action a : getActions()) {
                 if (a instanceof UnprotectedRootAction) {
-                    if (rest.startsWith("/"+a.getUrlName()+"/"))
+                    if (rest.startsWith("/"+a.getUrlName()+"/") || rest.equals("/"+a.getUrlName()))
                         return this;
                 }
             }
