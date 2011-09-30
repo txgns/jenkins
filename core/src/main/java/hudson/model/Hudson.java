@@ -3516,7 +3516,7 @@ public class Hudson extends Node implements ModifiableItemGroup<TopLevelItem>, S
 
             for (Action a : getActions()) {
                 if (a instanceof UnprotectedRootAction) {
-                    if (rest.startsWith("/"+a.getUrlName()+"/"))
+                    if (rest.startsWith("/"+a.getUrlName()+"/") || rest.equals("/"+a.getUrlName()))
                         return this;
                 }
             }
