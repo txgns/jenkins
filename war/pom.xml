@@ -88,7 +88,7 @@ THE SOFTWARE.
     <dependency>
       <groupId>com.cloudbees.nectar</groupId>
       <artifactId>nectar-rbac</artifactId>
-      <version>2.0</version>
+      <version>2.3</version>
       <type>hpi</type>
       <scope>test</scope>
     </dependency>
@@ -317,7 +317,7 @@ THE SOFTWARE.
                 <resolvePlugin groupId="com.cloudbees.plugins" artifactId="cloudbees-update-center-plugin" version="0.12" />
                 <resolvePlugin groupId="com.cloudbees.metanectar" artifactId="metanectar-updatecenter-plugin" version="0.5" />
                 <resolvePlugin groupId="com.cloudbees.metanectar" artifactId="metanectar-vmware" version="0.5" />
-                <resolvePlugin groupId="com.cloudbees.nectar" artifactId="nectar-rbac" version="2.0" />
+                <resolvePlugin groupId="com.cloudbees.nectar" artifactId="nectar-rbac" version="2.3" />
                 <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="cloudbees-folder" version="1.5" />
                 <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="metanectar-license" version="1.2" />
                 <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="cloudbees-license" version="1.4" />
