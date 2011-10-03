@@ -4,7 +4,8 @@
     <j:if test="${app.config.isMasterProvisioning()}">
         <f:section title="Master provisioning">
             <f:optionalBlock name="enabled" title="${%Enable on DEV@cloud Private Edition node}"
-                             checked="${instance.enabled}">
+                             checked="${instance.enabled}"
+                             help="${descriptor.getHelpFile('enabled')}">
                 <f:property field="nodeTemplate"/>
             </f:optionalBlock>
         </f:section>
