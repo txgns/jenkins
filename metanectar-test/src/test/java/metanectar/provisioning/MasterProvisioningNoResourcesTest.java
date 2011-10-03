@@ -47,6 +47,8 @@ public class MasterProvisioningNoResourcesTest extends AbstractMasterProvisionin
         connected.await(1, TimeUnit.MINUTES);
 
         assertEquals(MasterServer.State.Approved, ms.getState());
+
+        s.stopAll();
     }
 
     public void testProvisionCancel() throws Exception {

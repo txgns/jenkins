@@ -145,16 +145,18 @@ public class MetaNectar extends Hudson {
     public MetaNectar(File root, ServletContext context, PluginManager pluginManager, Config config) throws IOException, InterruptedException, ReactorException {
         super(root, context, pluginManager);
 
+        this.config = config;
+
+        final URL u = config.getEndpoint();
+        if (u != null) {
+            Mailer.descriptor().setHudsonUrl(u.toExternalForm());
+        }
+
         // TODO, the timeouts should be configurable
         this.masterProvisioner = new MasterProvisioner(this, TimeUnit.MINUTES.toMillis(5), TimeUnit.MINUTES.toMillis(5));
 
         configureNectarAgentListener(new AgentProtocolListener(this));
 
-        this.config = config;
-
-        URL u = config.getEndpoint();
-        if (u!=null)
-            Mailer.descriptor().setHudsonUrl(u.toExternalForm());
 
         if (!getConfig().isMasterProvisioning()) {
             // If master provisioning is disabled then remove the master provisioning node property if present

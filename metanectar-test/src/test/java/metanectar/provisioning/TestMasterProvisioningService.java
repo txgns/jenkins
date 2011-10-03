@@ -21,7 +21,7 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
 
     private final int delay;
 
-    private final Map<String, URL> provisioned = Maps.newHashMap();
+    private final Map<String, URL> provisioned = Maps.newConcurrentMap();
 
     TestMasterProvisioningService(int delay) {
         this.delay = delay;
@@ -79,14 +79,7 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
 
         return Computer.threadPoolForRemoting.submit(new Callable<Void>() {
             public Void call() throws Exception {
-                URL endpoint = provisioned.get(name);
-
-                URL stop = new URL(endpoint.toExternalForm() + "/stop");
-                HttpURLConnection c = (HttpURLConnection)stop.openConnection();
-                c.setDoOutput(true);
-                c.setRequestMethod("POST");
-                IOUtils.toString(c.getInputStream());
-                c.getResponseCode();
+                stop(provisioned.remove(name));
 
                 return null;
             }
@@ -103,6 +96,25 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
                 return new Terminated(null);
             }
         });
+    }
+
+    public void stopAll() {
+        for (URL endpoint : provisioned.values()) {
+            try {
+                stop(endpoint);
+            } catch (IOException e) {
+
+            }
+        }
+    }
+
+    private void stop(URL endpoint) throws IOException {
+        URL stop = new URL(endpoint.toExternalForm() + "/stop");
+        HttpURLConnection c = (HttpURLConnection)stop.openConnection();
+        c.setDoOutput(true);
+        c.setRequestMethod("POST");
+        IOUtils.toString(c.getInputStream());
+        c.getResponseCode();
     }
 
     public static class TestMasterServerCallable implements hudson.remoting.Callable<URL, Exception> {

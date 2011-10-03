@@ -2,6 +2,7 @@ package metanectar.provisioning;
 
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
 import com.google.common.collect.Lists;
+import hudson.model.LoadStatistics;
 import hudson.remoting.Channel;
 import metanectar.cloud.MasterProvisioningCloudProxy;
 import metanectar.model.MasterServer;
@@ -68,6 +69,15 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
         }
     }
 
+    @Override
+    protected void tearDown() throws Exception {
+        if (s != null) {
+            s.stopAll();
+        }
+
+        super.tearDown();
+    }
+
     public void testProvisionOneMaster() throws Exception {
         _testProvision(1);
     }
@@ -98,10 +108,12 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
         _testProvisionOnMetaNectar(1);
     }
 
+    private TestMasterProvisioningService s;
+
     public MasterServer _testProvisionOnMetaNectar(int masters) throws Exception {
         return _testProvision(masters, new Configurable() {
             public void configure() throws Exception {
-                TestMasterProvisioningService s = new TestMasterProvisioningService(100);
+                s = new TestMasterProvisioningService(100);
                 metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(4, s));
             }
         }).get(0);
