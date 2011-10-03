@@ -9,7 +9,7 @@ import metanectar.model.ConnectedMaster;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 /**
- * Pushes the exact same setting as MetaNectar to mastesr.
+ * Pushes the exact same setting as MetaNectar to master.
  *
  * @author Kohsuke Kawaguchi
  */

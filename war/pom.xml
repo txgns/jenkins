@@ -216,7 +216,7 @@ THE SOFTWARE.
                 <artifactItem>
                   <groupId>org.jenkins-ci.main</groupId>
                   <artifactId>jenkins-war</artifactId>
-                  <version>1.430-SNAPSHOT</version>
+                  <version>1.430</version>
                   <type>war</type>
                 </artifactItem>
                 <artifactItem>
