@@ -26,12 +26,15 @@
 package metanectar.test;
 
 import hudson.model.Hudson;
+import hudson.tasks.Mailer;
 import metanectar.Config;
 import metanectar.model.MetaNectar;
+import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 import org.jvnet.hudson.test.HudsonTestCase;
 import org.jvnet.hudson.test.TestPluginManager;
 import org.jvnet.hudson.test.recipes.Recipe;
 
+import javax.servlet.ServletContext;
 import java.io.File;
 
 /**
@@ -55,13 +58,39 @@ public class MetaNectarTestCase extends HudsonTestCase {
     public MetaNectar metaNectar;
 
     protected Hudson newHudson() throws Exception {
-        File home = homeLoader.allocate();
+        final File home = homeLoader.allocate();
         for (Recipe.Runner r : recipes)
-            r.decorateHome(this,home);
-        metaNectar = new MetaNectar(home, createWebServer(),
+            r.decorateHome(this, home);
+
+        if (config == null) {
+            config = new Config();
+        }
+
+        final ServletContext context = createWebServer();
+
+        // Set test configuration defaults if not already set
+        setDefault("metaNectar.endpoint", getURL().toExternalForm());
+        setDefault("metaNectar.master.provisioning.archive", home.getAbsolutePath());
+
+        metaNectar = new MetaNectar(home, context,
                 useLocalPluginManager ? null : TestPluginManager.INSTANCE,
-                config == null ? Config.getInstance() : config);
-        metaNectar.setRootUrl(getURL().toExternalForm());
+                config);
         return metaNectar;
     }
+
+    private void setDefault(String name, String value) {
+        if (!config.getProperties().containsKey(name)) {
+            config.getProperties().setProperty(name, value);
+        }
+    }
+
+    @Override
+    protected void setUp() throws Exception {
+        super.setUp();
+
+        // Reset the endpoint URL
+        // For some reason the Hudson.setUp resets the value to null !!!
+        Mailer.descriptor().setHudsonUrl(config.getEndpoint().toExternalForm());
+    }
+
 }

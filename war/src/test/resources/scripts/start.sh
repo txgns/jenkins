@@ -10,7 +10,16 @@ fi
 
 if [ -f "${MASTER_HOME}.pid" ]
 then
-  exit 0;
+  pid=$(cat ${MASTER_HOME}.pid)
+  ps -p $pid > /dev/null
+  if [ $? == 0 ]; then
+    echo "master is already running as PID=$pid according to ${MASTER_HOME}.pid"
+    exit 0
+  else
+    # stale PID file
+    echo "stale pid file at ${MASTER_HOME}.pid. Removing"
+    rm ${MASTER_HOME}.pid
+  fi
 fi
 
 bash ${MASTER_HOME}.start 

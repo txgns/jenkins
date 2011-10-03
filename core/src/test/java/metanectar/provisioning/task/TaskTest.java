@@ -34,14 +34,14 @@ public class TaskTest extends TaskTestBase {
         public Callable<Object> createWork() {
             return new Callable<Object>() {
                 public Object call() throws Exception {
-                    Thread.currentThread().sleep(sleepTime);
+                    Thread.sleep(sleepTime);
                     return null;
                 }
             };
         }
 
-        public SleepTask end() throws Exception {
-            super.end();
+        public SleepTask end(Future f) throws Exception {
+            super.end(f);
 
             if (s.n == 0) {
                 return null;
@@ -63,7 +63,7 @@ public class TaskTest extends TaskTestBase {
         public Callable<Object> createWork() {
             return new Callable<Object>() {
                 public Object call() throws Exception {
-                    Thread.currentThread().sleep(sleepTime);
+                    Thread.sleep(sleepTime);
                     throw new SleepTaskException();
                 }
             };
@@ -136,7 +136,7 @@ public class TaskTest extends TaskTestBase {
 
         ft.get(1, TimeUnit.MINUTES);
 
-        assertTrue(st.isDone());
+        assertTrue(ft.isDone());
     }
 
     class SleepTaskWithLatchOnStart extends SleepTask {
@@ -146,9 +146,13 @@ public class TaskTest extends TaskTestBase {
             super(timeout, sleepTime, new SleepTaskState(0));
         }
 
-        protected void setFuture(Future f) {
-            super.setFuture(f);
-            c.countDown();
+        @Override
+        public Future doStart() throws Exception {
+            try {
+                return super.doStart();
+            } finally {
+                c.countDown();
+            }
         }
     }
 
@@ -169,7 +173,7 @@ public class TaskTest extends TaskTestBase {
 
         ft.get(1, TimeUnit.MINUTES);
 
-        assertTrue(st.isDone());
+        assertTrue(ft.isDone());
     }
 
     public void testOneTaskWithCancelTaskAfterStart() throws Exception {
@@ -182,15 +186,15 @@ public class TaskTest extends TaskTestBase {
         Future<?> fq = processQueue(q, 50);
 
         st.c.await(1, TimeUnit.MINUTES);
-        st.cancel();
+        ft.cancel(true);
 
         fq.get(1, TimeUnit.MINUTES);
         assertFalse(fq.isCancelled());
 
         ft.get(1, TimeUnit.MINUTES);
 
-        assertTrue(st.isStarted());
-        assertTrue(st.isCancelled());
+        assertTrue(ft.isDone());
+        assertTrue(ft.isCancelled());
     }
 
     public void testChainingTask() throws Exception {

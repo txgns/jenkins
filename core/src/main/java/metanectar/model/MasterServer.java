@@ -75,7 +75,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
         public ImmutableSet<Action> actions;
 
         State(Action... actions) {
-            this.actions = new ImmutableSet.Builder<Action>().add(actions).build();
+            this.actions = ImmutableSet.copyOf(actions);
         }
 
         public boolean canDo(Action a) {

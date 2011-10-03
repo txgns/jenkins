@@ -9,6 +9,7 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -35,7 +36,7 @@ public class MasterProvisionTask extends MasterServerTask<MasterProvisioningServ
         this.id = id;
     }
 
-    public void start() throws Exception {
+    public Future<MasterProvisioningService.Provisioned> doStart() throws Exception {
         try {
             LOGGER.info("Provisioning master " + ms.getName() + " on node " + node.getNodeName());
 
@@ -45,7 +46,7 @@ public class MasterProvisionTask extends MasterServerTask<MasterProvisioningServ
             final MasterProvisioningNodeProperty p = MasterProvisioningNodeProperty.get(node);
 
             Map<String, Object> provisionProperties = new HashMap<String, Object>(properties);
-            setFuture(p.getProvisioningService().provision(ms, metaNectarEndpoint, provisionProperties));
+            return p.getProvisioningService().provision(ms, metaNectarEndpoint, provisionProperties);
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Provisioning error for master " + ms.getName() + " on node " + node.getNodeName(), e);
 
@@ -54,9 +55,9 @@ public class MasterProvisionTask extends MasterServerTask<MasterProvisioningServ
         }
     }
 
-    public MasterServerTask end() throws Exception {
+    public MasterServerTask end(Future<MasterProvisioningService.Provisioned> f) throws Exception {
         try {
-            final MasterProvisioningService.Provisioned provisioned = getFuture().get();
+            final MasterProvisioningService.Provisioned provisioned = f.get();
 
             LOGGER.info("Provisioning completed for master " + ms.getName() + " on node " + node.getNodeName());
 

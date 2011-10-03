@@ -25,20 +25,20 @@ public class TaskTestBase extends TestCase {
     }
 
 
-    abstract class SomeTask extends TaskWithFuture {
+    abstract class SomeTask extends TaskWithTimeout {
         Exception caught;
 
         SomeTask(long timeout) {
             super(timeout);
         }
 
-        public void start() throws Exception {
-            setFuture(es.submit(createWork()));
+        public Future doStart() throws Exception {
+            return es.submit(createWork());
         }
 
-        public SomeTask end() throws Exception {
+        public SomeTask end(Future f) throws Exception {
             try {
-                getFuture().get();
+                f.get();
             } catch (Exception e) {
                 caught = e;
                 throw e;
@@ -56,7 +56,7 @@ public class TaskTestBase extends TestCase {
                 while (!queue.getQueue().isEmpty()) {
                     queue.process();
                     try {
-                        Thread.currentThread().sleep(period);
+                        Thread.sleep(period);
                     } catch (InterruptedException e) {
                     }
                 }

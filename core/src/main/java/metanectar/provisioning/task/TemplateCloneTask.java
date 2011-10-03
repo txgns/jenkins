@@ -5,13 +5,14 @@ import metanectar.model.MasterTemplate;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * @author Paul Sandoz
  */
-public class TemplateCloneTask extends TaskWithFuture<String, TemplateCloneTask> {
+public class TemplateCloneTask extends TaskWithTimeout<String, TemplateCloneTask> {
     private static final Logger LOGGER = Logger.getLogger(TemplateCloneTask.class.getName());
 
     private final MasterTemplate mt;
@@ -21,17 +22,17 @@ public class TemplateCloneTask extends TaskWithFuture<String, TemplateCloneTask>
         this.mt = mt;
     }
 
-    public void start() throws Exception {
+    public Future<String> doStart() throws Exception {
         try {
             LOGGER.info("Cloning to " + getTemplateAndSourceDescription());
 
             mt.setCloningState();
 
-            setFuture(Computer.threadPoolForRemoting.submit(new Callable<String>() {
+            return Computer.threadPoolForRemoting.submit(new Callable<String>() {
                 public String call() throws Exception {
                     return mt.getSource().toTemplate().getAbsolutePath();
                 }
-            }));
+            });
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Cloning error for " + getTemplateAndSourceDescription(), e);
 
@@ -40,9 +41,9 @@ public class TemplateCloneTask extends TaskWithFuture<String, TemplateCloneTask>
         }
     }
 
-    public TemplateCloneTask end() throws Exception {
+    public TemplateCloneTask end(Future<String> f) throws Exception {
         try {
-            final String templatePath = getFuture().get();
+            final String templatePath = f.get();
 
             LOGGER.info("Cloning completed for " + getTemplateAndSourceDescription());
 

@@ -2,6 +2,8 @@ package metanectar.provisioning.task;
 
 import metanectar.model.MasterServer;
 
+import java.util.concurrent.Future;
+
 /**
  * @author Paul Sandoz
  */
@@ -11,8 +13,8 @@ public class MasterStopThenTerminateTask extends MasterStopTask {
         super(timeout, ms);
     }
 
-    public MasterServerTask end() throws Exception {
-        super.end();
+    public MasterServerTask end(Future f) throws Exception {
+        super.end(f);
 
         return new MasterTerminateTask(getTimeout(), ms, false);
     }

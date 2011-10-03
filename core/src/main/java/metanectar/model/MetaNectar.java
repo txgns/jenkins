@@ -14,6 +14,7 @@ import hudson.init.Initializer;
 import hudson.model.*;
 import hudson.model.labels.LabelAtom;
 import hudson.remoting.Channel;
+import hudson.tasks.Mailer;
 import hudson.util.AdministrativeError;
 import hudson.util.AlternativeUiTextProvider;
 import metanectar.Config;
@@ -144,12 +145,18 @@ public class MetaNectar extends Hudson {
     public MetaNectar(File root, ServletContext context, PluginManager pluginManager, Config config) throws IOException, InterruptedException, ReactorException {
         super(root, context, pluginManager);
 
+        this.config = config;
+
+        final URL u = config.getEndpoint();
+        if (u != null) {
+            Mailer.descriptor().setHudsonUrl(u.toExternalForm());
+        }
+
         // TODO, the timeouts should be configurable
         this.masterProvisioner = new MasterProvisioner(this, TimeUnit.MINUTES.toMillis(5), TimeUnit.MINUTES.toMillis(5));
 
         configureNectarAgentListener(new AgentProtocolListener(this));
 
-        this.config = config;
 
         if (!getConfig().isMasterProvisioning()) {
             // If master provisioning is disabled then remove the master provisioning node property if present
@@ -210,25 +217,12 @@ public class MetaNectar extends Hudson {
         }
     }
 
-    private transient String rootUrl;
-
-    @Override
-    public String getRootUrl() {
-        if (rootUrl != null) {
-            return rootUrl;
-        }
-
-        try {
-            URL u = Config.getInstance().getEndpoint();
-            rootUrl = u.toExternalForm();
-        } catch (Exception ex) {}
-
-        // TODO Hudson.getRootUrl() is returning null
-        return super.getRootUrl();
-    }
-
+    /**
+     * @deprecated
+     *      Use {@code Mailer.descriptor().setHudsonUrl(rootUrl)}
+     */
     public void setRootUrl(String rootUrl) {
-        this.rootUrl = rootUrl;
+        Mailer.descriptor().setHudsonUrl(rootUrl);
     }
 
     public URL getMetaNectarPortUrl() {

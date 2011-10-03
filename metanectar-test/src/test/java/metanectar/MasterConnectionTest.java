@@ -35,7 +35,7 @@ public class MasterConnectionTest extends MetaNectarTestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        Mailer.descriptor().setHudsonUrl(getURL().toExternalForm());
+
         id = InstanceIdentity.get();
     }
 
