@@ -1,8 +1,6 @@
 package metanectar.provisioning;
 
-import metanectar.model.MasterTemplate;
-import metanectar.model.MasterTemplateSource;
-import metanectar.model.TemplateFile;
+import metanectar.model.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,6 +20,22 @@ public class MasterTemplateTest extends AbstractMasterProvisioningTestCase {
         assertEquals(MasterTemplate.State.Cloned, mt.getState());
     }
 
+    public void testClone() throws Exception {
+        MasterTemplate mt = metaNectar.createMasterTemplate("mt");
+        mt.setConfiguredState(new TestMasterTemplateSource());
+
+        mt.cloneFromSourceAction().get(1, TimeUnit.MINUTES);
+        assertEquals(MasterTemplate.State.Cloned, mt.getState());
+
+        mt.cloneToNewMasterAction("/", "m");
+
+        MasterServer m = metaNectar.getItemByFullName("m", MasterServer.class);
+        assertNotNull(m);
+
+        assertNotNull(m.getSnapshot());
+        assertTrue(m.getSnapshot().toExternalForm().endsWith(".zip"));
+    }
+
     static class TestMasterTemplateSource extends MasterTemplateSource {
         @Override
         public String getSourceDescription() {
@@ -36,7 +50,7 @@ public class MasterTemplateTest extends AbstractMasterProvisioningTestCase {
         @Override
         public TemplateFile toTemplate() throws IOException, InterruptedException {
             Thread.currentThread().sleep(100);
-            return new TemplateFile(new File("/tmp/template.zip"), ".zip");
+            return ConnectedMaster.createMasterTemplateFile(MetaNectar.getInstance().getConfig().getArchiveDirectory(), ".zip");
         }
     }
 
@@ -83,7 +97,7 @@ public class MasterTemplateTest extends AbstractMasterProvisioningTestCase {
                 }
             } else {
                 Thread.currentThread().sleep(100);
-                return new TemplateFile(new File("/tmp/template.zip"), ".zip");
+                return ConnectedMaster.createMasterTemplateFile(MetaNectar.getInstance().getConfig().getArchiveDirectory(), ".zip");
             }
         }
     }
