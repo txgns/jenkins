@@ -53,13 +53,12 @@ public class MasterProvisioner {
 
     private final long cloudTimout;
 
-    private final ListMultimap<Node, MasterServer> nodesWithMasters = ArrayListMultimap.create();
+    private final ListMultimap<Node, MasterServer> nodesWithMasters =
+            Multimaps.synchronizedListMultimap(ArrayListMultimap.<Node, MasterServer>create());
 
     private class NodeUpdateListener extends MasterServerListener {
         @Override
         public void onStateChange(final MasterServer ms) {
-            // The modification of nodesWithMasters is guaranteed to occur on the same thread
-            // as the periodic timer, thus no synchronization is required.
             switch (ms.getState())  {
                 // Assign the node for provisioning or a provisioning error
                 // The latter is important for cases when the error needs to be resolved on the node
