@@ -199,6 +199,11 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
         taskListener.getLogger().println(toString());
     }
 
+    public void setSnapshot(File snapshot) throws IOException {
+        this.snapshot = snapshot.toURI().toURL();
+        save();
+    }
+
     public void setLabelExpression(String labelExpression) throws IOException {
         this.labelExpression = labelExpression;
         save();

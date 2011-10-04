@@ -31,12 +31,11 @@ public abstract class MasterTemplateSource extends AbstractDescribableImpl<Maste
      * @throws IOException
      * @throws InterruptedException
      */
-    public abstract File toTemplate() throws IOException, InterruptedException;
+    public abstract TemplateFile toTemplate() throws IOException, InterruptedException;
 
-    public File createTemplateFile(String suffix) throws IOException {
+    public TemplateFile createTemplateFile(String suffix) throws IOException {
         return ConnectedMaster.createMasterTemplateFile(MetaNectar.getInstance().getConfig().getArchiveDirectory(), suffix);
     }
-
 
     /**
      * Returns all the registered {@link MasterTemplateSource} descriptors.

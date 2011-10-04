@@ -2,29 +2,33 @@ package metanectar.model;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import hudson.AbortException;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
+import hudson.Util;
 import hudson.model.*;
 import hudson.util.DescribableList;
+import hudson.util.FormValidation;
+import hudson.util.ListBoxModel;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
-import org.kohsuke.stapler.HttpResponse;
-import org.kohsuke.stapler.HttpResponses;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.*;
 
 import javax.servlet.ServletException;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.Method;
 import java.net.URLEncoder;
 import java.util.*;
 import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
+import static hudson.Util.fixEmpty;
+import static java.util.Arrays.asList;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 
 /**
@@ -107,7 +111,7 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
     /**
      * The template path name.
      */
-    protected volatile String templatePath;
+    protected volatile TemplateFile template;
 
     /**
      * The properties
@@ -164,8 +168,8 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
         return source;
     }
 
-    public String getTemplatePath() {
-        return templatePath;
+    public TemplateFile getTemplate() {
+        return template;
     }
 
     public String getStatePage() {
@@ -224,9 +228,9 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
         save();
     }
 
-    public synchronized void setClonedState(String templatePath) throws IOException {
+    public synchronized void setClonedState(TemplateFile template) throws IOException {
         setState(State.Cloned);
-        this.templatePath = templatePath;
+        this.template = template;
 
         save();
     }
@@ -275,8 +279,33 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
         return MetaNectar.getInstance().masterProvisioner.cloneTemplateFromSource(this);
     }
 
-    public Future<MasterTemplate> cloneToNewMasterAction() throws IOException {
-        throw new UnsupportedOperationException("To be implemented");
+    public MasterServer cloneToNewMasterAction(String location, String name) throws Exception {
+        preConditionAction(Action.CloneToNewMaster);
+
+        location = location.substring(1);
+
+        final MetaNectar mn = MetaNectar.getInstance();
+        final ItemGroup ig = location.isEmpty() ? mn : (ItemGroup)mn.getItemByFullName(location, Item.class);
+
+        final MasterServer m = createNewMaster(ig, name);
+        final File snapshot = template.copyToSnapshot();
+        m.setSnapshot(snapshot);
+
+        return m;
+    }
+
+    private MasterServer createNewMaster(ItemGroup ig, String name) throws Exception {
+        if (ig instanceof MetaNectar) {
+            return ((MetaNectar)ig).createProject(MasterServer.class, name);
+        } else {
+            // TODO work around the restriction there is no common interface to create a child item of a container
+            // For Folders this relies on the following method being present
+            // public <T extends TopLevelItem> T createProject(Class<T> type, String name) throws IOException {
+
+            Method createProject = ig.getClass().getMethod("createProject", Class.class, String.class);
+
+            return (MasterServer)createProject.invoke(ig, MasterServer.class, name);
+        }
     }
 
     // Recover
@@ -312,12 +341,19 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
         }.doAction();
     }
 
-    public HttpResponse doCloneToNewMasterAction() throws Exception {
-        return new DoActionLambda() {
-            public void f() throws Exception {
-                cloneToNewMasterAction();
-            }
-        }.doAction();
+    public HttpResponse doCloneToNewMasterAction(StaplerRequest req, StaplerResponse rsp) throws Exception {
+        requirePOST();
+
+        JSONObject json = req.getSubmittedForm();
+
+        String location = json.getString("location");
+
+        String name = json.getString("masterName");
+
+        MasterServer m = cloneToNewMasterAction(location, name);
+
+        // Redirect to master configure page
+        return HttpResponses.redirectViaContextPath(m.getUrl() + "configure");
     }
 
     private abstract class DoActionLambda {
@@ -339,7 +375,7 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
         }
 
         if (state == State.Cloned) {
-            new File(templatePath).delete();
+            template.getFile().delete();
         }
 
         super.delete();
@@ -375,8 +411,7 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
 
     // Configuration
 
-    public synchronized void doConfigSubmit(StaplerRequest req,
-            StaplerResponse rsp) throws IOException, ServletException, Descriptor.FormException {
+    public synchronized void doConfigSubmit(StaplerRequest req, StaplerResponse rsp) throws Exception {
         checkPermission(CONFIGURE);
 
         description = req.getParameter("description");
@@ -458,6 +493,19 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
         }
     }
 
+    public String getLocation() {
+        MetaNectar mn = MetaNectar.getInstance();
+        if (mn.hasPermission(Item.READ)) {
+            return "/" + mn.getFullName();
+        }
+
+        List<Item> items = MetaNectar.getInstance().getAllItems(Item.class);
+        if (items.size() > 0) {
+            return "/" + items.get(0).getFullName();
+        } else {
+            return "";
+        }
+    }
 
     @Extension
     public static class DescriptorImpl extends TopLevelItemDescriptor {
@@ -474,6 +522,65 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
         public DescriptorExtensionList<MasterTemplateSource, Descriptor<MasterTemplateSource>> getMasterTemplateSourceDescriptors() {
             return MasterTemplateSource.all();
         }
+
+        public FormValidation doCheckMasterName(@QueryParameter String location, @QueryParameter String masterName) {
+            MetaNectar mn = MetaNectar.getInstance();
+
+            if(Util.fixEmpty(masterName)==null)
+                return FormValidation.ok();
+
+            location = location.substring(1);
+
+            if (location.isEmpty()) {
+                return mn.doCheckJobName(masterName);
+            } else {
+                Item i = mn.getItemByFullName(location, Item.class);
+
+                i.checkPermission(Item.CREATE);
+
+                ItemGroup ig = (ItemGroup)i;
+
+                try {
+                    checkJobName(ig, masterName);
+                    return FormValidation.ok();
+                } catch (Failure e) {
+                    return FormValidation.error(e.getMessage());
+                }
+            }
+        }
+
+        private String checkJobName(ItemGroup ig, String name) throws Failure {
+            MetaNectar.checkGoodName(name);
+            name = name.trim();
+            if(ig.getItem(name)!=null)
+                throw new Failure(hudson.model.Messages.Hudson_JobAlreadyExists(name));
+            // looks good
+            return name;
+        }
+
+        public ListBoxModel doFillLocationItems() {
+            ListBoxModel m = new ListBoxModel();
+
+            List<ItemGroup> items = Lists.newArrayList();
+
+            MetaNectar mn = MetaNectar.getInstance();
+            if (mn.hasPermission(Item.CREATE)) {
+                items.add(mn);
+            }
+
+            for (Item i : MetaNectar.getInstance().getAllItems(Item.class)) {
+                if (i instanceof ItemGroup && i.hasPermission(Item.CREATE)) {
+                    items.add((ItemGroup)i);
+                }
+            }
+
+            for (ItemGroup ig : items) {
+                m.add("/" + ig.getFullName());
+            }
+
+            return m;
+        }
+
     }
 
     private static final Logger LOGGER = Logger.getLogger(MasterTemplate.class.getName());

@@ -2,6 +2,7 @@ package metanectar.provisioning.task;
 
 import hudson.model.Computer;
 import metanectar.model.MasterTemplate;
+import metanectar.model.TemplateFile;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -12,7 +13,7 @@ import java.util.logging.Logger;
 /**
  * @author Paul Sandoz
  */
-public class TemplateCloneTask extends TaskWithTimeout<String, TemplateCloneTask> {
+public class TemplateCloneTask extends TaskWithTimeout<TemplateFile, TemplateCloneTask> {
     private static final Logger LOGGER = Logger.getLogger(TemplateCloneTask.class.getName());
 
     private final MasterTemplate mt;
@@ -22,15 +23,15 @@ public class TemplateCloneTask extends TaskWithTimeout<String, TemplateCloneTask
         this.mt = mt;
     }
 
-    public Future<String> doStart() throws Exception {
+    public Future<TemplateFile> doStart() throws Exception {
         try {
             LOGGER.info("Cloning to " + getTemplateAndSourceDescription());
 
             mt.setCloningState();
 
-            return Computer.threadPoolForRemoting.submit(new Callable<String>() {
-                public String call() throws Exception {
-                    return mt.getSource().toTemplate().getAbsolutePath();
+            return Computer.threadPoolForRemoting.submit(new Callable<TemplateFile>() {
+                public TemplateFile call() throws Exception {
+                    return mt.getSource().toTemplate();
                 }
             });
         } catch (Exception e) {
@@ -41,13 +42,13 @@ public class TemplateCloneTask extends TaskWithTimeout<String, TemplateCloneTask
         }
     }
 
-    public TemplateCloneTask end(Future<String> f) throws Exception {
+    public TemplateCloneTask end(Future<TemplateFile> f) throws Exception {
         try {
-            final String templatePath = f.get();
+            final TemplateFile templateFile = f.get();
 
             LOGGER.info("Cloning completed for " + getTemplateAndSourceDescription());
 
-            mt.setClonedState(templatePath);
+            mt.setClonedState(templateFile);
         } catch (Exception e) {
             final Throwable cause = (e instanceof ExecutionException) ? e.getCause() : e;
             LOGGER.log(Level.WARNING, "Cloning completion error for " + getTemplateAndSourceDescription(), cause);

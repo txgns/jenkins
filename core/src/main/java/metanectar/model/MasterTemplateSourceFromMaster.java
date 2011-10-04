@@ -60,14 +60,14 @@ public class MasterTemplateSourceFromMaster extends MasterTemplateSource {
     }
 
     @Override
-    public File toTemplate() throws IOException, InterruptedException {
+    public TemplateFile toTemplate() throws IOException, InterruptedException {
         ConnectedMaster cm = getConnectedMaster();
         if (cm == null) {
             throw new IllegalStateException(String.format("Master %s is not not exist", masterName));
         }
 
-        File template = createTemplateFile(".tar.gz");
-        cm.cloneHomeDir(template, ArchiverFactory.TARGZ);
+        TemplateFile template = createTemplateFile(".tar.gz");
+        cm.cloneHomeDir(template.getFile(), ArchiverFactory.TARGZ);
         return template;
     }
 

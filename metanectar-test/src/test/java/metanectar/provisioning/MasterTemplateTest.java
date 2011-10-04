@@ -2,6 +2,7 @@ package metanectar.provisioning;
 
 import metanectar.model.MasterTemplate;
 import metanectar.model.MasterTemplateSource;
+import metanectar.model.TemplateFile;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,9 +34,9 @@ public class MasterTemplateTest extends AbstractMasterProvisioningTestCase {
         }
 
         @Override
-        public File toTemplate() throws IOException, InterruptedException {
+        public TemplateFile toTemplate() throws IOException, InterruptedException {
             Thread.currentThread().sleep(100);
-            return new File("/tmp/template.zip");
+            return new TemplateFile(new File("/tmp/template.zip"), ".zip");
         }
     }
 
@@ -72,7 +73,7 @@ public class MasterTemplateTest extends AbstractMasterProvisioningTestCase {
         }
 
         @Override
-        public File toTemplate() throws IOException, InterruptedException {
+        public TemplateFile toTemplate() throws IOException, InterruptedException {
             if (waiting) {
                 waitingLatch.countDown();
                 while (true) {
@@ -82,7 +83,7 @@ public class MasterTemplateTest extends AbstractMasterProvisioningTestCase {
                 }
             } else {
                 Thread.currentThread().sleep(100);
-                return new File("/tmp/template.zip");
+                return new TemplateFile(new File("/tmp/template.zip"), ".zip");
             }
         }
     }

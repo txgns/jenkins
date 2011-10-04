@@ -639,8 +639,8 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
      * directory.
      *
      */
-    public static File createMasterTemplateFile(String dir, String suffix) throws IOException {
-        return createMasterArchiveFile(dir, "template-", suffix);
+    public static TemplateFile createMasterTemplateFile(String dir, String suffix) throws IOException {
+        return new TemplateFile(createMasterArchiveFile(dir, "template-", suffix), suffix);
     }
 
     /**

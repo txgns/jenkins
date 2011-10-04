@@ -1,16 +1,25 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-    <l:layout>
-        <st:include page="sidepanel.jelly"/>
-        <l:main-panel>
-            <p>To be implemented....</p>
-            <!--
-            <form method="post" action="cloneToNewMasterAction">
-                Are you sure about cloning to template '${it.displayName}' to a new master?
+  <l:layout>
+    <st:include page="sidepanel.jelly"/>
+    <l:main-panel>
+      <p>Clone the template to a new managed master</p>
+      <f:form method="post" action="cloneToNewMasterAction" name="clone">
+        <j:set var="descriptor" value="${it.descriptor}"/>
+        <j:set var="instance" value="${it}"/>
 
-                <f:submit value="${%Yes}"/>
-            </form>
-            -->
-        </l:main-panel>
-    </l:layout>
+        <f:entry field="location" title="${%Location}">
+          <f:select/>
+        </f:entry>
+
+        <f:entry field="masterName" title="${%Master Name}">
+          <f:textbox/>
+        </f:entry>
+
+        <f:entry>
+          <f:submit value="${%Clone}"/>
+        </f:entry>
+      </f:form>
+    </l:main-panel>
+  </l:layout>
 </j:jelly>
