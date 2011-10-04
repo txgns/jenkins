@@ -12,7 +12,15 @@ then
   then
     # assume file-based URL
     file=${MASTER_SNAPSHOT##*:}
-    unzip -q ${file} -d "${MASTER_HOME}" 1>&2
+
+    if [[ $MASTER_SNAPSHOT == *\.tar\.gz ]]
+    then
+      cd "${MASTER_HOME}"
+      gunzip -c "${file}" | tar fx - 1>&2
+    elif [[ $MASTER_SNAPSHOT == *\.zip ]]
+    then
+      unzip -q ${file} -d "${MASTER_HOME}" 1>&2
+    fi
   fi
 
   find "${WORK}" -name \*.hpi -exec cp "{}" "${MASTER_HOME}/plugins/" \;
