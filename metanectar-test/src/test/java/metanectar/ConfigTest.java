@@ -15,6 +15,7 @@ public class ConfigTest extends TestCase {
     private Map<String, String> getDefaultProperties() {
         Map<String, String> properties = Maps.newHashMap();
         properties.put("metaNectar.endpoint", "http://localhost:8080");
+        properties.put("metaNectar.master.provisioning.archive", "file:/tmp");
         properties.put("metaNectar.isMasterProvisioning", "true");
         properties.put("metaNectar.master.provisioning.basePort", "8181");
         properties.put("metaNectar.master.provisioning.homeLocation", "/tmp/masters");

@@ -1,6 +1,6 @@
-package metanectar.provisioning.task;
+package metanectar.task;
 
-import junit.framework.TestCase;
+import metanectar.provisioning.task.TaskQueue;
 
 import java.util.concurrent.*;
 
@@ -70,8 +70,7 @@ public class TaskTimeoutTest extends TaskTestBase {
             caught = e;
         }
 
-        assertNotNull(caught);
-        assertTrue(caught instanceof CancellationException);
+        assertNull(caught);
     }
 
 }

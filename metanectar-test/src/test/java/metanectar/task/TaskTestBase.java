@@ -1,8 +1,10 @@
-package metanectar.provisioning.task;
+package metanectar.task;
 
 import hudson.model.LoadStatistics;
 import junit.framework.TestCase;
 import metanectar.provisioning.MasterProvisioner;
+import metanectar.provisioning.task.TaskQueue;
+import metanectar.provisioning.task.TaskWithTimeout;
 
 import java.util.concurrent.*;
 
