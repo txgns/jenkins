@@ -1,8 +1,8 @@
 package metanectar.provisioning;
 
+import com.cloudbees.hudson.plugins.folder.Folder;
 import metanectar.model.*;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -30,6 +30,24 @@ public class MasterTemplateTest extends AbstractMasterProvisioningTestCase {
         mt.cloneToNewMasterAction("/", "m");
 
         MasterServer m = metaNectar.getItemByFullName("m", MasterServer.class);
+        assertNotNull(m);
+
+        assertNotNull(m.getSnapshot());
+        assertTrue(m.getSnapshot().toExternalForm().endsWith(".zip"));
+    }
+
+    public void testCloneInFolder() throws Exception {
+        MasterTemplate mt = metaNectar.createMasterTemplate("mt");
+        mt.setConfiguredState(new TestMasterTemplateSource());
+
+        mt.cloneFromSourceAction().get(1, TimeUnit.MINUTES);
+        assertEquals(MasterTemplate.State.Cloned, mt.getState());
+
+        metaNectar.createProject(Folder.class, "f");
+
+        mt.cloneToNewMasterAction("/f", "m");
+
+        MasterServer m = metaNectar.getItemByFullName("f/m", MasterServer.class);
         assertNotNull(m);
 
         assertNotNull(m.getSnapshot());
