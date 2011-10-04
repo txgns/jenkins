@@ -68,7 +68,7 @@ public class TaskQueue<T extends Task> {
         }
 
         private synchronized void start() {
-            if (isStarted())    throw new IllegalStateException();
+            if (isStarted()) return;
             try {
                 execution = t.start();
                 if (execution instanceof FutureWithCallback) {
