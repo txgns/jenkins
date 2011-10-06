@@ -76,7 +76,7 @@ THE SOFTWARE.
     <dependency>
       <groupId>com.cloudbees.nectar.plugins</groupId>
       <artifactId>cloudbees-metanectar-plugin</artifactId>
-      <version>1.26</version>
+      <version>1.27</version>
       <type>hpi</type>
       <scope>test</scope>
     </dependency>
