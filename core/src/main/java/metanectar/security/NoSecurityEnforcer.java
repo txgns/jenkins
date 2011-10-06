@@ -2,6 +2,8 @@ package metanectar.security;
 
 import com.cloudbees.commons.metanectar.context.ItemNodeContext;
 import hudson.Extension;
+import hudson.security.AuthorizationStrategy;
+import hudson.security.SecurityRealm;
 import metanectar.model.ConnectedMaster;
 import org.kohsuke.stapler.DataBoundConstructor;
 
@@ -16,7 +18,8 @@ public class NoSecurityEnforcer extends SecurityEnforcer {
 
     @Override
     protected void updateNodeContext(ConnectedMaster node, ItemNodeContext context) {
-        // no enforcement
+        context.clearInstance(SecurityRealm.class);
+        context.clearInstance(AuthorizationStrategy.class);
     }
 
     @Extension

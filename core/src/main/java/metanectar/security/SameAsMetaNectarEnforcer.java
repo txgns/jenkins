@@ -19,13 +19,8 @@ public class SameAsMetaNectarEnforcer extends SecurityEnforcer {
 
     @Override
     protected void updateNodeContext(ConnectedMaster node, ItemNodeContext nodeContext) {
-        SecurityRealm s = Hudson.getInstance().getSecurityRealm();
-        if (nodeContext.getAuthenticationRealm() != s)
-            nodeContext.setAuthenticationRealm(s);
-
-        AuthorizationStrategy a = Hudson.getInstance().getAuthorizationStrategy();
-        if (nodeContext.getAuthorizationStrategy() != a)
-            nodeContext.setAuthorizationStrategy(a);
+        nodeContext.setInstance(SecurityRealm.class, Hudson.getInstance().getSecurityRealm());
+        nodeContext.setInstance(AuthorizationStrategy.class, Hudson.getInstance().getAuthorizationStrategy());
     }
 
     @Extension
