@@ -1,6 +1,7 @@
 package metanectar.model;
 
 import com.cloudbees.commons.metanectar.context.ItemNodeContext;
+import com.cloudbees.commons.metanectar.context.NodeContainer;
 import com.cloudbees.commons.metanectar.context.NodeContext;
 import com.cloudbees.commons.metanectar.context.NodeContextContributor;
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
@@ -379,8 +380,20 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
             if (!Arrays.equals(currentDigest, remoteNodeContextDigest)) {
                 LOGGER.log(Level.INFO, "Updating context for {0} as it was out of date", this);
 
-                channel.setProperty(NodeContext.class.getName(), nodeContext);
-                remoteNodeContextDigest = currentDigest;
+                try {
+                    NodeContainer.set(channel, NodeContext.class.getName(), nodeContext);
+                    remoteNodeContextDigest = currentDigest;
+                } catch (IOException e) {
+                    LogRecord lr = new LogRecord(Level.WARNING, "Could not update context for {0}");
+                    lr.setParameters(new Object[]{this});
+                    lr.setThrown(e);
+                    LOGGER.log(lr);
+                } catch (InterruptedException e) {
+                    LogRecord lr = new LogRecord(Level.WARNING, "Interrupted while trying to update context for {0}");
+                    lr.setParameters(new Object[]{this});
+                    lr.setThrown(e);
+                    LOGGER.log(lr);
+                }
             } else {
                 LOGGER.log(Level.FINE, "Context for {0} has not changed since last updated", this);
             }
