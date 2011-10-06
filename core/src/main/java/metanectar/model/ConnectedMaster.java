@@ -43,6 +43,7 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.security.GeneralSecurityException;
@@ -298,7 +299,12 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
             this.error = null;
 
             slaveManager = new ScopedSlaveManager(getParent());
-            channel.setProperty(SlaveManager.class.getName(), channel.export(SlaveManager.class, slaveManager));
+            try {
+                NodeContainer.set(channel, SlaveManager.class.getName(),
+                        (Serializable)channel.export(SlaveManager.class, slaveManager));
+            } catch (InterruptedException e) {
+                LOGGER.log(Level.WARNING, "Interrupted", e);
+            }
             taskListener = this.taskListener;
         }
         ConnectedMasterListener.fireOnConnected(this);
