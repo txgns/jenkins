@@ -56,8 +56,8 @@ THE SOFTWARE.
   </modules>
 
   <scm>
-    <connection>scm:git:ssh://git@git.cloudbees.com/cloudbees/hudson.git</connection>
-    <developerConnection>scm:git:ssh://git@git.cloudbees.com/cloudbees/hudson.git</developerConnection>
+    <connection>scm:git:git@github.com:cloudbees/hudson.git</connection>
+    <developerConnection>scm:git:git@github.com:cloudbees/hudson.git</developerConnection>
   </scm>
   <distributionManagement>
     <repository>
