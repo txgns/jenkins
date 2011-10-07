@@ -297,15 +297,36 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
             }
 
             this.error = null;
+            taskListener = this.taskListener;
 
             slaveManager = new ScopedSlaveManager(getParent());
             try {
                 NodeContainer.set(channel, SlaveManager.class.getName(),
                         (Serializable)channel.export(SlaveManager.class, slaveManager));
             } catch (InterruptedException e) {
-                LOGGER.log(Level.WARNING, "Interrupted", e);
+                LOGGER.log(Level.WARNING, "Interrupted while trying to pass SlaveManager. Master will be unable to lease slaves.", e);
+                taskListener.getLogger().println("Interrupted while trying to pass SlaveManager. Master will be unable to lease slaves.");
+                e.printStackTrace(taskListener.getLogger());
+            } catch (AssertionError e) {
+                LogRecord lr = new LogRecord(Level.SEVERE, "Could not pass SlaveManager to {0} and it will be unable to lease slaves.");
+                lr.setThrown(e);
+                lr.setParameters(new Object[]{this.getDisplayName()});
+                LOGGER.log(lr);
+                taskListener.getLogger().println("Could not pass SlaveManager, leasing of slaves disabled");
+                e.printStackTrace(taskListener.getLogger());
+            } catch (IOException e) {
+                if (e.getCause() instanceof AssertionError) {
+                    LogRecord lr = new LogRecord(Level.SEVERE,
+                            "Could not pass SlaveManager to {0} and it will be unable to lease slaves.");
+                    lr.setThrown(e);
+                    lr.setParameters(new Object[]{this.getDisplayName()});
+                    LOGGER.log(lr);
+                    taskListener.getLogger().println("Could not pass SlaveManager, leasing of slaves disabled");
+                    e.printStackTrace(taskListener.getLogger());
+                } else {
+                    throw e;
+                }
             }
-            taskListener = this.taskListener;
         }
         ConnectedMasterListener.fireOnConnected(this);
         ConnectedMasterProperty.fireOnConnected(this);
