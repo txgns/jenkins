@@ -32,7 +32,7 @@ public class ConfigTest extends TestCase {
             System.setProperty(Config.METANECTAR_PROPERTIES_URL_SYSTEM_PROPERTY_NAME,
                     ConfigTest.class.getResource("config.properties").toExternalForm());
 
-            Config c = Config.getInstance();
+            Config c = new Config();
             testProperties(c);
         } finally {
             System.clearProperty(Config.METANECTAR_PROPERTIES_URL_SYSTEM_PROPERTY_NAME);

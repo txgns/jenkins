@@ -28,8 +28,6 @@ public class Config {
 
     private static final Logger LOGGER = Logger.getLogger(Config.class.getName());
 
-    private static final String METANECTAR_PROPERTIES_URL = System.getProperty(METANECTAR_PROPERTIES_URL_SYSTEM_PROPERTY_NAME);
-
     private final Properties properties;
 
     private final PropertiesToBeanMapper binder;
@@ -37,7 +35,7 @@ public class Config {
     private final Map<Class, Object> bindCache = Maps.newConcurrentMap();
 
     public Config() {
-        this(METANECTAR_PROPERTIES_URL);
+        this(System.getProperty(METANECTAR_PROPERTIES_URL_SYSTEM_PROPERTY_NAME));
     }
 
     public Config(String propertiesUrl) {
@@ -51,14 +49,6 @@ public class Config {
 
     public Properties getProperties() {
         return properties;
-    }
-
-    private static class SingletonHolder {
-        public static final Config INSTANCE = new Config();
-    }
-
-    public static Config getInstance() {
-        return SingletonHolder.INSTANCE;
     }
 
     private static Properties load(String propertiesUrl) {

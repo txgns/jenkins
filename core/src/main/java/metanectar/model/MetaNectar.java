@@ -139,7 +139,7 @@ public class MetaNectar extends Hudson {
     }
 
     public MetaNectar(File root, ServletContext context, PluginManager pluginManager) throws IOException, InterruptedException, ReactorException {
-        this(root, context, pluginManager, Config.getInstance());
+        this(root, context, pluginManager, new Config());
     }
 
     public MetaNectar(File root, ServletContext context, PluginManager pluginManager, Config config) throws IOException, InterruptedException, ReactorException {

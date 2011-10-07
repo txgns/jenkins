@@ -4,6 +4,7 @@ import hudson.Extension;
 import hudson.model.Descriptor;
 import metanectar.Config;
 import metanectar.model.MasterServer;
+import metanectar.model.MetaNectar;
 import metanectar.property.DefaultValue;
 import metanectar.property.Optional;
 import metanectar.property.Property;
@@ -89,13 +90,8 @@ public class ConfiguredCommandMasterProvisioningService extends MasterProvisioni
         init(c);
     }
 
-    private Object readResolve() {
-        init();
-        return this;
-    }
-
     private void init() {
-        init(Config.getInstance());
+        init(MetaNectar.getInstance().getConfig());
     }
 
     private void init(Config c) {
@@ -112,24 +108,32 @@ public class ConfiguredCommandMasterProvisioningService extends MasterProvisioni
                 p.terminate);
     }
 
+    private synchronized CommandMasterProvisioningService getService() {
+        if (s == null) {
+            init();
+        }
+
+        return s;
+    }
+
     @Override
     public Future<Provisioned> provision(MasterServer ms, URL metaNectarEndpoint, Map<String, Object> properties) throws Exception {
-        return s.provision(ms, metaNectarEndpoint, properties);
+        return getService().provision(ms, metaNectarEndpoint, properties);
     }
 
     @Override
     public Future<?> start(MasterServer ms) throws Exception {
-        return s.start(ms);
+        return getService().start(ms);
     }
 
     @Override
     public Future<?> stop(MasterServer ms) throws Exception {
-        return s.stop(ms);
+        return getService().stop(ms);
     }
 
     @Override
     public Future<Terminated> terminate(MasterServer ms) throws Exception {
-        return s.terminate(ms);
+        return getService().terminate(ms);
     }
 
 
