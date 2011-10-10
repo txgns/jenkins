@@ -111,7 +111,7 @@ THE SOFTWARE.
     <dependency>
       <groupId>com.cloudbees.plugins</groupId>
       <artifactId>cloudbees-slave-provisioning-plugin</artifactId>
-      <version>0.15</version>
+      <version>0.16</version>
       <type>hpi</type>
       <scope>test</scope>
     </dependency>
