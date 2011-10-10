@@ -12,6 +12,8 @@ import hudson.cli.declarative.CLIResolver;
 import hudson.model.*;
 import hudson.model.labels.LabelAtom;
 import hudson.model.labels.LabelExpression;
+import hudson.security.Permission;
+import hudson.security.PermissionGroup;
 import hudson.util.DescribableList;
 import hudson.util.FormValidation;
 import metanectar.Config;
@@ -542,6 +544,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
     @CLIMethod(name="managed-master-provision-and-start")
     public synchronized Future<MasterServer> provisionAndStartAction() throws IOException  {
+        checkPermission(MANAGE);
         preConditionAction(Action.Provision);
 
         return MetaNectar.getInstance().masterProvisioner.provisionAndStart(this, MetaNectar.getInstance().getMetaNectarPortUrl());
@@ -549,6 +552,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
     @CLIMethod(name="managed-master-stop-and-terminate")
     public synchronized Future<MasterServer> stopAndTerminateAction() throws IOException {
+        checkPermission(MANAGE);
         preConditionAction(Action.Stop);
 
         return MetaNectar.getInstance().masterProvisioner.stopAndTerminate(this);
@@ -556,6 +560,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
     @CLIMethod(name="managed-master-provision")
     public synchronized Future<MasterServer> provisionAction() throws IOException  {
+        checkPermission(MANAGE);
         preConditionAction(Action.Provision);
 
         return MetaNectar.getInstance().masterProvisioner.provision(this, MetaNectar.getInstance().getMetaNectarPortUrl());
@@ -563,6 +568,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
     @CLIMethod(name="managed-master-re-provision")
     public synchronized Future<MasterServer> reProvisionAction() throws IOException  {
+        checkPermission(MANAGE);
         preConditionAction(Action.ReProvision);
 
         return MetaNectar.getInstance().masterProvisioner.reProvision(this, MetaNectar.getInstance().getMetaNectarPortUrl());
@@ -570,6 +576,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
     @CLIMethod(name="managed-master-cancel-provision")
     public synchronized boolean cancelProvisionAction() throws IOException {
+        checkPermission(MANAGE);
         preConditionAction(Action.CancelProvision);
 
         return MetaNectar.getInstance().masterProvisioner.cancelPendingRequest(this);
@@ -577,12 +584,14 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
     @CLIMethod(name="managed-master-start")
     public synchronized Future<MasterServer> startAction() throws IOException {
+        checkPermission(LIFE_CYCLE);
         preConditionAction(Action.Start);
 
         return MetaNectar.getInstance().masterProvisioner.start(this);
     }
 
     public synchronized Future<MasterServer> stopAction() throws IOException {
+        checkPermission(LIFE_CYCLE);
         preConditionAction(Action.Stop);
 
         return MetaNectar.getInstance().masterProvisioner.stop(this, true);
@@ -591,6 +600,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
     @CLIMethod(name="managed-master-stop")
     public synchronized Future<MasterServer> stopAction(
             @Option(name="-f", usage="Force stop and do not wait for quiet down") boolean force) throws IOException {
+        checkPermission(LIFE_CYCLE);
         preConditionAction(Action.Stop);
 
         return MetaNectar.getInstance().masterProvisioner.stop(this, force);
@@ -598,6 +608,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
     @CLIMethod(name="managed-master-cancel-waiting-for-quiet-down")
     public synchronized boolean cancelWaitingForQuietDown() throws IOException {
+        checkPermission(LIFE_CYCLE);
         preConditionAction(Action.CancelWaitingForQuietDown);
         preConditionOnline(Action.CancelWaitingForQuietDown);
 
@@ -609,6 +620,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
     @CLIMethod(name="managed-master-terminate")
     public synchronized Future<MasterServer> terminateAction(
             @Option(name="-f", usage="Force termination if a termination error occurs") boolean force) throws IOException {
+        checkPermission(MANAGE);
         preConditionAction(Action.Terminate);
 
         return MetaNectar.getInstance().masterProvisioner.terminate(this, force);
@@ -617,6 +629,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
     @Override
     @CLIMethod(name="managed-master-delete")
     public synchronized void delete() throws IOException, InterruptedException {
+        checkPermission(DELETE);
         preConditionAction(Action.Delete);
 
         if (state == MasterServer.State.TerminatingError) {
@@ -881,6 +894,7 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
         @Override
         public TopLevelItem newInstance(ItemGroup parent, String name) {
+            // TODO how to check for create permission?
             return new MasterServer(parent, name);
         }
 
@@ -996,6 +1010,19 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
             return ms.getNodeId();
         }
     };
+
+    public static final PermissionGroup PERMISSIONS = new PermissionGroup(MasterServer.class, Messages._MasterServer_PermissionsTitle());
+
+    public static final Permission CREATE = new Permission(PERMISSIONS,"Create", Messages._MasterServer_Create_Permission(), Item.CREATE);
+
+    public static final Permission DELETE = new Permission(PERMISSIONS,"Delete", Messages._MasterServer_Delete_Permission(), Item.DELETE);
+
+    public static final Permission CONFIGURE = new Permission(PERMISSIONS,"Configure", Messages._MasterServer_Configure_Permission(), Item.CONFIGURE);
+
+    public static final Permission MANAGE = new Permission(PERMISSIONS,"Manage", Messages._MasterServer_Manage_Permission(), CONFIGURE);
+
+    public static final Permission LIFE_CYCLE = new Permission(PERMISSIONS,"LifeCycle", Messages._MasterServer_LifeCycle_Permission(), MANAGE);
+
 
     private static final Logger LOGGER = Logger.getLogger(MasterServer.class.getName());
 }

@@ -645,6 +645,7 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
     // Test stuff
 
     public HttpResponse doDisconnect() throws Exception {
+        checkPermission(Hudson.ADMINISTER);
         requirePOST();
 
         this.channel.close();

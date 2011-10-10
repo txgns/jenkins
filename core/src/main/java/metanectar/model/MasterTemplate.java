@@ -9,6 +9,8 @@ import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.*;
+import hudson.security.Permission;
+import hudson.security.PermissionGroup;
 import hudson.util.DescribableList;
 import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
@@ -274,12 +276,14 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
     }
 
     public Future<MasterTemplate> cloneFromSourceAction() throws IOException {
+        checkPermission(CONFIGURE);
         preConditionAction(Action.CloneFromSource);
 
         return MetaNectar.getInstance().masterProvisioner.cloneTemplateFromSource(this);
     }
 
     public MasterServer cloneToNewMasterAction(String location, String name) throws Exception {
+        checkPermission(CLONE_MASTER);
         preConditionAction(Action.CloneToNewMaster);
 
         location = location.substring(1);
@@ -370,6 +374,8 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
 
     @Override
     public synchronized void delete() throws IOException, InterruptedException {
+        checkPermission(DELETE);
+
         if (!canDoAction(Action.Delete)) {
             throw new AbortException(String.format("Action \"%s\" cannot be performed when in state \"\"", Action.Delete.name(), getState().name()));
         }
@@ -516,6 +522,7 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
 
         @Override
         public TopLevelItem newInstance(ItemGroup parent, String name) {
+            // TODO how to check for create permission?
             return new MasterTemplate(parent, name);
         }
 
@@ -536,7 +543,7 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
             } else {
                 Item i = mn.getItemByFullName(location, Item.class);
 
-                i.checkPermission(Item.CREATE);
+                i.checkPermission(CREATE);
 
                 ItemGroup ig = (ItemGroup)i;
 
@@ -582,6 +589,17 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
         }
 
     }
+
+    public static final PermissionGroup PERMISSIONS = new PermissionGroup(MasterTemplate.class, Messages._MasterTemplate_PermissionsTitle());
+
+    public static final Permission CREATE = new Permission(PERMISSIONS,"Create", Messages._MasterTemplate_Create_Permission(), Item.CREATE);
+
+    public static final Permission DELETE = new Permission(PERMISSIONS,"Delete", Messages._MasterTemplate_Delete_Permission(), Item.DELETE);
+
+    public static final Permission CONFIGURE = new Permission(PERMISSIONS,"Configure", Messages._MasterTemplate_Configure_Permission(), Item.CONFIGURE);
+
+    public static final Permission CLONE_MASTER = new Permission(PERMISSIONS,"Clone", Messages._MasterTemplate_CloneMaster_Permission(), MasterServer.MANAGE);
+
 
     private static final Logger LOGGER = Logger.getLogger(MasterTemplate.class.getName());
 }

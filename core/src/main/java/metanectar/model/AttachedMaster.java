@@ -2,10 +2,9 @@ package metanectar.model;
 
 import com.google.common.collect.ImmutableSet;
 import hudson.Extension;
-import hudson.model.Descriptor;
-import hudson.model.ItemGroup;
-import hudson.model.TopLevelItem;
-import hudson.model.TopLevelItemDescriptor;
+import hudson.model.*;
+import hudson.security.Permission;
+import hudson.security.PermissionGroup;
 import hudson.util.DescribableList;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.StaplerRequest;
@@ -197,6 +196,8 @@ public class AttachedMaster extends ConnectedMaster {
 
     @Override
     public synchronized void delete() throws IOException, InterruptedException {
+        checkPermission(DELETE);
+
         if (isOnline()) {
             try {
                 channel.close();
@@ -204,6 +205,7 @@ public class AttachedMaster extends ConnectedMaster {
                 LOGGER.log(Level.SEVERE, "Error closing channel to attached master.");
             }
         }
+
         super.delete();
     }
 
@@ -247,9 +249,18 @@ public class AttachedMaster extends ConnectedMaster {
 
         @Override
         public TopLevelItem newInstance(ItemGroup parent, String name) {
+            // TODO how to check for create permission?
             return new AttachedMaster(parent, name);
         }
     }
+
+    public static final PermissionGroup PERMISSIONS = new PermissionGroup(MasterServer.class, Messages._AttachedMaster_PermissionsTitle());
+
+    public static final Permission CREATE = new Permission(PERMISSIONS,"Create", Messages._AttachedMaster_Create_Permission(), Item.CREATE);
+
+    public static final Permission DELETE = new Permission(PERMISSIONS,"Delete", Messages._AttachedMaster_Delete_Permission(), Item.DELETE);
+
+    public static final Permission CONFIGURE = new Permission(PERMISSIONS,"Configure", Messages._AttachedMaster_Configure_Permission(), Item.CONFIGURE);
 
     private static final Logger LOGGER = Logger.getLogger(AttachedMaster.class.getName());
 }
