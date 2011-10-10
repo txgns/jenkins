@@ -219,6 +219,11 @@ public class AttachedMaster extends ConnectedMaster {
         return state.name().toLowerCase();
     }
 
+    public void doProgressiveLog(StaplerRequest req, StaplerResponse rsp) throws IOException {
+        checkPermission(CONFIGURE);
+
+        super.doProgressiveLog(req, rsp);
+    }
 
     // Configuration
 

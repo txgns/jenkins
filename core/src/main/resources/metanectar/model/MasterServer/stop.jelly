@@ -1,24 +1,26 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-    <l:layout>
-        <st:include page="sidepanel.jelly"/>
-        <l:main-panel>
-            <form method="post" action="stopAction">
-                <p>
-                    Stop master '${it.displayName}'
-                </p>
-                <p>
-                    Wait for quiet down and stop?
-                    <f:submit value="${%Wait}"/>
-                </p>
-                <p>
-                    Force stop?
-                    <f:submit name="force" value="${%Force}"/>
-                </p>
-                <p class="warning">Note: force stop of the master will result in the termination of any jobs
-                    running on that master.
-                </p>
-            </form>
-        </l:main-panel>
-    </l:layout>
+  <l:layout>
+    <st:include page="sidepanel.jelly"/>
+    <l:main-panel>
+      <l:hasPermission permission="${it.LIFE_CYCLE}">
+        <form method="post" action="stopAction">
+          <p>
+            Stop master '${it.displayName}'
+          </p>
+          <p>
+            Wait for quiet down and stop?
+            <f:submit value="${%Wait}"/>
+          </p>
+          <p>
+            Force stop?
+            <f:submit name="force" value="${%Force}"/>
+          </p>
+          <p class="warning">Note: force stop of the master will result in the termination of any jobs
+            running on that master.
+          </p>
+        </form>
+      </l:hasPermission>
+    </l:main-panel>
+  </l:layout>
 </j:jelly>

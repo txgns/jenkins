@@ -34,9 +34,8 @@ THE SOFTWARE.
       <l:task icon="images/24x24/up.png" href="${rootURL}/" title="${%Back to Dashboard}"/>
       <l:task icon="images/24x24/search.png" href="${url}/" title="${%View}"/>
 
-      <l:isAdmin>
-        <l:task icon="images/24x24/gear.png" href="${url}/manage" title="${%Manage}">
-        </l:task>
+      <l:hasPermission permission="${it.LIFE_CYCLE}">
+        <l:task icon="images/24x24/gear.png" href="${url}/manage" title="${%Manage}"/>
         <j:if test="${h.hyperlinkMatchesCurrentPage('manage')}">
           <div id="ajax-sidepanel" class="subtasks">
             <st:include page="sidepanel-ajax.jelly"/>
@@ -45,9 +44,9 @@ THE SOFTWARE.
             new Ajax.PeriodicalUpdater('ajax-sidepanel', '${url}/sidepanel-ajax')
           </script>
         </j:if>
-        <l:task icon="images/24x24/setting.png" href="${url}/configure" title="${%Configure}"/>
-        <l:task icon="images/24x24/clipboard.gif" href="${url}/log" title="${%Log}"/>
-      </l:isAdmin>
+        <l:task icon="images/24x24/setting.png" href="${url}/configure" title="${%Configure}" permission="${it.CONFIGURE}"/>
+        <l:task icon="images/24x24/clipboard.gif" href="${url}/log" title="${%Log}" permission="${it.LIFE_CYCLE}"/>
+      </l:hasPermission>
 
       <j:forEach var="action" items="${it.actions}">
         <j:if test="${action.iconFileName!=null}">

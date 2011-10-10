@@ -89,14 +89,14 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
      * Actions that can be performed on a master.
      */
     public static enum Action {
-        Provision("new-computer.png"),
-        CancelProvision("trash-computer.png", false),
-        ReProvision("new-computer.png", false),
-        Start("start-computer.png"),
-        Stop("stop-computer.png"),
-        CancelWaitingForQuietDown("trash-computer.png", false),
-        Terminate("terminate-computer.png"),
-        Delete("trash-computer.png");
+        Provision("new-computer.png", MANAGE),
+        CancelProvision("trash-computer.png", MANAGE, false),
+        ReProvision("new-computer.png", MANAGE, false),
+        Start("start-computer.png", LIFE_CYCLE),
+        Stop("stop-computer.png", LIFE_CYCLE),
+        CancelWaitingForQuietDown("trash-computer.png", LIFE_CYCLE, false),
+        Terminate("terminate-computer.png", MANAGE),
+        Delete("trash-computer.png", DELETE);
 
         public final String icon;
 
@@ -106,27 +106,23 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
         public final String href;
 
-        Action(String icon) {
+        public final Permission permission;
+
+        Action(String icon, Permission permission) {
             this.icon = icon;
             this.visible = true;
             this.displayName = name();
             this.href = name().toLowerCase();
+            this.permission = permission;
         }
 
-        Action(String icon, boolean visible) {
+        Action(String icon, Permission permission, boolean visible) {
             this.icon = icon;
             this.visible = visible;
             this.displayName = name();
             this.href = name().toLowerCase();
+            this.permission = permission;
         }
-
-        Action(String icon, boolean visible, String displayName) {
-            this.icon = icon;
-            this.visible = visible;
-            this.displayName = displayName;
-            this.href = name().toLowerCase();
-        }
-
     }
 
     /**
@@ -831,6 +827,11 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
         }
     }
 
+    public void doProgressiveLog(StaplerRequest req, StaplerResponse rsp) throws IOException {
+        checkPermission(LIFE_CYCLE);
+
+        super.doProgressiveLog(req, rsp);
+    }
 
     // Configuration
 
