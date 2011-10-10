@@ -4,6 +4,8 @@ import com.cloudbees.commons.metanectar.context.ItemNodeContext;
 import com.cloudbees.commons.metanectar.context.NodeContainer;
 import com.cloudbees.commons.metanectar.context.NodeContext;
 import com.cloudbees.commons.metanectar.context.NodeContextContributor;
+import com.cloudbees.commons.metanectar.context.NodeTasks;
+import com.cloudbees.commons.metanectar.context.PeriodicTask;
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import com.google.common.base.Function;
 import com.google.common.base.Objects;
@@ -144,7 +146,7 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
 
     // property state
 
-    protected volatile DescribableList<ConnectedMasterProperty,ConnectedMasterPropertyDescriptor> properties =
+    protected volatile DescribableList<ConnectedMasterProperty, ConnectedMasterPropertyDescriptor> properties =
             new PropertyList(this);
 
     @GuardedBy("this")
@@ -152,6 +154,9 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
 
     @GuardedBy("this")
     private transient byte[] remoteNodeContextDigest;
+
+    @GuardedBy("this")
+    private transient List<PeriodicTask> nodeTasks;
 
     protected ConnectedMaster(ItemGroup parent, String name) {
         super(parent, name);
@@ -180,6 +185,7 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
             throws IOException {
         super.onLoad(parent, name);
         init();
+        ConnectedMasterListener.fireOnLoaded(this);
     }
 
     @Override
@@ -188,7 +194,8 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         init();
 
         try {
-            this.id = ConnectedMaster.CONNECTED_MASTER_IDENTIFIER_FINDER.getUnusedIdentifier(MetaNectar.getInstance().getConnectedMasters());
+            this.id = ConnectedMaster.CONNECTED_MASTER_IDENTIFIER_FINDER
+                    .getUnusedIdentifier(MetaNectar.getInstance().getConnectedMasters());
             this.encodedName = createEncodedName(name);
             this.idName = createIdName(id, encodedName);
 
@@ -197,6 +204,13 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        ConnectedMasterListener.fireOnCreated(this);
+    }
+
+    @Override
+    public void save() throws IOException {
+        super.save();
+        ConnectedMasterListener.fireOnSaved(this);
     }
 
     private void init() {
@@ -213,13 +227,13 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
 
     // Properties
 
-    public DescribableList<ConnectedMasterProperty,ConnectedMasterPropertyDescriptor> getProperties() {
+    public DescribableList<ConnectedMasterProperty, ConnectedMasterPropertyDescriptor> getProperties() {
         return properties;
     }
 
     public List<hudson.model.Action> getPropertyActions() {
         ArrayList<hudson.model.Action> result = new ArrayList<hudson.model.Action>();
-        for (ConnectedMasterProperty prop: properties) {
+        for (ConnectedMasterProperty prop : properties) {
             result.addAll(prop.getConnectedMasterActions(this));
         }
         return result;
@@ -234,14 +248,16 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
 
     @Override
     public void addAction(Action a) {
-        if(a==null) throw new IllegalArgumentException();
+        if (a == null) {
+            throw new IllegalArgumentException();
+        }
         super.getActions().add(a);
     }
 
     // Logging
 
     private File getLogFile() {
-        return new File(getRootDir(),"log.txt");
+        return new File(getRootDir(), "log.txt");
     }
 
     public String getLog() throws IOException {
@@ -252,8 +268,8 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         return new AnnotatedLargeText<TopLevelItem>(getLogFile(), Charset.defaultCharset(), false, this);
     }
 
-    public void doProgressiveLog( StaplerRequest req, StaplerResponse rsp) throws IOException {
-        getLogText().doProgressText(req,rsp);
+    public void doProgressiveLog(StaplerRequest req, StaplerResponse rsp) throws IOException {
+        getLogText().doProgressText(req, rsp);
     }
 
     //
@@ -261,8 +277,7 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
     /**
      * No nested jobs
      *
-     * @deprecated
-     *      No one shouldn't be calling this directly.
+     * @deprecated No one shouldn't be calling this directly.
      */
     @Override
     public final Collection<? extends Job> getAllJobs() {
@@ -302,13 +317,16 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
             slaveManager = new ScopedSlaveManager(getParent());
             try {
                 NodeContainer.set(channel, SlaveManager.class.getName(),
-                        (Serializable)channel.export(SlaveManager.class, slaveManager));
+                        (Serializable) channel.export(SlaveManager.class, slaveManager));
             } catch (InterruptedException e) {
-                LOGGER.log(Level.WARNING, "Interrupted while trying to pass SlaveManager. Master will be unable to lease slaves.", e);
-                taskListener.getLogger().println("Interrupted while trying to pass SlaveManager. Master will be unable to lease slaves.");
+                LOGGER.log(Level.WARNING,
+                        "Interrupted while trying to pass SlaveManager. Master will be unable to lease slaves.", e);
+                taskListener.getLogger().println(
+                        "Interrupted while trying to pass SlaveManager. Master will be unable to lease slaves.");
                 e.printStackTrace(taskListener.getLogger());
             } catch (AssertionError e) {
-                LogRecord lr = new LogRecord(Level.SEVERE, "Could not pass SlaveManager to {0} and it will be unable to lease slaves.");
+                LogRecord lr = new LogRecord(Level.SEVERE,
+                        "Could not pass SlaveManager to {0} and it will be unable to lease slaves.");
                 lr.setThrown(e);
                 lr.setParameters(new Object[]{this.getDisplayName()});
                 LOGGER.log(lr);
@@ -327,6 +345,7 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
                     throw e;
                 }
             }
+            pushNodeTasks();
         }
         ConnectedMasterListener.fireOnConnected(this);
         ConnectedMasterProperty.fireOnConnected(this);
@@ -427,6 +446,46 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         }
     }
 
+    // Node tasks
+
+    public synchronized List<PeriodicTask> getNodeTasks() {
+        return nodeTasks == null ? Collections.<PeriodicTask>emptyList() : nodeTasks;
+    }
+
+    public synchronized void setNodeTasks(List<PeriodicTask> nodeTasks) {
+        if (nodeTasks != this.nodeTasks) {
+            this.nodeTasks = nodeTasks == null
+                    ? Collections.<PeriodicTask>emptyList()
+                    : Collections.unmodifiableList(new ArrayList<PeriodicTask>(nodeTasks));
+            pushNodeTasks();
+        }
+    }
+
+    private synchronized void pushNodeTasks() {
+        final Channel channel = this.channel;
+        if (channel == null) {
+            LOGGER.log(Level.FINE, "Cannot push NodeTasks for {0}: no connection: off-line", this);
+            return;
+        }
+        try {
+            if (nodeTasks == null) {
+                NodeContainer.clear(channel, NodeTasks.class.getName());
+            } else {
+                NodeContainer.set(channel, NodeTasks.class.getName(), new NodeTasks(nodeTasks));
+            }
+        } catch (InterruptedException e) {
+            LogRecord lr = new LogRecord(Level.FINE, "Cannot push NodeTasks for {0}: interrupted");
+            lr.setParameters(new Object[]{this});
+            lr.setThrown(e);
+            LOGGER.log(lr);
+        } catch (IOException e) {
+            LogRecord lr = new LogRecord(Level.FINE, "Cannot push NodeTasks for {0}: connection broken");
+            lr.setParameters(new Object[]{this});
+            lr.setThrown(e);
+            LOGGER.log(lr);
+        }
+    }
+
     // State querying
 
     /**
@@ -435,7 +494,7 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
      * @param f the function to query the master state.
      */
     public synchronized <T extends ConnectedMaster> void query(Function<T, Void> f) {
-        f.apply((T)this);
+        f.apply((T) this);
     }
 
     // Methods for accessing state
@@ -489,14 +548,17 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
 
     public RSAPublicKey getIdentityPublicKey() {
         synchronized (identityLock) {
-            if (identity == null)
+            if (identity == null) {
                 return null;
+            }
 
-            if (identityPublicKey != null)
+            if (identityPublicKey != null) {
                 return identityPublicKey;
+            }
 
             try {
-                identityPublicKey = (RSAPublicKey)KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(identity));
+                identityPublicKey =
+                        (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(identity));
             } catch (GeneralSecurityException e) {
                 LOGGER.log(Level.SEVERE, "Failed to load the key", identity);
                 identityPublicKey = null;
@@ -527,18 +589,20 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
     }
 
     public String getIcon() {
-        if (!isApproved())
+        if (!isApproved()) {
             return "computer-x.png";
+        }
 
-        if(isOffline())
+        if (isOffline()) {
             return "computer-x.png";
-        else
+        } else {
             return "computer.png";
+        }
     }
 
     public StatusIcon getIconColor() {
         String icon = getIcon();
-        if (isOffline())  {
+        if (isOffline()) {
             return new StockStatusIcon(icon, Messages._JenkinsServer_Status_Offline());
         } else {
             return new StockStatusIcon(icon, Messages._JenkinsServer_Status_Online());
@@ -659,6 +723,7 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
 
     /**
      * Returns {@code true} if the page elements should be refreshed by AJAX.
+     *
      * @return {@code true} if the page elements should be refreshed by AJAX.
      */
     public boolean isAjaxPageRefresh() {
@@ -667,6 +732,7 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
 
     /**
      * Returns the number of seconds before the next AJAX refresh.
+     *
      * @return the number of seconds before the next AJAX refresh.
      */
     public int getPageRefreshDelay() {
@@ -678,7 +744,6 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
     /**
      * Create a unique master template file for writing a template of a master home
      * directory.
-     *
      */
     public static TemplateFile createMasterTemplateFile(String dir, String suffix) throws IOException {
         return new TemplateFile(createMasterArchiveFile(dir, "template-", suffix), suffix);
@@ -687,7 +752,6 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
     /**
      * Create a unique master snapshot file for writing a snapshot of a master home
      * directory.
-     *
      */
     public static File createMasterSnapshotFile(String dir, String suffix) throws IOException {
         return createMasterArchiveFile(dir, "snapshot-", suffix);
@@ -723,7 +787,8 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         return UUID.randomUUID().toString();
     }
 
-    public static class PropertyList extends DescribableList<ConnectedMasterProperty,ConnectedMasterPropertyDescriptor> {
+    public static class PropertyList
+            extends DescribableList<ConnectedMasterProperty, ConnectedMasterPropertyDescriptor> {
         private PropertyList(ConnectedMaster owner) {
             super(owner);
         }
@@ -745,11 +810,12 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         }
     }
 
-    private static IdentifierFinder<ConnectedMaster> CONNECTED_MASTER_IDENTIFIER_FINDER = new IdentifierFinder<ConnectedMaster>() {
-        public int getId(ConnectedMaster ms) {
-            return ms.getId();
-        }
-    };
+    private static IdentifierFinder<ConnectedMaster> CONNECTED_MASTER_IDENTIFIER_FINDER =
+            new IdentifierFinder<ConnectedMaster>() {
+                public int getId(ConnectedMaster ms) {
+                    return ms.getId();
+                }
+            };
 
     /**
      * Updates the node contexts on a periodic basis.
