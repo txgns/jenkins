@@ -411,7 +411,7 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         for (NodeContextContributor c : Hudson.getInstance().getExtensionList(NodeContextContributor.class)) {
             if (c.canContribute(this)) {
                 try {
-                    c.update(this, nodeContext);
+                    c.contribute(this, nodeContext);
                 } catch (Throwable t) {
                     LogRecord r = new LogRecord(Level.WARNING, "Uncaught exception from {0} on {1}");
                     r.setThrown(t);
