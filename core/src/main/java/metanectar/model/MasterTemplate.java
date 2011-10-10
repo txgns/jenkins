@@ -65,9 +65,9 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
      * Actions that can be performed on a master.
      */
     public static enum Action {
-        CloneFromSource("clipboard.png", "Clone from source"),
-        CloneToNewMaster("clipboard.png", "Clone to new master"),
-        Delete("trash-computer.png");
+        CloneFromSource("clipboard.png", CONFIGURE, "Clone from source"),
+        CloneToNewMaster("clipboard.png", CLONE_MASTER, "Clone to new master"),
+        Delete("trash-computer.png", DELETE);
 
         public final String icon;
 
@@ -75,16 +75,20 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
 
         public final String href;
 
-        Action(String icon) {
+        public final Permission permission;
+
+        Action(String icon, Permission permission) {
             this.icon = icon;
             this.displayName = name();
             this.href = name().toLowerCase();
+            this.permission = permission;
         }
 
-        Action(String icon, String displayName) {
+        Action(String icon, Permission permission, String displayName) {
             this.icon = icon;
             this.displayName = displayName;
             this.href = name().toLowerCase();
+            this.permission = permission;
         }
     }
 

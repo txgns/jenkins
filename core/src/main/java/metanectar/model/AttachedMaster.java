@@ -51,7 +51,7 @@ public class AttachedMaster extends ConnectedMaster {
      * Actions that can be performed on a master.
      */
     public static enum Action {
-        Delete("trash-computer.png");
+        Delete("trash-computer.png", DELETE);
 
         public final String icon;
 
@@ -59,16 +59,13 @@ public class AttachedMaster extends ConnectedMaster {
 
         public final String href;
 
-        Action(String icon) {
+        public final Permission permission;
+
+        Action(String icon, Permission permission) {
             this.icon = icon;
             this.displayName = name();
             this.href = name().toLowerCase();
-        }
-
-        Action(String icon, String displayName) {
-            this.icon = icon;
-            this.displayName = displayName;
-            this.href = name().toLowerCase();
+            this.permission = permission;
         }
     }
 

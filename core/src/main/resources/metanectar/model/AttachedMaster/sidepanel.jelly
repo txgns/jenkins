@@ -34,20 +34,18 @@ THE SOFTWARE.
       <l:task icon="images/24x24/up.png" href="${rootURL}/" title="${%Back to Dashboard}"/>
       <l:task icon="images/24x24/search.png" href="${url}/" title="${%View}"/>
 
-      <l:isAdmin>
-        <l:task icon="images/24x24/gear.png" href="${url}/manage" title="${%Manage}">
-        </l:task>
-        <j:if test="${h.hyperlinkMatchesCurrentPage('manage')}">
-          <div id="ajax-sidepanel" class="subtasks">
-            <st:include page="sidepanel-ajax.jelly"/>
-          </div>
-          <script type="text/javascript">
-            new Ajax.PeriodicalUpdater('ajax-sidepanel', '${url}/sidepanel-ajax')
-          </script>
-        </j:if>
-        <l:task icon="images/24x24/setting.png" href="${url}/configure" title="${%Configure}"/>
-        <l:task icon="images/24x24/clipboard.gif" href="${url}/log" title="${%Log}"/>
-      </l:isAdmin>
+      <l:task icon="images/24x24/gear.png" href="${url}/manage" title="${%Manage}">
+      </l:task>
+      <j:if test="${h.hyperlinkMatchesCurrentPage('manage')}">
+        <div id="ajax-sidepanel" class="subtasks">
+          <st:include page="sidepanel-ajax.jelly"/>
+        </div>
+        <script type="text/javascript">
+          new Ajax.PeriodicalUpdater('ajax-sidepanel', '${url}/sidepanel-ajax')
+        </script>
+      </j:if>
+      <l:task icon="images/24x24/setting.png" href="${url}/configure" title="${%Configure}" permission="${it.CONFIGURE}"/>
+      <l:task icon="images/24x24/clipboard.gif" href="${url}/log" title="${%Log}" permission="${it.CONFIGURE}"/>
 
       <j:forEach var="action" items="${it.actions}">
         <j:if test="${action.iconFileName!=null}">

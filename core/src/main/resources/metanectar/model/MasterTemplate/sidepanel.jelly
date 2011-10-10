@@ -14,11 +14,8 @@
         new Ajax.PeriodicalUpdater('ajax-sidepanel', '${url}/sidepanel-ajax')
       </script>
 
-      <!--<l:task icon="images/24x24/edit-delete.gif" href="delete" title="${%Delete Template}" permission="${it
-      .DELETE}"/>-->
-      <l:isAdmin>
-        <l:task icon="images/24x24/setting.gif" href="${url}/configure" title="${%Configure}"/>
-      </l:isAdmin>
+      <l:task icon="images/24x24/setting.gif" href="${url}/configure" title="${%Configure}" permission="${it.CONFIGURE}"/>
+
       <j:forEach var="action" items="${it.actions}">
         <l:task icon="${h.getIconFilePath(action)}" title="${action.displayName}"
                 href="${h.getActionUrl(it.url,action)}"/>

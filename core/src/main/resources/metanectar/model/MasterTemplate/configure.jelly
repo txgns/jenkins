@@ -50,12 +50,11 @@ THE SOFTWARE.
         <j:invokeStatic var="ds" className="metanectar.model.MasterTemplateProperty" method="all"/>
         <f:descriptorList title="${%Properties}" descriptors="${ds}" field="properties" forceRowSet="true"/>
 
-
-        <j:if test="${h.hasPermission(it,it.CONFIGURE)}">
+        <l:hasPermission permission="${it.CONFIGURE}">
           <f:block>
             <f:submit value="${%Save}"/>
           </f:block>
-        </j:if>
+        </l:hasPermission>
       </f:form>
     </l:main-panel>
   </l:layout>

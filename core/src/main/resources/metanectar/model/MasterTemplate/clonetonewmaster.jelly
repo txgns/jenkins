@@ -3,23 +3,25 @@
   <l:layout>
     <st:include page="sidepanel.jelly"/>
     <l:main-panel>
-      <p>Clone the template to a new managed master</p>
-      <f:form method="post" action="cloneToNewMasterAction" name="clone">
-        <j:set var="descriptor" value="${it.descriptor}"/>
-        <j:set var="instance" value="${it}"/>
+      <l:hasPermission permission="${it.CLONE_MASTER}">
+        <p>Clone the template to a new managed master</p>
+        <f:form method="post" action="cloneToNewMasterAction" name="clone">
+          <j:set var="descriptor" value="${it.descriptor}"/>
+          <j:set var="instance" value="${it}"/>
 
-        <f:entry field="location" title="${%Location}">
-          <f:select/>
-        </f:entry>
+          <f:entry field="location" title="${%Location}">
+            <f:select/>
+          </f:entry>
 
-        <f:entry field="masterName" title="${%Master Name}">
-          <f:textbox/>
-        </f:entry>
+          <f:entry field="masterName" title="${%Master Name}">
+            <f:textbox/>
+          </f:entry>
 
-        <f:entry>
-          <f:submit value="${%Clone}"/>
-        </f:entry>
-      </f:form>
+          <f:entry>
+            <f:submit value="${%Clone}"/>
+          </f:entry>
+        </f:form>
+      </l:hasPermission>
     </l:main-panel>
   </l:layout>
 </j:jelly>
