@@ -47,13 +47,8 @@ public abstract class SecurityEnforcer extends AbstractDescribableImpl<SecurityE
     @Extension
     public static class NodeContextContributorImpl extends NodeContextContributor<ConnectedMaster> {
         @Override
-        public void update(ConnectedMaster node, NodeContext context) {
-            getCurrent().updateNodeContext(node, (ItemNodeContext)context);
-        }
-
-        @Override
         public void contribute(ConnectedMaster node, NodeContext context) {
-            update(node,context);
+            getCurrent().updateNodeContext(node, (ItemNodeContext)context);
         }
     }
 
