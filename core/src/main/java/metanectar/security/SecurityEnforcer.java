@@ -24,10 +24,17 @@ import org.kohsuke.stapler.StaplerRequest;
 public abstract class SecurityEnforcer extends AbstractDescribableImpl<SecurityEnforcer> implements ExtensionPoint {
 
     /**
-     * Called whenever {@link ItemNodeContext} is pushed to {@link ConnectedMaster}.
+     * Contributes to the context for the specified node.
+     *
+     * This method is called when {@link NodeContext} is created to the {@link SecurityEnforcer}
+     * to populate its values.
+     *
      * This is where the enforcement logic is implemented.
+     *
+     * @param node    The node in which the context operates.
+     * @param context The context to contribute to.
      */
-    protected abstract void updateNodeContext(ConnectedMaster node, ItemNodeContext context);
+    protected abstract void contributeNodeContext(ConnectedMaster node, ItemNodeContext context);
 
     public SecurityEnforcerDescriptor getDescriptor() {
         return (SecurityEnforcerDescriptor)super.getDescriptor();
@@ -35,11 +42,11 @@ public abstract class SecurityEnforcer extends AbstractDescribableImpl<SecurityE
 
     /**
      * Returns the global default {@link SecurityEnforcer} setting.
+     * @return the global default {@link SecurityEnforcer} setting.
      */
     public static SecurityEnforcer getCurrent() {
         return Hudson.getInstance().getDescriptorByType(GlobalSetting.class).getGlobal();
     }
-
 
     /**
      * Invokes {@link SecurityEnforcer} when we push {@link NodeContext} to masters.
@@ -48,7 +55,7 @@ public abstract class SecurityEnforcer extends AbstractDescribableImpl<SecurityE
     public static class NodeContextContributorImpl extends NodeContextContributor<ConnectedMaster> {
         @Override
         public void contribute(ConnectedMaster node, NodeContext context) {
-            getCurrent().updateNodeContext(node, (ItemNodeContext)context);
+            getCurrent().contributeNodeContext(node, (ItemNodeContext) context);
         }
     }
 
@@ -70,6 +77,7 @@ public abstract class SecurityEnforcer extends AbstractDescribableImpl<SecurityE
 
         /**
          * Returns the global default {@link SecurityEnforcer} setting.
+         * @return the global default {@link SecurityEnforcer} setting.
          */
         public SecurityEnforcer getGlobal() {
             return global;

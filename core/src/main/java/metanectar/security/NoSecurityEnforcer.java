@@ -17,7 +17,7 @@ public class NoSecurityEnforcer extends SecurityEnforcer {
     public NoSecurityEnforcer() {}
 
     @Override
-    protected void updateNodeContext(ConnectedMaster node, ItemNodeContext context) {
+    protected void contributeNodeContext(ConnectedMaster node, ItemNodeContext context) {
         context.clearInstance(SecurityRealm.class);
         context.clearInstance(AuthorizationStrategy.class);
     }
