@@ -14,6 +14,7 @@ import hudson.init.Initializer;
 import hudson.model.*;
 import hudson.model.labels.LabelAtom;
 import hudson.remoting.Channel;
+import hudson.security.ACL;
 import hudson.tasks.Mailer;
 import hudson.util.AdministrativeError;
 import hudson.util.AlternativeUiTextProvider;
@@ -22,6 +23,7 @@ import metanectar.ExtensionFilter;
 import metanectar.MetaNectarExtensionPoint;
 import metanectar.provisioning.*;
 import metanectar.proxy.ReverseProxyProdder;
+import org.acegisecurity.context.SecurityContextHolder;
 import org.jenkinsci.main.modules.instance_identity.InstanceIdentity;
 import org.jvnet.hudson.reactor.ReactorException;
 
@@ -70,6 +72,8 @@ public class MetaNectar extends Hudson {
         }
 
         public void onConnectingTo(URL address, X509Certificate identity, String name, Map<String, String> properties) throws GeneralSecurityException, IOException {
+            SecurityContextHolder.getContext().setAuthentication(ACL.SYSTEM);
+
             final ConnectedMaster master = metaNectar.getConnectedMasterByName(name);
 
             if (master == null) {
