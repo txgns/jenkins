@@ -256,7 +256,7 @@ public class AttachedMaster extends ConnectedMaster {
         }
     }
 
-    public static final PermissionGroup PERMISSIONS = new PermissionGroup(MasterServer.class, Messages._AttachedMaster_PermissionsTitle());
+    public static final PermissionGroup PERMISSIONS = new PermissionGroup(AttachedMaster.class, Messages._AttachedMaster_PermissionsTitle());
 
     public static final Permission CREATE = new Permission(PERMISSIONS,"Create", Messages._AttachedMaster_Create_Permission(), Item.CREATE);
 

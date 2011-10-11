@@ -25,6 +25,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.net.URLEncoder;
+import java.security.Permissions;
 import java.util.*;
 import java.util.concurrent.Future;
 import java.util.logging.Logger;
@@ -575,12 +576,12 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
             List<ItemGroup> items = Lists.newArrayList();
 
             MetaNectar mn = MetaNectar.getInstance();
-            if (mn.hasPermission(Item.CREATE)) {
+            if (mn.hasPermission(MasterServer.CREATE)) {
                 items.add(mn);
             }
 
             for (Item i : MetaNectar.getInstance().getAllItems(Item.class)) {
-                if (i instanceof ItemGroup && i.hasPermission(Item.CREATE)) {
+                if (i instanceof ItemGroup && i.hasPermission(MasterServer.CREATE)) {
                     items.add((ItemGroup)i);
                 }
             }
@@ -602,7 +603,7 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
 
     public static final Permission CONFIGURE = new Permission(PERMISSIONS,"Configure", Messages._MasterTemplate_Configure_Permission(), Item.CONFIGURE);
 
-    public static final Permission CLONE_MASTER = new Permission(PERMISSIONS,"Clone", Messages._MasterTemplate_CloneMaster_Permission(), MasterServer.MANAGE);
+    public static final Permission CLONE_MASTER = new Permission(PERMISSIONS,"Clone", Messages._MasterTemplate_CloneMaster_Permission(), Hudson.ADMINISTER);
 
 
     private static final Logger LOGGER = Logger.getLogger(MasterTemplate.class.getName());

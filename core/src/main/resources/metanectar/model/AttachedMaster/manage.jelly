@@ -24,32 +24,32 @@ THE SOFTWARE.
 
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt" xmlns:p="/lib/hudson/project">
-    <l:layout title="${it.displayName}">
-        <st:include page="sidepanel.jelly"/>
-        <l:main-panel>
-            <h1 id="ajax-title">
-                <st:include page="title.jelly"/>
-            </h1>
+  <l:layout title="${it.displayName}">
+    <st:include page="sidepanel.jelly"/>
+    <l:main-panel>
+      <h1 id="ajax-title">
+        <st:include page="title.jelly"/>
+      </h1>
 
-            <t:editableDescription permission="${it.CONFIGURE}"/>
+      <t:editableDescription permission="${it.CONFIGURE}"/>
 
-            <j:if test="${!it.approved}">
-            <p>To attach a master to DEV@cloud Private Edition configure that master with the following information:</p>
-            <ul>
-                <li>endpoint: ${app.metaNectarPortUrl}</li>
-                <li>name: ${it.idName}</li>
-                <li>grant: ${it.grantId}</li>
-            </ul>
-            </j:if>
+      <j:if test="${!it.approved}">
+        <p>To attach a master to DEV@cloud Private Edition configure that master with the following information:</p>
+        <ul>
+          <li>endpoint: ${app.metaNectarPortUrl}</li>
+          <li>name: ${it.idName}</li>
+          <li>grant: ${it.grantId}</li>
+        </ul>
+      </j:if>
 
-            <div id="ajax-status">
-                <st:include page="status.jelly"/>
-            </div>
+      <div id="ajax-status">
+        <st:include page="status.jelly"/>
+      </div>
 
-            <script type="text/javascript">
-                new Ajax.PeriodicalUpdater('ajax-title', './title')
-                new Ajax.PeriodicalUpdater('ajax-status', './status')
-            </script>
-        </l:main-panel>
-    </l:layout>
+      <script type="text/javascript">
+        new Ajax.PeriodicalUpdater('ajax-title', './title')
+        new Ajax.PeriodicalUpdater('ajax-status', './status')
+      </script>
+    </l:main-panel>
+  </l:layout>
 </j:jelly>

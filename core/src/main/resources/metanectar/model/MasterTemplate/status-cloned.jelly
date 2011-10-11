@@ -27,6 +27,14 @@ THE SOFTWARE.
 -->
 <j:jelly xmlns:j="jelly:core" xmlns:x="jelly:xml" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-    <p><img src="${imagesURL}/24x24/blue.png"/> Cloned</p>
-    <p>This template may be <a href="clonetonewmaster">cloned</a> to a new master</p>
+  <p>
+    <img src="${imagesURL}/24x24/blue.png"/> Cloned
+  </p>
+
+  <l:hasPermission permission="${it.CLONE_MASTER}">
+    <p>This template may be
+      <a href="clonetonewmaster">cloned</a>
+      to a new master
+    </p>
+  </l:hasPermission>
 </j:jelly>
