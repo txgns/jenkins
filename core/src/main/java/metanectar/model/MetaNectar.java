@@ -72,6 +72,10 @@ public class MetaNectar extends Hudson {
         }
 
         public void onConnectingTo(URL address, X509Certificate identity, String name, Map<String, String> properties) throws GeneralSecurityException, IOException {
+            // TODO this has to be tidied up at some point to support a "run as" much like in the JDK.
+            // The agent will spawn a new thread per connection to invoke the listener methods
+            // and then terminate after those methods have been invoked. The channel will keep hold
+            // the input/output stream of the socket on the channel reader thread.
             SecurityContextHolder.getContext().setAuthentication(ACL.SYSTEM);
 
             final ConnectedMaster master = metaNectar.getConnectedMasterByName(name);
