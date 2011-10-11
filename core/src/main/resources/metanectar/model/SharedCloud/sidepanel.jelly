@@ -7,10 +7,10 @@
       <l:task icon="images/24x24/up.png" href="${rootURL}/" title="${%Back to Dashboard}"/>
       <l:task icon="images/24x24/search.png" href="${url}/" title="${%Status}"/>
       <l:task icon="images/24x24/edit-delete.gif" href="${url}/delete" title="${%Delete Cloud}" permission="${it.DELETE}"/>
-      <l:isAdmin>
+      <l:hasPermission permission="${it.CONFIGURE}">
         <l:task icon="images/24x24/setting.gif" href="${url}/configure" title="${%Configure}"/>
         <l:task icon="images/24x24/clipboard.gif" href="${url}/log" title="${%Log}"/>
-      </l:isAdmin>
+      </l:hasPermission>
       <j:forEach var="action" items="${it.actions}">
         <l:task icon="${h.getIconFilePath(action)}" title="${action.displayName}"
                 href="${h.getActionUrl(it.url,action)}" />
