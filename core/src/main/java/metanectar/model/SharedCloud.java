@@ -654,6 +654,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
 
         @Override
         public TopLevelItem newInstance(ItemGroup parent, String name) {
+            // TODO how to check for create permission?
             return new SharedCloud(parent, name);
         }
 
