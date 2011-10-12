@@ -455,13 +455,15 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
             return false;
         }
 
-        synchronized (nodeLock) {
-            for (final ReturnedNode returnedNode : returnedNodes) {
-                Node node = returnedNode.getNode();
-                if (label == null
-                        ? !Node.Mode.EXCLUSIVE.equals(node.getMode())
-                        : label.matches(node.getAssignedLabels())) {
-                    return true;
+        if (reuseNodes) {
+            synchronized (nodeLock) {
+                for (final ReturnedNode returnedNode : returnedNodes) {
+                    Node node = returnedNode.getNode();
+                    if (label == null
+                            ? !Node.Mode.EXCLUSIVE.equals(node.getMode())
+                            : label.matches(node.getAssignedLabels())) {
+                        return true;
+                    }
                 }
             }
         }
