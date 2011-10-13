@@ -127,6 +127,10 @@ THE SOFTWARE.
     <listener-class>metanectar.MetaNectarWebAppMain</listener-class>
   </listener>
 
+  <listener>
+    <listener-class>metanectar.persistence.Datastore</listener-class>
+  </listener>
+
   <!--
     HUDSON-1235 suggests containers interprt '*' as "all roles defined in web.xml"
     as opposed to "all roles defined in the security realm", so we need to list some
