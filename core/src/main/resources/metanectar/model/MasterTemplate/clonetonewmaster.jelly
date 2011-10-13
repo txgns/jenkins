@@ -4,23 +4,31 @@
     <st:include page="sidepanel.jelly"/>
     <l:main-panel>
       <l:hasPermission permission="${it.CLONE_MASTER}">
-        <p>Clone the template to a new managed master</p>
-        <f:form method="post" action="cloneToNewMasterAction" name="clone">
-          <j:set var="descriptor" value="${it.descriptor}"/>
-          <j:set var="instance" value="${it}"/>
+        <j:set var="descriptor" value="${it.descriptor}"/>
 
-          <f:entry field="location" title="${%Location}">
-            <f:select/>
-          </f:entry>
+        <j:choose>
+            <j:when test="${descriptor.doFillLocationItems().isEmpty()}">
+              <p>Permissions are not granted to create a managed master at the top-level or in any folder.</p>
+            </j:when>
+            <j:otherwise>
+              <p>Clone the template to a new managed master</p>
+              <f:form method="post" action="cloneToNewMasterAction" name="clone">
+                <j:set var="instance" value="${it}"/>
 
-          <f:entry field="masterName" title="${%Master Name}">
-            <f:textbox/>
-          </f:entry>
+                <f:entry field="location" title="${%Location}">
+                  <f:select/>
+                </f:entry>
 
-          <f:entry>
-            <f:submit value="${%Clone}"/>
-          </f:entry>
-        </f:form>
+                <f:entry field="masterName" title="${%Master Name}">
+                  <f:textbox/>
+                </f:entry>
+
+                <f:entry>
+                  <f:submit value="${%Clone}"/>
+                </f:entry>
+              </f:form>
+            </j:otherwise>
+        </j:choose>
       </l:hasPermission>
     </l:main-panel>
   </l:layout>

@@ -11,6 +11,9 @@ import org.kohsuke.stapler.DataBoundConstructor;
 /**
  * Pushes the exact same setting as MetaNectar to master.
  *
+ * TODO
+ * Disabling this for production. Only the SSO solution makes sense for PE.
+ *
  * @author Kohsuke Kawaguchi
  */
 public class SameAsMetaNectarEnforcer extends SecurityEnforcer {
@@ -23,7 +26,7 @@ public class SameAsMetaNectarEnforcer extends SecurityEnforcer {
         nodeContext.setInstance(AuthorizationStrategy.class, Hudson.getInstance().getAuthorizationStrategy());
     }
 
-    @Extension
+//    @Extension
     public static class DescriptorImpl extends SecurityEnforcerDescriptor {
         @Override
         public String getDisplayName() {

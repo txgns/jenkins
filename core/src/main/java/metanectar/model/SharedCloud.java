@@ -19,25 +19,10 @@ import hudson.Extension;
 import hudson.Util;
 import hudson.cli.declarative.CLIMethod;
 import hudson.cli.declarative.CLIResolver;
-import hudson.model.AbstractItem;
-import hudson.model.Action;
-import hudson.model.Computer;
-import hudson.model.Descriptor;
-import hudson.model.HealthReport;
-import hudson.model.Hudson;
-import hudson.model.ItemGroup;
-import hudson.model.Job;
-import hudson.model.Label;
-import hudson.model.Node;
-import hudson.model.PeriodicWork;
-import hudson.model.ReconfigurableDescribable;
-import hudson.model.Slave;
-import hudson.model.StatusIcon;
-import hudson.model.StockStatusIcon;
-import hudson.model.TaskListener;
-import hudson.model.TopLevelItem;
-import hudson.model.TopLevelItemDescriptor;
+import hudson.model.*;
 import hudson.remoting.Channel;
+import hudson.security.Permission;
+import hudson.security.PermissionGroup;
 import hudson.slaves.AbstractCloudImpl;
 import hudson.slaves.AbstractCloudSlave;
 import hudson.slaves.Cloud;
@@ -347,6 +332,8 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
     @CLIMethod(name = "shared-cloud-force-release")
     public void doForceRelease(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException, InterruptedException {
+        checkPermission(Hudson.ADMINISTER);
+
         final ArrayList<Node> nodes = new ArrayList<Node>();
         synchronized (this) {
             if (leaseIds == null) {
@@ -669,6 +656,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
 
         @Override
         public TopLevelItem newInstance(ItemGroup parent, String name) {
+            // TODO how to check for create permission?
             return new SharedCloud(parent, name);
         }
 
@@ -984,5 +972,13 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
             return timestamp;
         }
     }
+
+    public static final PermissionGroup PERMISSIONS = new PermissionGroup(SharedCloud.class, Messages._SharedCloud_PermissionsTitle());
+
+    public static final Permission CREATE = new Permission(PERMISSIONS,"Create", Messages._SharedCloud_Create_Permission(), Item.CREATE);
+
+    public static final Permission DELETE = new Permission(PERMISSIONS,"Delete", Messages._SharedCloud_Delete_Permission(), Item.DELETE);
+
+    public static final Permission CONFIGURE = new Permission(PERMISSIONS,"Configure", Messages._SharedCloud_Configure_Permission(), Item.CONFIGURE);
 
 }

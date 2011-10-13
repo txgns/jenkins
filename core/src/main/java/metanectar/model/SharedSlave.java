@@ -14,23 +14,11 @@ import hudson.Extension;
 import hudson.Util;
 import hudson.cli.declarative.CLIMethod;
 import hudson.cli.declarative.CLIResolver;
-import hudson.model.AbstractItem;
-import hudson.model.Action;
-import hudson.model.Computer;
-import hudson.model.Descriptor;
-import hudson.model.HealthReport;
-import hudson.model.Hudson;
-import hudson.model.ItemGroup;
-import hudson.model.Job;
-import hudson.model.Label;
-import hudson.model.Node;
-import hudson.model.StatusIcon;
-import hudson.model.StockStatusIcon;
-import hudson.model.TaskListener;
-import hudson.model.TopLevelItem;
-import hudson.model.TopLevelItemDescriptor;
+import hudson.model.*;
 import hudson.model.labels.LabelAtom;
 import hudson.model.labels.LabelExpression;
+import hudson.security.Permission;
+import hudson.security.PermissionGroup;
 import hudson.slaves.CloudRetentionStrategy;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.NodeProperty;
@@ -501,6 +489,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
 
         @Override
         public TopLevelItem newInstance(ItemGroup parent, String name) {
+            // TODO how to check for create permission?
             return new SharedSlave(parent, name);
         }
 
@@ -551,5 +540,13 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
             throw new CmdLineException(null,"No such shared slave exists: " + name);
         return sharedSlave;
     }
+
+    public static final PermissionGroup PERMISSIONS = new PermissionGroup(SharedSlave.class, Messages._SharedSlave_PermissionsTitle());
+
+    public static final Permission CREATE = new Permission(PERMISSIONS,"Create", Messages._SharedSlave_Create_Permission(), Item.CREATE);
+
+    public static final Permission DELETE = new Permission(PERMISSIONS,"Delete", Messages._SharedSlave_Delete_Permission(), Item.DELETE);
+
+    public static final Permission CONFIGURE = new Permission(PERMISSIONS,"Configure", Messages._SharedSlave_Configure_Permission(), Item.CONFIGURE);
 
 }

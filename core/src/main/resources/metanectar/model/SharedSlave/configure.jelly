@@ -53,11 +53,11 @@ THE SOFTWARE.
         <f:descriptorList title="${%Slave Properties}" descriptors="${descriptor.getSlavePropertyDescriptors()}" field="properties" />
 
 
-        <j:if test="${h.hasPermission(it,it.CONFIGURE)}">
+        <l:hasPermission permission="${it.CONFIGURE}">
           <f:block>
             <f:submit value="${%Save}" />
           </f:block>
-        </j:if>
+        </l:hasPermission>
       </f:form>
     </l:main-panel>
   </l:layout>

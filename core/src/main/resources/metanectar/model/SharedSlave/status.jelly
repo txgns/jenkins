@@ -33,9 +33,11 @@ THE SOFTWARE.
     </j:if>
     <j:if test="${it.leaseId != null}">
       <p><img src="${imagesURL}/24x24/blue_anime.gif"/> On lease to ${it.leaseId}</p>
-      <form method="post" action="forceRelease">
-        <f:submit value="${%Force release}" />
-      </form>
+      <l:hasPermission permission="${it.CONFIGURE}">
+        <form method="post" action="forceRelease">
+          <f:submit value="${%Force release}" />
+        </form>
+      </l:hasPermission>
     </j:if>
 
   </l:ajax>

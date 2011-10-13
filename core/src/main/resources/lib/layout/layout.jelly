@@ -226,7 +226,7 @@ THE SOFTWARE.
       </tr>
     </table>
     <table id="main-table" width="100%" height="70%" border="0"
-        style="background-image: url(${imagesURL}/jenkins.png);
+        style="background-image: url(${imagesURL}/cloudbees.png);
                background-repeat: no-repeat; background-position: bottom left;">
       <tr>
         <td id="side-panel" width="20%">
