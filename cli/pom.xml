@@ -5,7 +5,7 @@
   <parent>
     <artifactId>dev-at-cloud-private</artifactId>
     <groupId>com.cloudbees.metanectar</groupId>
-    <version>1.400.28-SNAPSHOT</version>
+    <version>1.400.28</version>
   </parent>
 
   <artifactId>cli</artifactId>
