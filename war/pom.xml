@@ -323,7 +323,7 @@ THE SOFTWARE.
                 <resolvePlugin groupId="com.cloudbees.nectar" artifactId="nectar-vmware" version="2.4" />
                 <resolvePlugin groupId="com.cloudbees.metanectar" artifactId="metanectar-vmware" version="0.9" />
                 <resolvePlugin groupId="com.cloudbees.plugins" artifactId="cloudbees-update-center-plugin" version="0.15" />
-                <resolvePlugin groupId="com.cloudbees.metanectar" artifactId="metanectar-updatecenter-plugin" version="0.7" />
+                <resolvePlugin groupId="com.cloudbees.metanectar" artifactId="metanectar-updatecenter-plugin" version="0.8" />
                 <resolvePlugin groupId="com.cloudbees.nectar" artifactId="nectar-rbac" version="2.6" />
                 <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="cloudbees-folder" version="1.5" />
                 <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="metanectar-license" version="1.2" />
