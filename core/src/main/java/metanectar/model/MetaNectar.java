@@ -15,6 +15,7 @@ import hudson.model.*;
 import hudson.model.labels.LabelAtom;
 import hudson.remoting.Channel;
 import hudson.security.ACL;
+import hudson.security.Permission;
 import hudson.tasks.Mailer;
 import hudson.util.AdministrativeError;
 import hudson.util.AlternativeUiTextProvider;
@@ -31,6 +32,8 @@ import javax.annotation.Nullable;
 import javax.servlet.ServletContext;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.net.BindException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -153,6 +156,8 @@ public class MetaNectar extends Hudson {
     public MetaNectar(File root, ServletContext context, PluginManager pluginManager, Config config) throws IOException, InterruptedException, ReactorException {
         super(root, context, pluginManager);
 
+        initializePermissionsOnItems();
+
         this.config = config;
 
         final URL u = config.getEndpoint();
@@ -164,7 +169,6 @@ public class MetaNectar extends Hudson {
         this.masterProvisioner = new MasterProvisioner(this, TimeUnit.MINUTES.toMillis(5), TimeUnit.MINUTES.toMillis(5));
 
         configureNectarAgentListener(new AgentProtocolListener(this));
-
 
         if (!getConfig().isMasterProvisioning()) {
             // If master provisioning is disabled then remove the master provisioning node property if present
@@ -190,6 +194,27 @@ public class MetaNectar extends Hudson {
                 ri.initiateRecovery();
             } catch (Exception e) {
                 LOGGER.log(Level.SEVERE, "Error initiating recovery for top-level item " + ri.getFullName(), e);
+            }
+        }
+    }
+
+    /**
+     * Initialize the permissions declared as public static final fields on top-level items.
+     * <p>This is really a hack to trigger the static initialization of the class, which in turn
+     * results in permissions getting registered.</p>
+     */
+    private void initializePermissionsOnItems() {
+        for (TopLevelItemDescriptor id : TopLevelItemDescriptor.all()) {
+            Class<? extends TopLevelItem> i = id.clazz;
+
+            for (Field f : i.getFields()) {
+                if (Modifier.isStatic(f.getModifiers()) && Permission.class.isAssignableFrom(f.getType())) {
+                    try {
+                        f.get(null);
+                    } catch (Exception e) {
+                        // Ignore
+                    }
+                }
             }
         }
     }
