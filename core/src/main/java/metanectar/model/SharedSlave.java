@@ -76,7 +76,6 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
 
     protected SharedSlave(ItemGroup parent, String name) {
         super(parent, name);
-        new Throwable("\n\n\n\n\n\n\n\n\n\n\n\n\n\nNEW SHARED SLAVE").printStackTrace();
     }
 
     public boolean isBuilding() {
@@ -543,9 +542,14 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
 
     public static final PermissionGroup PERMISSIONS = new PermissionGroup(SharedSlave.class, Messages._SharedSlave_PermissionsTitle());
 
+    // TODO
+    // CREATE and DELETE are disabled until Jenkins core is modified to support finer-grained permission checking
+    // for creation and deletion of items
+    /*
     public static final Permission CREATE = new Permission(PERMISSIONS,"Create", Messages._SharedSlave_Create_Permission(), Item.CREATE);
 
     public static final Permission DELETE = new Permission(PERMISSIONS,"Delete", Messages._SharedSlave_Delete_Permission(), Item.DELETE);
+    */
 
     public static final Permission CONFIGURE = new Permission(PERMISSIONS,"Configure", Messages._SharedSlave_Configure_Permission(), Item.CONFIGURE);
 

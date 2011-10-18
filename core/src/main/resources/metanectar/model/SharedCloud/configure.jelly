@@ -26,7 +26,7 @@ THE SOFTWARE.
   Config page. derived class specific entries should go to configure-entries.jsp
 -->
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-  <l:layout norefresh="true" permission="${it.EXTENDED_READ}" title="${%title(it.displayName)}">
+  <l:layout norefresh="true" title="${%title(it.displayName)}">
     <st:include page="sidepanel.jelly"/>
     <l:main-panel>
       <f:form method="post" action="configSubmit" name="config">

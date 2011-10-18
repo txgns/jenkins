@@ -59,11 +59,11 @@ THE SOFTWARE.
                               method="all"/>
                 <f:descriptorList title="${%Properties}" descriptors="${ds}" field="properties" forceRowSet="true"/>
 
-                <j:hasPermission permission="${it.CONFIGURE}">
+                <l:hasPermission permission="${it.CONFIGURE}">
                     <f:block>
                         <f:submit value="${%Save}"/>
                     </f:block>
-                </j:hasPermission>
+                </l:hasPermission>
             </f:form>
         </l:main-panel>
     </l:layout>
