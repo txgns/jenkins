@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 public class MasterProvisioningLabelTest extends AbstractMasterProvisioningTestCase {
 
     public void testProvisionLocallyWithLabel() throws Exception {
-        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(1, new DummyMasterProvisioningService(100)));
+        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(1, new SimpleMasterProvisioningService(100)));
 
         MasterServer ms = createMaster("m1", "metamaster");
 
@@ -32,7 +32,7 @@ public class MasterProvisioningLabelTest extends AbstractMasterProvisioningTestC
     }
 
     public void testProvisionLocallyWithUnknownLabel() throws Exception {
-        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(1, new DummyMasterProvisioningService(100)));
+        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(1, new SimpleMasterProvisioningService(100)));
 
         MasterServer ms = createMaster("m1", "unknonwn");
 
@@ -153,15 +153,15 @@ public class MasterProvisioningLabelTest extends AbstractMasterProvisioningTestC
 
     private DumbSlave createProvisioningSlave(String label) throws Exception {
         DumbSlave slave = createSlave(label, null);
-        slave.getNodeProperties().add(new MasterProvisioningNodeProperty(1, new DummyMasterProvisioningService(100)));
+        slave.getNodeProperties().add(new MasterProvisioningNodeProperty(1, new SimpleMasterProvisioningService(100)));
         Computer computer = slave.toComputer();
         computer.connect(false).get();
         return slave;
     }
 
     private Cloud createProvisioningCloud(int maxMasters, String label) throws Exception {
-        MasterProvisioningNodePropertyTemplate tp = new MasterProvisioningNodePropertyTemplate(maxMasters, new DummyMasterProvisioningService(100));
-        MasterProvisioningCloudProxy pc = new MasterProvisioningCloudProxy(tp, new TestSlaveCloud(this, 100, label));
+        MasterProvisioningNodePropertyTemplate tp = new MasterProvisioningNodePropertyTemplate(maxMasters, new SimpleMasterProvisioningService(100));
+        MasterProvisioningCloudProxy pc = new MasterProvisioningCloudProxy(tp, new DummySlaveCloud(this, 100, label));
         metaNectar.clouds.add(pc);
         return pc;
     }

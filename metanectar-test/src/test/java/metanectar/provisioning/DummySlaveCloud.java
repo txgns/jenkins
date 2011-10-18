@@ -23,7 +23,7 @@ import java.util.concurrent.Callable;
  *
  * @author Paul Sandoz
  */
-class TestSlaveCloud extends Cloud implements MasterProvisioningCloud {
+class DummySlaveCloud extends Cloud implements MasterProvisioningCloud {
     private final transient MetaNectarTestCase mtc;
 
     private final String labelString;
@@ -32,11 +32,11 @@ class TestSlaveCloud extends Cloud implements MasterProvisioningCloud {
 
     private final int delay;
 
-    public TestSlaveCloud(MetaNectarTestCase mtc, int delay) {
+    public DummySlaveCloud(MetaNectarTestCase mtc, int delay) {
         this(mtc, delay, "");
     }
 
-    public TestSlaveCloud(MetaNectarTestCase mtc, int delay, String labelString) {
+    public DummySlaveCloud(MetaNectarTestCase mtc, int delay, String labelString) {
         super("test-cloud");
         this.mtc = mtc;
         this.delay = delay;

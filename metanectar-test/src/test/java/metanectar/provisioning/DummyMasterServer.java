@@ -32,8 +32,8 @@ import java.util.logging.Logger;
  *
  * @author Paul Sandoz
  */
-public class TestMasterServer {
-    private static final Logger LOGGER = Logger.getLogger(TestMasterServer.class.getName());
+public class DummyMasterServer {
+    private static final Logger LOGGER = Logger.getLogger(DummyMasterServer.class.getName());
 
     final URL metaNectarEndpoint;
 
@@ -103,7 +103,7 @@ public class TestMasterServer {
         }
     }
 
-    public TestMasterServer(final URL metaNectarEndpoint, final String organization, final Map<String, Object> properties) throws IOException {
+    public DummyMasterServer(final URL metaNectarEndpoint, final String organization, final Map<String, Object> properties) throws IOException {
         final HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/", new HttpHandler() {
             public void handle(HttpExchange httpExchange) throws IOException {

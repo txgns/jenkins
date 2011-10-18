@@ -90,7 +90,7 @@ public class MasterProvisioningErrorTest extends AbstractMasterProvisioningTestC
     }
 
 
-    public static class ErrorTerminatingService extends TestMasterProvisioningService {
+    public static class ErrorTerminatingService extends metanectar.provisioning.DummyMasterProvisioningService {
 
          ErrorTerminatingService(int delay) {
              super(delay);

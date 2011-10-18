@@ -56,8 +56,8 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
 
         ProvisionListener cl = new ProvisionListener();
 
-        MasterProvisioningNodePropertyTemplate tp = new MasterProvisioningNodePropertyTemplate(nodesPerMaster, new DummyMasterProvisioningService(100));
-        MasterProvisioningCloudProxy pc = new MasterProvisioningCloudProxy(tp, new TestSlaveCloud(this, 100));
+        MasterProvisioningNodePropertyTemplate tp = new MasterProvisioningNodePropertyTemplate(nodesPerMaster, new SimpleMasterProvisioningService(100));
+        MasterProvisioningCloudProxy pc = new MasterProvisioningCloudProxy(tp, new DummySlaveCloud(this, 100));
         metaNectar.clouds.add(pc);
 
         ProvisionAndStartListener pl = new ProvisionAndStartListener(4 * masters);
@@ -129,7 +129,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
     private List<MasterServer> _testProvisionOnMetaNectarNode(int masters, int nodesPerMaster) throws Exception {
         int nodes = masters / nodesPerMaster + Math.min(masters % nodesPerMaster, 1);
 
-        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(nodesPerMaster, new DummyMasterProvisioningService(100)));
+        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(nodesPerMaster, new SimpleMasterProvisioningService(100)));
 
         ProvisionAndStartListener pl = new ProvisionAndStartListener(4 * masters);
 
@@ -173,7 +173,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
 
 
     public void testOrdinal1() throws Exception {
-        configureDummyMasterProvisioningOnMetaNectar();
+        configureSimpleMasterProvisioningOnMetaNectar();
 
         MasterServer ms0 = provisionAndStartMaster("0");
         assertEquals(0, ms0.getNodeId());
@@ -185,7 +185,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
     }
 
     public void testOrdinal2() throws Exception {
-        configureDummyMasterProvisioningOnMetaNectar();
+        configureSimpleMasterProvisioningOnMetaNectar();
 
         MasterServer ms0 = provisionAndStartMaster("0");
         assertEquals(0, ms0.getNodeId());
@@ -205,7 +205,7 @@ public class MasterProvisioningTest extends AbstractMasterProvisioningTestCase {
     }
 
     public void testOrdinal4() throws Exception {
-        configureDummyMasterProvisioningOnMetaNectar();
+        configureSimpleMasterProvisioningOnMetaNectar();
 
         MasterServer ms0 = provisionAndStartMaster("0");
         assertEquals(0, ms0.getNodeId());

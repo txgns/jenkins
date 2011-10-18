@@ -2,7 +2,6 @@ package metanectar.provisioning;
 
 import com.cloudbees.commons.metanectar.agent.MetaNectarAgentProtocol;
 import com.google.common.collect.Lists;
-import hudson.model.LoadStatistics;
 import hudson.remoting.Channel;
 import metanectar.cloud.MasterProvisioningCloudProxy;
 import metanectar.model.MasterServer;
@@ -97,8 +96,8 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
     public List<MasterServer> _testProvision(int masters) throws Exception {
         return _testProvision(masters, new Configurable() {
             public void configure() throws Exception {
-                MasterProvisioningNodePropertyTemplate tp = new MasterProvisioningNodePropertyTemplate(4, new TestMasterProvisioningService(100));
-                MasterProvisioningCloudProxy pc = new MasterProvisioningCloudProxy(tp, new TestSlaveCloud(MasterProvisioningConnectionTest.this, 100));
+                MasterProvisioningNodePropertyTemplate tp = new MasterProvisioningNodePropertyTemplate(4, new metanectar.provisioning.DummyMasterProvisioningService(100));
+                MasterProvisioningCloudProxy pc = new MasterProvisioningCloudProxy(tp, new DummySlaveCloud(MasterProvisioningConnectionTest.this, 100));
                 metaNectar.clouds.add(pc);
             }
         });
@@ -108,12 +107,12 @@ public class MasterProvisioningConnectionTest extends AbstractMasterProvisioning
         _testProvisionOnMetaNectar(1);
     }
 
-    private TestMasterProvisioningService s;
+    private metanectar.provisioning.DummyMasterProvisioningService s;
 
     public MasterServer _testProvisionOnMetaNectar(int masters) throws Exception {
         return _testProvision(masters, new Configurable() {
             public void configure() throws Exception {
-                s = new TestMasterProvisioningService(100);
+                s = new metanectar.provisioning.DummyMasterProvisioningService(100);
                 metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(4, s));
             }
         }).get(0);
