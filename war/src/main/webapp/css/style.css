@@ -73,8 +73,19 @@ dt {
 #top-panel {
   margin-bottom: 3pt;
   height: 34px;
-  background: url(../images/topbar.png) repeat-x;
+  background-color: #5BBECD;
+  border-bottom: 2px solid #65C9EA;
 }
+
+#top-panel-title {
+  padding: 5px;
+  color: white;
+  font-weight: bold;
+  font-size: 25px;
+  font-family: 'Segoe UI', 'Lucida Grande', Tahoma, Helvetica, sans-serif;
+  text-shadow: #65C9EA -1px -1px 1px;
+}
+
 #top-panel a {
   text-decoration: none;
 }
@@ -109,7 +120,8 @@ dt {
   font-size: 8pt;
   margin-top: 10em;
   padding: 10px;
-  border-top: 1px solid #bbb;
+  border-top: 2px solid #DDD;
+  background-color: #EEE;
 }
 
 #tasks {
