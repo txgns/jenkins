@@ -8,6 +8,8 @@ import hudson.AbortException;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.Util;
+import hudson.cli.declarative.CLIMethod;
+import hudson.cli.declarative.CLIResolver;
 import hudson.model.*;
 import hudson.security.Permission;
 import hudson.security.PermissionGroup;
@@ -16,6 +18,9 @@ import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
+import org.kohsuke.args4j.Argument;
+import org.kohsuke.args4j.CmdLineException;
+import org.kohsuke.args4j.Option;
 import org.kohsuke.stapler.*;
 
 import javax.servlet.ServletException;
@@ -280,6 +285,7 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
         }
     }
 
+    @CLIMethod(name="master-template-clone-from-source")
     public Future<MasterTemplate> cloneFromSourceAction() throws IOException {
         checkPermission(CONFIGURE);
         preConditionAction(Action.CloneFromSource);
@@ -287,7 +293,10 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
         return MetaNectar.getInstance().masterProvisioner.cloneTemplateFromSource(this);
     }
 
-    public MasterServer cloneToNewMasterAction(String location, String name) throws Exception {
+    @CLIMethod(name="master-template-clone")
+    public MasterServer cloneToNewMasterAction(
+            @Option(name="-l", usage="The fully qualified path to the location where the template will be cloned to a new master") String location,
+            @Option(name="-n", usage="The name of the new master") String name) throws Exception {
         checkPermission(CLONE_MASTER);
         preConditionAction(Action.CloneToNewMaster);
 
@@ -378,6 +387,7 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
     }
 
     @Override
+    @CLIMethod(name="master-template-delete")
     public synchronized void delete() throws IOException, InterruptedException {
         checkPermission(DELETE);
 
@@ -595,11 +605,25 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
 
     }
 
+    @CLIResolver
+    public static MasterTemplate resolveForCLI(
+            @Argument(required=true, metaVar="NAME", usage="Master template name") String name) throws CmdLineException {
+        MasterTemplate template = MetaNectar.getInstance().getItemByFullName(name, MasterTemplate.class);
+        if (template == null)
+            throw new CmdLineException(null,"No such master template exists: " + name);
+        return template;
+    }
+
     public static final PermissionGroup PERMISSIONS = new PermissionGroup(MasterTemplate.class, Messages._MasterTemplate_PermissionsTitle());
 
+    // TODO
+    // CREATE and DELETE are disabled until Jenkins core is modified to support finer-grained permission checking
+    // for creation and deletion of items
+    /*
     public static final Permission CREATE = new Permission(PERMISSIONS,"Create", Messages._MasterTemplate_Create_Permission(), Item.CREATE);
 
     public static final Permission DELETE = new Permission(PERMISSIONS,"Delete", Messages._MasterTemplate_Delete_Permission(), Item.DELETE);
+    */
 
     public static final Permission CONFIGURE = new Permission(PERMISSIONS,"Configure", Messages._MasterTemplate_Configure_Permission(), Item.CONFIGURE);
 

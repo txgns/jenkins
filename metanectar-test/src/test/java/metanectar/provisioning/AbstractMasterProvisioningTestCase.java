@@ -37,11 +37,14 @@ public abstract class AbstractMasterProvisioningTestCase extends MetaNectarTestC
         MasterProvisioner.MasterProvisionerInvoker.RECURRENCEPERIOD = original;
     }
 
-    public static class DummyMasterProvisioningService extends MasterProvisioningService {
+    /**
+     * A simple master provisioning service implementation that implements the commands as sleeps
+     */
+    public static class SimpleMasterProvisioningService extends MasterProvisioningService {
 
         private final int delay;
 
-        DummyMasterProvisioningService(int delay) {
+        SimpleMasterProvisioningService(int delay) {
             this.delay = delay;
         }
 
@@ -91,12 +94,12 @@ public abstract class AbstractMasterProvisioningTestCase extends MetaNectarTestC
 
     }
 
-    public void configureDummyMasterProvisioningOnMetaNectar() throws Exception {
-        configureDummyMasterProvisioningOnMetaNectar(10);
+    public void configureSimpleMasterProvisioningOnMetaNectar() throws Exception {
+        configureSimpleMasterProvisioningOnMetaNectar(10);
     }
 
-    public void configureDummyMasterProvisioningOnMetaNectar(int n) throws Exception {
-        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(n, new DummyMasterProvisioningService(100)));
+    public void configureSimpleMasterProvisioningOnMetaNectar(int n) throws Exception {
+        metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(n, new SimpleMasterProvisioningService(100)));
     }
 
     public MasterServer provisionAndStartMaster(String name) throws Exception {

@@ -2,7 +2,6 @@ package metanectar.provisioning;
 
 import com.google.common.collect.Maps;
 import hudson.model.Computer;
-import hudson.model.TaskListener;
 import hudson.remoting.VirtualChannel;
 import hudson.util.IOUtils;
 import metanectar.model.MasterServer;
@@ -17,13 +16,13 @@ import java.util.concurrent.Future;
 /**
  * @author Paul Sandoz
 */
-public class TestMasterProvisioningService extends MasterProvisioningService {
+public class DummyMasterProvisioningService extends MasterProvisioningService {
 
     private final int delay;
 
     private final Map<String, URL> provisioned = Maps.newConcurrentMap();
 
-    TestMasterProvisioningService(int delay) {
+    DummyMasterProvisioningService(int delay) {
         this.delay = delay;
     }
 
@@ -129,7 +128,7 @@ public class TestMasterProvisioningService extends MasterProvisioningService {
         }
 
         public URL call() throws Exception {
-            TestMasterServer masterServer = new TestMasterServer(metaNectarEndpoint, organization, properties);
+            DummyMasterServer masterServer = new DummyMasterServer(metaNectarEndpoint, organization, properties);
             masterServer.setRetryInterval(500);
             return masterServer.endpoint;
         }

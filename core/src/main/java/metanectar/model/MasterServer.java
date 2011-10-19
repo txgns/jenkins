@@ -1014,9 +1014,14 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
     public static final PermissionGroup PERMISSIONS = new PermissionGroup(MasterServer.class, Messages._MasterServer_PermissionsTitle());
 
+    // TODO
+    // CREATE and DELETE are disabled until Jenkins core is modified to support finer-grained permission checking
+    // for creation and deletion of items
+    /*
     public static final Permission CREATE = new Permission(PERMISSIONS,"Create", Messages._MasterServer_Create_Permission(), Item.CREATE);
 
     public static final Permission DELETE = new Permission(PERMISSIONS,"Delete", Messages._MasterServer_Delete_Permission(), Item.DELETE);
+    */
 
     public static final Permission CONFIGURE = new Permission(PERMISSIONS,"Configure", Messages._MasterServer_Configure_Permission(), Item.CONFIGURE);
 

@@ -49,7 +49,7 @@ public class ReverseProxyProdderTest extends AbstractMasterProvisioningTestCase 
     }
 
     public void testProvision() throws Exception {
-        configureDummyMasterProvisioningOnMetaNectar();
+        configureSimpleMasterProvisioningOnMetaNectar();
         ReverseProxyProdder rpp = initiateAndReset();
 
         provisionAndStartMaster("o1");
@@ -59,7 +59,7 @@ public class ReverseProxyProdderTest extends AbstractMasterProvisioningTestCase 
     }
 
     public void testTerminate() throws Exception {
-        configureDummyMasterProvisioningOnMetaNectar();
+        configureSimpleMasterProvisioningOnMetaNectar();
         ReverseProxyProdder rpp = initiateAndReset();
 
         MasterServer o1 = provisionAndStartMaster("o1");
@@ -76,7 +76,7 @@ public class ReverseProxyProdderTest extends AbstractMasterProvisioningTestCase 
 
     public void testMultiple() throws Exception {
         int n = 100;
-        configureDummyMasterProvisioningOnMetaNectar(n);
+        configureSimpleMasterProvisioningOnMetaNectar(n);
         ReverseProxyProdder rpp = initiateAndReset();
 
         List<MasterServer> l = provisionAndStartMasters("o", n);

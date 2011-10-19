@@ -2,7 +2,6 @@ package metanectar.provisioning;
 
 import metanectar.LatchConnectedMasterListener;
 import metanectar.model.MasterServer;
-import metanectar.model.MetaNectar;
 
 import java.util.concurrent.TimeUnit;
 
@@ -40,7 +39,7 @@ public class MasterProvisioningNoResourcesTest extends AbstractMasterProvisionin
         assertEquals(1, connected.getCount());
 
         // Add provisioning resources
-        TestMasterProvisioningService s = new TestMasterProvisioningService(100);
+        metanectar.provisioning.DummyMasterProvisioningService s = new metanectar.provisioning.DummyMasterProvisioningService(100);
         metaNectar.getNodeProperties().add(new MasterProvisioningNodeProperty(4, s));
 
         approved.await(1, TimeUnit.MINUTES);

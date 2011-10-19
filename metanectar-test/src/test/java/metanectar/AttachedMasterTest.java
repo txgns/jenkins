@@ -6,7 +6,7 @@ import hudson.remoting.Channel;
 import metanectar.model.AttachedMaster;
 import metanectar.model.MetaNectar;
 import metanectar.provisioning.MasterProvisioningService;
-import metanectar.provisioning.TestMasterServer;
+import metanectar.provisioning.DummyMasterServer;
 import metanectar.test.MetaNectarTestCase;
 
 import java.io.IOException;
@@ -29,7 +29,7 @@ public class AttachedMasterTest extends MetaNectarTestCase {
 
         final Map<String, Object> properties = Maps.newHashMap();
         properties.put(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID, am.getGrantId());
-        TestMasterServer server = new TestMasterServer(metaNectar.getMetaNectarPortUrl(), am.getIdName(), properties);
+        DummyMasterServer server = new DummyMasterServer(metaNectar.getMetaNectarPortUrl(), am.getIdName(), properties);
 
         server.start();
 
@@ -105,7 +105,7 @@ public class AttachedMasterTest extends MetaNectarTestCase {
 
         final Map<String, Object> properties = Maps.newHashMap();
         properties.put(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID, "1234");
-        TestMasterServer server = new TestMasterServer(metaNectar.getMetaNectarPortUrl(), "foo", properties);
+        DummyMasterServer server = new DummyMasterServer(metaNectar.getMetaNectarPortUrl(), "foo", properties);
 
         server.start();
 
@@ -122,7 +122,7 @@ public class AttachedMasterTest extends MetaNectarTestCase {
 
             final Map<String, Object> properties = Maps.newHashMap();
             properties.put(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID, am.getGrantId());
-            TestMasterServer server = new TestMasterServer(metaNectar.getMetaNectarPortUrl(), am.getIdName(), properties);
+            DummyMasterServer server = new DummyMasterServer(metaNectar.getMetaNectarPortUrl(), am.getIdName(), properties);
 
             server.start();
 
@@ -135,7 +135,7 @@ public class AttachedMasterTest extends MetaNectarTestCase {
         metaNectar.configureNectarAgentListener(new TestAgentProtocolListener(new MetaNectar.AgentProtocolListener(metaNectar), null, null, onEventCdl));
 
         final Map<String, Object> properties = Maps.newHashMap();
-        TestMasterServer server = new TestMasterServer(metaNectar.getMetaNectarPortUrl(), am.getIdName(), properties);
+        DummyMasterServer server = new DummyMasterServer(metaNectar.getMetaNectarPortUrl(), am.getIdName(), properties);
 
         server.start();
 
@@ -152,7 +152,7 @@ public class AttachedMasterTest extends MetaNectarTestCase {
 
         final Map<String, Object> properties = Maps.newHashMap();
         properties.put(MasterProvisioningService.PROPERTY_PROVISION_GRANT_ID, "1234");
-        TestMasterServer server = new TestMasterServer(metaNectar.getMetaNectarPortUrl(), am.getIdName(), properties);
+        DummyMasterServer server = new DummyMasterServer(metaNectar.getMetaNectarPortUrl(), am.getIdName(), properties);
 
         server.start();
 
@@ -169,7 +169,7 @@ public class AttachedMasterTest extends MetaNectarTestCase {
         AttachedMaster am = metaNectar.createAttachedMaster("o1");
 
         final Map<String, Object> properties = Maps.newHashMap();
-        TestMasterServer server = new TestMasterServer(metaNectar.getMetaNectarPortUrl(), am.getIdName(), properties);
+        DummyMasterServer server = new DummyMasterServer(metaNectar.getMetaNectarPortUrl(), am.getIdName(), properties);
 
         server.start();
 
