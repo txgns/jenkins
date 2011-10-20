@@ -17,6 +17,7 @@ import hudson.security.PermissionGroup;
 import hudson.util.DescribableList;
 import hudson.util.FormValidation;
 import metanectar.Config;
+import metanectar.persistence.UIDTable;
 import metanectar.provisioning.IdentifierFinder;
 import metanectar.provisioning.MasterProvisioner;
 import metanectar.provisioning.task.MasterWaitForQuietDownTask;
@@ -219,6 +220,9 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
     public synchronized void cancelPreProvisionState() throws IOException {
         setState(Created);
+        if (this.grantId != null) {
+            UIDTable.drop(grantId);
+        }
         this.grantId = null;
         save();
 
@@ -423,6 +427,9 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
     public synchronized void setTerminateCompletedState(URL snapshot) throws IOException {
         setState(Terminated);
+        if (this.grantId != null) {
+            UIDTable.drop(grantId);
+        }
         this.grantId = null;
         this.approved = false;
         this.nodeName = null;

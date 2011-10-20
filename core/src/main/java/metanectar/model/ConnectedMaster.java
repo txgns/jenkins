@@ -33,6 +33,7 @@ import hudson.util.DirScanner;
 import hudson.util.StreamTaskListener;
 import hudson.util.io.ArchiverFactory;
 import hudson.util.io.ReopenableFileOutputStream;
+import metanectar.persistence.UIDTable;
 import metanectar.provisioning.IdentifierFinder;
 import metanectar.provisioning.ScopedSlaveManager;
 import net.jcip.annotations.GuardedBy;
@@ -523,6 +524,10 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         return grantId;
     }
 
+    public String getUid() {
+        return grantId; // may change to not be this at some point in the future
+    }
+
     public URL getEndpoint() {
         return localEndpoint;
     }
@@ -784,7 +789,25 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
      * @return a created grant ID.
      */
     public static String createGrant() {
-        return UUID.randomUUID().toString();
+        return UIDTable.generate();
+    }
+
+    @Override
+    public void delete() throws IOException, InterruptedException {
+        super.delete();
+        if (this.grantId != null) {
+            UIDTable.drop(this.grantId);
+        }
+        this.grantId = null;
+    }
+
+    public static ConnectedMaster findByUid(String uid) {
+        for (ConnectedMaster m : MetaNectar.getInstance().getAllItems(ConnectedMaster.class)) {
+            if (uid.equals(m.getUid())) {
+                return m;
+            }
+        }
+        return null;
     }
 
     public static class PropertyList
