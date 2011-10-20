@@ -1,6 +1,7 @@
 package metanectar.model;
 
 import com.google.common.collect.ImmutableSet;
+import hudson.AbortException;
 import hudson.Extension;
 import hudson.model.*;
 import hudson.security.Permission;
@@ -204,10 +205,6 @@ public class AttachedMaster extends ConnectedMaster {
         }
 
         super.delete();
-    }
-
-    @Override
-    public void onCopiedFrom(Item src) {
     }
 
     // Methods for accessing state

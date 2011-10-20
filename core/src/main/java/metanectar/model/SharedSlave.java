@@ -173,6 +173,18 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
 //////// AbstractItem
 
     @Override
+    public void onCopiedFrom(Item src) {
+        try {
+            performDelete();
+            getParent().onDeleted(this);
+            Hudson.getInstance().rebuildDependencyGraph();
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Cannot revert copied state of the copied managed slave: " + this.toString(), e);
+        }
+        throw new IllegalStateException("Managed slaves cannot be copied");
+    }
+
+    @Override
     public Collection<? extends Job> getAllJobs() {
         return Collections.emptySet();
     }

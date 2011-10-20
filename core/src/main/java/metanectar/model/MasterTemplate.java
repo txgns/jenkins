@@ -33,6 +33,7 @@ import java.net.URLEncoder;
 import java.security.Permissions;
 import java.util.*;
 import java.util.concurrent.Future;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static hudson.Util.fixEmpty;
@@ -152,6 +153,29 @@ public class MasterTemplate extends AbstractItem implements RecoverableTopLevelI
     public void onCreatedFromScratch() {
         super.onCreatedFromScratch();
         init();
+    }
+
+    @Override
+    public void onCopiedFrom(Item src) {
+        if (state != State.Configured && state != State.Cloned) {
+            try {
+                performDelete();
+                getParent().onDeleted(this);
+                Hudson.getInstance().rebuildDependencyGraph();
+            } catch (Exception e) {
+                LOGGER.log(Level.SEVERE, "Cannot revert copied state of the copied master template: " + this.toString(), e);
+            }
+            throw new IllegalStateException("Master template cannot be copied when in the  or Attached masters cannot be copied");
+        }
+
+        try {
+            if (state == State.Cloned) {
+                template = template.copyToTemplate();
+                save();
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Template file cannot be copied: " + this.toString(), e);
+        }
     }
 
     private void init() {

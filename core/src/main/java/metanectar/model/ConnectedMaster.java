@@ -204,6 +204,18 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         }
     }
 
+    @Override
+    public void onCopiedFrom(Item src) {
+        try {
+            performDelete();
+            getParent().onDeleted(this);
+            Hudson.getInstance().rebuildDependencyGraph();
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Cannot revert copied state of the copied master: " + this.toString(), e);
+        }
+        throw new IllegalStateException("Managed or Attached masters cannot be copied");
+    }
+
     /**
      * Fire on modified events to ConnectedMasterListeners.
      * <p>To be called when appropriate configuration state of a connected master has been modified and is

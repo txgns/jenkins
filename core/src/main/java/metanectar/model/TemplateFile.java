@@ -37,5 +37,16 @@ public class TemplateFile {
         return snapshot;
     }
 
+    public TemplateFile copyToTemplate() throws IOException {
+        final TemplateFile that = ConnectedMaster.createMasterTemplateFile(MetaNectar.getInstance().getConfig().getArchiveDirectory(), suffix);
+
+        final FileInputStream in = new FileInputStream(this.file);
+        try {
+            IOUtils.copy(new FileInputStream(this.file), that.file);
+        } finally {
+            IOUtils.closeQuietly(in);
+        }
+        return that;
+    }
 
 }
