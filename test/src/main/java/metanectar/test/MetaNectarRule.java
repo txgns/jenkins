@@ -16,8 +16,6 @@ import java.io.File;
  */
 public class MetaNectarRule extends JenkinsRule {
 
-    public MetaNectar metaNectar;
-
     private Config config;
 
     protected void setConfig(Config config) {
@@ -29,7 +27,7 @@ public class MetaNectarRule extends JenkinsRule {
         return this;
     }
 
-    protected Hudson newHudson() throws Exception {
+    protected MetaNectar newHudson() throws Exception {
         ServletContext webServer = createWebServer();
         File home = tempFolder.newFolder("jenkins-home-" + testDescription.getDisplayName());
         for (JenkinsRecipe.Runner r : recipes) {
@@ -44,10 +42,14 @@ public class MetaNectarRule extends JenkinsRule {
         setDefault("metaNectar.endpoint", getURL().toExternalForm());
         setDefault("metaNectar.master.provisioning.archive", home.getAbsolutePath());
 
-        metaNectar = new MetaNectar(home, webServer,
+        return new MetaNectar(home, webServer,
                 getPluginManager(),
                 config);
-        return metaNectar;
+    }
+
+    @Override
+    public MetaNectar getInstance() {
+        return MetaNectar.class.cast(super.getInstance());
     }
 
     private void setDefault(String name, String value) {
