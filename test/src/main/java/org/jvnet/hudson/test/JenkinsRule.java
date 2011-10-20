@@ -213,9 +213,9 @@ import static org.junit.matchers.JUnitMatchers.containsString;
  */
 public class JenkinsRule implements TestRule, RootAction {
 
-    private final TemporaryFolder tempFolder = new TemporaryFolder();
+    protected final TemporaryFolder tempFolder = new TemporaryFolder();
 
-    private Description testDescription;
+    protected Description testDescription;
 
     private static JenkinsRule CURRENT = null;
 
