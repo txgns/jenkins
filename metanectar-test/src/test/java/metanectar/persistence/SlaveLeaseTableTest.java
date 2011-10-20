@@ -9,7 +9,7 @@ import org.junit.Test;
 import java.util.HashSet;
 import java.util.Set;
 
-import static metanectar.persistence.SlaveLeaseTable.LeaseState.*;
+import static metanectar.persistence.LeaseState.*;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasValue;
 import static org.hamcrest.Matchers.is;
