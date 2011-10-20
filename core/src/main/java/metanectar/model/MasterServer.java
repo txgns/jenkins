@@ -854,6 +854,8 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
         save();
 
+        onModified();
+
         rsp.sendRedirect(".");
     }
 

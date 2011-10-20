@@ -160,7 +160,6 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
 
     protected ConnectedMaster(ItemGroup parent, String name) {
         super(parent, name);
-
     }
 
     public Objects.ToStringHelper toStringHelper() {
@@ -185,7 +184,6 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
             throws IOException {
         super.onLoad(parent, name);
         init();
-        ConnectedMasterListener.fireOnLoaded(this);
     }
 
     @Override
@@ -204,14 +202,18 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        ConnectedMasterListener.fireOnCreated(this);
     }
 
-    @Override
-    public void save() throws IOException {
-        super.save();
-        ConnectedMasterListener.fireOnSaved(this);
+    /**
+     * Fire on modified events to ConnectedMasterListeners.
+     * <p>To be called when appropriate configuration state of a connected master has been modified and is
+     * considered pertinent for listeners to be aware of.</p>
+     */
+    protected void onModified() {
+        ConnectedMasterListener.fireOnModified(this);
     }
+
+    // onConfigurationChange
 
     private void init() {
         log = new ReopenableFileOutputStream(getLogFile());
@@ -305,6 +307,10 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
     //
 
     public void setConnectedState(Channel channel) throws IOException {
+        if (this.channel == null) {
+            ConnectedMasterListener.fireOnBeforeConnected(this);
+        }
+
         TaskListener taskListener;
         synchronized (this) {
             if (!setChannel(channel)) {
@@ -806,7 +812,10 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
                 for (ConnectedMasterProperty p : this) {
                     p.setOwner(getOwner());
                 }
+
+                getOwner().onModified();
             }
+
         }
     }
 

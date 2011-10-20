@@ -206,6 +206,10 @@ public class AttachedMaster extends ConnectedMaster {
         super.delete();
     }
 
+    @Override
+    public void onCopiedFrom(Item src) {
+    }
+
     // Methods for accessing state
 
     public State getState() {
@@ -235,6 +239,8 @@ public class AttachedMaster extends ConnectedMaster {
         properties.rebuild(req,json.optJSONObject("properties"),ConnectedMasterProperty.all());
 
         save();
+
+        onModified();
 
         rsp.sendRedirect(".");
     }
