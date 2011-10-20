@@ -12,6 +12,10 @@
 
       <t:editableDescription permission="${it.CONFIGURE}"/>
 
+      <div>
+        UID: ${it.uid}
+      </div>
+
       <div id="ajax-status">
           <st:include page="status.jelly"/>
       </div>

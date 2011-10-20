@@ -24,6 +24,7 @@ import hudson.slaves.NodeProperty;
 import hudson.slaves.NodePropertyDescriptor;
 import hudson.slaves.RetentionStrategy;
 import hudson.util.DescribableList;
+import metanectar.persistence.LeaseState;
 import metanectar.persistence.SlaveLeaseTable;
 import metanectar.persistence.UIDTable;
 import metanectar.provisioning.SharedSlaveRetentionStrategy;
@@ -48,6 +49,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
@@ -73,8 +75,6 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, Identifia
     private RetentionStrategy<? extends Computer> retentionStrategy = new CloudRetentionStrategy(1);
     private List<? extends NodeProperty<?>> nodeProperties = Collections.emptyList();
     private ComputerLauncher launcher;
-    @GuardedBy("this")
-    private LeaseId leaseId;
 
     private String uid;
 
@@ -99,9 +99,8 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, Identifia
     }
 
     public boolean isBuilding() {
-        synchronized (this) {
-            return leaseId != null;
-        }
+        Set<String> leases = SlaveLeaseTable.getLeases(getUid(), LeaseState.LEASED);
+        return leases == null || !leases.isEmpty();
     }
 
     public String getUid() {
@@ -343,14 +342,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, Identifia
     @CLIMethod(name = "shared-slave-force-release")
     public void doForceRelease(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException, InterruptedException {
-        synchronized (this) {
-            leaseId = null;
-            try {
-                save();
-            } catch (IOException e) {
-                LOGGER.log(Level.INFO, "SharedSlave[{0}] could not persist", getUrl());
-            }
-        }
+        SlaveLeaseTable.dropOwner(getUid());
         if (rsp != null) // null for CLI
         {
             rsp.sendRedirect(".");  // go to the top page
@@ -424,22 +416,21 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, Identifia
     }
 
     public boolean canProvision(String labelExpression) {
-        synchronized (this) {
-            if (leaseId != null) {
-                // TODO decide if this applies always or just right now.
-                return false;
+        Set<String> leases = SlaveLeaseTable.getLeases(getUid());
+        if (leases != null && !leases.isEmpty()) {
+            // TODO when we have a more advanced slave launch mechanism we can give split leases.
+            return false;
+        }
+        try {
+            if (labelExpression == null) {
+                return Node.Mode.NORMAL.equals(getMode());
             }
-            try {
-                if (labelExpression == null) {
-                    return Node.Mode.NORMAL.equals(getMode());
-                }
-                Label label = LabelExpression.parseExpression(labelExpression);
-                return label.matches(Label.parse(getLabelString()));
-            } catch (ANTLRException e) {
-                // if we don't understand the label expression we cannot provision it (might be a new syntax... our
-                // problem)
-                return false;
-            }
+            Label label = LabelExpression.parseExpression(labelExpression);
+            return label.matches(Label.parse(getLabelString()));
+        } catch (ANTLRException e) {
+            // if we don't understand the label expression we cannot provision it (might be a new syntax... our
+            // problem)
+            return false;
         }
     }
 
@@ -453,56 +444,112 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, Identifia
 
     public FutureComputerLauncherFactory provision(String labelExpression, TaskListener listener, int numOfExecutors)
             throws ProvisioningException {
-        LOGGER.log(Level.INFO, "", new Object[]{});
+        final String leaseUid = UUID.randomUUID().toString();
+        if (!SlaveLeaseTable.registerRequest(getUid(), leaseUid)) {
+            throw new ProvisioningException("Could not register lease request");
+        }
+        Set<String> leases = SlaveLeaseTable.getLeases(getUid());
+        if (leases == null) {
+            SlaveLeaseTable.updateState(leaseUid, LeaseState.REQUESTED, LeaseState.DECOMMISSIONED);
+            SlaveLeaseTable.decommissionLease(leaseUid);
+            throw new ProvisioningException("Could not confirm lease request");
+        }
+        if (!Collections.singleton(leaseUid).equals(leases)) {
+            SlaveLeaseTable.updateState(leaseUid, LeaseState.REQUESTED, LeaseState.DECOMMISSIONED);
+            SlaveLeaseTable.decommissionLease(leaseUid);
+            // TODO add some optimistic retry for this race condition (we'll get a retry anyway)
+            throw new ProvisioningException("Could not provision node");
+        }
         return new FutureComputerLauncherFactory(getName(), numOfExecutors,
                 Computer.threadPoolForRemoting.submit(new Callable<ComputerLauncherFactory>() {
                     public ComputerLauncherFactory call() throws Exception {
-                        synchronized (SharedSlave.this) {
-                            while (leaseId != null) {
-                                SharedSlave.this.wait();
-                            }
-                            try {
-                                leaseId = new DefaultLeaseId(UUID.randomUUID().toString());
-                                LOGGER.log(Level.INFO, "SharedSlave[{0}] lent out on lease {1}",
-                                        new Object[]{getUrl(), leaseId});
-                                return newComputerLauncherFactory(leaseId);
-                            } finally {
-                                try {
-                                    save();
-                                } catch (IOException e) {
-                                    LOGGER.log(Level.INFO, "SharedSlave[{0}] could not persist", getUrl());
-                                }
-                            }
+                        if (!LeaseState.REQUESTED.equals(SlaveLeaseTable.getStatus(leaseUid))) {
+                            // should never happen
+                            throw new ProvisioningException("Illegal state of provisioning request");
                         }
+                        if (!SlaveLeaseTable.updateState(leaseUid, LeaseState.REQUESTED, LeaseState.PLANNED)) {
+                            SlaveLeaseTable.updateState(leaseUid, LeaseState.REQUESTED, LeaseState.DECOMMISSIONED);
+                            SlaveLeaseTable.decommissionLease(leaseUid);
+                            throw new ProvisioningException("Could not update lease status");
+                        }
+                        if (!SlaveLeaseTable.updateState(leaseUid, LeaseState.PLANNED, LeaseState.AVAILABLE)) {
+                            SlaveLeaseTable.updateState(leaseUid, LeaseState.PLANNED, LeaseState.DECOMMISSIONED);
+                            SlaveLeaseTable.decommissionLease(leaseUid);
+                            throw new ProvisioningException("Could not update lease status");
+                        }
+                        ComputerLauncherFactory launcherFactory =
+                                newComputerLauncherFactory(new DefaultLeaseId(leaseUid));
+                        if (!SlaveLeaseTable.registerLease(leaseUid, "TODO")) {
+                            // TODO get tenant id
+                            SlaveLeaseTable.updateState(leaseUid, LeaseState.AVAILABLE, LeaseState.DECOMMISSIONING);
+                            SlaveLeaseTable.updateState(leaseUid, LeaseState.DECOMMISSIONING, LeaseState.DECOMMISSIONED);
+                            SlaveLeaseTable.decommissionLease(leaseUid);
+                            throw new ProvisioningException("Could not confirm lease");
+                        }
+                        return launcherFactory;
                     }
                 }));
     }
 
     public void release(ComputerLauncherFactory allocatedSlave) {
-        synchronized (this) {
-            if (leaseId != null && leaseId.equals(allocatedSlave.getLeaseId())) {
-                LOGGER.log(Level.INFO, "SharedSlave[{0}] returned from lease {1}", new Object[]{getUrl(), leaseId});
-                leaseId = null;
-                this.notifyAll();
-                try {
-                    save();
-                } catch (IOException e) {
-                    LOGGER.log(Level.INFO, "SharedSlave[{0}] could not persist", getUrl());
+        LeaseId leaseId = allocatedSlave.getLeaseId();
+        if (leaseId instanceof DefaultLeaseId) {
+            String leaseUid = ((DefaultLeaseId) leaseId).getUuid();
+            if (getUid().equals(SlaveLeaseTable.getOwner(leaseUid))) {
+                LeaseState status = SlaveLeaseTable.getStatus(leaseUid);
+                if (status == null) {
+                    LOGGER.log(Level.INFO, "SharedSlave[{0}] could not record return of lease: {1}",
+                            new Object[]{getUrl(), leaseUid});
+                    return;
                 }
+                switch (status) {
+                    case REQUESTED:
+                        SlaveLeaseTable.updateState(leaseUid, LeaseState.REQUESTED, LeaseState.DECOMMISSIONED);
+                        SlaveLeaseTable.decommissionLease(leaseUid);
+                        break;
+                    case PLANNED:
+                        SlaveLeaseTable.updateState(leaseUid, LeaseState.PLANNED, LeaseState.DECOMMISSIONED);
+                        SlaveLeaseTable.decommissionLease(leaseUid);
+                        break;
+                    case AVAILABLE:
+                        SlaveLeaseTable.updateState(leaseUid, LeaseState.AVAILABLE, LeaseState.DECOMMISSIONING);
+                        SlaveLeaseTable.updateState(leaseUid, LeaseState.DECOMMISSIONING, LeaseState.DECOMMISSIONED);
+                        SlaveLeaseTable.decommissionLease(leaseUid);
+                        break;
+                    case LEASED:
+                        SlaveLeaseTable.returnLease(leaseUid, SlaveLeaseTable.getTenant(leaseUid));
+                    case RETURNED:
+                        SlaveLeaseTable.updateState(leaseUid, LeaseState.RETURNED, LeaseState.DECOMMISSIONING);
+                    case DECOMMISSIONING:
+                        SlaveLeaseTable.updateState(leaseUid, LeaseState.DECOMMISSIONING, LeaseState.DECOMMISSIONED);
+                    case DECOMMISSIONED:
+                        SlaveLeaseTable.decommissionLease(leaseUid);
+                        LOGGER.log(Level.INFO, "SharedSlave[{0}] returned from lease {1}",
+                                new Object[]{getUrl(), leaseUid});
+                        break;
+                    default:
+                        break;
+                }
+            } else {
+                LOGGER.log(Level.INFO, "SharedSlave[{0}] returned an unknown lease: {1}",
+                        new Object[]{getUrl(), leaseUid});
             }
+        } else {
+            LOGGER.log(Level.INFO, "SharedSlave[{0}] returned an unknown lease: {1}", new Object[]{getUrl(), leaseId});
         }
     }
 
     public boolean isProvisioned(LeaseId id) {
-        synchronized (this) {
-            return leaseId != null && leaseId.equals(id);
+        if (id instanceof DefaultLeaseId) {
+            Set<String> leases = SlaveLeaseTable.getLeases(getUid());
+            return leases != null && leases.contains(((DefaultLeaseId) id).getUuid());
         }
+        return false;
     }
 
     public LeaseId getLeaseId() {
-        synchronized (this) {
-            return leaseId;
-        }
+        Set<String> leases = SlaveLeaseTable.getLeases(getUid());
+        return leases == null || leases.isEmpty() ? null : new DefaultLeaseId(leases.iterator().next());
     }
 
     @Extension

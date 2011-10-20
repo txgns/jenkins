@@ -60,6 +60,29 @@ public class SlaveLeaseTable extends DatastoreTable {
         }
     }
 
+    public static boolean registerOnlyRequest(@NonNull String ownerId, String leaseId) {
+        DataSource dataSource = Datastore.getDataSource();
+        Connection connection = null;
+        PreparedStatement statement = null;
+        try {
+            connection = dataSource.getConnection();
+            statement = connection
+                    .prepareStatement("INSERT INTO slavelease (owner, lease, tenant, status) VALUES (?,?,NULL,?) WHERE NOT EXISTS (SELECT * FROM slavelease WHERE owner = ?)");
+            statement.setString(1, ownerId);
+            statement.setString(2, leaseId);
+            statement.setInt(3, LeaseState.REQUESTED.toStatusCode());
+            statement.setString(4, ownerId);
+            boolean result = statement.executeUpdate() == 1;
+            connection.commit();
+            return result;
+        } catch (SQLException e) {
+            return false;
+        } finally {
+            close(statement);
+            close(connection);
+        }
+    }
+
     public static boolean decommissionLease(String leaseId) {
         DataSource dataSource = Datastore.getDataSource();
         Connection connection = null;
