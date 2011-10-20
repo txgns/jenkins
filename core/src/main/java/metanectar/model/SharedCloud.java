@@ -7,12 +7,10 @@ import com.cloudbees.commons.metanectar.provisioning.DefaultLeaseId;
 import com.cloudbees.commons.metanectar.provisioning.FutureComputerLauncherFactory;
 import com.cloudbees.commons.metanectar.provisioning.LeaseId;
 import com.cloudbees.commons.metanectar.provisioning.ProvisioningException;
-import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import com.cloudbees.commons.metanectar.provisioning.SlaveManifest;
 import com.cloudbees.commons.nectar.nodeiterator.NodeIterator;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import com.sun.org.apache.regexp.internal.RE;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
@@ -31,6 +29,8 @@ import hudson.slaves.NodePropertyDescriptor;
 import hudson.slaves.NodeProvisioner;
 import hudson.util.DescribableList;
 import hudson.util.TimeUnit2;
+import metanectar.persistence.SlaveLeaseTable;
+import metanectar.persistence.UIDTable;
 import metanectar.provisioning.SharedSlaveRetentionStrategy;
 import net.jcip.annotations.GuardedBy;
 import net.sf.json.JSONException;
@@ -62,7 +62,7 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
  *
  * @author Stephen Connolly
  */
-public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveManager {
+public class SharedCloud extends AbstractItem implements TopLevelItem, IdentifiableSlaveManager {
     private static final Logger LOGGER = Logger.getLogger(SharedCloud.class.getName());
     // property state
 
@@ -91,8 +91,11 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
 
     private transient Runnable periodicWork;
 
+    private String uid;
+
     protected SharedCloud(ItemGroup parent, String name) {
         super(parent, name);
+        uid = UIDTable.generate();
     }
 
     private Object readResolve() {
@@ -113,6 +116,9 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
 
         if (!reuseNodes) {
             reuseTimeout = 1;
+        }
+        if (uid == null) {
+            uid = UIDTable.generate();
         }
         return this;
     }
@@ -137,6 +143,10 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
 
     public void setCloud(Cloud cloud) {
         this.cloud = cloud;
+    }
+
+    public String getUid() {
+        return uid;
     }
 
     protected Runnable getPeriodicWork() {
@@ -415,6 +425,8 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveMana
     protected void performDelete() throws IOException, InterruptedException {
         getConfigFile().delete();
         Util.deleteRecursive(getRootDir());
+        SlaveLeaseTable.dropOwner(getUid());
+        UIDTable.drop(getUid());
     }
 
     public ComputerLauncherFactory newComputerLauncherFactory(LeaseId leaseId) {

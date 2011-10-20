@@ -6,7 +6,6 @@ import com.cloudbees.commons.metanectar.provisioning.DefaultLeaseId;
 import com.cloudbees.commons.metanectar.provisioning.FutureComputerLauncherFactory;
 import com.cloudbees.commons.metanectar.provisioning.LeaseId;
 import com.cloudbees.commons.metanectar.provisioning.ProvisioningException;
-import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import hudson.DescriptorExtensionList;
@@ -25,6 +24,8 @@ import hudson.slaves.NodeProperty;
 import hudson.slaves.NodePropertyDescriptor;
 import hudson.slaves.RetentionStrategy;
 import hudson.util.DescribableList;
+import metanectar.persistence.SlaveLeaseTable;
+import metanectar.persistence.UIDTable;
 import metanectar.provisioning.SharedSlaveRetentionStrategy;
 import net.jcip.annotations.GuardedBy;
 import net.sf.json.JSONException;
@@ -37,6 +38,7 @@ import org.kohsuke.stapler.export.Exported;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
+import java.io.ObjectStreamException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URLEncoder;
@@ -58,7 +60,7 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
  *
  * @author Stephen Connolly
  */
-public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveManager {
+public class SharedSlave extends AbstractItem implements TopLevelItem, IdentifiableSlaveManager {
     private static final Logger LOGGER = Logger.getLogger(SharedSlave.class.getName());
     // property state
 
@@ -74,14 +76,36 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
     @GuardedBy("this")
     private LeaseId leaseId;
 
+    private String uid;
+
     protected SharedSlave(ItemGroup parent, String name) {
         super(parent, name);
+        uid = UIDTable.generate();
+    }
+
+    /**
+     * Called when object has been deserialized from a stream.
+     *
+     * @return {@code this}, or a replacement for {@code this}.
+     * @throws java.io.ObjectStreamException if the object cannot be restored.
+     * @see <a href="http://download.oracle.com/javase/1.3/docs/guide/serialization/spec/input.doc6.html">The Java
+     * Object Serialization Specification</a>
+     */
+    private Object readResolve() throws ObjectStreamException {
+        if (uid == null) {
+            uid = UIDTable.generate();
+        }
+        return this;
     }
 
     public boolean isBuilding() {
         synchronized (this) {
             return leaseId != null;
         }
+    }
+
+    public String getUid() {
+        return uid;
     }
 
     public ComputerLauncher getLauncher() {
@@ -389,6 +413,8 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveMana
     protected void performDelete() throws IOException, InterruptedException {
         getConfigFile().delete();
         Util.deleteRecursive(getRootDir());
+        SlaveLeaseTable.dropOwner(getUid());
+        UIDTable.drop(getUid());
     }
 
     public ComputerLauncherFactory newComputerLauncherFactory(LeaseId leaseId) {
