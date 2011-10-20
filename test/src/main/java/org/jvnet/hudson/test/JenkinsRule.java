@@ -112,8 +112,6 @@ import hudson.util.PersistedList;
 import hudson.util.ReflectionUtils;
 import hudson.util.StreamTaskListener;
 import hudson.util.jna.GNUCLibrary;
-import jenkins.model.Jenkins;
-import jenkins.model.JenkinsAdaptor;
 import net.sf.json.JSONObject;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
 import net.sourceforge.htmlunit.corejs.javascript.ContextFactory;
@@ -221,12 +219,7 @@ public class JenkinsRule implements TestRule, RootAction {
 
     private static JenkinsRule CURRENT = null;
 
-    /**
-     * Points to the same object as {@link #jenkins} does.
-     */
     public Hudson hudson;
-
-    public Jenkins jenkins;
 
     protected HudsonHomeLoader homeLoader = HudsonHomeLoader.NEW;
     /**
@@ -282,7 +275,7 @@ public class JenkinsRule implements TestRule, RootAction {
     public boolean useLocalPluginManager;
 
     /**
-     * Set the plugin manager to be passed to {@link Jenkins} constructor.
+     * Set the plugin manager to be passed to {@link Hudson} constructor.
      *
      * For historical reasons, {@link #useLocalPluginManager}==true will take the precedence.
      */
@@ -290,8 +283,8 @@ public class JenkinsRule implements TestRule, RootAction {
 
     public JenkinsComputerConnectorTester computerConnectorTester = new JenkinsComputerConnectorTester(this);
 
-    public Jenkins getInstance() {
-        return jenkins;
+    public Hudson getInstance() {
+        return hudson;
     }
 
     /**
@@ -305,10 +298,10 @@ public class JenkinsRule implements TestRule, RootAction {
 
 
         try {
-            jenkins = hudson = newHudson();
+            hudson = newHudson();
         } catch (Exception e) {
             // if Hudson instance fails to initialize, it leaves the instance field non-empty and break all the rest of the tests, so clean that up.
-            Field f = Jenkins.class.getDeclaredField("theInstance");
+            Field f = Hudson.class.getDeclaredField("theInstance");
             f.setAccessible(true);
             f.set(null,null);
             throw e;
@@ -471,7 +464,7 @@ public class JenkinsRule implements TestRule, RootAction {
     }
 
     /**
-     * Creates a new instance of {@link jenkins.model.Jenkins}. If the derived class wants to create it in a different way,
+     * Creates a new instance of {@link hudson.model.Hudson}. If the derived class wants to create it in a different way,
      * you can override it.
      */
     protected Hudson newHudson() throws Exception {
@@ -479,11 +472,19 @@ public class JenkinsRule implements TestRule, RootAction {
         File home = tempFolder.newFolder("jenkins-home-" + testDescription.getDisplayName());
         for (JenkinsRecipe.Runner r : recipes)
             r.decorateHome(this,home);
-        return new Hudson(home, webServer, useLocalPluginManager ? null : pluginManager);
+        return new Hudson(home, webServer, getPluginManager());
+    }
+
+    public PluginManager getPluginManager() {
+        if (hudson == null) {
+            return useLocalPluginManager ? null : pluginManager;
+        } else {
+            return hudson.getPluginManager();
+        }
     }
 
     /**
-     * Sets the {@link PluginManager} to be used when creating a new {@link Jenkins} instance.
+     * Sets the {@link PluginManager} to be used when creating a new {@link Hudson} instance.
      *
      * @param pluginManager
      *      null to let Jenkins create a new instance of default plugin manager, like it normally does when running as a webapp outside the test.
@@ -672,24 +673,6 @@ public class JenkinsRule implements TestRule, RootAction {
 
     protected MatrixProject createMatrixProject(String name) throws IOException {
         return hudson.createProject(MatrixProject.class, name);
-    }
-
-    /**
-     * Creates a empty Maven project with an unique name.
-     *
-     * @see #configureDefaultMaven()
-     */
-    protected MavenModuleSet createMavenProject() throws IOException {
-        return createMavenProject(createUniqueProjectName());
-    }
-
-    /**
-     * Creates a empty Maven project with the given name.
-     *
-     * @see #configureDefaultMaven()
-     */
-    protected MavenModuleSet createMavenProject(String name) throws IOException {
-        return hudson.createProject(MavenModuleSet.class,name);
     }
 
     private String createUniqueProjectName() {
@@ -1001,12 +984,6 @@ public class JenkinsRule implements TestRule, RootAction {
     public FreeStyleBuild buildAndAssertSuccess(FreeStyleProject job) throws Exception {
         return assertBuildStatusSuccess(job.scheduleBuild2(0));
     }
-    public MavenModuleSetBuild buildAndAssertSuccess(MavenModuleSet job) throws Exception {
-        return assertBuildStatusSuccess(job.scheduleBuild2(0));
-    }
-    public MavenBuild buildAndAssertSuccess(MavenModule job) throws Exception {
-        return assertBuildStatusSuccess(job.scheduleBuild2(0));
-    }
 
     /**
      * Asserts that the console output of the build contains the given substring.
@@ -1241,10 +1218,6 @@ public class JenkinsRule implements TestRule, RootAction {
         }
     }
 
-    protected void setQuietPeriod(int qp) {
-        JenkinsAdaptor.setQuietPeriod(hudson, qp);
-    }
-
     /**
      * Works like {@link #assertEqualBeans(Object, Object, String)} but figure out the properties
      * via {@link org.kohsuke.stapler.DataBoundConstructor}
@@ -1446,14 +1419,14 @@ public class JenkinsRule implements TestRule, RootAction {
 
                     String dependencies = m.getMainAttributes().getValue("Plugin-Dependencies");
                     if(dependencies!=null) {
-                        MavenEmbedder embedder = MavenUtil
-                                .createEmbedder(new StreamTaskListener(System.out, Charset.defaultCharset()),
-                                        (File) null, null);
+//                        MavenEmbedder embedder = MavenUtil
+//                                .createEmbedder(new StreamTaskListener(System.out, Charset.defaultCharset()),
+//                                        (File) null, null);
                         for( String dep : dependencies.split(",")) {
                             String[] tokens = dep.split(":");
                             String artifactId = tokens[0];
                             String version = tokens[1];
-                            File dependencyJar=resolveDependencyJar(embedder,artifactId,version);
+                            File dependencyJar=resolveDependencyJar(null/*embedder*/,artifactId,version);
 
                             File dst = new File(home, "plugins/" + artifactId + ".hpi");
                             if(!dst.exists() || dst.lastModified()!=dependencyJar.lastModified()) {
@@ -1488,7 +1461,7 @@ public class JenkinsRule implements TestRule, RootAction {
                     if (dependencyPomResource != null) {
                         // found it
                         return Which.jarFile(dependencyPomResource);
-                    } else {
+                    } else if (embedder != null) {
                         Artifact a;
                         a = embedder.createArtifact(groupId, artifactId, version, "compile"/*doesn't matter*/, "hpi");
                         try {
@@ -1545,7 +1518,7 @@ public class JenkinsRule implements TestRule, RootAction {
      * <p>
      * This method allows you to do just that. It is useful for testing some methods that
      * require {@link org.kohsuke.stapler.StaplerRequest} and {@link org.kohsuke.stapler.StaplerResponse}, or getting the credential
-     * of the current user (via {@link jenkins.model.Jenkins#getAuthentication()}, and so on.
+     * of the current user (via {@link hudson.model.Hudson#getAuthentication()}, and so on.
      *
      * @param c
      *      The closure to be executed on the server.
@@ -1671,7 +1644,7 @@ public class JenkinsRule implements TestRule, RootAction {
          * <p>
          * This method allows you to do just that. It is useful for testing some methods that
          * require {@link org.kohsuke.stapler.StaplerRequest} and {@link org.kohsuke.stapler.StaplerResponse}, or getting the credential
-         * of the current user (via {@link jenkins.model.Jenkins#getAuthentication()}, and so on.
+         * of the current user (via {@link hudson.model.Hudson#getAuthentication()}, and so on.
          *
          * @param c
          *      The closure to be executed on the server.
