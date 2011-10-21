@@ -47,7 +47,7 @@ THE SOFTWARE.
       Caption of the text box to receive the name of the newly created item. Something like "Job name"
     </st:attribute>
     <st:attribute name="checkUrl" use="required">
-      URL relative to the context root of Jenkins that point to the check method that validates the new name.
+      relative URL that point to the check method that validates the new name.
     </st:attribute>
   </st:documentation>
 
@@ -56,7 +56,7 @@ THE SOFTWARE.
 
   <s:form method="post" action="${attrs.action?:'createItem'}" name="createItem">
     <s:entry title="${attrs.nameTitle}">
-      <s:textbox id="name" name="name" checkUrl="'${rootURL}/${h.jsStringEscape(attrs.checkUrl)}?value='+encodeURIComponent(this.value)"
+      <s:textbox id="name" name="name" checkUrl="'${h.jsStringEscape(attrs.checkUrl)}?value='+encodeURIComponent(this.value)"
                  onchange="updateOk(this.form)" onkeyup="updateOk(this.form)" />
       <script>$('name').focus();</script>
     </s:entry>
