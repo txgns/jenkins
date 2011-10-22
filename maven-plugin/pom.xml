@@ -396,6 +396,7 @@ THE SOFTWARE.
       <plugin><!-- generate licenses.xml -->
         <groupId>com.cloudbees</groupId>
         <artifactId>maven-license-plugin</artifactId>
+        <version>1.3</version>
         <!-- version specified in grandparent pom -->
         <configuration>
           <generateLicenseXml>target/${project.artifactId}/WEB-INF/licenses.xml</generateLicenseXml>
