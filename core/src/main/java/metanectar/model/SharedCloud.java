@@ -62,7 +62,7 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
  *
  * @author Stephen Connolly
  */
-public class SharedCloud extends AbstractItem implements TopLevelItem, IdentifiableSlaveManager {
+public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrader {
     private static final Logger LOGGER = Logger.getLogger(SharedCloud.class.getName());
     // property state
 
@@ -487,7 +487,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, Identifia
         return Collections.emptySet(); // we cannot query this info out of Cloud
     }
 
-    public FutureComputerLauncherFactory provision(String labelExpression, TaskListener listener, int numOfExecutors)
+    public FutureComputerLauncherFactory provision(String tenant, String labelExpression, TaskListener listener, int numOfExecutors)
             throws ProvisioningException {
         final Label label;
         try {
