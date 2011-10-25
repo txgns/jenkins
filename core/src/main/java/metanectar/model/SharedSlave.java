@@ -382,6 +382,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
     public synchronized void doConfigSubmit(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException, Descriptor.FormException {
         checkPermission(CONFIGURE);
+        requireDisabled();
 
         description = req.getParameter("description");
         try {
@@ -432,6 +433,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
     public void doDoDelete(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException, InterruptedException {
         requirePOST();
+        requireDisabled();
         delete();
         if (rsp != null) // null for CLI
         {
@@ -479,6 +481,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
             StaplerRequest req, StaplerResponse rsp) throws IOException,
             ServletException {
         requirePOST();
+        requireDisabled();
         // rename is essentially delete followed by a create
         checkPermission(CREATE);
         checkPermission(DELETE);
@@ -708,6 +711,12 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
     public LeaseId getLeaseId() {
         Set<String> leases = getLeases(getUid());
         return leases == null || leases.isEmpty() ? null : new DefaultLeaseId(leases.iterator().next());
+    }
+
+    private void requireDisabled() throws ServletException {
+        if (!disabled) {
+            throw new ServletException("Must be off-line");
+        }
     }
 
     @Extension

@@ -306,6 +306,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
                                             StaplerResponse rsp)
             throws IOException, ServletException, Descriptor.FormException {
         checkPermission(CONFIGURE);
+        requireDisabled();
 
         description = req.getParameter("description");
         try {
@@ -375,6 +376,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
     public void doDoDelete(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException, InterruptedException {
         requirePOST();
+        requireDisabled();
         delete();
         if (rsp != null) // null for CLI
         {
@@ -424,6 +426,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
             StaplerRequest req, StaplerResponse rsp) throws IOException,
             ServletException {
         requirePOST();
+        requireDisabled();
         // rename is essentially delete followed by a create
         checkPermission(CREATE);
         checkPermission(DELETE);
@@ -806,6 +809,12 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
             result.put(new DefaultLeaseId(leaseId), getNode(leaseId));
         }
         return result;
+    }
+
+    private void requireDisabled() throws ServletException {
+        if (!disabled) {
+            throw new ServletException("Must be off-line");
+        }
     }
 
     @Extension
