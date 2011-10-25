@@ -4,17 +4,13 @@
   <l:layout title="${it.displayName}">
     <st:include page="sidepanel.jelly"/>
     <l:main-panel>
-      <h1>
+      <h1 title="${it.uid}">
         <img src="${imagesURL}/48x48/${it.icon}" width="48" height="48" alt=""/>
         <st:nbsp/>
         ${it.displayName}
       </h1>
 
       <t:editableDescription permission="${it.CONFIGURE}"/>
-
-      <div>
-        UID: ${it.uid}
-      </div>
 
       <div id="ajax-status">
           <st:include page="status.jelly"/>

@@ -36,10 +36,21 @@ THE SOFTWARE.
       </p>
     </j:if>
     <j:if test="${!empty(it.leaseIds)}">
-      <j:forEach var="entry" items="${it.leaseIds}">
-        <p>
-          <img src="${imagesURL}/24x24/blue_anime.gif"/>
-          ${entry.value.nodeName} lease to ${entry.key}
+      <j:forEach var="entry" items="${it.leaseDetails}">
+        <p title="Lease: ${entry.key.leaseId}">
+          <j:if test="${entry.key.tenantId == null}">
+            <img src="${imagesURL}/24x24/blue.gif"/>
+            ${entry.key.status}
+          </j:if>
+          <j:if test="${entry.key.tenantId != null}">
+            <img src="${imagesURL}/24x24/blue_anime.gif"/>
+            On lease to
+            <j:if test="${entry.value == null}">Unknown</j:if>
+            <j:if test="${entry.value != null}">
+              <a href="${request.contextPath}/${entry.value.url}">${entry.value.fullDisplayName}</a>
+            </j:if>
+          </j:if>
+
         </p>
       </j:forEach>
       <l:hasPermission permission="${it.CONFIGURE}">
