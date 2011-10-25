@@ -493,16 +493,13 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         }
     }
 
-    @CheckForNull
+    @NonNull
     public SlaveManifest getSlaveManifest() {
-        if (isOnline()) {
-            if (slaveManifest == null) {
-                // Idempotent
-                slaveManifest = new RemoteSlaveManifest();
-            }
-            return slaveManifest;
+        if (slaveManifest == null) {
+            // Idempotent
+            slaveManifest = new RemoteSlaveManifest();
         }
-        return null;
+        return slaveManifest;
     }
 
     // State querying
