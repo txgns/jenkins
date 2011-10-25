@@ -80,7 +80,7 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
             statement = connection
                     .prepareStatement(
                             "INSERT INTO slavelease (owner, lease, tenant, status) VALUES (?,?,NULL,"
-                                    + "?) WHERE NOT EXISTS (SELECT * FROM slavelease WHERE owner = ?)");
+                                    + "?) WHERE NOT EXISTS (SELECT lease, owner, status, tenant FROM slavelease WHERE owner = ?)");
             statement.setString(1, ownerId);
             statement.setString(2, leaseId);
             statement.setInt(3, LeaseState.REQUESTED.toStatusCode());
@@ -420,7 +420,7 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         ResultSet resultSet = null;
         try {
             connection = dataSource.getConnection();
-            statement = connection.prepareStatement("SELECT * FROM slavelease");
+            statement = connection.prepareStatement("SELECT lease, owner, status, tenant FROM slavelease");
             Set<LeaseRecord> result = new HashSet<LeaseRecord>();
             resultSet = statement.executeQuery();
             while (resultSet.next()) {
@@ -444,7 +444,7 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         ResultSet resultSet = null;
         try {
             connection = dataSource.getConnection();
-            statement = connection.prepareStatement("SELECT * FROM slavelease WHERE status = ?");
+            statement = connection.prepareStatement("SELECT lease, owner, status, tenant FROM slavelease WHERE status = ?");
             statement.setInt(1, status.toStatusCode());
             Set<LeaseRecord> result = new HashSet<LeaseRecord>();
             resultSet = statement.executeQuery();
@@ -469,7 +469,7 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         ResultSet resultSet = null;
         try {
             connection = dataSource.getConnection();
-            statement = connection.prepareStatement("SELECT * FROM slavelease WHERE owner = ?");
+            statement = connection.prepareStatement("SELECT lease, owner, status, tenant FROM slavelease WHERE owner = ?");
             statement.setString(1, ownerId);
             Set<LeaseRecord> result = new HashSet<LeaseRecord>();
             resultSet = statement.executeQuery();
@@ -494,7 +494,7 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         ResultSet resultSet = null;
         try {
             connection = dataSource.getConnection();
-            statement = connection.prepareStatement("SELECT * FROM slavelease WHERE owner = ? AND status = ?");
+            statement = connection.prepareStatement("SELECT lease, owner, status, tenant FROM slavelease WHERE owner = ? AND status = ?");
             statement.setString(1, ownerId);
             statement.setInt(2, status.toStatusCode());
             Set<LeaseRecord> result = new HashSet<LeaseRecord>();
@@ -520,7 +520,7 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         ResultSet resultSet = null;
         try {
             connection = dataSource.getConnection();
-            statement = connection.prepareStatement("SELECT * FROM slavelease WHERE tenant = ? AND status = ?");
+            statement = connection.prepareStatement("SELECT lease, owner, status, tenant FROM slavelease WHERE tenant = ? AND status = ?");
             statement.setString(1, tenant);
             statement.setInt(2, LeaseState.LEASED.toStatusCode());
             Set<LeaseRecord> result = new HashSet<LeaseRecord>();
