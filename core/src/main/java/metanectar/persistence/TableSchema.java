@@ -2,6 +2,8 @@ package metanectar.persistence;
 
 import org.h2.api.Trigger;
 
+import java.sql.Blob;
+import java.sql.Clob;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -23,6 +25,8 @@ public class TableSchema<K> {
         Map<Class, String> types = new HashMap<Class, String>();
         types.put(String.class, "VARCHAR(255)");
         types.put(Integer.class, "INT");
+        types.put(Blob.class, "BLOB");
+        types.put(Clob.class, "CLOB");
         TYPES = Collections.unmodifiableMap(types);
     }
 
@@ -64,6 +68,14 @@ public class TableSchema<K> {
 
     public static Column<Integer> _int(String name) {
         return col(name, Integer.class);
+    }
+
+    public static Column<Blob> _blob(String name) {
+        return col(name, Blob.class);
+    }
+
+    public static Column<Clob> _clob(String name) {
+        return col(name, Clob.class);
     }
 
     public static <T> Column<T> col(String name, Class<T> type) {
@@ -204,23 +216,6 @@ public class TableSchema<K> {
             return name.hashCode();
         }
 
-        public T read(ResultSet resultSet) throws SQLException {
-            if (String.class.equals(type)) {
-                return (T) resultSet.getString(name);
-            }
-            if (Integer.class.equals(type)) {
-                return (T) resultSet.getString(name);
-            }
-            return null;
-        }
-
-        public void setParameter(PreparedStatement s, int index, T value) throws SQLException {
-            if (String.class.equals(type)) {
-                s.setString(index, (String) value);
-            } else if (Integer.class.equals(type)) {
-                s.setInt(index, (Integer) value);
-            }
-        }
     }
 
     public static class PrimaryColumn<T> extends Column<T> {
