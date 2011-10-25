@@ -6,9 +6,12 @@ import com.cloudbees.commons.metanectar.context.NodeContext;
 import com.cloudbees.commons.metanectar.context.NodeContextContributor;
 import com.cloudbees.commons.metanectar.context.NodeTasks;
 import com.cloudbees.commons.metanectar.context.PeriodicTask;
+import com.cloudbees.commons.metanectar.provisioning.LeaseId;
 import com.cloudbees.commons.metanectar.provisioning.SlaveManager;
+import com.cloudbees.commons.metanectar.provisioning.SlaveManifest;
 import com.google.common.base.Function;
 import com.google.common.base.Objects;
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.FilePath;
@@ -58,6 +61,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -138,6 +142,8 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
     protected transient volatile Channel channel;
 
     protected transient SlaveManager slaveManager;
+
+    private transient RemoteSlaveManifest slaveManifest;
 
     // logging state
 
@@ -485,6 +491,18 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
             lr.setThrown(e);
             LOGGER.log(lr);
         }
+    }
+
+    @CheckForNull
+    public SlaveManifest getSlaveManifest() {
+        if (isOnline()) {
+            if (slaveManifest == null) {
+                // Idempotent
+                slaveManifest = new RemoteSlaveManifest();
+            }
+            return slaveManifest;
+        }
+        return null;
     }
 
     // State querying
@@ -859,6 +877,68 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
         }
     }
 
+    /**
+     * Idempotent class to act as a {@link SlaveManifest}.
+     */
+    private class RemoteSlaveManifest implements SlaveManifest {
+
+        /**
+         * {@inheritDoc}
+         */
+        public String getOwnerId() {
+            return getUid();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Set<LeaseId> getSlaves() {
+            if (isOnline()) {
+                final Channel channel = getChannel();
+                try {
+                    return channel.call(new GetRemoteLeases());
+                } catch (Throwable t) {
+                    LOGGER.log(Level.WARNING, "Could not complete remote call", t);
+                }
+            }
+            return null;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public History getHistory(LeaseId slaveId) {
+            if (isOnline()) {
+                final Channel channel = getChannel();
+                try {
+                    return channel.call(new GetRemoteLeaseHistory(slaveId));
+                } catch (Throwable t) {
+                    LOGGER.log(Level.WARNING, "Could not complete remote call", t);
+                }
+            }
+            return null;
+        }
+    }
+
+    public static class GetRemoteLeases implements hudson.remoting.Callable<Set<LeaseId>, IOException> {
+        public Set<LeaseId> call() throws IOException {
+            SlaveManifest o = (SlaveManifest) NodeContainer.getInstance().get(SlaveManifest.class.getName());
+            return o.getSlaves();
+        }
+    }
+
+    public static class GetRemoteLeaseHistory implements hudson.remoting.Callable<SlaveManifest.History, IOException> {
+        private final LeaseId slaveId;
+
+        public GetRemoteLeaseHistory(LeaseId slaveId) {
+            this.slaveId = slaveId;
+        }
+
+        public SlaveManifest.History call() throws IOException {
+            SlaveManifest o = (SlaveManifest) NodeContainer.getInstance().get(SlaveManifest.class.getName());
+            return o.getHistory(slaveId);
+        }
+    }
 
     private static final Logger LOGGER = Logger.getLogger(ConnectedMaster.class.getName());
 }
