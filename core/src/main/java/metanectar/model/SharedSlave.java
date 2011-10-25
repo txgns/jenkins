@@ -583,7 +583,15 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
                             }
                             lastStatus = status;
                             if (status.equals(getStatus(leaseUid))) {
-                                SlaveLeaseListener.onChange(leaseUid).get(10, TimeUnit.SECONDS);
+                                try {
+                                    SlaveLeaseListener.onChange(leaseUid).get(10, TimeUnit.SECONDS);
+                                } catch (InterruptedException e) {
+                                    // ignore
+                                } catch (ExecutionException e) {
+                                    // ignore
+                                } catch (TimeoutException e) {
+                                    // ignore
+                                }
                             }
                         }
                     }
@@ -804,12 +812,6 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
             previousStatuses.keySet().retainAll(liveLeaseIds);
         }
 
-        private static class GetRemoteLeases implements hudson.remoting.Callable<Set<LeaseId>, Throwable> {
-            public Set<LeaseId> call() throws Throwable {
-                SlaveManifest o = (SlaveManifest) NodeContainer.getInstance().get(SlaveManifest.class.getName());
-                return o.getSlaves();
-            }
-        }
     }
 
     public static class PropertyList extends DescribableList<SharedSlaveProperty<?>, SharedSlavePropertyDescriptor> {
