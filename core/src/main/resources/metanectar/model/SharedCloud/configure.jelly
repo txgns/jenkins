@@ -29,6 +29,15 @@ THE SOFTWARE.
   <l:layout norefresh="true" title="${%title(it.displayName)}">
     <st:include page="sidepanel.jelly"/>
     <l:main-panel>
+      <j:if test="${it.enabled}">
+        <form method="post" action="disable">
+          Configuration changes cannot be made while this cloud is on-line. Take off-line to configure?
+          <l:hasPermission permission="${it.CONFIGURE}">
+          <f:submit value="${%Take off-line}"  />
+          </l:hasPermission>
+        </form>
+      </j:if>
+      <j:if test="${!it.enabled}">
       <f:form method="post" action="configSubmit" name="config">
         <j:set var="instance" value="${it}" />
         <j:set var="descriptor" value="${instance.descriptor}" />
@@ -63,6 +72,7 @@ THE SOFTWARE.
           </f:block>
         </l:hasPermission>
       </f:form>
+      </j:if>
     </l:main-panel>
   </l:layout>
 </j:jelly>

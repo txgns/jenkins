@@ -103,6 +103,8 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
 
     private String uid;
 
+    private boolean disabled = true;
+
     protected SharedCloud(ItemGroup parent, String name) {
         super(parent, name);
         uid = UIDTable.generate();
@@ -119,6 +121,15 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
             uid = UIDTable.generate();
         }
         return this;
+    }
+
+    public boolean isEnabled() {
+        return !disabled;
+    }
+
+    public boolean isQuiet() {
+        Set<String> leases = getLeases(getUid());
+        return disabled && (leases == null || leases.isEmpty());
     }
 
     public boolean isBuilding() {
@@ -268,6 +279,28 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
     }
 
     //////// Action methods
+
+    public synchronized void doEnable(StaplerRequest req, StaplerResponse rsp)
+            throws IOException, ServletException, Descriptor.FormException {
+        checkPermission(CONFIGURE);
+        requirePOST();
+        disabled = false;
+        if (rsp != null) // null for CLI
+        {
+            rsp.sendRedirect2(".");
+        }
+    }
+
+    public synchronized void doDisable(StaplerRequest req, StaplerResponse rsp)
+            throws IOException, ServletException, Descriptor.FormException {
+        checkPermission(CONFIGURE);
+        requirePOST();
+        disabled = true;
+        if (rsp != null) // null for CLI
+        {
+            rsp.sendRedirect2(".");
+        }
+    }
 
     public synchronized void doConfigSubmit(StaplerRequest req,
                                             StaplerResponse rsp)
@@ -468,6 +501,9 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
     }
 
     public boolean canProvision(String labelExpression) {
+        if (disabled) {
+            return false;
+        }
         final Label label;
         try {
             label = labelExpression == null ? null : Label.parseExpression(labelExpression);
@@ -515,6 +551,9 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
 
     public FutureComputerLauncherFactory provision(final String tenant, String labelExpression, TaskListener listener, int numOfExecutors)
             throws ProvisioningException {
+        if (disabled) {
+            throw new ProvisioningException("Disabled");
+        }
         final Label label;
         try {
             label = labelExpression == null ? null : Label.parseExpression(labelExpression);

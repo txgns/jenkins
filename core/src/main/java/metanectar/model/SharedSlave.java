@@ -120,6 +120,8 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
 
     private String uid;
 
+    private boolean disabled = true;
+
     protected SharedSlave(ItemGroup parent, String name) {
         super(parent, name);
         uid = UIDTable.generate();
@@ -138,6 +140,15 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
             uid = UIDTable.generate();
         }
         return this;
+    }
+
+    public boolean isEnabled() {
+        return !disabled;
+    }
+
+    public boolean isQuiet() {
+        Set<String> leases = getLeases(getUid());
+        return disabled && (leases == null || leases.isEmpty());
     }
 
     public boolean isBuilding() {
@@ -346,8 +357,29 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
 
     //////// Action methods
 
-    public synchronized void doConfigSubmit(StaplerRequest req,
-                                            StaplerResponse rsp)
+    public synchronized void doEnable(StaplerRequest req, StaplerResponse rsp)
+            throws IOException, ServletException, Descriptor.FormException {
+        checkPermission(CONFIGURE);
+        requirePOST();
+        disabled = false;
+        if (rsp != null) // null for CLI
+        {
+            rsp.sendRedirect2(".");
+        }
+    }
+
+    public synchronized void doDisable(StaplerRequest req, StaplerResponse rsp)
+            throws IOException, ServletException, Descriptor.FormException {
+        checkPermission(CONFIGURE);
+        requirePOST();
+        disabled = true;
+        if (rsp != null) // null for CLI
+        {
+            rsp.sendRedirect2(".");
+        }
+    }
+
+    public synchronized void doConfigSubmit(StaplerRequest req, StaplerResponse rsp)
             throws IOException, ServletException, Descriptor.FormException {
         checkPermission(CONFIGURE);
 
@@ -493,6 +525,9 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
     }
 
     public boolean canProvision(String labelExpression) {
+        if (disabled) {
+            return false;
+        }
         Set<String> leases = getLeases(getUid());
         if (leases != null && !leases.isEmpty()) {
             // TODO when we have a more advanced slave launch mechanism we can give split leases.
@@ -522,6 +557,9 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
     public FutureComputerLauncherFactory provision(final String tenant, String labelExpression, TaskListener listener,
                                                    int numOfExecutors)
             throws ProvisioningException {
+        if (disabled) {
+            throw new ProvisioningException("Disabled");
+        }
         final String leaseUid = UUID.randomUUID().toString();
         if (!registerRequest(getUid(), leaseUid)) {
             throw new ProvisioningException("Could not register lease request");

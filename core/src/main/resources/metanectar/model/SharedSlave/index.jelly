@@ -12,6 +12,23 @@
 
       <t:editableDescription permission="${it.CONFIGURE}"/>
 
+      <l:hasPermission permission="${it.CONFIGURE}">
+      <div>
+        <j:choose>
+          <j:when test="${it.enabled}">
+            <form method="post" action="disable">
+              <f:submit value="${%Take off-line}"  />
+            </form>
+          </j:when>
+          <j:otherwise>
+            <form method="post" action="enable">
+              <f:submit value="${%Take on-line}"  />
+            </form>
+          </j:otherwise>
+        </j:choose>
+      </div>
+      </l:hasPermission>
+
       <div id="ajax-status">
           <st:include page="status.jelly"/>
       </div>

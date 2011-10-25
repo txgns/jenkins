@@ -29,36 +29,56 @@ THE SOFTWARE.
 <j:jelly xmlns:j="jelly:core" xmlns:x="jelly:xml" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
   <l:ajax>
-    <j:if test="${empty(it.leaseIds)}">
-      <p>
-        <img src="${imagesURL}/24x24/blue.gif"/>
-        Available for lease
-      </p>
-    </j:if>
-    <j:if test="${!empty(it.leaseIds)}">
-      <j:forEach var="entry" items="${it.leaseDetails}">
-        <p title="Lease: ${entry.key.leaseId}">
-          <j:if test="${entry.key.tenantId == null}">
-            <img src="${imagesURL}/24x24/blue.gif"/>
-            ${entry.key.status}
-          </j:if>
-          <j:if test="${entry.key.tenantId != null}">
-            <img src="${imagesURL}/24x24/blue_anime.gif"/>
-            On lease to
-            <j:if test="${entry.value == null}">Unknown</j:if>
-            <j:if test="${entry.value != null}">
-              <a href="${request.contextPath}/${entry.value.url}">${entry.value.fullDisplayName}</a>
+    <j:if test="${it.enabled}">
+      <j:if test="${empty(it.leaseIds)}">
+        <p><img src="${imagesURL}/24x24/blue.gif"/> Available for lease</p>
+      </j:if>
+      <j:if test="${!empty(it.leaseIds)}">
+        <j:forEach var="entry" items="${it.leaseDetails}">
+          <p title="Lease: ${entry.key.leaseId}">
+            <j:if test="${entry.key.tenantId == null}">
+              <img src="${imagesURL}/24x24/blue.gif"/>
+              ${entry.key.status}
             </j:if>
-          </j:if>
+            <j:if test="${entry.key.tenantId != null}">
+              <img src="${imagesURL}/24x24/blue_anime.gif"/>
+              On lease to
+              <j:if test="${entry.value == null}">Unknown</j:if>
+              <j:if test="${entry.value != null}">
+                <a href="${request.contextPath}/${entry.value.url}">${entry.value.fullDisplayName}</a>
+              </j:if>
+            </j:if>
 
-        </p>
-      </j:forEach>
-      <!--<l:hasPermission permission="${it.CONFIGURE}">-->
-        <!--<form method="post" action="forceRelease">-->
-          <!--<f:submit value="${%Force release}"/>-->
-        <!--</form>-->
-      <!--</l:hasPermission>-->
+          </p>
+        </j:forEach>
+      </j:if>
     </j:if>
+    <j:if test="${!it.enabled}">
+      <j:if test="${!it.quiet}">
+        <p><img src="${imagesURL}/24x24/yellow_anime.gif"/> Off-line, waiting for all leases to be returned</p>
+        <j:if test="${!empty(it.leaseIds)}">
+          <j:forEach var="entry" items="${it.leaseDetails}">
+            <p title="Lease: ${entry.key.leaseId}">
+              <j:if test="${entry.key.tenantId == null}">
+                <img src="${imagesURL}/24x24/yellow.gif"/>
+                ${entry.key.status}
+              </j:if>
+              <j:if test="${entry.key.tenantId != null}">
+                <img src="${imagesURL}/24x24/yellow_anime.gif"/>
+                On lease to
+                <j:if test="${entry.value == null}">Unknown</j:if>
+                <j:if test="${entry.value != null}">
+                  <a href="${request.contextPath}/${entry.value.url}">${entry.value.fullDisplayName}</a>
+                </j:if>
+              </j:if>
 
+            </p>
+          </j:forEach>
+        </j:if>
+      </j:if>
+      <j:if test="${it.quiet}">
+        <p><img src="${imagesURL}/24x24/red.gif"/> Off-line</p>
+      </j:if>
+    </j:if>
   </l:ajax>
 </j:jelly>
