@@ -53,11 +53,11 @@ THE SOFTWARE.
 
         </p>
       </j:forEach>
-      <l:hasPermission permission="${it.CONFIGURE}">
-        <form method="post" action="forceRelease">
-          <f:submit value="${%Force release}"/>
-        </form>
-      </l:hasPermission>
+      <!--<l:hasPermission permission="${it.CONFIGURE}">-->
+        <!--<form method="post" action="forceRelease">-->
+          <!--<f:submit value="${%Force release}"/>-->
+        <!--</form>-->
+      <!--</l:hasPermission>-->
     </j:if>
 
   </l:ajax>
