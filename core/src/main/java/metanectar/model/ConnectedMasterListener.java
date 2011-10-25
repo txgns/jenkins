@@ -16,6 +16,14 @@ public abstract class ConnectedMasterListener implements ExtensionPoint {
     private static final Logger LOGGER = Logger.getLogger(ConnectedMasterListener.class.getName());
 
     /**
+     * Called before the master is connected.
+     * <p>More specifically, called before a channel is assigned to the master.</p>
+     *
+     * @param cm the master.
+     */
+    public void onBeforeConnected(ConnectedMaster cm) {}
+
+    /**
      * Called when the master is connected.
      *
      * @param cm the master.
@@ -30,30 +38,22 @@ public abstract class ConnectedMasterListener implements ExtensionPoint {
     public abstract void onDisconnected(ConnectedMaster cm);
 
     /**
-     * Called when the master's configuration is saved.
+     * Called when the master's configuration is modified
      *
      * @param cm the master.
      */
-    public void onSaved(ConnectedMaster cm) {}
-
-    /**
-     * Called when the master's configuration is loaded.
-     *
-     * @param cm the master.
-     * @see #onCreated(ConnectedMaster)
-     */
-    public void onLoaded(ConnectedMaster cm) {}
-
-    /**
-     * Called when the master is created from scratch.
-     *
-     * @param cm the master.
-     * @see #onLoaded(ConnectedMaster)
-     */
-    public void onCreated(ConnectedMaster cm) {}
+    public void onModified(ConnectedMaster cm) {}
 
     public static ExtensionList<ConnectedMasterListener> all() {
         return Hudson.getInstance().getExtensionList(ConnectedMasterListener.class);
+    }
+
+    /* package */ static void fireOnBeforeConnected(final ConnectedMaster cm) {
+        fire (new FireLambda() {
+            public void f(ConnectedMasterListener cml) {
+                cml.onBeforeConnected(cm);
+            }
+        });
     }
 
     /* package */ static void fireOnConnected(final ConnectedMaster cm) {
@@ -72,26 +72,10 @@ public abstract class ConnectedMasterListener implements ExtensionPoint {
         });
     }
 
-    /* package */ static void fireOnSaved(final ConnectedMaster cm) {
+    /* package */ static void fireOnModified(final ConnectedMaster cm) {
         fire (new FireLambda() {
             public void f(ConnectedMasterListener cml) {
-                cml.onSaved(cm);
-            }
-        });
-    }
-
-    /* package */ static void fireOnCreated(final ConnectedMaster cm) {
-        fire (new FireLambda() {
-            public void f(ConnectedMasterListener cml) {
-                cml.onCreated(cm);
-            }
-        });
-    }
-
-    /* package */ static void fireOnLoaded(final ConnectedMaster cm) {
-        fire (new FireLambda() {
-            public void f(ConnectedMasterListener cml) {
-                cml.onLoaded(cm);
+                cml.onModified(cm);
             }
         });
     }

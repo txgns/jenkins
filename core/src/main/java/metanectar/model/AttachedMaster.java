@@ -1,6 +1,7 @@
 package metanectar.model;
 
 import com.google.common.collect.ImmutableSet;
+import hudson.AbortException;
 import hudson.Extension;
 import hudson.model.*;
 import hudson.security.Permission;
@@ -235,6 +236,8 @@ public class AttachedMaster extends ConnectedMaster {
         properties.rebuild(req,json.optJSONObject("properties"),ConnectedMasterProperty.all());
 
         save();
+
+        onModified();
 
         rsp.sendRedirect(".");
     }

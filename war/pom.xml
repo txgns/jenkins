@@ -28,7 +28,7 @@ THE SOFTWARE.
   <parent>
     <groupId>com.cloudbees.metanectar</groupId>
     <artifactId>dev-at-cloud-private</artifactId>
-    <version>1.400.32-SNAPSHOT</version>
+    <version>1.400.33-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -90,7 +90,7 @@ THE SOFTWARE.
     <dependency>
       <groupId>com.cloudbees.nectar.plugins</groupId>
       <artifactId>cloudbees-folder</artifactId>
-      <version>1.5</version>
+      <version>1.6</version>
       <type>hpi</type>
       <scope>test</scope>
     </dependency>
@@ -325,11 +325,11 @@ THE SOFTWARE.
                 <resolvePlugin groupId="com.cloudbees.plugins" artifactId="cloudbees-update-center-plugin" version="0.15" />
                 <resolvePlugin groupId="com.cloudbees.metanectar" artifactId="metanectar-updatecenter-plugin" version="0.8" />
                 <resolvePlugin groupId="com.cloudbees.nectar" artifactId="nectar-rbac" version="2.6" />
-                <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="cloudbees-folder" version="1.5" />
+                <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="cloudbees-folder" version="1.6" />
                 <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="metanectar-license" version="1.2" />
                 <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="cloudbees-license" version="1.4" />
                 <resolvePlugin groupId="com.cloudbees.metanectar.plugins" artifactId="cloudbees-metanectar-rbac-plugin" version="0.4" />
-                <resolvePlugin groupId="com.cloudbees.metanectar.plugins" artifactId="sso-server" version="0.5" />
+                <resolvePlugin groupId="com.cloudbees.metanectar.plugins" artifactId="sso-server" version="0.6" />
                 <resolvePlugin groupId="com.cloudbees.nectar.plugins" artifactId="openid-server" version="0.1" />
                 <resolvePlugin groupId="org.jenkins-ci.plugins" artifactId="openid" version="1.3" />
 
