@@ -4,6 +4,8 @@ import org.h2.api.Trigger;
 
 import java.sql.Blob;
 import java.sql.Clob;
+import java.sql.Date;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -24,6 +26,8 @@ public class TableSchema<K> {
         types.put(Integer.class, "INT");
         types.put(Blob.class, "BLOB");
         types.put(Clob.class, "CLOB");
+        types.put(Date.class, "DATE");
+        types.put(Timestamp.class, "TIMESTAMP");
         TYPES = Collections.unmodifiableMap(types);
     }
 
@@ -73,6 +77,14 @@ public class TableSchema<K> {
 
     public static Column<Clob> _clob(String name) {
         return col(name, Clob.class);
+    }
+
+    public static Column<Date> _date(String name) {
+        return col(name, Date.class);
+    }
+
+    public static Column<Timestamp> _tstamp(String name) {
+        return col(name, Timestamp.class);
     }
 
     public static <T> Column<T> col(String name, Class<T> type) {

@@ -14,6 +14,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -21,6 +23,7 @@ import java.util.Set;
 import static metanectar.persistence.TableSchema._blob;
 import static metanectar.persistence.TableSchema._int;
 import static metanectar.persistence.TableSchema._string;
+import static metanectar.persistence.TableSchema._tstamp;
 
 @Extension
 public class SlaveLeaseTable extends DatastoreTable<String> {
@@ -29,6 +32,7 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
     static final String OWNER_COLUMN = "owner";
     static final String TENANT_COLUMN = "tenant";
     static final String STATUS_COLUMN = "status";
+    static final String LASTMOD_COLUMN = "lastmod";
     static final String RESOURCE_COLUMN = "resource";
 
     public SlaveLeaseTable() {
@@ -37,7 +41,8 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
                 _string(OWNER_COLUMN),
                 _string(TENANT_COLUMN),
                 _int(STATUS_COLUMN),
-                _blob(RESOURCE_COLUMN))
+                _blob(RESOURCE_COLUMN),
+                _tstamp(LASTMOD_COLUMN))
                 .withTrigger(SlaveLeaseTrigger.class));
     }
 
@@ -67,35 +72,12 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         try {
             connection = dataSource.getConnection();
             statement = connection
-                    .prepareStatement("INSERT INTO slavelease (owner, lease, tenant, status) VALUES (?,?,NULL,?)");
+                    .prepareStatement("INSERT INTO slavelease (owner, lease, tenant, status, lastmod) "
+                            + "VALUES (?,?,NULL,?,?)");
             statement.setString(1, ownerId);
             statement.setString(2, leaseId);
             statement.setInt(3, LeaseState.REQUESTED.toStatusCode());
-            boolean result = statement.executeUpdate() == 1;
-            connection.commit();
-            return result;
-        } catch (SQLException e) {
-            return false;
-        } finally {
-            close(statement);
-            close(connection);
-        }
-    }
-
-    public static boolean registerOnlyRequest(@NonNull String ownerId, String leaseId) {
-        DataSource dataSource = Datastore.getDataSource();
-        Connection connection = null;
-        PreparedStatement statement = null;
-        try {
-            connection = dataSource.getConnection();
-            statement = connection
-                    .prepareStatement(
-                            "INSERT INTO slavelease (owner, lease, tenant, status) VALUES (?,?,NULL,"
-                                    + "?) WHERE NOT EXISTS (SELECT lease, owner, status, tenant FROM slavelease WHERE owner = ?)");
-            statement.setString(1, ownerId);
-            statement.setString(2, leaseId);
-            statement.setInt(3, LeaseState.REQUESTED.toStatusCode());
-            statement.setString(4, ownerId);
+            statement.setTimestamp(4, currentTimestamp());
             boolean result = statement.executeUpdate() == 1;
             connection.commit();
             return result;
@@ -137,10 +119,12 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         PreparedStatement statement = null;
         try {
             connection = dataSource.getConnection();
-            statement = connection.prepareStatement("UPDATE slavelease SET status = ? WHERE lease = ? AND status = ?");
+            statement = connection.prepareStatement("UPDATE slavelease SET status = ?, lastmod = ? "
+                    + "WHERE lease = ? AND status = ?");
             statement.setInt(1, to.toStatusCode());
-            statement.setString(2, leaseId);
-            statement.setInt(3, from.toStatusCode());
+            statement.setTimestamp(2, currentTimestamp());
+            statement.setString(3, leaseId);
+            statement.setInt(4, from.toStatusCode());
             boolean result = statement.executeUpdate() == 1;
             connection.commit();
             return result;
@@ -152,7 +136,8 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         }
     }
 
-    public static boolean updateStateAndResource(@NonNull String leaseId, @NonNull LeaseState from, @NonNull LeaseState to,  @Nullable byte[] resource) {
+    public static boolean updateStateAndResource(@NonNull String leaseId, @NonNull LeaseState from,
+                                                 @NonNull LeaseState to, @Nullable byte[] resource) {
         if (!from.validTransitions().contains(to)) {
             throw new IllegalStateException("Transition from " + from + " to " + to + " is not allowed");
         }
@@ -161,11 +146,14 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         PreparedStatement statement = null;
         try {
             connection = dataSource.getConnection();
-            statement = connection.prepareStatement("UPDATE slavelease SET status = ?, resource = ? WHERE lease = ? AND status = ? AND resource IS NOT NULL");
+            statement = connection.prepareStatement(
+                    "UPDATE slavelease SET status = ?, resource = ?, lastmod = ? "
+                            + "WHERE lease = ? AND status = ? AND resource IS NOT NULL");
             statement.setInt(1, to.toStatusCode());
             statement.setBlob(2, resource == null ? null : new ByteArrayInputStream(resource));
-            statement.setString(3, leaseId);
-            statement.setInt(4, from.toStatusCode());
+            statement.setTimestamp(3, currentTimestamp());
+            statement.setString(4, leaseId);
+            statement.setInt(5, from.toStatusCode());
             boolean result = statement.executeUpdate() == 1;
             connection.commit();
             return result;
@@ -184,11 +172,13 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         try {
             connection = dataSource.getConnection();
             statement = connection.prepareStatement(
-                    "UPDATE slavelease SET status = ?, resource = ? WHERE lease = ? AND status = ? AND resource IS NULL");
+                    "UPDATE slavelease SET status = ?, resource = ?, lastmod = ? "
+                            + "WHERE lease = ? AND status = ? AND resource IS NULL");
             statement.setInt(1, LeaseState.PLANNED.toStatusCode());
             statement.setBlob(2, resource == null ? null : new ByteArrayInputStream(resource));
-            statement.setString(3, leaseId);
-            statement.setInt(4, LeaseState.REQUESTED.toStatusCode());
+            statement.setTimestamp(3, currentTimestamp());
+            statement.setString(4, leaseId);
+            statement.setInt(5, LeaseState.REQUESTED.toStatusCode());
             boolean result = statement.executeUpdate() == 1;
             connection.commit();
             return result;
@@ -207,9 +197,10 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         try {
             connection = dataSource.getConnection();
             statement = connection.prepareStatement(
-                    "UPDATE slavelease SET resource = ? WHERE lease = ? AND resource IS NULL");
+                    "UPDATE slavelease SET resource = ?, lastmod = ? WHERE lease = ? AND resource IS NULL");
             statement.setBlob(1, resource == null ? null : new ByteArrayInputStream(resource));
-            statement.setString(2, leaseId);
+            statement.setTimestamp(2, currentTimestamp());
+            statement.setString(3, leaseId);
             boolean result = statement.executeUpdate() == 1;
             connection.commit();
             return result;
@@ -228,8 +219,9 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         try {
             connection = dataSource.getConnection();
             statement = connection.prepareStatement(
-                    "UPDATE slavelease SET resource = NULL WHERE lease = ?");
-            statement.setString(1, leaseId);
+                    "UPDATE slavelease SET resource = NULL, lastmod = ? WHERE lease = ?");
+            statement.setTimestamp(1, currentTimestamp());
+            statement.setString(2, leaseId);
             boolean result = statement.executeUpdate() == 1;
             connection.commit();
             return result;
@@ -254,7 +246,9 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
             resultSet = statement.executeQuery();
             if (resultSet.next()) {
                 Blob blob = resultSet.getBlob(1);
-                if (blob == null) return null;
+                if (blob == null) {
+                    return null;
+                }
                 return IOUtils.toByteArray(blob.getBinaryStream());
             }
             return null;
@@ -276,11 +270,12 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         try {
             connection = dataSource.getConnection();
             statement = connection.prepareStatement(
-                    "UPDATE slavelease SET status = ?, tenant = ? WHERE lease = ? AND status = ?");
+                    "UPDATE slavelease SET status = ?, tenant = ?, lastmod = ? WHERE lease = ? AND status = ?");
             statement.setInt(1, LeaseState.LEASED.toStatusCode());
             statement.setString(2, tenant);
-            statement.setString(3, leaseId);
-            statement.setInt(4, LeaseState.AVAILABLE.toStatusCode());
+            statement.setTimestamp(3, currentTimestamp());
+            statement.setString(4, leaseId);
+            statement.setInt(5, LeaseState.AVAILABLE.toStatusCode());
             boolean result = statement.executeUpdate() == 1;
             connection.commit();
             return result;
@@ -299,11 +294,12 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         try {
             connection = dataSource.getConnection();
             statement = connection
-                    .prepareStatement("UPDATE slavelease SET status = ?, tenant = NULL WHERE lease = ? AND status = "
-                            + "?");
+                    .prepareStatement("UPDATE slavelease SET status = ?, tenant = NULL, lastmod = ? "
+                            + "WHERE lease = ? AND status = ?");
             statement.setInt(1, LeaseState.RETURNED.toStatusCode());
-            statement.setString(2, leaseId);
-            statement.setInt(3, LeaseState.LEASED.toStatusCode());
+            statement.setTimestamp(2, currentTimestamp());
+            statement.setString(3, leaseId);
+            statement.setInt(4, LeaseState.LEASED.toStatusCode());
             boolean result = statement.executeUpdate() == 1;
             connection.commit();
             return result;
@@ -547,7 +543,8 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         ResultSet resultSet = null;
         try {
             connection = dataSource.getConnection();
-            statement = connection.prepareStatement("SELECT lease, owner, status, tenant FROM slavelease");
+            statement = connection.prepareStatement("SELECT lease, owner, status, tenant, lastmod "
+                    + "FROM slavelease");
             Set<LeaseRecord> result = new HashSet<LeaseRecord>();
             resultSet = statement.executeQuery();
             while (resultSet.next()) {
@@ -571,7 +568,8 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         ResultSet resultSet = null;
         try {
             connection = dataSource.getConnection();
-            statement = connection.prepareStatement("SELECT lease, owner, status, tenant FROM slavelease WHERE status = ?");
+            statement = connection.prepareStatement("SELECT lease, owner, status, tenant, lastmod "
+                    + "FROM slavelease WHERE status = ?");
             statement.setInt(1, status.toStatusCode());
             Set<LeaseRecord> result = new HashSet<LeaseRecord>();
             resultSet = statement.executeQuery();
@@ -596,7 +594,8 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         ResultSet resultSet = null;
         try {
             connection = dataSource.getConnection();
-            statement = connection.prepareStatement("SELECT lease, owner, status, tenant FROM slavelease WHERE owner = ?");
+            statement = connection.prepareStatement("SELECT lease, owner, status, tenant, lastmod "
+                    + "FROM slavelease WHERE owner = ?");
             statement.setString(1, ownerId);
             Set<LeaseRecord> result = new HashSet<LeaseRecord>();
             resultSet = statement.executeQuery();
@@ -621,7 +620,8 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         ResultSet resultSet = null;
         try {
             connection = dataSource.getConnection();
-            statement = connection.prepareStatement("SELECT lease, owner, status, tenant FROM slavelease WHERE owner = ? AND status = ?");
+            statement = connection.prepareStatement("SELECT lease, owner, status, tenant, lastmod "
+                    + "FROM slavelease WHERE owner = ? AND status = ?");
             statement.setString(1, ownerId);
             statement.setInt(2, status.toStatusCode());
             Set<LeaseRecord> result = new HashSet<LeaseRecord>();
@@ -647,7 +647,8 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         ResultSet resultSet = null;
         try {
             connection = dataSource.getConnection();
-            statement = connection.prepareStatement("SELECT lease, owner, status, tenant FROM slavelease WHERE tenant = ? AND status = ?");
+            statement = connection.prepareStatement("SELECT lease, owner, status, tenant, lastmod "
+                    + "FROM slavelease WHERE tenant = ? AND status = ?");
             statement.setString(1, tenant);
             statement.setInt(2, LeaseState.LEASED.toStatusCode());
             Set<LeaseRecord> result = new HashSet<LeaseRecord>();
@@ -676,7 +677,13 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         }
         String ownerId = row.getString(OWNER_COLUMN);
         String tenantId = row.getString(TENANT_COLUMN);
+        Timestamp lastMod = row.getTimestamp(LASTMOD_COLUMN);
 
-        return new LeaseRecord(leaseId, ownerId, tenantId, status);
+        return new LeaseRecord(leaseId, ownerId, tenantId, status, lastMod);
     }
+
+    private static Timestamp currentTimestamp() {
+        return new Timestamp(Calendar.getInstance().getTime().getTime());
+    }
+
 }
