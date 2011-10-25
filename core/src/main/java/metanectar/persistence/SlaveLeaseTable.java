@@ -20,10 +20,14 @@ import static metanectar.persistence.TableSchema._string;
 public class SlaveLeaseTable extends DatastoreTable<String> {
 
     static final String LEASE_COLUMN = "lease";
+    static final String OWNER_COLUMN = "owner";
+    static final String TENANT_COLUMN = "tenant";
+    static final String STATUS_COLUMN = "status";
 
     public SlaveLeaseTable() {
         super(new TableSchema<String>("slavelease", _string(LEASE_COLUMN).primaryKey(),
-                _string("owner"), _string("tenant"), _int("status")).withTrigger(SlaveLeaseTrigger.class));
+                _string(OWNER_COLUMN), _string(TENANT_COLUMN), _int(STATUS_COLUMN))
+                .withTrigger(SlaveLeaseTrigger.class));
     }
 
     public static void dropOwner(@NonNull String ownerId) {
@@ -74,7 +78,9 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         try {
             connection = dataSource.getConnection();
             statement = connection
-                    .prepareStatement("INSERT INTO slavelease (owner, lease, tenant, status) VALUES (?,?,NULL,?) WHERE NOT EXISTS (SELECT * FROM slavelease WHERE owner = ?)");
+                    .prepareStatement(
+                            "INSERT INTO slavelease (owner, lease, tenant, status) VALUES (?,?,NULL,"
+                                    + "?) WHERE NOT EXISTS (SELECT * FROM slavelease WHERE owner = ?)");
             statement.setString(1, ownerId);
             statement.setString(2, leaseId);
             statement.setInt(3, LeaseState.REQUESTED.toStatusCode());
@@ -164,7 +170,9 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         PreparedStatement statement = null;
         try {
             connection = dataSource.getConnection();
-            statement = connection.prepareStatement("UPDATE slavelease SET status = ?, tenant = NULL WHERE lease = ? AND status = ?");
+            statement = connection
+                    .prepareStatement("UPDATE slavelease SET status = ?, tenant = NULL WHERE lease = ? AND status = "
+                            + "?");
             statement.setInt(1, LeaseState.RETURNED.toStatusCode());
             statement.setString(2, leaseId);
             statement.setInt(3, LeaseState.LEASED.toStatusCode());
@@ -404,4 +412,144 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
 
     }
 
+    @CheckForNull
+    public static Set<LeaseRecord> getLeaseRecords() {
+        DataSource dataSource = Datastore.getDataSource();
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet resultSet = null;
+        try {
+            connection = dataSource.getConnection();
+            statement = connection.prepareStatement("SELECT * FROM slavelease");
+            Set<LeaseRecord> result = new HashSet<LeaseRecord>();
+            resultSet = statement.executeQuery();
+            while (resultSet.next()) {
+                result.add(toLeaseRecord(resultSet));
+            }
+            return Collections.unmodifiableSet(result);
+        } catch (SQLException e) {
+            return null;
+        } finally {
+            close(resultSet);
+            close(statement);
+            close(connection);
+        }
+    }
+
+    @CheckForNull
+    public static Set<LeaseRecord> getLeaseRecords(LeaseState status) {
+        DataSource dataSource = Datastore.getDataSource();
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet resultSet = null;
+        try {
+            connection = dataSource.getConnection();
+            statement = connection.prepareStatement("SELECT * FROM slavelease WHERE status = ?");
+            statement.setInt(1, status.toStatusCode());
+            Set<LeaseRecord> result = new HashSet<LeaseRecord>();
+            resultSet = statement.executeQuery();
+            while (resultSet.next()) {
+                result.add(toLeaseRecord(resultSet));
+            }
+            return Collections.unmodifiableSet(result);
+        } catch (SQLException e) {
+            return null;
+        } finally {
+            close(resultSet);
+            close(statement);
+            close(connection);
+        }
+    }
+
+    @CheckForNull
+    public static Set<LeaseRecord> getLeaseRecords(String ownerId) {
+        DataSource dataSource = Datastore.getDataSource();
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet resultSet = null;
+        try {
+            connection = dataSource.getConnection();
+            statement = connection.prepareStatement("SELECT * FROM slavelease WHERE owner = ?");
+            statement.setString(1, ownerId);
+            Set<LeaseRecord> result = new HashSet<LeaseRecord>();
+            resultSet = statement.executeQuery();
+            while (resultSet.next()) {
+                result.add(toLeaseRecord(resultSet));
+            }
+            return Collections.unmodifiableSet(result);
+        } catch (SQLException e) {
+            return null;
+        } finally {
+            close(resultSet);
+            close(statement);
+            close(connection);
+        }
+    }
+
+    @CheckForNull
+    public static Set<LeaseRecord> getLeaseRecords(String ownerId, LeaseState status) {
+        DataSource dataSource = Datastore.getDataSource();
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet resultSet = null;
+        try {
+            connection = dataSource.getConnection();
+            statement = connection.prepareStatement("SELECT * FROM slavelease WHERE owner = ? AND status = ?");
+            statement.setString(1, ownerId);
+            statement.setInt(2, status.toStatusCode());
+            Set<LeaseRecord> result = new HashSet<LeaseRecord>();
+            resultSet = statement.executeQuery();
+            while (resultSet.next()) {
+                result.add(toLeaseRecord(resultSet));
+            }
+            return Collections.unmodifiableSet(result);
+        } catch (SQLException e) {
+            return null;
+        } finally {
+            close(resultSet);
+            close(statement);
+            close(connection);
+        }
+    }
+
+    @CheckForNull
+    public static Set<LeaseRecord> getTenantLeaseRecords(String tenant) {
+        DataSource dataSource = Datastore.getDataSource();
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet resultSet = null;
+        try {
+            connection = dataSource.getConnection();
+            statement = connection.prepareStatement("SELECT * FROM slavelease WHERE tenant = ? AND status = ?");
+            statement.setString(1, tenant);
+            statement.setInt(2, LeaseState.LEASED.toStatusCode());
+            Set<LeaseRecord> result = new HashSet<LeaseRecord>();
+            resultSet = statement.executeQuery();
+            while (resultSet.next()) {
+                result.add(toLeaseRecord(resultSet));
+            }
+            return Collections.unmodifiableSet(result);
+        } catch (SQLException e) {
+            return null;
+        } finally {
+            close(resultSet);
+            close(statement);
+            close(connection);
+        }
+    }
+
+    private static LeaseRecord toLeaseRecord(ResultSet row) throws SQLException {
+        String leaseId = row.getString(LEASE_COLUMN);
+        if (leaseId == null) {
+            return null;
+        }
+        LeaseState status = LeaseState.fromStatusCode(row.getInt(STATUS_COLUMN));
+        if (status == null) {
+            return null;
+        }
+        String ownerId = row.getString(OWNER_COLUMN);
+        String tenantId = row.getString(TENANT_COLUMN);
+
+        return new LeaseRecord(leaseId, ownerId, tenantId, status);
+    }
 }

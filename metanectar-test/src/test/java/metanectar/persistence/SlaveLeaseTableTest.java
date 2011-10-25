@@ -1,20 +1,25 @@
 package metanectar.persistence;
 
 import metanectar.test.MetaNectarRule;
+import org.hamcrest.BaseMatcher;
+import org.hamcrest.Description;
+import org.hamcrest.Matcher;
+import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
 import static metanectar.persistence.LeaseState.*;
+import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.hasValue;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.isA;
 import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 
@@ -136,7 +141,7 @@ public class SlaveLeaseTableTest {
     }
 
     @Test
-    public void shortLifecycle_getLeasesStatus() throws Exception {
+    public void shortLifecycle_getLeases_status() throws Exception {
         String leaseId = generateUID();
         assertThat(SlaveLeaseTable.getLeases(REQUESTED), not(hasItem(leaseId)));
         assertThat(SlaveLeaseTable.getLeases(DECOMMISSIONED), not(hasItem(leaseId)));
@@ -163,7 +168,7 @@ public class SlaveLeaseTableTest {
     }
 
     @Test
-    public void shortLifecycle_getLeasesOwner() throws Exception {
+    public void shortLifecycle_getLeases_owner() throws Exception {
         String leaseId = generateUID();
         assertThat(SlaveLeaseTable.getLeases(owner), not(hasItem(leaseId)));
         assertThat(SlaveLeaseTable.getLeases(""), not(hasItem(leaseId)));
@@ -190,7 +195,7 @@ public class SlaveLeaseTableTest {
     }
 
     @Test
-    public void shortLifecycle_getLeasesOwnerStatus() throws Exception {
+    public void shortLifecycle_getLeases_ownerStatus() throws Exception {
         String leaseId = generateUID();
         assertThat(SlaveLeaseTable.getLeases(owner, REQUESTED), not(hasItem(leaseId)));
         assertThat(SlaveLeaseTable.getLeases(owner, DECOMMISSIONED), not(hasItem(leaseId)));
@@ -241,23 +246,126 @@ public class SlaveLeaseTableTest {
     @Test
     public void shortLifecycle_getTenantLeases() throws Exception {
         String leaseId = generateUID();
-        assertThat(SlaveLeaseTable.getTenantLeases("foo"), not(hasItem(owner)));
+        assertThat(SlaveLeaseTable.getTenantLeases("foo"), not(hasItem(leaseId)));
 
         assertThat(SlaveLeaseTable.registerRequest(owner, leaseId), is(true));
 
-        assertThat(SlaveLeaseTable.getTenantLeases("foo"), not(hasItem(owner)));
+        assertThat(SlaveLeaseTable.getTenantLeases("foo"), not(hasItem(leaseId)));
 
         assertThat(SlaveLeaseTable.decommissionLease(leaseId), is(false));
 
-        assertThat(SlaveLeaseTable.getTenantLeases("foo"), not(hasItem(owner)));
+        assertThat(SlaveLeaseTable.getTenantLeases("foo"), not(hasItem(leaseId)));
 
         assertThat(SlaveLeaseTable.updateState(leaseId, REQUESTED, DECOMMISSIONED), is(true));
 
-        assertThat(SlaveLeaseTable.getTenantLeases("foo"), not(hasItem(owner)));
+        assertThat(SlaveLeaseTable.getTenantLeases("foo"), not(hasItem(leaseId)));
 
         assertThat(SlaveLeaseTable.decommissionLease(leaseId), is(true));
 
-        assertThat(SlaveLeaseTable.getTenantLeases("foo"), not(hasItem(owner)));
+        assertThat(SlaveLeaseTable.getTenantLeases("foo"), not(hasItem(leaseId)));
+    }
+
+    @Test
+    public void shortLifecycle_getLeaseRecords_status() throws Exception {
+        String leaseId = generateUID();
+        assertThat(SlaveLeaseTable.getLeaseRecords(REQUESTED), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(DECOMMISSIONED), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.registerRequest(owner, leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(REQUESTED), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(DECOMMISSIONED), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.decommissionLease(leaseId), is(false));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(REQUESTED), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(DECOMMISSIONED), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, REQUESTED, DECOMMISSIONED), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(REQUESTED), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(DECOMMISSIONED), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.decommissionLease(leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(REQUESTED), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(DECOMMISSIONED), not(hasLeaseRecord(leaseId)));
+    }
+
+    @Test
+    public void shortLifecycle_getLeaseRecords_owner() throws Exception {
+        String leaseId = generateUID();
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(""), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.registerRequest(owner, leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(""), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.decommissionLease(leaseId), is(false));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(""), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, REQUESTED, DECOMMISSIONED), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(""), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.decommissionLease(leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(""), not(hasLeaseRecord(leaseId)));
+    }
+
+    @Test
+    public void shortLifecycle_getLeaseRecords_ownerStatus() throws Exception {
+        String leaseId = generateUID();
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, REQUESTED), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, DECOMMISSIONED), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.registerRequest(owner, leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, REQUESTED), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, DECOMMISSIONED), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.decommissionLease(leaseId), is(false));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, REQUESTED), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, DECOMMISSIONED), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, REQUESTED, DECOMMISSIONED), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, REQUESTED), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, DECOMMISSIONED), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.decommissionLease(leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, REQUESTED), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, DECOMMISSIONED), not(hasLeaseRecord(leaseId)));
+    }
+
+    @Test
+    public void shortLifecycle_getTenantLeaseRecords() throws Exception {
+        String leaseId = generateUID();
+        assertThat(SlaveLeaseTable.getTenantLeaseRecords("foo"), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.registerRequest(owner, leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getTenantLeaseRecords("foo"), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.decommissionLease(leaseId), is(false));
+
+        assertThat(SlaveLeaseTable.getTenantLeaseRecords("foo"), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, REQUESTED, DECOMMISSIONED), is(true));
+
+        assertThat(SlaveLeaseTable.getTenantLeaseRecords("foo"), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.decommissionLease(leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getTenantLeaseRecords("foo"), not(hasLeaseRecord(leaseId)));
     }
 
     @Test
@@ -633,6 +741,242 @@ public class SlaveLeaseTableTest {
         assertThat(SlaveLeaseTable.decommissionLease(leaseId), is(true));
 
         assertThat(SlaveLeaseTable.getTenantLeases(tenant), not(hasItem(leaseId)));
+    }
+
+    @Test
+    public void fullLifecycle_getLeaseRecords() throws Exception {
+        String leaseId = generateUID();
+        String tenant = generateUID();
+        assertThat(SlaveLeaseTable.getLeaseRecords(), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.registerRequest(owner, leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, REQUESTED, PLANNED), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, PLANNED, AVAILABLE), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.registerLease(leaseId, tenant), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.returnLease(leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, RETURNED, DECOMMISSIONING), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, DECOMMISSIONING, DECOMMISSIONED), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.decommissionLease(leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(), not(hasLeaseRecord(leaseId)));
+    }
+
+    @Test
+    public void fullLifecycle_getLeaseRecords_status() throws Exception {
+        String leaseId = generateUID();
+        String tenant = generateUID();
+        assertThat(SlaveLeaseTable.getLeaseRecords(REQUESTED), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.registerRequest(owner, leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(REQUESTED), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(PLANNED), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, REQUESTED, PLANNED), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(REQUESTED), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(PLANNED), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(AVAILABLE), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, PLANNED, AVAILABLE), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(PLANNED), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(AVAILABLE), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(LEASED), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.registerLease(leaseId, tenant), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(AVAILABLE), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(LEASED), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(RETURNED), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.returnLease(leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(LEASED), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(RETURNED), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(DECOMMISSIONING), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, RETURNED, DECOMMISSIONING), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(RETURNED), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(DECOMMISSIONING), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(DECOMMISSIONED), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, DECOMMISSIONING, DECOMMISSIONED), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(DECOMMISSIONING), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(DECOMMISSIONED), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.decommissionLease(leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(DECOMMISSIONED), not(hasLeaseRecord(leaseId)));
+    }
+
+    @Test
+    public void fullLifecycle_getLeaseRecords_owner() throws Exception {
+        String leaseId = generateUID();
+        String tenant = generateUID();
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.registerRequest(owner, leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, REQUESTED, PLANNED), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, PLANNED, AVAILABLE), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.registerLease(leaseId, tenant), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.returnLease(leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, RETURNED, DECOMMISSIONING), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, DECOMMISSIONING, DECOMMISSIONED), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.decommissionLease(leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner), not(hasLeaseRecord(leaseId)));
+    }
+
+    @Test
+    public void fullLifecycle_getLeaseRecords_ownerStatus() throws Exception {
+        String leaseId = generateUID();
+        String tenant = generateUID();
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, REQUESTED), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.registerRequest(owner, leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, REQUESTED), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, PLANNED), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, REQUESTED, PLANNED), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, REQUESTED), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, PLANNED), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, AVAILABLE), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, PLANNED, AVAILABLE), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, PLANNED), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, AVAILABLE), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, LEASED), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.registerLease(leaseId, tenant), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, AVAILABLE), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, LEASED), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, RETURNED), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.returnLease(leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, LEASED), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, RETURNED), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, DECOMMISSIONING), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, RETURNED, DECOMMISSIONING), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, RETURNED), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, DECOMMISSIONING), hasLeaseRecord(leaseId));
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, DECOMMISSIONED), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, DECOMMISSIONING, DECOMMISSIONED), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, DECOMMISSIONING), not(hasLeaseRecord(leaseId)));
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, DECOMMISSIONED), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.decommissionLease(leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getLeaseRecords(owner, DECOMMISSIONED), not(hasLeaseRecord(leaseId)));
+    }
+
+    @Test
+    public void fullLifecycle_getTenantLeaseRecords() throws Exception {
+        String leaseId = generateUID();
+        String tenant = generateUID();
+        assertThat(SlaveLeaseTable.getTenantLeaseRecords(tenant), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.registerRequest(owner, leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getTenantLeaseRecords(tenant), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, REQUESTED, PLANNED), is(true));
+
+        assertThat(SlaveLeaseTable.getTenantLeaseRecords(tenant), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, PLANNED, AVAILABLE), is(true));
+
+        assertThat(SlaveLeaseTable.getTenantLeaseRecords(tenant), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.registerLease(leaseId, tenant), is(true));
+
+        assertThat(SlaveLeaseTable.getTenantLeaseRecords(tenant), hasLeaseRecord(leaseId));
+
+        assertThat(SlaveLeaseTable.returnLease(leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getTenantLeaseRecords(tenant), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, RETURNED, DECOMMISSIONING), is(true));
+
+        assertThat(SlaveLeaseTable.getTenantLeaseRecords(tenant), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, DECOMMISSIONING, DECOMMISSIONED), is(true));
+
+        assertThat(SlaveLeaseTable.getTenantLeaseRecords(tenant), not(hasLeaseRecord(leaseId)));
+
+        assertThat(SlaveLeaseTable.decommissionLease(leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getTenantLeaseRecords(tenant), not(hasLeaseRecord(leaseId)));
+    }
+
+    public static Matcher<Collection<LeaseRecord>> hasLeaseRecord(final String leaseId) {
+        return new BaseMatcher<Collection<LeaseRecord>>() {
+            public boolean matches(Object item) {
+                Collection<LeaseRecord> collection = (Collection<LeaseRecord>) item;
+                for (LeaseRecord record: collection) {
+                    if (leaseId.equals(record.getLeaseId())) return true;
+                }
+                return false;
+            }
+
+            public void describeTo(Description description) {
+                description.appendText(" a collection of LeaseRecords containing one with leaseId ");
+                description.appendValue(leaseId);
+            }
+        };
     }
 
 }
