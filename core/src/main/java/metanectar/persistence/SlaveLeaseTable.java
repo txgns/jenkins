@@ -2,9 +2,14 @@ package metanectar.persistence;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.Extension;
+import org.apache.commons.io.IOUtils;
 
 import javax.sql.DataSource;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.sql.Blob;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -13,6 +18,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import static metanectar.persistence.TableSchema._blob;
 import static metanectar.persistence.TableSchema._int;
 import static metanectar.persistence.TableSchema._string;
 
@@ -23,10 +29,15 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
     static final String OWNER_COLUMN = "owner";
     static final String TENANT_COLUMN = "tenant";
     static final String STATUS_COLUMN = "status";
+    static final String RESOURCE_COLUMN = "resource";
 
     public SlaveLeaseTable() {
-        super(new TableSchema<String>("slavelease", _string(LEASE_COLUMN).primaryKey(),
-                _string(OWNER_COLUMN), _string(TENANT_COLUMN), _int(STATUS_COLUMN))
+        super(new TableSchema<String>("slavelease",
+                _string(LEASE_COLUMN).primaryKey(),
+                _string(OWNER_COLUMN),
+                _string(TENANT_COLUMN),
+                _int(STATUS_COLUMN),
+                _blob(RESOURCE_COLUMN))
                 .withTrigger(SlaveLeaseTrigger.class));
     }
 
@@ -136,6 +147,75 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         } catch (SQLException e) {
             return false;
         } finally {
+            close(statement);
+            close(connection);
+        }
+    }
+
+    public static boolean setResource(@NonNull String leaseId, @Nullable byte[] resource) {
+        DataSource dataSource = Datastore.getDataSource();
+        Connection connection = null;
+        PreparedStatement statement = null;
+        try {
+            connection = dataSource.getConnection();
+            statement = connection.prepareStatement(
+                    "UPDATE slavelease SET resource = ? WHERE lease = ?");
+            statement.setBlob(1, resource == null ? null : new ByteArrayInputStream(resource));
+            statement.setString(2, leaseId);
+            boolean result = statement.executeUpdate() == 1;
+            connection.commit();
+            return result;
+        } catch (SQLException e) {
+            return false;
+        } finally {
+            close(statement);
+            close(connection);
+        }
+    }
+
+    public static boolean clearResource(@NonNull String leaseId) {
+        DataSource dataSource = Datastore.getDataSource();
+        Connection connection = null;
+        PreparedStatement statement = null;
+        try {
+            connection = dataSource.getConnection();
+            statement = connection.prepareStatement(
+                    "UPDATE slavelease SET resource = NULL WHERE lease = ?");
+            statement.setString(1, leaseId);
+            boolean result = statement.executeUpdate() == 1;
+            connection.commit();
+            return result;
+        } catch (SQLException e) {
+            return false;
+        } finally {
+            close(statement);
+            close(connection);
+        }
+    }
+
+    @CheckForNull
+    public static byte[] getResource(@NonNull String leaseId) {
+        DataSource dataSource = Datastore.getDataSource();
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet resultSet = null;
+        try {
+            connection = dataSource.getConnection();
+            statement = connection.prepareStatement("SELECT resource FROM slavelease WHERE lease = ?");
+            statement.setString(1, leaseId);
+            resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                Blob blob = resultSet.getBlob(1);
+                if (blob == null) return null;
+                return IOUtils.toByteArray(blob.getBinaryStream());
+            }
+            return null;
+        } catch (SQLException e) {
+            return null;
+        } catch (IOException e) {
+            return null;
+        } finally {
+            close(resultSet);
             close(statement);
             close(connection);
         }
@@ -383,7 +463,6 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
             close(statement);
             close(connection);
         }
-
     }
 
     @CheckForNull
