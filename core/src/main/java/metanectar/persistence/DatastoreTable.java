@@ -14,17 +14,18 @@ import java.util.logging.Logger;
  * An extension point for tables in the datastore that allows the table schema to be automatically created on first
  * load.
  */
-public abstract class DatastoreTable implements ExtensionPoint {
+public abstract class DatastoreTable<K> implements ExtensionPoint {
 
     private static final Logger LOGGER = Logger.getLogger(DatastoreTable.class.getName());
 
-    private final String ddlSql;
+    private final TableSchema<K> schema;
 
-    protected DatastoreTable(String ddlSql) {
-        this.ddlSql = ddlSql;
+    protected DatastoreTable(TableSchema<K> schema) {
+        this.schema = schema;
     }
 
     public final void createIfMissing(DataSource dataSource) {
+        String ddlSql = schema.toDDL();
         Connection connection = null;
         Statement statement = null;
         try {
@@ -55,6 +56,11 @@ public abstract class DatastoreTable implements ExtensionPoint {
             }
         }
     }
+
+    public TableSchema<K> getSchema() {
+        return schema;
+    }
+
     public static void close(Connection connection) {
         if (connection != null) {
             try {

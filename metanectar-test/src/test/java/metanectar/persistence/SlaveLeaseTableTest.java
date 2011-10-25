@@ -282,7 +282,7 @@ public class SlaveLeaseTableTest {
 
         assertThat(SlaveLeaseTable.getStatus(leaseId), is(LEASED));
 
-        assertThat(SlaveLeaseTable.returnLease(leaseId, tenant), is(true));
+        assertThat(SlaveLeaseTable.returnLease(leaseId), is(true));
 
         assertThat(SlaveLeaseTable.getStatus(leaseId), is(RETURNED));
 
@@ -321,7 +321,7 @@ public class SlaveLeaseTableTest {
 
         assertThat(SlaveLeaseTable.getOwner(leaseId), is(owner));
 
-        assertThat(SlaveLeaseTable.returnLease(leaseId, tenant), is(true));
+        assertThat(SlaveLeaseTable.returnLease(leaseId), is(true));
 
         assertThat(SlaveLeaseTable.getOwner(leaseId), is(owner));
 
@@ -360,7 +360,7 @@ public class SlaveLeaseTableTest {
 
         assertThat(SlaveLeaseTable.getTenant(leaseId), is(tenant));
 
-        assertThat(SlaveLeaseTable.returnLease(leaseId, tenant), is(true));
+        assertThat(SlaveLeaseTable.returnLease(leaseId), is(true));
 
         assertThat(SlaveLeaseTable.getTenant(leaseId), nullValue());
 
@@ -399,7 +399,7 @@ public class SlaveLeaseTableTest {
 
         assertThat(SlaveLeaseTable.getLeases(), hasItem(leaseId));
 
-        assertThat(SlaveLeaseTable.returnLease(leaseId, tenant), is(true));
+        assertThat(SlaveLeaseTable.returnLease(leaseId), is(true));
 
         assertThat(SlaveLeaseTable.getLeases(), hasItem(leaseId));
 
@@ -445,7 +445,7 @@ public class SlaveLeaseTableTest {
         assertThat(SlaveLeaseTable.getLeases(LEASED), hasItem(leaseId));
         assertThat(SlaveLeaseTable.getLeases(RETURNED), not(hasItem(leaseId)));
 
-        assertThat(SlaveLeaseTable.returnLease(leaseId, tenant), is(true));
+        assertThat(SlaveLeaseTable.returnLease(leaseId), is(true));
 
         assertThat(SlaveLeaseTable.getLeases(LEASED), not(hasItem(leaseId)));
         assertThat(SlaveLeaseTable.getLeases(RETURNED), hasItem(leaseId));
@@ -489,7 +489,7 @@ public class SlaveLeaseTableTest {
 
         assertThat(SlaveLeaseTable.getLeases(owner), hasItem(leaseId));
 
-        assertThat(SlaveLeaseTable.returnLease(leaseId, tenant), is(true));
+        assertThat(SlaveLeaseTable.returnLease(leaseId), is(true));
 
         assertThat(SlaveLeaseTable.getLeases(owner), hasItem(leaseId));
 
@@ -535,7 +535,7 @@ public class SlaveLeaseTableTest {
         assertThat(SlaveLeaseTable.getLeases(owner, LEASED), hasItem(leaseId));
         assertThat(SlaveLeaseTable.getLeases(owner, RETURNED), not(hasItem(leaseId)));
 
-        assertThat(SlaveLeaseTable.returnLease(leaseId, tenant), is(true));
+        assertThat(SlaveLeaseTable.returnLease(leaseId), is(true));
 
         assertThat(SlaveLeaseTable.getLeases(owner, LEASED), not(hasItem(leaseId)));
         assertThat(SlaveLeaseTable.getLeases(owner, RETURNED), hasItem(leaseId));
@@ -579,7 +579,7 @@ public class SlaveLeaseTableTest {
 
         assertThat(SlaveLeaseTable.getOwners(), hasItem(owner));
 
-        assertThat(SlaveLeaseTable.returnLease(leaseId, tenant), is(true));
+        assertThat(SlaveLeaseTable.returnLease(leaseId), is(true));
 
         assertThat(SlaveLeaseTable.getOwners(), hasItem(owner));
 
@@ -618,7 +618,7 @@ public class SlaveLeaseTableTest {
 
         assertThat(SlaveLeaseTable.getTenantLeases(tenant), hasItem(leaseId));
 
-        assertThat(SlaveLeaseTable.returnLease(leaseId, tenant), is(true));
+        assertThat(SlaveLeaseTable.returnLease(leaseId), is(true));
 
         assertThat(SlaveLeaseTable.getTenantLeases(tenant), not(hasItem(leaseId)));
 

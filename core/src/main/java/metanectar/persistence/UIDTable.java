@@ -8,10 +8,12 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.UUID;
 
+import static metanectar.persistence.TableSchema._string;
+
 @Extension
 public class UIDTable extends DatastoreTable {
     public UIDTable() {
-        super("CREATE TABLE IF NOT EXISTS uids(uid VARCHAR(255) PRIMARY KEY)");
+        super(new TableSchema("uids", _string("uid").primaryKey()));
     }
 
     public static String generate() {

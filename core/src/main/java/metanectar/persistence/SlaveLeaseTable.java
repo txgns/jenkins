@@ -13,17 +13,24 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import static metanectar.persistence.TableSchema._int;
+import static metanectar.persistence.TableSchema._string;
+
 @Extension
-public class SlaveLeaseTable extends DatastoreTable {
+public class SlaveLeaseTable extends DatastoreTable<String> {
+
+    static final String LEASE_COLUMN = "lease";
+
     public SlaveLeaseTable() {
-        super("CREATE TABLE IF NOT EXISTS slavelease(lease VARCHAR(255) PRIMARY KEY, owner VARCHAR(255), "
-                + "tenant VARCHAR(255), status INT)");
+        super(new TableSchema<String>("slavelease", _string(LEASE_COLUMN).primaryKey(),
+                _string("owner"), _string("tenant"), _int("status")).withTrigger(SlaveLeaseTrigger.class));
     }
 
     public static void dropOwner(@NonNull String ownerId) {
         DataSource dataSource = Datastore.getDataSource();
         Connection connection = null;
         PreparedStatement statement = null;
+
         try {
             connection = dataSource.getConnection();
             statement = connection.prepareStatement("DELETE FROM slavelease WHERE owner = ?");
@@ -151,7 +158,7 @@ public class SlaveLeaseTable extends DatastoreTable {
         }
     }
 
-    public static boolean returnLease(@NonNull String leaseId, @NonNull String tenant) {
+    public static boolean returnLease(@NonNull String leaseId) {
         DataSource dataSource = Datastore.getDataSource();
         Connection connection = null;
         PreparedStatement statement = null;
