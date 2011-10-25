@@ -55,6 +55,7 @@ public class Datastore implements ServletContextListener {
     }
 
     public void contextDestroyed(ServletContextEvent sce) {
+        SlaveLeaseListener.cancelAll();
         // assuming the connection pool has been created, tear it down again
         Object connectionPool;
         LOCK.writeLock().lock();
