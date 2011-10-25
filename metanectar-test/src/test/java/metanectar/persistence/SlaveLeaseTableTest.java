@@ -1021,9 +1021,11 @@ public class SlaveLeaseTableTest {
 
         assertThat(SlaveLeaseTable.getStatus(leaseId), is(PLANNED));
 
-        assertThat(SlaveLeaseTable.updateState(leaseId, PLANNED, DECOMMISSIONED), is(true));
+        assertThat(SlaveLeaseTable.updateStateAndResource(leaseId, PLANNED, DECOMMISSIONED, new byte[]{1,2,3}), is(true));
 
         assertThat(SlaveLeaseTable.getStatus(leaseId), is(DECOMMISSIONED));
+
+        assertThat(SlaveLeaseTable.getResource(leaseId), is(new byte[]{1,2,3}));
 
         assertThat(SlaveLeaseTable.decommissionLease(leaseId), is(true));
 

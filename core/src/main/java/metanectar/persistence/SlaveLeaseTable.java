@@ -152,6 +152,31 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         }
     }
 
+    public static boolean updateStateAndResource(@NonNull String leaseId, @NonNull LeaseState from, @NonNull LeaseState to,  @Nullable byte[] resource) {
+        if (!from.validTransitions().contains(to)) {
+            throw new IllegalStateException("Transition from " + from + " to " + to + " is not allowed");
+        }
+        DataSource dataSource = Datastore.getDataSource();
+        Connection connection = null;
+        PreparedStatement statement = null;
+        try {
+            connection = dataSource.getConnection();
+            statement = connection.prepareStatement("UPDATE slavelease SET status = ?, resource = ? WHERE lease = ? AND status = ? AND resource IS NOT NULL");
+            statement.setInt(1, to.toStatusCode());
+            statement.setBlob(2, resource == null ? null : new ByteArrayInputStream(resource));
+            statement.setString(3, leaseId);
+            statement.setInt(4, from.toStatusCode());
+            boolean result = statement.executeUpdate() == 1;
+            connection.commit();
+            return result;
+        } catch (SQLException e) {
+            return false;
+        } finally {
+            close(statement);
+            close(connection);
+        }
+    }
+
     public static boolean planResource(@NonNull String leaseId, @Nullable byte[] resource) {
         DataSource dataSource = Datastore.getDataSource();
         Connection connection = null;
