@@ -571,7 +571,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
                                     throw new ProvisioningException("Could not provision node");
                                 case RETURNED:
                                     if (!updateState(leaseUid, RETURNED, AVAILABLE) && status.equals(lastStatus)) {
-                                        updateState(leaseUid, RETURNED, DECOMMISSIONED);
+                                        updateState(leaseUid, RETURNED, DECOMMISSIONING);
                                     }
                                     break;
                                 case DECOMMISSIONING:
