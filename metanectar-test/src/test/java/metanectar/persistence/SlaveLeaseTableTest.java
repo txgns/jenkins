@@ -994,6 +994,44 @@ public class SlaveLeaseTableTest {
         assertThat(SlaveLeaseTable.getStatus(leaseId), nullValue());
     }
 
+    @Test
+    public void planResource() throws Exception {
+        String leaseId = generateUID();
+        assertThat(SlaveLeaseTable.getResource(leaseId), nullValue());
+
+        assertThat(SlaveLeaseTable.registerRequest(owner, leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getResource(leaseId), nullValue());
+
+        assertThat(SlaveLeaseTable.setResource(leaseId, new byte[]{1,2,3,4}), is(true));
+
+        assertThat(SlaveLeaseTable.getResource(leaseId), is(new byte[]{1,2,3,4}));
+
+        assertThat(SlaveLeaseTable.planResource(leaseId, new byte[]{1,2,3,4,5}), is(false));
+
+        assertThat(SlaveLeaseTable.getResource(leaseId), is(new byte[]{1,2,3,4}));
+
+        assertThat(SlaveLeaseTable.clearResource(leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getResource(leaseId), nullValue());
+
+        assertThat(SlaveLeaseTable.planResource(leaseId, new byte[]{1,2,3,4,5}), is(true));
+
+        assertThat(SlaveLeaseTable.getResource(leaseId), is(new byte[]{1,2,3,4,5}));
+
+        assertThat(SlaveLeaseTable.getStatus(leaseId), is(PLANNED));
+
+        assertThat(SlaveLeaseTable.updateState(leaseId, PLANNED, DECOMMISSIONED), is(true));
+
+        assertThat(SlaveLeaseTable.getStatus(leaseId), is(DECOMMISSIONED));
+
+        assertThat(SlaveLeaseTable.decommissionLease(leaseId), is(true));
+
+        assertThat(SlaveLeaseTable.getStatus(leaseId), nullValue());
+
+        assertThat(SlaveLeaseTable.getResource(leaseId), nullValue());
+    }
+
     public static Matcher<Collection<LeaseRecord>> hasLeaseRecord(final String leaseId) {
         return new BaseMatcher<Collection<LeaseRecord>>() {
             public boolean matches(Object item) {
