@@ -804,34 +804,11 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
             boolean allConnected = true;
             Set<LeaseId> inUse = new HashSet<LeaseId>();
             for (ConnectedMaster master : MetaNectar.getInstance().getAllItems(ConnectedMaster.class)) {
-                if (master.isOnline()) {
-                    Channel channel = master.getChannel();
-                    SlaveManifest slaveManifest;
-                    try {
-                        slaveManifest = (SlaveManifest) channel.getRemoteProperty(SlaveManifest.class);
-                    } catch (ClassCastException e) {
-                        allConnected = false;
-                        LogRecord lr = new LogRecord(Level.INFO, "Class cast exception trying to talk to master {0}");
-                        lr.setThrown(e);
-                        lr.setParameters(new Object[]{master});
-                        LOGGER.log(lr);
-                        continue;
-                    } catch (Throwable e) {
-                        allConnected = false;
-                        LogRecord lr = new LogRecord(Level.WARNING, "Unexpected exception from master {0}");
-                        lr.setThrown(e);
-                        lr.setParameters(new Object[]{master});
-                        LOGGER.log(lr);
-                        continue;
-                    }
-                    if (slaveManifest != null) {
-                        inUse.addAll(slaveManifest.getSlaves());
-                    } else {
-                        LOGGER.log(Level.FINE, "No slave manifest available from master {0}", master);
-                        allConnected = false;
-                    }
+                Set<LeaseId> slaves = master.getSlaveManifest().getSlaves();
+                if (slaves != null) {
+                    inUse.addAll(slaves);
                 } else {
-                    LOGGER.log(Level.INFO, "No connection to master {0}", master);
+                    LOGGER.log(Level.FINE, "No slave manifest available from master {0}", master);
                     allConnected = false;
                 }
             }
