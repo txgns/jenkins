@@ -618,10 +618,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
                                     // somebody else is managing its state
                                     return;
                                 case RETURNED:
-                                    if (!updateState(leaseUid, RETURNED, DECOMMISSIONING) && status
-                                            .equals(lastStatus)) {
-                                        updateState(leaseUid, RETURNED, DECOMMISSIONED);
-                                    }
+                                    updateState(leaseUid, RETURNED, DECOMMISSIONING);
                                     break;
                                 case DECOMMISSIONING:
                                     updateState(leaseUid, DECOMMISSIONING, DECOMMISSIONED);
