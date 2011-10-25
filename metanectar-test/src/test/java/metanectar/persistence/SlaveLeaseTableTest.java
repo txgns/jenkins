@@ -975,6 +975,10 @@ public class SlaveLeaseTableTest {
 
         assertThat(SlaveLeaseTable.getResource(leaseId), is(new byte[]{1,2,3,4}));
 
+        assertThat(SlaveLeaseTable.setResource(leaseId, new byte[]{1,2,3,4,5}), is(false));
+
+        assertThat(SlaveLeaseTable.getResource(leaseId), is(new byte[]{1,2,3,4}));
+
         assertThat(SlaveLeaseTable.clearResource(leaseId), is(true));
 
         assertThat(SlaveLeaseTable.getResource(leaseId), nullValue());

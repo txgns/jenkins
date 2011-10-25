@@ -159,7 +159,7 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
         try {
             connection = dataSource.getConnection();
             statement = connection.prepareStatement(
-                    "UPDATE slavelease SET resource = ? WHERE lease = ?");
+                    "UPDATE slavelease SET resource = ? WHERE lease = ? AND resource IS NULL");
             statement.setBlob(1, resource == null ? null : new ByteArrayInputStream(resource));
             statement.setString(2, leaseId);
             boolean result = statement.executeUpdate() == 1;
