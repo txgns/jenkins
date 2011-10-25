@@ -4,9 +4,6 @@ import org.h2.api.Trigger;
 
 import java.sql.Blob;
 import java.sql.Clob;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -110,7 +107,7 @@ public class TableSchema<K> {
             }
         }
         buf.append(" )");
-        int count=0;
+        int count = 0;
         for (Class<? extends Trigger> trigger : triggers) {
             buf.append("; CREATE TRIGGER IF NOT EXISTS ");
             buf.append(name);
