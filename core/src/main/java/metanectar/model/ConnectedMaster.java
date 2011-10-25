@@ -315,7 +315,7 @@ public abstract class ConnectedMaster extends AbstractItem implements TopLevelIt
             this.error = null;
             taskListener = this.taskListener;
 
-            slaveManager = new ScopedSlaveManager(getParent());
+            slaveManager = new ScopedSlaveManager(getParent(), this);
             try {
                 NodeContainer.set(channel, SlaveManager.class.getName(),
                         (Serializable) channel.export(SlaveManager.class, slaveManager));

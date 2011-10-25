@@ -14,6 +14,8 @@ import hudson.model.PeriodicWork;
 import hudson.model.TaskListener;
 import hudson.util.DaemonThreadFactory;
 import hudson.util.ExceptionCatchingThreadFactory;
+import metanectar.model.ConnectedMaster;
+import metanectar.model.SlaveTrader;
 import metanectar.persistence.Datastore;
 
 import java.lang.ref.WeakReference;
@@ -41,6 +43,8 @@ public class ScopedSlaveManager implements SlaveManager {
 
     private final ItemGroup<? extends Item> scope;
 
+    private final ConnectedMaster tenant;
+
     private final ExecutorService threadPool =
             new ThreadPoolExecutor(0, 5,
                     5, TimeUnit.SECONDS,
@@ -50,9 +54,10 @@ public class ScopedSlaveManager implements SlaveManager {
                     )
             );
 
-    public ScopedSlaveManager(ItemGroup<? extends Item> scope) {
+    public ScopedSlaveManager(ItemGroup<? extends Item> scope, ConnectedMaster tenant) {
         scope.getClass();
         this.scope = scope;
+        this.tenant = tenant;
     }
 
     public boolean canProvision(String labelExpression) {
@@ -61,9 +66,9 @@ public class ScopedSlaveManager implements SlaveManager {
             LOGGER.log(Level.FINE, "{0}[{1}].canProvision({2})?",
                     new Object[]{ScopedSlaveManager.class.getSimpleName(), scope.getUrl(), labelExpression});
             for (Item item : scope.getItems()) {
-                if (item instanceof SlaveManager) {
-                    final SlaveManager slaveManager = (SlaveManager) item;
-                    if (slaveManager.canProvision(labelExpression)) {
+                if (item instanceof SlaveTrader) {
+                    final SlaveTrader trader = (SlaveTrader) item;
+                    if (trader.canProvision(labelExpression)) {
                         LOGGER.log(Level.INFO, "{0}[{1}].canProvision({2})={3}",
                                 new Object[]{
                                         ScopedSlaveManager.class.getSimpleName(),
@@ -123,9 +128,9 @@ public class ScopedSlaveManager implements SlaveManager {
                         ItemGroup<? extends Item> scope = ScopedSlaveManager.this.scope;
                         while (scope != null) {
                             for (Item item : scope.getItems()) {
-                                if (item instanceof SlaveManager) {
-                                    final SlaveManager slaveManager = (SlaveManager) item;
-                                    if (slaveManager.canProvision(labelExpression)) {
+                                if (item instanceof SlaveTrader) {
+                                    final SlaveTrader slaveTrader = (SlaveTrader) item;
+                                    if (slaveTrader.canProvision(labelExpression)) {
                                         LOGGER.log(Level.INFO, "{0}[{1}].provision({2}) -> {3}",
                                                 new Object[]{
                                                         ScopedSlaveManager.class.getSimpleName(), scope.getUrl(), labelExpression,
@@ -133,7 +138,7 @@ public class ScopedSlaveManager implements SlaveManager {
                                                 });
 
                                         try {
-                                            return slaveManager.provision(labelExpression, listener, numOfExecutors).
+                                            return slaveTrader.provision(tenant.getUid(), labelExpression, listener, numOfExecutors).
                                                         get();
                                         } catch (InterruptedException e) {
                                             e.printStackTrace();  //To change body of catch statement use File |
@@ -163,9 +168,9 @@ public class ScopedSlaveManager implements SlaveManager {
         ItemGroup<? extends Item> scope = this.scope;
         while (scope != null) {
             for (Item item : scope.getItems()) {
-                if (item instanceof SlaveManager) {
-                    final SlaveManager slaveManager = (SlaveManager) item;
-                    boolean provisioned = slaveManager.isProvisioned(allocatedSlave.getLeaseId());
+                if (item instanceof SlaveTrader) {
+                    final SlaveTrader trader = (SlaveTrader) item;
+                    boolean provisioned = trader.isProvisioned(allocatedSlave.getLeaseId());
                     LOGGER.log(Level.INFO, "{0}[{1}]->[{3}].isProvisioned({2}) -> {4}",
                             new Object[]{
                                     ScopedSlaveManager.class.getSimpleName(), scope.getUrl(),
@@ -177,7 +182,7 @@ public class ScopedSlaveManager implements SlaveManager {
                                         ScopedSlaveManager.class.getSimpleName(), scope.getUrl(),
                                         allocatedSlave.getLeaseId(), item.getUrl()
                                 });
-                        slaveManager.release(allocatedSlave);
+                        trader.release(allocatedSlave);
                         return;
                     }
                 }
