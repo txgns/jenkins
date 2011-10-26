@@ -68,7 +68,7 @@ import static metanectar.persistence.LeaseState.PLANNED;
 import static metanectar.persistence.LeaseState.REQUESTED;
 import static metanectar.persistence.LeaseState.RETURNED;
 import static metanectar.persistence.SlaveLeaseTable.decommissionLease;
-import static metanectar.persistence.SlaveLeaseTable.dropOwner;
+import static metanectar.persistence.SlaveLeaseTable.getLeaseRecord;
 import static metanectar.persistence.SlaveLeaseTable.getLeaseRecords;
 import static metanectar.persistence.SlaveLeaseTable.getLeases;
 import static metanectar.persistence.SlaveLeaseTable.getOwner;
@@ -601,12 +601,12 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
 
                         LeaseState lastStatus = null;
                         while (true) {
-                            LeaseState status = getStatus(leaseUid);
-                            if (status == null) {
+                            LeaseRecord record = getLeaseRecord(leaseUid);
+                            if (record == null) {
                                 throw new ProvisioningException("Could not provision node");
                             }
                             NodeResource nodeResource = getNodeResource(leaseUid);
-                            switch (status) {
+                            switch (record.getStatus()) {
                                 case REQUESTED:
                                     if (nodeResource == null) {
                                         Collection<NodeProvisioner.PlannedNode> provision =
@@ -633,7 +633,8 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
                                                             + "Provisioned {1} but could not record provisioning",
                                                     new Object[]{cloud.getDisplayName(), plannedNode.displayName});
                                         }
-                                    } else if (!updateState(leaseUid, REQUESTED, PLANNED) && status.equals(lastStatus)) {
+                                    } else if (!updateState(leaseUid, REQUESTED, PLANNED) && record.getStatus()
+                                            .equals(lastStatus)) {
                                         updateState(leaseUid, REQUESTED, DECOMMISSIONED);
                                     }
                                     break;
@@ -653,7 +654,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
                                     }
                                     break;
                                 case AVAILABLE:
-                                    if (!registerLease(leaseUid, tenant) && status.equals(lastStatus)) {
+                                    if (!registerLease(leaseUid, tenant) && record.getStatus().equals(lastStatus)) {
                                         updateState(leaseUid, AVAILABLE, DECOMMISSIONING);
                                     }
                                     break;
@@ -664,7 +665,9 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
                                     }
                                     throw new ProvisioningException("Could not provision node");
                                 case RETURNED:
-                                    if (!reuseNodes || (!updateState(leaseUid, RETURNED, AVAILABLE) && status.equals(lastStatus))) {
+                                    if (!reuseNodes || (!updateState(leaseUid, RETURNED, AVAILABLE)
+                                            && record.getStatus().equals(lastStatus)
+                                            && isBeforeNowWithOffset(record.getLastModified(), Calendar.MINUTE, -1))) {
                                         updateState(leaseUid, RETURNED, DECOMMISSIONING);
                                     }
                                     break;
@@ -687,8 +690,8 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
                                     nodeResources.remove(leaseUid);
                                     throw new ProvisioningException("Could not provision node");
                             }
-                            lastStatus = status;
-                            if (status.equals(getStatus(leaseUid))) {
+                            lastStatus = record.getStatus();
+                            if (record.getStatus().equals(getStatus(leaseUid))) {
                                 try {
                                     Future<?> future;
                                     NodeProvisioner.PlannedNode plannedNode;
@@ -715,9 +718,10 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
         LeaseId leaseId = allocatedSlave.getLeaseId();
         if (leaseId instanceof DefaultLeaseId) {
             final String leaseUid = ((DefaultLeaseId) leaseId).getUuid();
-            if (getUid().equals(getOwner(leaseUid))) {
-                LeaseState status = getStatus(leaseUid);
-                if (status == null || !LEASED.equals(status)) {
+            LeaseRecord record = getLeaseRecord(leaseUid);
+            if (record != null && getUid().equals(record.getOwnerId())) {
+                LeaseState status = record.getStatus();
+                if (!LEASED.equals(status)) {
                     LOGGER.log(Level.INFO, "SharedCloud[{0}] could not record return of lease: {1}",
                             new Object[]{getUrl(), leaseUid});
                     return;
@@ -727,12 +731,12 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
                     public void run() {
                         LeaseState lastStatus = null;
                         while (true) {
-                            LeaseState status = getStatus(leaseUid);
-                            if (status == null) {
+                            LeaseRecord record = getLeaseRecord(leaseUid);
+                            if (record == null) {
                                 return;
                             }
                             NodeResource nodeResource = getNodeResource(leaseUid);
-                            switch (status) {
+                            switch (record.getStatus()) {
                                 case REQUESTED:
                                 case PLANNED:
                                 case AVAILABLE:
@@ -740,7 +744,9 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
                                     // somebody else is managing its state
                                     return;
                                 case RETURNED:
-                                    if (!reuseNodes || (!updateState(leaseUid, RETURNED, AVAILABLE) && status.equals(lastStatus))) {
+                                    if (!reuseNodes || (!updateState(leaseUid, RETURNED, AVAILABLE)
+                                            && record.getStatus().equals(lastStatus)
+                                            && isBeforeNowWithOffset(record.getLastModified(), Calendar.MINUTE, -1))) {
                                         updateState(leaseUid, RETURNED, DECOMMISSIONING);
                                     }
                                     break;
@@ -763,8 +769,8 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
                                     nodeResources.remove(leaseUid);
                                     break;
                             }
-                            lastStatus = status;
-                            if (status.equals(getStatus(leaseUid))) {
+                            lastStatus = record.getStatus();
+                            if (record.getStatus().equals(getStatus(leaseUid))) {
                                 try {
                                     Future<?> future;
                                     NodeProvisioner.PlannedNode plannedNode;
@@ -815,6 +821,13 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
         if (!disabled) {
             throw new ServletException("Must be off-line");
         }
+    }
+
+    private static boolean isBeforeNowWithOffset(Date lastModified, int field, int amount) {
+        Calendar cal = new GregorianCalendar(TimeZone.getDefault());
+        cal.setTime(new Date());
+        cal.add(field, amount);
+        return lastModified.before(cal.getTime());
     }
 
     @Extension
@@ -964,12 +977,15 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
                             break;
                         case AVAILABLE:
                         case RETURNED:
-                            LOGGER.log(Level.INFO, "SharedCloud[{0}] : lease {1}. Progressing from {2} -> {3}",
-                                    new Object[]{
-                                            cloud.getUrl(), leaseRecord.getLeaseId(),
-                                            leaseRecord.getStatus(), DECOMMISSIONING
-                                    });
-                            updateState(leaseRecord.getLeaseId(), leaseRecord.getStatus(), DECOMMISSIONING);
+                            if (leaseRecord.getStatus().equals(prevStatus)
+                                    && isBeforeNowWithOffset(leaseRecord.getLastModified(), Calendar.MINUTE, -1)) {
+                                LOGGER.log(Level.INFO, "SharedCloud[{0}] : lease {1}. Progressing from {2} -> {3}",
+                                        new Object[]{
+                                                cloud.getUrl(), leaseRecord.getLeaseId(),
+                                                leaseRecord.getStatus(), DECOMMISSIONING
+                                        });
+                                updateState(leaseRecord.getLeaseId(), leaseRecord.getStatus(), DECOMMISSIONING);
+                            }
                             break;
                         case LEASED:
                             final String tenant = leaseRecord.getTenantId();

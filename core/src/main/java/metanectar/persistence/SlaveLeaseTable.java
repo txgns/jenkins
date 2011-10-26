@@ -536,6 +536,31 @@ public class SlaveLeaseTable extends DatastoreTable<String> {
     }
 
     @CheckForNull
+    public static LeaseRecord getLeaseRecord(String leaseId) {
+        DataSource dataSource = Datastore.getDataSource();
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet resultSet = null;
+        try {
+            connection = dataSource.getConnection();
+            statement = connection.prepareStatement("SELECT lease, owner, status, tenant, lastmod "
+                    + "FROM slavelease WHERE lease = ?");
+            statement.setString(1, leaseId);
+            resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                return toLeaseRecord(resultSet);
+            }
+            return null;
+        } catch (SQLException e) {
+            return null;
+        } finally {
+            close(resultSet);
+            close(statement);
+            close(connection);
+        }
+    }
+
+    @CheckForNull
     public static Set<LeaseRecord> getLeaseRecords() {
         DataSource dataSource = Datastore.getDataSource();
         Connection connection = null;

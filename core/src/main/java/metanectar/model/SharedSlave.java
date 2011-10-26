@@ -89,6 +89,7 @@ import static metanectar.persistence.LeaseState.REQUESTED;
 import static metanectar.persistence.LeaseState.RETURNED;
 import static metanectar.persistence.SlaveLeaseTable.decommissionLease;
 import static metanectar.persistence.SlaveLeaseTable.dropOwner;
+import static metanectar.persistence.SlaveLeaseTable.getLeaseRecord;
 import static metanectar.persistence.SlaveLeaseTable.getLeaseRecords;
 import static metanectar.persistence.SlaveLeaseTable.getLeases;
 import static metanectar.persistence.SlaveLeaseTable.getOwner;
@@ -643,9 +644,10 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
         LeaseId leaseId = allocatedSlave.getLeaseId();
         if (leaseId instanceof DefaultLeaseId) {
             final String leaseUid = ((DefaultLeaseId) leaseId).getUuid();
-            if (getUid().equals(getOwner(leaseUid))) {
-                LeaseState status = getStatus(leaseUid);
-                if (status == null || !LEASED.equals(status)) {
+            LeaseRecord record = getLeaseRecord(leaseUid);
+            if (record != null && getUid().equals(record.getOwnerId())) {
+                LeaseState status = record.getStatus();
+                if (!LEASED.equals(status)) {
                     LOGGER.log(Level.INFO, "SharedSlave[{0}] could not record return of lease: {1}",
                             new Object[]{getUrl(), leaseUid});
                     return;
@@ -653,13 +655,12 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
                 returnLease(leaseUid);
                 Computer.threadPoolForRemoting.submit(new Runnable() {
                     public void run() {
-                        LeaseState lastStatus = null;
                         while (true) {
-                            LeaseState status = getStatus(leaseUid);
-                            if (status == null) {
+                            LeaseRecord record = getLeaseRecord(leaseUid);
+                            if (record == null) {
                                 return;
                             }
-                            switch (status) {
+                            switch (record.getStatus()) {
                                 case REQUESTED:
                                 case PLANNED:
                                 case AVAILABLE:
@@ -676,8 +677,7 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
                                     decommissionLease(leaseUid);
                                     break;
                             }
-                            lastStatus = status;
-                            if (status.equals(getStatus(leaseUid))) {
+                            if (record.getStatus().equals(getStatus(leaseUid))) {
                                 try {
                                     SlaveLeaseListener.onChange(leaseUid).get(10, TimeUnit.SECONDS);
                                 } catch (InterruptedException e) {
