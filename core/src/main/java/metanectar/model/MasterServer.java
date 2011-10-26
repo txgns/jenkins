@@ -22,6 +22,7 @@ import metanectar.provisioning.IdentifierFinder;
 import metanectar.provisioning.MasterProvisioner;
 import metanectar.provisioning.task.MasterWaitForQuietDownTask;
 import net.sf.json.JSONObject;
+import org.jinterop.dcom.test.SampleTestServer;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.Option;
@@ -475,6 +476,10 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
 
     // State querying
 
+    public boolean isCreated() {
+        return state == State.Created;
+    }
+
     @Override
     public boolean isApprovable() {
         switch (state) {
@@ -862,6 +867,12 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
         save();
 
         onModified();
+
+        if (isCreated() &&
+                formData.has("provisionAndStart") &&
+                formData.getBoolean("provisionAndStart")) {
+            provisionAndStartAction();
+        }
 
         rsp.sendRedirect(".");
     }

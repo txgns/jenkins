@@ -27,44 +27,47 @@ THE SOFTWARE.
 -->
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
          xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-    <l:layout title="${it.displayName} Config" norefresh="true">
-        <st:include page="sidepanel.jelly"/>
-        <l:main-panel>
-            <div class="behavior-loading">${%LOADING}</div>
-            <f:form method="post" action="configSubmit" name="config">
-                <j:set var="descriptor" value="${it.descriptor}"/>
-                <j:set var="instance" value="${it}"/>
+  <l:layout title="${it.displayName} Config" norefresh="true">
+    <st:include page="sidepanel.jelly"/>
+    <l:main-panel>
+      <div class="behavior-loading">${%LOADING}</div>
+      <f:form method="post" action="configSubmit" name="config">
+        <j:set var="descriptor" value="${it.descriptor}"/>
+        <j:set var="instance" value="${it}"/>
 
-                <h1>
-                    <img src="${imagesURL}/48x48/${it.icon}" width="48" height="48" alt=""/>
-                    <st:nbsp/>${it.displayName}
-                    <st:nbsp/>
-                </h1>
+        <h1>
+          <img src="${imagesURL}/48x48/${it.icon}" width="48" height="48" alt=""/>
+          <st:nbsp/>${it.displayName}
+          <st:nbsp/>
+        </h1>
 
-                <f:entry title="${%Description}" help="${app.markupFormatter.helpUrl}">
-                    <f:textarea name="description" value="${it.description}"/>
-                </f:entry>
+        <f:entry title="${%Description}" help="${app.markupFormatter.helpUrl}">
+          <f:textarea name="description" value="${it.description}"/>
+        </f:entry>
 
-                <j:if test="${app.labels.size() gt 1 || app.clouds.size() gt 0 || (it.label != null and it.label != app.selfLabel)}">
-                  <f:optionalBlock name="hasNodeAffinity" title="${%Restrict where this master can be provisioned}"
-                                   checked="${it.label != null}"
-                                   help="${descriptor.getHelpFile('hasNodeAffinity')}">
-                    <f:entry title="${%Label Expression}" field="labelExpression">
-                      <f:textbox autoCompleteDelimChar=" "/>
-                    </f:entry>
-                  </f:optionalBlock>
-                </j:if>
+        <j:if test="${app.labels.size() gt 1 || app.clouds.size() gt 0 || (it.label != null and it.label != app.selfLabel)}">
+          <f:optionalBlock name="hasNodeAffinity" title="${%Restrict where this master can be provisioned}"
+                           checked="${it.label != null}"
+                           help="${descriptor.getHelpFile('hasNodeAffinity')}">
+            <f:entry title="${%Label Expression}" field="labelExpression">
+              <f:textbox autoCompleteDelimChar=" "/>
+            </f:entry>
+          </f:optionalBlock>
+        </j:if>
 
-                <j:invokeStatic var="ds" className="metanectar.model.ConnectedMasterProperty"
-                              method="all"/>
-                <f:descriptorList title="${%Properties}" descriptors="${ds}" field="properties" forceRowSet="true"/>
+        <j:invokeStatic var="ds" className="metanectar.model.ConnectedMasterProperty"
+                        method="all"/>
+        <f:descriptorList title="${%Properties}" descriptors="${ds}" field="properties" forceRowSet="true"/>
 
-                <l:hasPermission permission="${it.CONFIGURE}">
-                    <f:block>
-                        <f:submit value="${%Save}"/>
-                    </f:block>
-                </l:hasPermission>
-            </f:form>
-        </l:main-panel>
-    </l:layout>
+        <l:hasPermission permission="${it.CONFIGURE}">
+          <f:block>
+            <f:submit value="${%Save}"/>
+            <j:if test="${it.created}">
+              <f:checkbox title="${%Provision and start after save}" name="provisionAndStart" checked="false"/>
+            </j:if>
+          </f:block>
+        </l:hasPermission>
+      </f:form>
+    </l:main-panel>
+  </l:layout>
 </j:jelly>
