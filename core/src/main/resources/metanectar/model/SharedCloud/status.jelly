@@ -38,7 +38,7 @@ THE SOFTWARE.
           <p title="Lease: ${entry.key.leaseId}">
             <j:if test="${entry.key.tenantId == null}">
               <img src="${imagesURL}/24x24/blue.gif"/>
-              ${entry.key.status}
+              ${entry.key.status} at ${entry.key.lastModified}
             </j:if>
             <j:if test="${entry.key.tenantId != null}">
               <img src="${imagesURL}/24x24/blue_anime.gif"/>
@@ -46,7 +46,9 @@ THE SOFTWARE.
               <j:if test="${entry.value == null}">Unknown</j:if>
               <j:if test="${entry.value != null}">
                 <a href="${request.contextPath}/${entry.value.url}">${entry.value.fullDisplayName}</a>
+                (${entry.value.online?'on-line':'off-line'})
               </j:if>
+               since ${entry.key.lastModified}
             </j:if>
 
           </p>
@@ -55,13 +57,13 @@ THE SOFTWARE.
     </j:if>
     <j:if test="${!it.enabled}">
       <j:if test="${!it.quiet}">
-        <p><img src="${imagesURL}/24x24/yellow_anime.gif"/> Off-line, waiting for all leases to be returned</p>
+        <p><img src="${imagesURL}/24x24/yellow_anime.gif"/> Off-line, waiting for all leases to be returned and decommissioned</p>
         <j:if test="${!empty(it.leaseIds)}">
           <j:forEach var="entry" items="${it.leaseDetails}">
             <p title="Lease: ${entry.key.leaseId}">
               <j:if test="${entry.key.tenantId == null}">
                 <img src="${imagesURL}/24x24/yellow.gif"/>
-                ${entry.key.status}
+                ${entry.key.status} at ${entry.key.lastModified}
               </j:if>
               <j:if test="${entry.key.tenantId != null}">
                 <img src="${imagesURL}/24x24/yellow_anime.gif"/>
@@ -69,7 +71,9 @@ THE SOFTWARE.
                 <j:if test="${entry.value == null}">Unknown</j:if>
                 <j:if test="${entry.value != null}">
                   <a href="${request.contextPath}/${entry.value.url}">${entry.value.fullDisplayName}</a>
+                  (${entry.value.online?'on-line':'off-line'})
                 </j:if>
+                 since ${entry.key.lastModified}
               </j:if>
 
             </p>

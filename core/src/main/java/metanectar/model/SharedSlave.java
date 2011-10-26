@@ -316,11 +316,35 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
     //////// Methods to handle the status icon
 
     public String getIcon() {
-        return isBuilding() ? "slave-computer-w.png" : "slave-computer.png";
+        if (disabled) {
+            if (isBuilding()) {
+                return "slave-computer-dw.png";
+            } else {
+                return "slave-computer-d.png";
+            }
+        } else {
+            if (isBuilding()) {
+                return "slave-computer-w.png";
+            } else {
+                return "slave-computer.png";
+            }
+        }
     }
 
     public StatusIcon getIconColor() {
-        return new StockStatusIcon(getIcon(), Messages._JenkinsServer_Status_Online());
+        if (disabled) {
+            if (isBuilding()) {
+                return new StockStatusIcon("slave-computer-xw.png", Messages._JenkinsServer_Status_GoingOffline());
+            } else {
+                return new StockStatusIcon("slave-computer-x.png", Messages._JenkinsServer_Status_Offline());
+            }
+        } else {
+            if (isBuilding()) {
+                return new StockStatusIcon("slave-computer-w.png", Messages._JenkinsServer_Status_Active());
+            } else {
+                return new StockStatusIcon("slave-computer.png", Messages._JenkinsServer_Status_Online());
+            }
+        }
     }
 
     //////// Properties

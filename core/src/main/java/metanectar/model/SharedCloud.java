@@ -238,11 +238,35 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
     //////// Methods to handle the status icon
 
     public String getIcon() {
-        return isBuilding() ? "slave-cloud-w.png" : "slave-cloud.png";
+        if (disabled) {
+            if (isBuilding()) {
+                return "slave-cloud-dw.png";
+            } else {
+                return "slave-cloud-d.png";
+            }
+        } else {
+            if (isBuilding()) {
+                return "slave-cloud-w.png";
+            } else {
+                return "slave-cloud.png";
+            }
+        }
     }
 
     public StatusIcon getIconColor() {
-        return new StockStatusIcon(getIcon(), Messages._JenkinsServer_Status_Online());
+        if (disabled) {
+            if (isBuilding()) {
+                return new StockStatusIcon("slave-cloud-xw.png", Messages._JenkinsServer_Status_GoingOffline());
+            } else {
+                return new StockStatusIcon("slave-cloud-x.png", Messages._JenkinsServer_Status_Offline());
+            }
+        } else {
+            if (isBuilding()) {
+                return new StockStatusIcon("slave-cloud-w.png", Messages._JenkinsServer_Status_Active());
+            } else {
+                return new StockStatusIcon("slave-cloud.png", Messages._JenkinsServer_Status_Online());
+            }
+        }
     }
 
     //////// Properties
