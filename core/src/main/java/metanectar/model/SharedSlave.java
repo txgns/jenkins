@@ -318,9 +318,9 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
     public String getIcon() {
         if (disabled) {
             if (isBuilding()) {
-                return "slave-computer-dw.png";
+                return "slave-computer-xw.png";
             } else {
-                return "slave-computer-d.png";
+                return "slave-computer-x.png";
             }
         } else {
             if (isBuilding()) {

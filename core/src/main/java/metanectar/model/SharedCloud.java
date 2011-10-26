@@ -240,9 +240,9 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
     public String getIcon() {
         if (disabled) {
             if (isBuilding()) {
-                return "slave-cloud-dw.png";
+                return "slave-cloud-xw.png";
             } else {
-                return "slave-cloud-d.png";
+                return "slave-cloud-x.png";
             }
         } else {
             if (isBuilding()) {
