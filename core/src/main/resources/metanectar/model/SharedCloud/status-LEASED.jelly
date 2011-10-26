@@ -1,0 +1,11 @@
+<j:jelly xmlns:j="jelly:core" xmlns:x="jelly:xml" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
+         xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
+  <img src="${imagesURL}/24x24/${color}_anime.gif"/>
+  Node on lease to
+  <j:if test="${entry.value == null}">Unknown</j:if>
+  <j:if test="${entry.value != null}">
+    <a href="${request.contextPath}/${entry.value.url}">${entry.value.fullDisplayName}</a>
+    (${entry.value.online?'on-line':'off-line'})
+  </j:if>
+  for ${entry.key.lastModifiedString}
+</j:jelly>

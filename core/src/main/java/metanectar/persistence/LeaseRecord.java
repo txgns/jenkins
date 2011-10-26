@@ -3,9 +3,11 @@ package metanectar.persistence;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
+import hudson.Util;
 import net.jcip.annotations.Immutable;
 
 import java.util.Date;
+import java.util.GregorianCalendar;
 
 /**
  * Details of a lease.
@@ -57,6 +59,16 @@ public class LeaseRecord {
     @CheckForNull
     public Date getLastModified() {
         return lastModified == null ? null : new Date(lastModified.getTime());
+    }
+
+    /**
+     * Gets the string that says how long since this record was modified.
+     *
+     * @return string like "3 minutes" "1 day" etc.
+     */
+    public String getLastModifiedString() {
+        long duration = new GregorianCalendar().getTimeInMillis()-lastModified.getTime();
+        return Util.getPastTimeString(duration);
     }
 
     @Override
