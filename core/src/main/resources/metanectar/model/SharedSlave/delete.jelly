@@ -36,7 +36,7 @@ THE SOFTWARE.
             </l:hasPermission>
           </form>
         </j:if>
-        <j:if test="${it.enabled}">
+        <j:if test="${!it.enabled}">
           <form method="post" action="disable">
             You cannot delete this slave while it is in use.
           </form>
