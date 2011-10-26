@@ -335,6 +335,10 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
 
             properties.rebuild(req, json.optJSONObject("properties"), SharedCloudPropertyDescriptor.all());
 
+            if (json.has("enable") && json.getBoolean("enable")) {
+                disabled = false;
+            }
+
             save();
 
             String newName = req.getParameter("name");
@@ -925,7 +929,11 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
         protected void doRun() throws Exception {
             Set<String> liveLeaseIds = new HashSet<String>();
             for (SharedCloud cloud : Hudson.getInstance().getAllItems(SharedCloud.class)) {
-                for (LeaseRecord leaseRecord : getLeaseRecords(cloud.getUid())) {
+                Set<LeaseRecord> leaseRecords = getLeaseRecords(cloud.getUid());
+                if (leaseRecords == null) {
+                    continue;
+                }
+                for (LeaseRecord leaseRecord : leaseRecords) {
                     liveLeaseIds.add(leaseRecord.getLeaseId());
                     LeaseState prevStatus = previousStatuses.get(leaseRecord.getLeaseId());
                     if (!leaseRecord.getStatus().equals(prevStatus)) {

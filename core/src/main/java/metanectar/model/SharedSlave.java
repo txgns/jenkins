@@ -393,6 +393,10 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
 
             properties.rebuild(req, json.optJSONObject("properties"), SharedSlavePropertyDescriptor.all());
 
+            if (json.has("enable") && json.getBoolean("enable")) {
+                disabled = false;
+            }
+
             save();
 
             String newName = req.getParameter("name");
@@ -763,7 +767,11 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
         protected void doRun() throws Exception {
             Set<String> liveLeaseIds = new HashSet<String>();
             for (SharedSlave slave : Hudson.getInstance().getAllItems(SharedSlave.class)) {
-                for (LeaseRecord leaseRecord : getLeaseRecords(slave.getUid())) {
+                Set<LeaseRecord> leaseRecords = getLeaseRecords(slave.getUid());
+                if (leaseRecords == null) {
+                    continue;
+                }
+                for (LeaseRecord leaseRecord : leaseRecords) {
                     liveLeaseIds.add(leaseRecord.getLeaseId());
                     LeaseState prevStatus = previousStatuses.get(leaseRecord.getLeaseId());
                     if (!leaseRecord.getStatus().equals(prevStatus)) {
