@@ -22,14 +22,32 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -->
 
-<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
+         xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
   <l:layout>
-		<st:include page="sidepanel.jelly" />
-		<l:main-panel>
-		  <form method="post" action="doDelete">
-		    ${%Are you sure about deleting the slave?}
-        <f:submit value="${%Yes}" />
-		  </form>
-		</l:main-panel>
-	</l:layout>
+    <st:include page="sidepanel.jelly"/>
+    <l:main-panel>
+      <j:if test="${!it.quiet}">
+        <j:if test="${it.enabled}">
+          <form method="post" action="disable">
+            You cannot delete this cloud while it is on-line. Take off-line to configure?
+            <l:hasPermission permission="${it.CONFIGURE}">
+              <f:submit value="${%Take off-line}"/>
+            </l:hasPermission>
+          </form>
+        </j:if>
+        <j:if test="${it.enabled}">
+          <form method="post" action="disable">
+            You cannot delete this cloud while it is in use.
+          </form>
+        </j:if>
+      </j:if>
+      <j:if test="${it.quiet}">
+        <form method="post" action="doDelete">
+          ${%Are you sure about deleting the cloud?}
+          <f:submit value="${%Yes}"/>
+        </form>
+      </j:if>
+    </l:main-panel>
+  </l:layout>
 </j:jelly>

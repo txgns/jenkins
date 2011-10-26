@@ -29,15 +29,22 @@ THE SOFTWARE.
   <l:layout norefresh="true" title="${%title(it.displayName)}">
     <st:include page="sidepanel.jelly"/>
     <l:main-panel>
-      <j:if test="${it.enabled}">
-        <form method="post" action="disable">
-          Configuration changes cannot be made while this slave is on-line. Take off-line to configure?
-          <l:hasPermission permission="${it.CONFIGURE}">
-          <f:submit value="${%Take off-line}"  />
-          </l:hasPermission>
-        </form>
+      <j:if test="${!it.quiet}">
+        <j:if test="${it.enabled}">
+          <form method="post" action="disable">
+            Configuration changes cannot be made while this slave is on-line. Take off-line to configure?
+            <l:hasPermission permission="${it.CONFIGURE}">
+              <f:submit value="${%Take off-line}"/>
+            </l:hasPermission>
+          </form>
+        </j:if>
+        <j:if test="${!it.enabled}">
+          <form method="post" action="disable">
+            You cannot change the configuration of this slave while it is in use.
+          </form>
+        </j:if>
       </j:if>
-      <j:if test="${!it.enabled}">
+      <j:if test="${it.quiet}">
       <f:form method="post" action="configSubmit" name="config">
         <j:set var="instance" value="${it}" />
         <j:set var="descriptor" value="${instance.descriptor}" />
@@ -65,6 +72,7 @@ THE SOFTWARE.
         <l:hasPermission permission="${it.CONFIGURE}">
           <f:block>
             <f:submit value="${%Save}" />
+            <f:checkbox title="${%Take on-line after save}" name="enable" checked="true"/>
           </f:block>
         </l:hasPermission>
       </f:form>
