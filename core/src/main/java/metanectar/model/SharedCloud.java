@@ -667,7 +667,8 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
                                 case RETURNED:
                                     if (!reuseNodes || (!updateState(leaseUid, RETURNED, AVAILABLE)
                                             && record.getStatus().equals(lastStatus)
-                                            && isBeforeNowWithOffset(record.getLastModified(), Calendar.MINUTE, -1))) {
+                                            && isBeforeNowWithOffset(record.getLastModified(),
+                                            Calendar.MINUTE, -Math.min(reuseTimeout, 1)))) {
                                         updateState(leaseUid, RETURNED, DECOMMISSIONING);
                                     }
                                     break;
@@ -746,7 +747,8 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
                                 case RETURNED:
                                     if (!reuseNodes || (!updateState(leaseUid, RETURNED, AVAILABLE)
                                             && record.getStatus().equals(lastStatus)
-                                            && isBeforeNowWithOffset(record.getLastModified(), Calendar.MINUTE, -1))) {
+                                            && isBeforeNowWithOffset(record.getLastModified(),
+                                            Calendar.MINUTE, -Math.min(reuseTimeout, 1)))) {
                                         updateState(leaseUid, RETURNED, DECOMMISSIONING);
                                     }
                                     break;
@@ -978,7 +980,8 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
                         case AVAILABLE:
                         case RETURNED:
                             if (leaseRecord.getStatus().equals(prevStatus)
-                                    && isBeforeNowWithOffset(leaseRecord.getLastModified(), Calendar.MINUTE, -1)) {
+                                    && isBeforeNowWithOffset(leaseRecord.getLastModified(),
+                                    Calendar.MINUTE, -Math.min(cloud.reuseTimeout, 1))) {
                                 LOGGER.log(Level.INFO, "SharedCloud[{0}] : lease {1}. Progressing from {2} -> {3}",
                                         new Object[]{
                                                 cloud.getUrl(), leaseRecord.getLeaseId(),
