@@ -749,8 +749,7 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
                                     // somebody else is managing its state
                                     return;
                                 case RETURNED:
-                                    if (!reuseNodes || (!updateState(leaseUid, RETURNED, AVAILABLE)
-                                            && record.getStatus().equals(lastStatus)
+                                    if (!reuseNodes || (record.getStatus().equals(lastStatus)
                                             && isBeforeNowWithOffset(record.getLastModified(),
                                             Calendar.MINUTE, -reuseTimeout))) {
                                         updateState(leaseUid, RETURNED, DECOMMISSIONING);
@@ -986,6 +985,15 @@ public class SharedCloud extends AbstractItem implements TopLevelItem, SlaveTrad
                             }
                             break;
                         case AVAILABLE:
+                            if (leaseRecord.getStatus().equals(prevStatus)) {
+                                LOGGER.log(Level.INFO, "SharedCloud[{0}] : lease {1}. Progressing from {2} -> {3}",
+                                        new Object[]{
+                                                cloud.getUrl(), leaseRecord.getLeaseId(),
+                                                leaseRecord.getStatus(), DECOMMISSIONING
+                                        });
+                                updateState(leaseRecord.getLeaseId(), leaseRecord.getStatus(), DECOMMISSIONING);
+                            }
+                            break;
                         case RETURNED:
                             if (leaseRecord.getStatus().equals(prevStatus)
                                     && isBeforeNowWithOffset(leaseRecord.getLastModified(),
