@@ -313,6 +313,13 @@ public class SharedSlave extends AbstractItem implements TopLevelItem, SlaveTrad
         return Arrays.asList(new HealthReport(100, Messages._SharedSlave_PerfectHealth()));
     }
 
+    public void doLastBuild(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
+        if (rsp != null) // null for CLI
+        {
+            rsp.sendRedirect2(".");
+        }
+    }
+
     //////// Methods to handle the status icon
 
     public String getIcon() {

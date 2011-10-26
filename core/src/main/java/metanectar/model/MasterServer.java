@@ -892,6 +892,12 @@ public class MasterServer extends ConnectedMaster implements RecoverableTopLevel
         return Arrays.asList(new HealthReport(25, Messages._SharedCloud_PerfectHealth()));
     }
 
+    public void doLastBuild(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
+        if (rsp != null) // null for CLI
+        {
+            rsp.sendRedirect2("manage");
+        }
+    }
 
     //
 
