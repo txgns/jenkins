@@ -44,6 +44,7 @@ import hudson.model.Computer;
 import hudson.model.Environment;
 import hudson.model.Fingerprint;
 import hudson.model.Hudson;
+import hudson.model.Node;
 import hudson.model.ParameterDefinition;
 import hudson.model.ParametersAction;
 import hudson.model.ParametersDefinitionProperty;
@@ -163,8 +164,15 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
                     "A Maven installation needs to be available for this project to be built.\n"
                     + "Either your server has no Maven installations defined, or the requested Maven version does not exist.");
 
-        mvn = mvn.forEnvironment(envs).forNode(
-                Computer.currentComputer().getNode(), log);
+        
+        mvn = mvn.forEnvironment(envs);
+        Node node = Computer.currentComputer().getNode();
+        if (node == null) {
+            log.getLogger().println("WARNING: cannot get current node: "+Computer.currentComputer());
+            return envs;
+        }
+        mvn = mvn.forNode(node, log);
+        
         envs.put("M2_HOME", mvn.getHome());
         envs.put("PATH+MAVEN", mvn.getHome() + "/bin");
         return envs;
