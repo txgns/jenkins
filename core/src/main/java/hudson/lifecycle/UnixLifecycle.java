@@ -33,7 +33,7 @@ import java.io.IOException;
 import static hudson.util.jna.GNUCLibrary.*;
 
 import hudson.Platform;
-import hudson.model.Hudson;
+import jenkins.model.Jenkins;
 
 /**
  * {@link Lifecycle} implementation when Hudson runs on the embedded
@@ -52,6 +52,9 @@ public class UnixLifecycle extends Lifecycle {
     public UnixLifecycle() throws IOException {
         try {
             args = JavaVMArguments.current();
+
+            // if we are running as daemon, don't fork into background one more time during restart
+            args.remove("--daemon");
         } catch (UnsupportedOperationException e) {
             // can't restart
             failedToObtainArgs = e;
@@ -63,7 +66,7 @@ public class UnixLifecycle extends Lifecycle {
 
     @Override
     public void restart() throws IOException, InterruptedException {
-        Hudson h = Hudson.getInstance();
+        Jenkins h = Jenkins.getInstance();
         if (h != null)
             h.cleanUp();
 

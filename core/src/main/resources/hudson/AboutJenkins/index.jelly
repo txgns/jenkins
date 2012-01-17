@@ -23,8 +23,9 @@ THE SOFTWARE.
 -->
 
 <!-- 3rd party license acknowledgements and  -->
+<?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:s="/lib/form">
-  <l:layout title="${%about(app.VERSION)}">
+  <l:layout title="${%about(app.VERSION)}" norefresh="true">
     <l:main-panel>
       <h1>${%about(app.VERSION)}</h1>
       <p>
@@ -35,7 +36,7 @@ THE SOFTWARE.
         ${%dependencies}
       </p>
       <t:thirdPartyLicenses>
-        <st:include page="/META-INF/licenses.xml" />
+        <st:include page="/META-INF/licenses.xml" optional="true" />
       </t:thirdPartyLicenses>
     </l:main-panel>
   </l:layout>

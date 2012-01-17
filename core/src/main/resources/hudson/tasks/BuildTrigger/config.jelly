@@ -31,9 +31,17 @@ THE SOFTWARE.
                field="childProjects"/>
 	</f:entry>
   <j:if test="${descriptor.showEvenIfUnstableOption(targetType)}">
+  	<f:entry title="">
+      <f:radio name="threshold" checked="${instance.threshold==null || instance.threshold.toString()=='SUCCESS'}"
+              title="${%Trigger only if build succeeds}" value="SUCCESS"/>
+    </f:entry>
     <f:entry title="">
-      <f:checkbox name="evenIfUnstable" checked="${instance.threshold.toString()=='UNSTABLE'}"
-              title="${%Trigger even if the build is unstable}"/>
+      <f:radio name="threshold" checked="${instance.threshold.toString()=='UNSTABLE'}"
+              title="${%Trigger even if the build is unstable}" value="UNSTABLE"/>
+    </f:entry>
+    <f:entry title="">
+      <f:radio name="threshold" checked="${instance.threshold.toString()=='FAILURE'}"
+              title="${%Trigger even if the build fails}" value="FAILURE"/>
     </f:entry>
   </j:if>
 </j:jelly>

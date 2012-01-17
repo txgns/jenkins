@@ -29,7 +29,7 @@ import static hudson.Util.fixNull;
 import static hudson.Util.fixEmptyAndTrim;
 import static hudson.Util.fixEmpty;
 import hudson.model.Descriptor;
-import hudson.model.Hudson;
+import jenkins.model.Jenkins;
 import hudson.model.User;
 import hudson.tasks.MailAddressResolver;
 import hudson.util.FormValidation;
@@ -54,6 +54,7 @@ import org.acegisecurity.userdetails.UsernameNotFoundException;
 import org.acegisecurity.userdetails.ldap.LdapUserDetails;
 import org.acegisecurity.userdetails.ldap.LdapUserDetailsImpl;
 import org.apache.commons.collections.map.LRUMap;
+import org.apache.commons.io.input.AutoCloseInputStream;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.springframework.dao.DataAccessException;
@@ -66,6 +67,9 @@ import javax.naming.directory.Attributes;
 import javax.naming.directory.BasicAttributes;
 import javax.naming.directory.DirContext;
 import javax.naming.directory.InitialDirContext;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -73,7 +77,6 @@ import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.Iterator;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -223,6 +226,12 @@ public class LDAPSecurityRealm extends AbstractPasswordBasedSecurityRealm {
     public final String rootDN;
 
     /**
+     * Allow the rootDN to be inferred? Default is false.
+     * If true, allow rootDN to be blank.
+     */
+    public final boolean inhibitInferRootDN;
+
+    /**
      * Specifies the relative DN from {@link #rootDN the root DN}.
      * This is used to narrow down the search space when doing user search.
      *
@@ -281,11 +290,12 @@ public class LDAPSecurityRealm extends AbstractPasswordBasedSecurityRealm {
     private transient LdapTemplate ldapTemplate;
 
     @DataBoundConstructor
-    public LDAPSecurityRealm(String server, String rootDN, String userSearchBase, String userSearch, String groupSearchBase, String managerDN, String managerPassword) {
+    public LDAPSecurityRealm(String server, String rootDN, String userSearchBase, String userSearch, String groupSearchBase, String managerDN, String managerPassword, boolean inhibitInferRootDN) {
         this.server = server.trim();
         this.managerDN = fixEmpty(managerDN);
         this.managerPassword = Scrambler.scramble(fixEmpty(managerPassword));
-        if(fixEmptyAndTrim(rootDN)==null)    rootDN= fixNull(inferRootDN(server));
+        this.inhibitInferRootDN = inhibitInferRootDN;
+        if(!inhibitInferRootDN && fixEmptyAndTrim(rootDN)==null) rootDN= fixNull(inferRootDN(server));
         this.rootDN = rootDN.trim();
         this.userSearchBase = fixNull(userSearchBase).trim();
         userSearch = fixEmptyAndTrim(userSearch);
@@ -343,7 +353,15 @@ public class LDAPSecurityRealm extends AbstractPasswordBasedSecurityRealm {
         binding.setVariable("instance", this);
 
         BeanBuilder builder = new BeanBuilder();
-        builder.parse(Hudson.getInstance().servletContext.getResourceAsStream("/WEB-INF/security/LDAPBindSecurityRealm.groovy"),binding);
+        String fileName = "LDAPBindSecurityRealm.groovy";
+        try {
+            File override = new File(Jenkins.getInstance().getRootDir(), fileName);
+            builder.parse(
+                    override.exists() ? new AutoCloseInputStream(new FileInputStream(override)) :
+                    Jenkins.getInstance().servletContext.getResourceAsStream("/WEB-INF/security/"+ fileName),binding);
+        } catch (FileNotFoundException e) {
+            throw new Error("Failed to load "+fileName,e);
+        }
         WebApplicationContext appContext = builder.createApplicationContext();
 
         ldapTemplate = new LdapTemplate(findBean(InitialDirContextFactory.class, appContext));
@@ -446,7 +464,7 @@ public class LDAPSecurityRealm extends AbstractPasswordBasedSecurityRealm {
     public static final class MailAdressResolverImpl extends MailAddressResolver {
         public String findMailAddressFor(User u) {
             // LDAP not active
-            SecurityRealm realm = Hudson.getInstance().getSecurityRealm();
+            SecurityRealm realm = Jenkins.getInstance().getSecurityRealm();
             if(!(realm instanceof LDAPSecurityRealm))
                 return null;
             try {
@@ -540,7 +558,7 @@ public class LDAPSecurityRealm extends AbstractPasswordBasedSecurityRealm {
         		@QueryParameter final String managerDN,
         		@QueryParameter final String managerPassword) {
 
-            if(!Hudson.getInstance().hasPermission(Hudson.ADMINISTER))
+            if(!Jenkins.getInstance().hasPermission(Jenkins.ADMINISTER))
                 return FormValidation.ok();
 
             try {

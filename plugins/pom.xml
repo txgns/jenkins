@@ -4,19 +4,14 @@
   <parent>
     <groupId>org.jenkins-ci</groupId>
     <artifactId>jenkins</artifactId>
-    <version>1.18</version>
+    <version>1.21</version>
   </parent>
 
   <groupId>org.jenkins-ci.plugins</groupId>
   <artifactId>plugin</artifactId>
   <name>Jenkins plugin POM</name>
-  <version>1.409.2-SNAPSHOT</version>
+  <version>1.424.2-SNAPSHOT</version>
   <packaging>pom</packaging>
-
-  <properties>
-    <!-- if your jenkins-ci.org user name is different from local user name, specify it here -->
-    <java.net.id>${user.name}</java.net.id>
-  </properties>
 
   <!--
     We need the following because the artifactId=plugin but directoryName=plugins, and
@@ -38,7 +33,7 @@
       <dependency><!-- if a plugin wants to depend on the maven plugin, choose the right version automatically -->
         <groupId>org.jenkins-ci.main</groupId>
         <artifactId>maven-plugin</artifactId>
-        <version>1.409.2-SNAPSHOT</version>
+        <version>1.424.2-SNAPSHOT</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -48,25 +43,25 @@
       <groupId>org.jenkins-ci.main</groupId>
       <artifactId>jenkins-war</artifactId>
       <type>war</type>
-      <version>1.409.2-SNAPSHOT</version>
+      <version>1.424.2-SNAPSHOT</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.main</groupId>
       <artifactId>jenkins-core</artifactId>
-      <version>1.409.2-SNAPSHOT</version>
+      <version>1.424.2-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.main</groupId>
       <artifactId>jenkins-test-harness</artifactId>
-      <version>1.409.2-SNAPSHOT</version>
+      <version>1.424.2-SNAPSHOT</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.main</groupId>
       <artifactId>ui-samples-plugin</artifactId>
-      <version>1.409.2-SNAPSHOT</version>
+      <version>1.424.2-SNAPSHOT</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -120,7 +115,7 @@
       <plugin>
         <groupId>org.jenkins-ci.tools</groupId>
         <artifactId>maven-hpi-plugin</artifactId>
-        <version>1.67</version>
+        <version>1.74</version>
         <extensions>true</extensions>
         <configuration>
           <showDeprecation>true</showDeprecation>
@@ -160,9 +155,9 @@
         <!-- version specified in parent pom -->
       </plugin>
       <plugin>
-        <groupId>org.codehaus.groovy.maven</groupId>
+        <groupId>org.codehaus.gmaven</groupId>
         <artifactId>gmaven-plugin</artifactId>
-        <version>1.0-rc-5</version>
+        <!-- version specified in grandparent pom -->
         <executions>
           <execution>
             <id>test-in-groovy</id>
@@ -183,6 +178,7 @@
       </plugin>
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
+        <!-- version specified in grandparent pom -->
         <configuration>
           <systemProperties>
             <property>
@@ -195,7 +191,7 @@
       <plugin>
         <groupId>com.cloudbees</groupId>
         <artifactId>maven-license-plugin</artifactId>
-        <version>1.1</version>
+        <!-- version specified in grandparent pom -->
         <executions>
           <execution>
             <goals>
@@ -237,6 +233,21 @@
         </executions>
       </plugin>
     </plugins>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <!--
+            Because Eclipse lacks JSR-269 support, put the output
+            to a different directory
+          -->
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-eclipse-plugin</artifactId>
+          <configuration>
+            <buildOutputDirectory>target/eclipse-classes</buildOutputDirectory>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
   </build>
 
   <repositories>

@@ -1,18 +1,18 @@
 /*
  * The MIT License
- * 
+ *
  * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi, Yahoo! Inc., Seiji Sogabe
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -35,17 +35,22 @@ import hudson.XmlFile;
 import static hudson.init.InitMilestone.PLUGINS_STARTED;
 import hudson.init.Initializer;
 import hudson.lifecycle.Lifecycle;
+import hudson.lifecycle.RestartNotSupportedException;
 import hudson.model.UpdateSite.Data;
 import hudson.model.UpdateSite.Plugin;
 import hudson.model.listeners.SaveableListener;
 import hudson.security.ACL;
 import hudson.util.DaemonThreadFactory;
+import hudson.util.HttpResponses;
 import hudson.util.IOException2;
 import hudson.util.PersistedList;
 import hudson.util.XStream2;
+import jenkins.model.Jenkins;
 import org.acegisecurity.Authentication;
 import org.apache.commons.io.input.CountingInputStream;
 import org.apache.commons.io.output.NullOutputStream;
+import org.kohsuke.stapler.HttpResponse;
+import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
 import javax.net.ssl.SSLHandshakeException;
@@ -70,6 +75,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -87,7 +93,7 @@ import org.acegisecurity.context.SecurityContextHolder;
  * and plugins, and to use alternate strategies for downloading, installing
  * and updating components. See the Javadocs for {@link UpdateCenterConfiguration}
  * for more information.
- * 
+ *
  * @author Kohsuke Kawaguchi
  * @since 1.220
  */
@@ -275,8 +281,8 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
      */
     public void doUpgrade(StaplerResponse rsp) throws IOException, ServletException {
         requirePOST();
-        Hudson.getInstance().checkPermission(Hudson.ADMINISTER);
-        HudsonUpgradeJob job = new HudsonUpgradeJob(getCoreSource(), Hudson.getAuthentication());
+        Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+        HudsonUpgradeJob job = new HudsonUpgradeJob(getCoreSource(), Jenkins.getAuthentication());
         if(!Lifecycle.get().canRewriteHudsonWar()) {
             sendError("Jenkins upgrade not supported in this running mode");
             return;
@@ -285,6 +291,68 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
         LOGGER.info("Scheduling the core upgrade");
         addJob(job);
         rsp.sendRedirect2(".");
+    }
+
+    /**
+     * Invalidates the update center JSON data for all the sites and force re-retrieval.
+     *
+     * @since 1.432
+     */
+    public HttpResponse doInvalidateData() {
+        Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+        for (UpdateSite site : sites) {
+            site.doInvalidateData();
+        }
+
+        return HttpResponses.ok();
+    }
+
+
+    /**
+     * Schedules a Jenkins restart.
+     */
+    public void doSafeRestart(StaplerRequest request, StaplerResponse response) throws IOException, ServletException {
+        synchronized (jobs) {
+            if (!isRestartScheduled()) {
+                Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+                addJob(new RestartJenkinsJob(getCoreSource()));
+                LOGGER.info("Scheduling Jenkins reboot");
+            }
+        }
+        response.sendRedirect2(".");
+    }
+    
+    /**
+     * Cancel all scheduled jenkins restarts
+     */
+    public void doCancelRestart(StaplerResponse response) throws IOException, ServletException {
+        synchronized (jobs) {
+            for (UpdateCenterJob job : jobs) {
+                if (job instanceof RestartJenkinsJob) {
+                    if (((RestartJenkinsJob) job).cancel()) {
+                        LOGGER.info("Scheduled Jenkins reboot unscheduled");
+                    }
+                }
+            }
+        }
+        response.sendRedirect2(".");
+    }
+    
+    /**
+     * Checks if restart is scheduled
+     * 
+     */
+    public boolean isRestartScheduled() {
+        for (UpdateCenterJob job : getJobs()) {
+            if (job instanceof RestartJenkinsJob) {
+                RestartJenkinsJob.RestartJenkinsJobStatus status = ((RestartJenkinsJob) job).status;
+                if (status instanceof RestartJenkinsJob.Pending
+                        || status instanceof RestartJenkinsJob.Running) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -299,14 +367,26 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
      */
     public void doDowngrade(StaplerResponse rsp) throws IOException, ServletException {
         requirePOST();
-        Hudson.getInstance().checkPermission(Hudson.ADMINISTER);
+        Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
         if(!isDowngradable()) {
             sendError("Jenkins downgrade is not possible, probably backup does not exist");
             return;
         }
 
-        HudsonDowngradeJob job = new HudsonDowngradeJob(getCoreSource(), Hudson.getAuthentication());
+        HudsonDowngradeJob job = new HudsonDowngradeJob(getCoreSource(), Jenkins.getAuthentication());
         LOGGER.info("Scheduling the core downgrade");
+        addJob(job);
+        rsp.sendRedirect2(".");
+    }
+
+    /**
+     * Performs hudson downgrade.
+     */
+    public void doRestart(StaplerResponse rsp) throws IOException, ServletException {
+        Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+        HudsonDowngradeJob job = new HudsonDowngradeJob(getCoreSource(), Jenkins.getAuthentication());
+        LOGGER.info("Scheduling the core downgrade");
+
         addJob(job);
         rsp.sendRedirect2(".");
     }
@@ -318,7 +398,10 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
     public String getBackupVersion() {
         try {
             JarFile backupWar = new JarFile(new File(Lifecycle.get().getHudsonWar() + ".bak"));
-            return backupWar.getManifest().getMainAttributes().getValue("Hudson-Version");
+            Attributes attrs = backupWar.getManifest().getMainAttributes();
+            String v = attrs.getValue("Jenkins-Version");
+            if (v==null)    v = attrs.getValue("Hudson-Version");
+            return v;
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Failed to read backup version ", e);
             return null;}
@@ -383,7 +466,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
     }
 
     private XmlFile getConfigFile() {
-        return new XmlFile(XSTREAM,new File(Hudson.getInstance().root,
+        return new XmlFile(XSTREAM,new File(Jenkins.getInstance().root,
                                     UpdateCenter.class.getName()+".xml"));
     }
 
@@ -446,7 +529,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
         }
 
         public Data getData() {
-            UpdateSite cs = Hudson.getInstance().getUpdateCenter().getCoreSource();
+            UpdateSite cs = Jenkins.getInstance().getUpdateCenter().getCoreSource();
             if (cs!=null)   return cs.getData();
             return null;
         }
@@ -688,6 +771,72 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
     }
 
     /**
+     * Restarts jenkins.
+     */
+    public class RestartJenkinsJob extends UpdateCenterJob {
+        /**
+         * Unique ID that identifies this job.
+         */
+        public final int id = iota.incrementAndGet();
+               
+         /**
+         * Immutable state of this job.
+         */
+        public volatile RestartJenkinsJobStatus status = new Pending();
+        
+        /**
+         * Cancel job
+         */     
+        public synchronized boolean cancel() {
+            if (status instanceof Pending) {
+                status = new Canceled();
+                return true;
+            }
+            return false;
+        }
+        
+        public RestartJenkinsJob(UpdateSite site) {
+            super(site);
+        }
+
+        public synchronized void run() {
+            if (!(status instanceof Pending)) {
+                return;
+            }
+            status = new Running();
+            try {
+                Jenkins.getInstance().safeRestart();
+            }
+            catch (RestartNotSupportedException exception) {
+                // ignore if restart is not allowed
+                status = new Failure();
+            }
+        }
+        
+        public abstract class RestartJenkinsJobStatus {
+            
+            public final int id = iota.incrementAndGet();
+   
+        }
+        
+        public class Pending extends RestartJenkinsJobStatus {
+            
+        }
+        
+        public class Running extends RestartJenkinsJobStatus {
+            
+        }
+        
+        public class Failure extends RestartJenkinsJobStatus {
+            
+        }
+        
+        public class Canceled extends RestartJenkinsJobStatus {
+            
+        }
+    }
+
+    /**
      * Tests the internet connectivity.
      */
     public final class ConnectionCheckJob extends UpdateCenterJob {
@@ -889,7 +1038,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
          */
         public final Plugin plugin;
 
-        private final PluginManager pm = Hudson.getInstance().getPluginManager();
+        private final PluginManager pm = Jenkins.getInstance().getPluginManager();
 
         public InstallationJob(Plugin plugin, UpdateSite site, Authentication auth) {
             super(site, auth);
@@ -943,7 +1092,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
          */
         public final Plugin plugin;
 
-        private final PluginManager pm = Hudson.getInstance().getPluginManager();
+        private final PluginManager pm = Jenkins.getInstance().getPluginManager();
 
         public PluginDowngradeJob(Plugin plugin, UpdateSite site, Authentication auth) {
             super(site, auth);
@@ -1122,7 +1271,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
      * This has to wait until after all plugins load, to let custom UpdateCenterConfiguration take effect first.
      */
     @Initializer(after=PLUGINS_STARTED)
-    public static void init(Hudson h) throws IOException {
+    public static void init(Jenkins h) throws IOException {
         h.getUpdateCenter().load();
     }
 

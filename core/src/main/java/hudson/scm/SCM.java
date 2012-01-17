@@ -31,6 +31,7 @@ import hudson.Extension;
 import hudson.Util;
 import hudson.security.PermissionGroup;
 import hudson.security.Permission;
+import hudson.security.PermissionScope;
 import hudson.tasks.Builder;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
@@ -39,7 +40,7 @@ import hudson.model.Describable;
 import hudson.model.TaskListener;
 import hudson.model.Node;
 import hudson.model.WorkspaceCleanupThread;
-import hudson.model.Hudson;
+import jenkins.model.Jenkins;
 import hudson.model.Descriptor;
 import hudson.model.Api;
 import hudson.model.Action;
@@ -556,7 +557,7 @@ public abstract class SCM implements Describable<SCM>, ExtensionPoint {
     public abstract ChangeLogParser createChangeLogParser();
 
     public SCMDescriptor<?> getDescriptor() {
-        return (SCMDescriptor)Hudson.getInstance().getDescriptorOrDie(getClass());
+        return (SCMDescriptor) Jenkins.getInstance().getDescriptorOrDie(getClass());
     }
 
 //
@@ -586,13 +587,13 @@ public abstract class SCM implements Describable<SCM>, ExtensionPoint {
      * Permission to create new tags.
      * @since 1.171
      */
-    public static final Permission TAG = new Permission(PERMISSIONS,"Tag",Messages._SCM_TagPermission_Description(),Permission.CREATE);
+    public static final Permission TAG = new Permission(PERMISSIONS,"Tag",Messages._SCM_TagPermission_Description(),Permission.CREATE, PermissionScope.ITEM);
 
     /**
      * Returns all the registered {@link SCMDescriptor}s.
      */
     public static DescriptorExtensionList<SCM,SCMDescriptor<?>> all() {
-        return Hudson.getInstance().<SCM,SCMDescriptor<?>>getDescriptorList(SCM.class);
+        return Jenkins.getInstance().<SCM,SCMDescriptor<?>>getDescriptorList(SCM.class);
     }
 
     /**
@@ -601,7 +602,7 @@ public abstract class SCM implements Describable<SCM>, ExtensionPoint {
     public static List<SCMDescriptor<?>> _for(final AbstractProject project) {
         if(project==null)   return all();
         
-        final Descriptor pd = Hudson.getInstance().getDescriptor((Class) project.getClass());
+        final Descriptor pd = Jenkins.getInstance().getDescriptor((Class) project.getClass());
         List<SCMDescriptor<?>> r = new ArrayList<SCMDescriptor<?>>();
         for (SCMDescriptor<?> scmDescriptor : all()) {
             if(!scmDescriptor.isApplicable(project))    continue;

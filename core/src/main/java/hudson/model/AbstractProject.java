@@ -4,7 +4,8 @@
  * Copyright (c) 2004-2011, Sun Microsystems, Inc., Kohsuke Kawaguchi,
  * Brian Westrich, Erik Ramfelt, Ertan Deniz, Jean-Baptiste Quenot,
  * Luca Domenico Milanesio, R. Tyler Ballance, Stephen Connolly, Tom Huybrechts,
- * id:cactusman, Yahoo! Inc., Andrew Bayer
+ * id:cactusman, Yahoo! Inc., Andrew Bayer, Manufacture Francaise des Pneumatiques
+ * Michelin, Romain Seguy
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +27,7 @@
  */
 package hudson.model;
 
+import hudson.Functions;
 import java.util.regex.Pattern;
 import antlr.ANTLRException;
 import hudson.AbortException;
@@ -77,6 +79,7 @@ import hudson.util.EditDistance;
 import hudson.util.FormValidation;
 import hudson.widgets.BuildHistoryWidget;
 import hudson.widgets.HistoryWidget;
+import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.CmdLineException;
@@ -193,10 +196,10 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      * Null if no explicit configuration is required.
      *
      * <p>
-     * Can't store {@link JDK} directly because {@link Hudson} and {@link Project}
+     * Can't store {@link JDK} directly because {@link Jenkins} and {@link Project}
      * are saved independently.
      *
-     * @see Hudson#getJDK(String)
+     * @see Jenkins#getJDK(String)
      */
     private volatile String jdk;
 
@@ -219,10 +222,17 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
 
     private boolean concurrentBuild;
 
+    /**
+     * See {@link #setCustomWorkspace(String)}.
+     *
+     * @since 1.410
+     */
+    private String customWorkspace;
+    
     protected AbstractProject(ItemGroup parent, String name) {
         super(parent,name);
 
-        if(!Hudson.getInstance().getNodes().isEmpty()) {
+        if(!Jenkins.getInstance().getNodes().isEmpty()) {
             // if a new job is configured with Hudson that already has slave nodes
             // make it roamable by default
             canRoam = true;
@@ -282,7 +292,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      */
     @Exported
     public boolean isConcurrentBuild() {
-        return Hudson.CONCURRENT_BUILD && concurrentBuild;
+        return Jenkins.CONCURRENT_BUILD && concurrentBuild;
     }
 
     public void setConcurrentBuild(boolean b) throws IOException {
@@ -299,8 +309,8 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
             return null;
 
         if(assignedNode==null)
-            return Hudson.getInstance().getSelfLabel();
-        return Hudson.getInstance().getLabel(assignedNode);
+            return Jenkins.getInstance().getSelfLabel();
+        return Jenkins.getInstance().getLabel(assignedNode);
     }
 
     /**
@@ -326,7 +336,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
             assignedNode = null;
         } else {
             canRoam = false;
-            if(l==Hudson.getInstance().getSelfLabel())  assignedNode = null;
+            if(l== Jenkins.getInstance().getSelfLabel())  assignedNode = null;
             else                                        assignedNode = l.getExpression();
         }
         save();
@@ -358,15 +368,24 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
     }
 
     /**
-     * Returns the root project value.
+     * Gets the nearest ancestor {@link TopLevelItem} that's also an {@link AbstractProject}.
      *
-     * @return the root project value.
+     * <p>
+     * Some projects (such as matrix projects, Maven projects, or promotion processes) form a tree of jobs
+     * that acts as a single unit. This method can be used to find the top most dominating job that
+     * covers such a tree.
+     *
+     * @return never null.
+     * @see AbstractBuild#getRootBuild()
      */
-    public AbstractProject getRootProject() {
-        if (this.getParent() instanceof Hudson) {
+    public AbstractProject<?,?> getRootProject() {
+        if (this instanceof TopLevelItem) {
             return this;
         } else {
-            return ((AbstractProject) this.getParent()).getRootProject();
+            ItemGroup p = this.getParent();
+            if (p instanceof AbstractProject)
+                return ((AbstractProject) p).getRootProject();
+            return this;
         }
     }
 
@@ -473,11 +492,11 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
     }
 
     public int getQuietPeriod() {
-        return quietPeriod!=null ? quietPeriod : Hudson.getInstance().getQuietPeriod();
+        return quietPeriod!=null ? quietPeriod : Jenkins.getInstance().getQuietPeriod();
     }
     
     public int getScmCheckoutRetryCount() {
-        return scmCheckoutRetryCount !=null ? scmCheckoutRetryCount : Hudson.getInstance().getScmCheckoutRetryCount();
+        return scmCheckoutRetryCount !=null ? scmCheckoutRetryCount : Jenkins.getInstance().getScmCheckoutRetryCount();
     }
 
     // ugly name because of EL
@@ -552,7 +571,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         if(disabled==b)     return; // noop
         this.disabled = b;
         if(b)
-            Hudson.getInstance().getQueue().cancel(this);
+            Jenkins.getInstance().getQueue().cancel(this);
         save();
     }
 
@@ -631,13 +650,13 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         }
 
         // dependency setting might have been changed by the user, so rebuild.
-        Hudson.getInstance().rebuildDependencyGraph();
+        Jenkins.getInstance().rebuildDependencyGraph();
 
         // reflect the submission of the pseudo 'upstream build trriger'.
         // this needs to be done after we release the lock on 'this',
         // or otherwise we could dead-lock
 
-        for (AbstractProject<?,?> p : Hudson.getInstance().getAllItems(AbstractProject.class)) {
+        for (AbstractProject<?,?> p : Jenkins.getInstance().getAllItems(AbstractProject.class)) {
             // Don't consider child projects such as MatrixConfiguration:
             if (!p.isConfigurable()) continue;
             boolean isUpstream = upstream.contains(p);
@@ -688,10 +707,10 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         }
 
         // notify the queue as the project might be now tied to different node
-        Hudson.getInstance().getQueue().scheduleMaintenance();
+        Jenkins.getInstance().getQueue().scheduleMaintenance();
 
         // this is to reflect the upstream build adjustments done above
-        Hudson.getInstance().rebuildDependencyGraph();
+        Jenkins.getInstance().rebuildDependencyGraph();
     }
 
 	/**
@@ -774,7 +793,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
             queueActions.add(new CauseAction(c));
         }
 
-        WaitingItem i = Hudson.getInstance().getQueue().schedule(this, quietPeriod, queueActions);
+        WaitingItem i = Jenkins.getInstance().getQueue().schedule(this, quietPeriod, queueActions);
         if(i!=null)
             return (Future)i.getFuture();
         return null;
@@ -838,19 +857,19 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      */
     @Override
     public boolean isInQueue() {
-        return Hudson.getInstance().getQueue().contains(this);
+        return Jenkins.getInstance().getQueue().contains(this);
     }
 
     @Override
     public Queue.Item getQueueItem() {
-        return Hudson.getInstance().getQueue().getItem(this);
+        return Jenkins.getInstance().getQueue().getItem(this);
     }
 
     /**
      * Gets the JDK that this project is configured with, or null.
      */
     public JDK getJDK() {
-        return Hudson.getInstance().getJDK(jdk);
+        return Jenkins.getInstance().getJDK(jdk);
     }
 
     /**
@@ -1074,9 +1093,9 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      * the given project (provided that all builds went smoothly.)
      */
     protected AbstractProject getBuildingDownstream() {
-        Set<Task> unblockedTasks = Hudson.getInstance().getQueue().getUnblockedTasks();
+        Set<Task> unblockedTasks = Jenkins.getInstance().getQueue().getUnblockedTasks();
 
-        for (AbstractProject tup : Hudson.getInstance().getDependencyGraph().getTransitiveDownstream(this)) {
+        for (AbstractProject tup : Jenkins.getInstance().getDependencyGraph().getTransitiveDownstream(this)) {
 			if (tup!=this && (tup.isBuilding() || unblockedTasks.contains(tup)))
                 return tup;
         }
@@ -1091,9 +1110,9 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      * the given project (provided that all builds went smoothly.)
      */
     protected AbstractProject getBuildingUpstream() {
-        Set<Task> unblockedTasks = Hudson.getInstance().getQueue().getUnblockedTasks();
+        Set<Task> unblockedTasks = Jenkins.getInstance().getQueue().getUnblockedTasks();
 
-        for (AbstractProject tup : Hudson.getInstance().getDependencyGraph().getTransitiveUpstream(this)) {
+        for (AbstractProject tup : Jenkins.getInstance().getDependencyGraph().getTransitiveUpstream(this)) {
 			if (tup!=this && (tup.isBuilding() || unblockedTasks.contains(tup)))
                 return tup;
         }
@@ -1256,7 +1275,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
                 // lock the workspace of the last build
                 FilePath ws=lb.getWorkspace();
 
-                if (ws==null || !ws.exists()) {
+                if (workspaceOffline(lb)) {
                     // workspace offline. build now, or nothing will ever be built
                     Label label = getAssignedLabel();
                     if (label != null && label.isSelfLabel()) {
@@ -1318,6 +1337,24 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
             e.printStackTrace(listener.fatalError(Messages.AbstractProject_PollingABorted()));
             return NO_CHANGES;
         }
+    }
+    
+    private boolean workspaceOffline(R build) throws IOException, InterruptedException {
+        FilePath ws = build.getWorkspace();
+        if (ws==null || !ws.exists()) {
+            return true;
+        }
+        
+        Node builtOn = build.getBuiltOn();
+        if (builtOn == null) { // node built-on doesn't exist anymore
+            return true;
+        }
+        
+        if (builtOn.toComputer() == null) { // node still exists, but has 0 executors - o.s.l.t.
+            return true;
+        }
+        
+        return false;
     }
 
     /**
@@ -1413,12 +1450,12 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      */
     @Exported
     public final List<AbstractProject> getDownstreamProjects() {
-        return Hudson.getInstance().getDependencyGraph().getDownstream(this);
+        return Jenkins.getInstance().getDependencyGraph().getDownstream(this);
     }
 
     @Exported
     public final List<AbstractProject> getUpstreamProjects() {
-        return Hudson.getInstance().getDependencyGraph().getUpstream(this);
+        return Jenkins.getInstance().getDependencyGraph().getUpstream(this);
     }
 
     /**
@@ -1444,7 +1481,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      * @since 1.138
      */
     public final Set<AbstractProject> getTransitiveUpstreamProjects() {
-        return Hudson.getInstance().getDependencyGraph().getTransitiveUpstream(this);
+        return Jenkins.getInstance().getDependencyGraph().getTransitiveUpstream(this);
     }
 
     /**
@@ -1453,7 +1490,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      * @since 1.138
      */
     public final Set<AbstractProject> getTransitiveDownstreamProjects() {
-        return Hudson.getInstance().getDependencyGraph().getTransitiveDownstream(this);
+        return Jenkins.getInstance().getDependencyGraph().getTransitiveDownstream(this);
     }
 
     /**
@@ -1503,7 +1540,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
     @Override
     protected SearchIndexBuilder makeSearchIndex() {
         SearchIndexBuilder sib = super.makeSearchIndex();
-        if(isBuildable() && hasPermission(Hudson.ADMINISTER))
+        if(isBuildable() && hasPermission(Jenkins.ADMINISTER))
             sib.add("build","build");
         return sib;
     }
@@ -1538,7 +1575,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         if (!isBuildable())
             throw HttpResponses.error(SC_INTERNAL_SERVER_ERROR,new IOException(getFullName()+" is not buildable"));
 
-        Hudson.getInstance().getQueue().schedule(this, getDelay(req), getBuildCause(req));
+        Jenkins.getInstance().getQueue().schedule(this, getDelay(req), getBuildCause(req));
         rsp.forwardToPreviousPage(req);
     }
 
@@ -1605,7 +1642,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
     public void doCancelQueue( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
         checkPermission(BUILD);
 
-        Hudson.getInstance().getQueue().cancel(this);
+        Jenkins.getInstance().getQueue().cancel(this);
         rsp.forwardToPreviousPage(req);
     }
 
@@ -1629,6 +1666,14 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         blockBuildWhenDownstreamBuilding = req.getParameter("blockBuildWhenDownstreamBuilding")!=null;
         blockBuildWhenUpstreamBuilding = req.getParameter("blockBuildWhenUpstreamBuilding")!=null;
 
+        if(req.hasParameter("customWorkspace")) {
+            customWorkspace = Util.fixEmptyAndTrim(req.getParameter("customWorkspace.directory"));
+            if(customWorkspace==null)
+            	throw new FormException("Custom workspace is empty", "customWorkspace");
+        } else {
+            customWorkspace = null;
+        }
+        
         if(req.getParameter("hasSlaveAffinity")!=null) {
             assignedNode = Util.fixEmptyAndTrim(req.getParameter("_.assignedLabelString"));
         } else {
@@ -1687,7 +1732,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
             req.getView(this,"noWorkspace.jelly").forward(req,rsp);
             return null;
         } else {
-            return new DirectoryBrowserSupport(this, ws, getDisplayName()+" workspace", "folder.gif", true);
+            return new DirectoryBrowserSupport(this, ws, getDisplayName()+" workspace", "folder.png", true);
         }
     }
 
@@ -1695,7 +1740,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      * Wipes out the workspace.
      */
     public HttpResponse doDoWipeOutWorkspace() throws IOException, ServletException, InterruptedException {
-        checkPermission(BUILD);
+        checkPermission(Functions.isWipeOutPermissionEnabled() ? WIPEOUT : BUILD);
         R b = getSomeBuildWithWorkspace();
         FilePath ws = b!=null ? b.getWorkspace() : null;
         if (ws!=null && getScm().processWorkspaceBeforeDeletion(this, ws, b.getBuiltOn())) {
@@ -1826,15 +1871,29 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
                 return FormValidation.error(e,
                         Messages.AbstractProject_AssignedLabelString_InvalidBooleanExpression(e.getMessage()));
             }
-            // TODO: if there's an atom in the expression that is empty, report it
-            if (Hudson.getInstance().getLabel(value).isEmpty())
+            Label l = Jenkins.getInstance().getLabel(value);
+            if (l.isEmpty()) {
+                for (LabelAtom a : l.listAtoms()) {
+                    if (a.isEmpty()) {
+                        LabelAtom nearest = LabelAtom.findNearest(a.getName());
+                        return FormValidation.warning(Messages.AbstractProject_AssignedLabelString_NoMatch_DidYouMean(a.getName(),nearest.getDisplayName()));
+                    }
+                }
                 return FormValidation.warning(Messages.AbstractProject_AssignedLabelString_NoMatch());
+            }
             return FormValidation.ok();
         }
 
+        public FormValidation doCheckCustomWorkspace(@QueryParameter String customWorkspace){
+        	if(Util.fixEmptyAndTrim(customWorkspace)==null)
+        		return FormValidation.error("Custom workspace is empty");
+        	else
+        		return FormValidation.ok();
+        }
+        
         public AutoCompletionCandidates doAutoCompleteUpstreamProjects(@QueryParameter String value) {
             AutoCompletionCandidates candidates = new AutoCompletionCandidates();
-            List<Job> jobs = Hudson.getInstance().getItems(Job.class);
+            List<Job> jobs = Jenkins.getInstance().getItems(Job.class);
             for (Job job: jobs) {
                 if (job.getFullName().startsWith(value)) {
                     if (job.hasPermission(Item.READ)) {
@@ -1847,7 +1906,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
 
         public AutoCompletionCandidates doAutoCompleteAssignedLabelString(@QueryParameter String value) {
             AutoCompletionCandidates c = new AutoCompletionCandidates();
-            Set<Label> labels = Hudson.getInstance().getLabels();
+            Set<Label> labels = Jenkins.getInstance().getLabels();
             List<String> queries = new AutoCompleteSeeder(value).getSeeds();
 
             for (String term : queries) {
@@ -1907,13 +1966,22 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      * Finds a {@link AbstractProject} that has the name closest to the given name.
      */
     public static AbstractProject findNearest(String name) {
-        List<AbstractProject> projects = Hudson.getInstance().getItems(AbstractProject.class);
+        return findNearest(name,Hudson.getInstance());
+    }
+
+    /**
+     * Finds a {@link AbstractProject} whose name (when referenced from the specified context) is closest to the given name.
+     *
+     * @since 1.419
+     */
+    public static AbstractProject findNearest(String name, ItemGroup context) {
+        List<AbstractProject> projects = Hudson.getInstance().getAllItems(AbstractProject.class);
         String[] names = new String[projects.size()];
         for( int i=0; i<projects.size(); i++ )
-            names[i] = projects.get(i).getName();
+            names[i] = projects.get(i).getRelativeNameFrom(context);
 
         String nearest = EditDistance.findNearest(name, names);
-        return (AbstractProject)Hudson.getInstance().getItem(nearest);
+        return (AbstractProject)Jenkins.getInstance().getItem(nearest,context);
     }
 
     private static final Comparator<Integer> REVERSE_INTEGER_COMPARATOR = new Comparator<Integer>() {
@@ -1940,9 +2008,35 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
     @CLIResolver
     public static AbstractProject resolveForCLI(
             @Argument(required=true,metaVar="NAME",usage="Job name") String name) throws CmdLineException {
-        AbstractProject item = Hudson.getInstance().getItemByFullName(name, AbstractProject.class);
+        AbstractProject item = Jenkins.getInstance().getItemByFullName(name, AbstractProject.class);
         if (item==null)
             throw new CmdLineException(null,Messages.AbstractItem_NoSuchJobExists(name,AbstractProject.findNearest(name).getFullName()));
         return item;
     }
+
+    public String getCustomWorkspace() {
+        return customWorkspace;
+    }
+
+    /**
+     * User-specified workspace directory, or null if it's up to Jenkins.
+     *
+     * <p>
+     * Normally a project uses the workspace location assigned by its parent container,
+     * but sometimes people have builds that have hard-coded paths.
+     *
+     * <p>
+     * This is not {@link File} because it may have to hold a path representation on another OS.
+     *
+     * <p>
+     * If this path is relative, it's resolved against {@link Node#getRootPath()} on the node where this workspace
+     * is prepared. 
+     *
+     * @since 1.410
+     */
+    public void setCustomWorkspace(String customWorkspace) throws IOException {
+        this.customWorkspace= Util.fixEmptyAndTrim(customWorkspace);
+        save();
+    }
+    
 }

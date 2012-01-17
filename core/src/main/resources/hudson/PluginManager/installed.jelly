@@ -82,7 +82,7 @@ THE SOFTWARE.
                 <td class="center pane" id='unpin-${p.shortName}'>
                   <j:if test="${p.isPinned()}">
                     <input type="button" onclick="unpin(this,'${p.shortName}')" value="${%Unpin}" class="yui-button" />
-                    <a href="${%wiki.url}"><img style="vertical-align:top" src="${imagesURL}/16x16/help.gif"/></a>
+                    <a href="${%wiki.url}"><img style="vertical-align:top" src="${imagesURL}/16x16/help.png"/></a>
                   </j:if>
                 </td>
               </tr>
@@ -104,16 +104,6 @@ THE SOFTWARE.
         </j:choose>
       </table>
 
-      <j:if test="${it.isPluginUploaded()}">
-        <div style="margin: 1em; height: 1em">
-          <div class="error">
-            ${%New plugins will take effect once you restart Jenkins}
-            <j:if test="${app.lifecycle.canRestart()}">
-              <s:submit value="${%Restart Once No Jobs Are Running}" />
-            </j:if>
-          </div>
-        </div>
-      </j:if>
       <div class="warning" id="needRestart" style="display:none; margin: 1em; height: 1em">
         <form method="post" action="${rootURL}/safeRestart">
           ${%Changes will take effect when you restart Jenkins}
@@ -145,6 +135,9 @@ THE SOFTWARE.
             return String(e.checked)!=e.getAttribute('original');
           });
 
+          <j:if test="${it.isPluginUploaded()}">
+            e = true;
+          </j:if>
           $('needRestart').style.display = (e!=null?"block":"none");
         }
 

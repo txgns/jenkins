@@ -36,6 +36,7 @@ import static hudson.util.Iterators.reverse;
 
 import hudson.cli.declarative.CLIMethod;
 import hudson.cli.declarative.CLIResolver;
+import hudson.model.labels.LabelAssignmentAction;
 import hudson.model.queue.AbstractQueueTask;
 import hudson.model.queue.Executables;
 import hudson.model.queue.SubTask;
@@ -78,7 +79,6 @@ import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -93,6 +93,7 @@ import java.util.logging.Logger;
 import javax.management.timer.Timer;
 import javax.servlet.ServletException;
 
+import jenkins.model.Jenkins;
 import org.acegisecurity.AccessDeniedException;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.HttpResponses;
@@ -201,15 +202,15 @@ public class Queue extends ResourceController implements Saveable {
         /**
          * Verifies that the {@link Executor} represented by this object is capable of executing the given task.
          */
-        public boolean canTake(Task task) {
+        public boolean canTake(BuildableItem item) {
             Node node = getNode();
             if (node==null)     return false;   // this executor is about to die
 
-            if(node.canTake(task)!=null)
+            if(node.canTake(item)!=null)
                 return false;   // this node is not able to take the task
 
             for (QueueTaskDispatcher d : QueueTaskDispatcher.all())
-                if (d.canTake(node,task)!=null)
+                if (d.canTake(node,item)!=null)
                     return false;
 
             return isAvailable();
@@ -273,13 +274,16 @@ public class Queue extends ResourceController implements Saveable {
             File queueFile = getQueueFile();
             if (queueFile.exists()) {
                 BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(queueFile)));
-                String line;
-                while ((line = in.readLine()) != null) {
-                    AbstractProject j = Hudson.getInstance().getItemByFullName(line, AbstractProject.class);
-                    if (j != null)
-                        j.scheduleBuild();
+                try {
+                    String line;
+                    while ((line = in.readLine()) != null) {
+                        AbstractProject j = Jenkins.getInstance().getItemByFullName(line, AbstractProject.class);
+                        if (j != null)
+                            j.scheduleBuild();
+                    }
+                } finally {
+                    in.close();
                 }
-                in.close();
                 // discard the queue file now that we are done
                 queueFile.delete();
             } else {
@@ -353,7 +357,7 @@ public class Queue extends ResourceController implements Saveable {
      */
     @CLIMethod(name="clear-queue")
     public synchronized void clear() {
-        Hudson.getInstance().checkPermission(Hudson.ADMINISTER);
+        Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
         for (WaitingItem i : waitingList)
             i.onCancelled();
         waitingList.clear();
@@ -363,11 +367,11 @@ public class Queue extends ResourceController implements Saveable {
     }
 
     private File getQueueFile() {
-        return new File(Hudson.getInstance().getRootDir(), "queue.txt");
+        return new File(Jenkins.getInstance().getRootDir(), "queue.txt");
     }
 
     /*package*/ File getXMLQueueFile() {
-        return new File(Hudson.getInstance().getRootDir(), "queue.xml");
+        return new File(Jenkins.getInstance().getRootDir(), "queue.xml");
     }
 
     /**
@@ -614,7 +618,7 @@ public class Queue extends ResourceController implements Saveable {
     private void _getBuildableItems(Computer c, ItemList<BuildableItem> col, List<BuildableItem> result) {
         Node node = c.getNode();
         for (BuildableItem p : col.values()) {
-            if (node.canTake(p.task) == null)
+            if (node.canTake(p) == null)
                 result.add(p);
         }
     }
@@ -678,10 +682,10 @@ public class Queue extends ResourceController implements Saveable {
     public synchronized int countBuildableItemsFor(Label l) {
         int r = 0;
         for (BuildableItem bi : buildables.values())
-            if(bi.task.getAssignedLabel()==l)
+            if(bi.getAssignedLabel()==l)
                 r++;
         for (BuildableItem bi : pendings.values())
-            if(bi.task.getAssignedLabel()==l)
+            if(bi.getAssignedLabel()==l)
                 r++;
         return r;
     }
@@ -791,7 +795,7 @@ public class Queue extends ResourceController implements Saveable {
 
                     List<JobOffer> candidates = new ArrayList<JobOffer>(parked.size());
                     for (JobOffer j : parked.values())
-                        if(j.canTake(p.task))
+                        if(j.canTake(p))
                             candidates.add(j);
 
                     MappingWorksheet ws = new MappingWorksheet(p, candidates);
@@ -949,22 +953,23 @@ public class Queue extends ResourceController implements Saveable {
     }
 
     private void makeBuildable(BuildableItem p) {
-        if(Hudson.FLYWEIGHT_SUPPORT && p.task instanceof FlyweightTask && !ifBlockedByHudsonShutdown(p.task)) {
+        if(Jenkins.FLYWEIGHT_SUPPORT && p.task instanceof FlyweightTask && !ifBlockedByHudsonShutdown(p.task)) {
             ConsistentHash<Node> hash = new ConsistentHash<Node>(new Hash<Node>() {
                 public String hash(Node node) {
                     return node.getNodeName();
                 }
             });
-            Hudson h = Hudson.getInstance();
+            Jenkins h = Jenkins.getInstance();
             hash.add(h, h.getNumExecutors()*100);
             for (Node n : h.getNodes())
                 hash.add(n,n.getNumExecutors()*100);
 
-            Label lbl = p.task.getAssignedLabel();
+            Label lbl = p.getAssignedLabel();
             for (Node n : hash.list(p.task.getFullDisplayName())) {
                 Computer c = n.toComputer();
                 if (c==null || c.isOffline())    continue;
                 if (lbl!=null && !lbl.contains(n))  continue;
+                if (n.canTake(p) != null) continue;
                 c.startFlyWeightTask(new WorkUnitContext(p).createWorkUnit(p.task));
                 pendings.add(p);
                 return;
@@ -977,7 +982,7 @@ public class Queue extends ResourceController implements Saveable {
     }
 
     public static boolean ifBlockedByHudsonShutdown(Task task) {
-        return Hudson.getInstance().isQuietingDown() && !(task instanceof NonBlockingTask);
+        return Jenkins.getInstance().isQuietingDown() && !(task instanceof NonBlockingTask);
     }
 
     public Api getApi() {
@@ -998,7 +1003,7 @@ public class Queue extends ResourceController implements Saveable {
     public interface FlyweightTask extends Task {}
 
     /**
-     * Marks {@link Task}s that are not affected by the {@linkplain Hudson#isQuietingDown()}  quieting down},
+     * Marks {@link Task}s that are not affected by the {@linkplain Jenkins#isQuietingDown()}  quieting down},
      * because these tasks keep other tasks executing.
      *
      * @since 1.336 
@@ -1215,6 +1220,14 @@ public class Queue extends ResourceController implements Saveable {
          */
         public Future<Executable> getFuture() { return future; }
 
+        public Label getAssignedLabel() {
+            for (LabelAssignmentAction laa : getActions(LabelAssignmentAction.class)) {
+                Label l = laa.getAssignedLabel(task);
+                if (l!=null)    return l;
+            }
+            return task.getAssignedLabel();
+        }
+
         /**
          * Convenience method that returns a read only view of the {@link Cause}s associated with this item in the queue.
          *
@@ -1289,7 +1302,7 @@ public class Queue extends ResourceController implements Saveable {
          * Called from queue.jelly.
          */
         public HttpResponse doCancelQueue() throws IOException, ServletException {
-        	Hudson.getInstance().getQueue().cancel(this);
+        	Jenkins.getInstance().getQueue().cancel(this);
             return HttpResponses.forwardToPreviousPage();
         }
 
@@ -1350,7 +1363,7 @@ public class Queue extends ResourceController implements Saveable {
     	 * @return
     	 */
     	public static ExtensionList<QueueDecisionHandler> all() {
-    		return Hudson.getInstance().getExtensionList(QueueDecisionHandler.class);
+    		return Jenkins.getInstance().getExtensionList(QueueDecisionHandler.class);
     	}
     }
     
@@ -1444,11 +1457,11 @@ public class Queue extends ResourceController implements Saveable {
         }
 
         public CauseOfBlockage getCauseOfBlockage() {
-            Hudson hudson = Hudson.getInstance();
+            Jenkins hudson = Jenkins.getInstance();
             if(ifBlockedByHudsonShutdown(task))
                 return CauseOfBlockage.fromMessage(Messages._Queue_HudsonIsAboutToShutDown());
 
-            Label label = task.getAssignedLabel();
+            Label label = getAssignedLabel();
             if (hudson.getNodes().isEmpty())
                 label = null;    // no master/slave. pointless to talk about nodes
 
@@ -1470,7 +1483,7 @@ public class Queue extends ResourceController implements Saveable {
 
         @Override
         public boolean isStuck() {
-            Label label = task.getAssignedLabel();
+            Label label = getAssignedLabel();
             if(label!=null && label.isOffline())
                 // no executor online to process this job. definitely stuck.
                 return true;
@@ -1505,7 +1518,7 @@ public class Queue extends ResourceController implements Saveable {
 
 			@Override
 			public Object fromString(String string) {
-                Object item = Hudson.getInstance().getItemByFullName(string);
+                Object item = Jenkins.getInstance().getItemByFullName(string);
                 if(item==null)  throw new NoSuchElementException("No such job exists: "+string);
                 return item;
 			}
@@ -1528,7 +1541,7 @@ public class Queue extends ResourceController implements Saveable {
 				String[] split = string.split("#");
 				String projectName = split[0];
 				int buildNumber = Integer.parseInt(split[1]);
-				Job<?,?> job = (Job<?,?>) Hudson.getInstance().getItemByFullName(projectName);
+				Job<?,?> job = (Job<?,?>) Jenkins.getInstance().getItemByFullName(projectName);
                 if(job==null)  throw new NoSuchElementException("No such job exists: "+projectName);
 				Run<?,?> run = job.getBuildByNumber(buildNumber);
                 if(run==null)  throw new NoSuchElementException("No such build: "+string);
@@ -1641,14 +1654,14 @@ public class Queue extends ResourceController implements Saveable {
 
     @CLIResolver
     public static Queue getInstance() {
-        return Hudson.getInstance().getQueue();
+        return Jenkins.getInstance().getQueue();
     }
 
     /**
      * Restores the queue content during the start up.
      */
     @Initializer(after=JOB_LOADED)
-    public static void init(Hudson h) {
+    public static void init(Jenkins h) {
         h.getQueue().load();
     }
 }

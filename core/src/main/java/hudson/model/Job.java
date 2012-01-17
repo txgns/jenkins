@@ -1,7 +1,7 @@
 /*
  * The MIT License
  * 
- * Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Martin Eigenbrodt, Matthew R. Harrah, Red Hat, Inc., Stephen Connolly, Tom Huybrechts
+ * Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Martin Eigenbrodt, Matthew R. Harrah, Red Hat, Inc., Stephen Connolly, Tom Huybrechts, CloudBees, Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,19 +23,16 @@
  */
 package hudson.model;
 
-import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
-import static javax.servlet.http.HttpServletResponse.SC_NO_CONTENT;
-
-import com.google.common.collect.Iterables;
 import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
+import hudson.Extension;
 import hudson.ExtensionPoint;
 import hudson.PermalinkList;
-import hudson.Extension;
+import hudson.Util;
 import hudson.cli.declarative.CLIResolver;
 import hudson.model.Descriptor.FormException;
-import hudson.model.PermalinkProjectAction.Permalink;
-import hudson.model.Fingerprint.RangeSet;
 import hudson.model.Fingerprint.Range;
+import hudson.model.Fingerprint.RangeSet;
+import hudson.model.PermalinkProjectAction.Permalink;
 import hudson.search.QuickSilver;
 import hudson.search.SearchIndex;
 import hudson.search.SearchIndexBuilder;
@@ -44,42 +41,23 @@ import hudson.search.SearchItems;
 import hudson.security.ACL;
 import hudson.tasks.LogRotator;
 import hudson.util.AlternativeUiTextProvider;
-import hudson.util.AlternativeUiTextProvider.Message;
 import hudson.util.ChartUtil;
 import hudson.util.ColorPalette;
 import hudson.util.CopyOnWriteList;
 import hudson.util.DataSetBuilder;
 import hudson.util.DescribableList;
+import hudson.util.Graph;
 import hudson.util.IOException2;
 import hudson.util.RunList;
 import hudson.util.ShiftedCategoryAxis;
 import hudson.util.StackedAreaRenderer2;
 import hudson.util.TextFile;
-import hudson.util.Graph;
 import hudson.widgets.HistoryWidget;
-import hudson.widgets.Widget;
 import hudson.widgets.HistoryWidget.Adapter;
-
-import java.awt.Color;
-import java.awt.Paint;
-import java.io.File;
-import java.io.IOException;
-import java.io.StringWriter;
-import java.io.PrintWriter;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.SortedMap;
-import java.util.LinkedList;
-
-import javax.servlet.ServletException;
-
-import net.sf.json.JSONObject;
+import hudson.widgets.Widget;
+import jenkins.model.Jenkins;
 import net.sf.json.JSONException;
-
+import net.sf.json.JSONObject;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.CategoryAxis;
@@ -91,12 +69,29 @@ import org.jfree.chart.renderer.category.StackedAreaRenderer;
 import org.jfree.data.category.CategoryDataset;
 import org.jfree.ui.RectangleInsets;
 import org.jvnet.localizer.Localizable;
+import org.kohsuke.args4j.Argument;
+import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.stapler.StaplerOverridable;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
-import org.kohsuke.args4j.Argument;
-import org.kohsuke.args4j.CmdLineException;
+
+import javax.servlet.ServletException;
+import java.awt.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
+
+import static javax.servlet.http.HttpServletResponse.*;
 
 /**
  * A job is an runnable entity under the monitoring of Hudson.
@@ -636,7 +631,7 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
      * @see RunMap
      */
     protected File getBuildDir() {
-        return new File(getRootDir(), "builds");
+        return Jenkins.getInstance().getBuildDirFor(this);
     }
 
     /**
@@ -974,7 +969,7 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
             String newName = req.getParameter("name");
             if (newName != null && !newName.equals(name)) {
                 // check this error early to avoid HTTP response splitting.
-                Hudson.checkGoodName(newName);
+                Jenkins.checkGoodName(newName);
                 rsp.sendRedirect("rename?newName=" + URLEncoder.encode(newName, "UTF-8"));
             } else {
                 rsp.sendRedirect(".");
@@ -1008,7 +1003,7 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
         if (req.getMethod().equals("GET")) {
             //read
             rsp.setContentType("text/plain;charset=UTF-8");
-            rsp.getWriter().write(this.getDescription());
+            rsp.getWriter().write(Util.fixNull(this.getDescription()));
             return;
         }
         if (req.getMethod().equals("POST")) {
@@ -1185,7 +1180,7 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
         checkPermission(DELETE);
 
         String newName = req.getParameter("newName");
-        Hudson.checkGoodName(newName);
+        Jenkins.checkGoodName(newName);
 
         if (isBuilding()) {
             // redirect to page explaining that we can't rename now
@@ -1224,7 +1219,7 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
      */
     @Override
     public ACL getACL() {
-        return Hudson.getInstance().getAuthorizationStrategy().getACL(this);
+        return Jenkins.getInstance().getAuthorizationStrategy().getACL(this);
     }
 
     public BuildTimelineWidget getTimeline() {

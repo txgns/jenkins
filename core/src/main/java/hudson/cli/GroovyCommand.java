@@ -26,7 +26,7 @@ package hudson.cli;
 import groovy.lang.GroovyShell;
 import groovy.lang.Binding;
 import hudson.model.AbstractProject;
-import hudson.model.Hudson;
+import jenkins.model.Jenkins;
 import hudson.model.Item;
 import hudson.model.Run;
 import hudson.remoting.Callable;
@@ -70,7 +70,7 @@ public class GroovyCommand extends CLICommand implements Serializable {
 
     protected int run() throws Exception {
         // this allows the caller to manipulate the JVM state, so require the execute script privilege.
-        Hudson.getInstance().checkPermission(Hudson.EXECUTE_SCRIPT);
+        Jenkins.getInstance().checkPermission(Jenkins.EXECUTE_SCRIPT);
 
         Binding binding = new Binding();
         binding.setProperty("out",new PrintWriter(stdout,true));
@@ -80,7 +80,7 @@ public class GroovyCommand extends CLICommand implements Serializable {
         binding.setProperty("channel",channel);
         String j = getClientEnvironmentVariable("JOB_NAME");
         if (j!=null) {
-            Item job = Hudson.getInstance().getItemByFullName(j);
+            Item job = Jenkins.getInstance().getItemByFullName(j);
             binding.setProperty("currentJob", job);
             String b = getClientEnvironmentVariable("BUILD_NUMBER");
             if (b!=null && job instanceof AbstractProject) {
@@ -89,7 +89,7 @@ public class GroovyCommand extends CLICommand implements Serializable {
             }
         }
 
-        GroovyShell groovy = new GroovyShell(Hudson.getInstance().getPluginManager().uberClassLoader, binding);
+        GroovyShell groovy = new GroovyShell(Jenkins.getInstance().getPluginManager().uberClassLoader, binding);
         groovy.run(loadScript(),"RemoteClass",remaining.toArray(new String[remaining.size()]));
         return 0;
     }
@@ -100,11 +100,11 @@ public class GroovyCommand extends CLICommand implements Serializable {
     private String loadScript() throws CmdLineException, IOException, InterruptedException {
         if(script==null)
             throw new CmdLineException(null, "No script is specified");
+        if (script.equals("="))
+            return IOUtils.toString(stdin);
+
         return channel.call(new Callable<String,IOException>() {
             public String call() throws IOException {
-                if(script.equals("="))
-                    return IOUtils.toString(System.in);
-
                 File f = new File(script);
                 if(f.exists())
                     return FileUtils.readFileToString(f);

@@ -25,28 +25,46 @@ THE SOFTWARE.
 
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
+
   <parent>
     <groupId>org.jenkins-ci.main</groupId>
     <artifactId>pom</artifactId>
-    <version>1.409.2-SNAPSHOT</version>
+    <version>1.424.2-SNAPSHOT</version>
   </parent>
 
   <artifactId>maven-plugin</artifactId>
   <packaging>hpi</packaging>
+
   <name>Maven Integration plugin</name>
   <description>This plug-in provides deep integration of Jenkins and Maven. This functionality used to be part of the Jenkins core.
   Now it is a plug-in that is installed by default, but can be disabled.</description>
   <url>http://wiki.jenkins-ci.org/display/JENKINS/Maven+2+Project+Plugin</url>
-  
+
   <properties>
-    <mavenInterceptorsVersion>1.1</mavenInterceptorsVersion>
+    <mavenInterceptorsVersion>1.2</mavenInterceptorsVersion>
     <mavenVersion>3.0.3</mavenVersion>
     <maven.version>${mavenVersion}</maven.version>
     <aetherVersion>1.11</aetherVersion>
     <sisuInjectVersion>2.2.0</sisuInjectVersion>
     <wagonVersion>1.0-beta-7</wagonVersion>    
   </properties>
-    
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- < 1.6.x version didn't specify the license (MIT) -->
+      <!-- SLF4J is used by wagon-webdav-jackrabbit dep --> 
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>1.6.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-nop</artifactId>
+        <version>1.6.1</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
   <dependencies>
     <dependency>
       <groupId>org.jenkins-ci.main</groupId>
@@ -284,19 +302,18 @@ THE SOFTWARE.
     </dependency>
 
     <dependency>
-      <!-- commonly used wagon provider -->
-      <groupId>org.jvnet.hudson</groupId>
-      <artifactId>wagon-webdav</artifactId>
-      <version>1.0-beta-2-hudson-1</version>
-      <exclusions>
-        <exclusion>
-          <groupId>jdom</groupId>
-          <artifactId>jdom</artifactId>
-        </exclusion>
-      </exclusions>
+      <groupId>commons-httpclient</groupId>
+      <artifactId>commons-httpclient</artifactId>
     </dependency>
 
+    <!-- JENKINS-10076 : This wagon is better to provide webdav support -->
     <dependency>
+      <groupId>org.apache.maven.wagon</groupId>
+      <artifactId>wagon-webdav-jackrabbit</artifactId>
+      <version>${wagonVersion}</version>
+    </dependency>
+
+      <dependency>
       <groupId>net.sourceforge.nekohtml</groupId>
       <artifactId>nekohtml</artifactId>
       <version>1.9.13</version>
@@ -308,6 +325,31 @@ THE SOFTWARE.
       <version>1.1</version>
       <optional>true</optional>
     </dependency>
+    
+    <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>4.8.2</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <version>1.8.5</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-module-junit4</artifactId>
+      <version>1.4.9</version>
+      <scope>test</scope>
+   </dependency>
+   <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-api-mockito</artifactId>
+      <version>1.4.9</version>
+      <scope>test</scope>
+   </dependency>
 
   </dependencies>
 
@@ -332,12 +374,13 @@ THE SOFTWARE.
       <plugin>
         <groupId>org.kohsuke.stapler</groupId>
         <artifactId>maven-stapler-plugin</artifactId>
+        <!-- version specified in grandparent pom -->
         <extensions>true</extensions>
       </plugin>
       <plugin>
         <groupId>org.jvnet.localizer</groupId>
         <artifactId>maven-localizer-plugin</artifactId>
-        <version>1.8</version>
+        <!-- version specified in grandparent pom -->
         <executions>
           <execution>
             <goals>
@@ -353,34 +396,40 @@ THE SOFTWARE.
       <plugin><!-- generate licenses.xml -->
         <groupId>com.cloudbees</groupId>
         <artifactId>maven-license-plugin</artifactId>
+        <!-- version specified in grandparent pom -->
         <configuration>
           <generateLicenseXml>target/${project.artifactId}/WEB-INF/licenses.xml</generateLicenseXml>
         </configuration>
       </plugin>
       <plugin>
-        <groupId>org.jvnet.maven-antrun-extended-plugin</groupId>
-        <artifactId>maven-antrun-extended-plugin</artifactId>
+        <artifactId>maven-dependency-plugin</artifactId>
         <executions>
           <execution>
             <id>resgen</id>
             <phase>generate-resources</phase>
             <goals>
-              <goal>run</goal>
+              <!-- we use copy as this is a dependency from outside the reactor -->
+              <goal>copy</goal>
             </goals>
             <configuration>
-              <verifyArtifact>false</verifyArtifact>
-              <tasks>
-                <mkdir dir="target/classes" />
-
+              <artifactItems>
                 <!--  classworld 1.1 for maven 2 builds -->
-                <resolveArtifact groupId="classworlds" artifactId="classworlds" version="1.1" type="jar" tofile="target/classes/classworlds.jar" />
-              </tasks>
+                <artifactItem>
+                  <groupId>classworlds</groupId>
+                  <artifactId>classworlds</artifactId>
+                  <version>1.1</version>
+                  <type>jar</type>
+                  <outputDirectory>${project.build.outputDirectory}</outputDirectory>
+                  <destFileName>classworlds.jar</destFileName>
+                </artifactItem>
+              </artifactItems>
             </configuration>
           </execution>
         </executions>
       </plugin>
     </plugins>
   </build>
+
   <profiles>
     
   <profile>
@@ -390,7 +439,7 @@ THE SOFTWARE.
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>cobertura-maven-plugin</artifactId>
-          <version>2.4-apb-SNAPSHOT</version>
+          <!-- version specified in grandparent pom -->
           <inherited>true</inherited>
           <configuration>
             <formats>

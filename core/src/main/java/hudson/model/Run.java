@@ -43,6 +43,8 @@ import hudson.matrix.MatrixRun;
 import hudson.model.Descriptor.FormException;
 import hudson.model.listeners.RunListener;
 import hudson.model.listeners.SaveableListener;
+import hudson.security.PermissionScope;
+import jenkins.model.Jenkins.MasterComputer;
 import hudson.search.SearchIndexBuilder;
 import hudson.security.ACL;
 import hudson.security.AccessControlled;
@@ -94,6 +96,7 @@ import java.util.zip.GZIPInputStream;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 
+import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.apache.commons.io.input.NullInputStream;
 import org.apache.commons.io.IOUtils;
@@ -266,9 +269,21 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
     protected Run(JobT project, File buildDir) throws IOException {
         this(project, parseTimestampFromBuildDir(buildDir));
         this.previousBuildInProgress = _this(); // loaded builds are always completed
+        reload();
+    }
+
+    /**
+     * Reloads the build record from disk.
+     *
+     * @since 1.410
+     */
+    public void reload() throws IOException {
         this.state = State.COMPLETED;
         this.result = Result.FAILURE;  // defensive measure. value should be overwritten by unmarshal, but just in case the saved data is inconsistent
         getDataFile().unmarshal(this); // load the rest of the data
+
+        // not calling onLoad upon reload. partly because we don't want to call that from Run constructor,
+        // and partly because some existing use of onLoad isn't assuming that it can be invoked multiple times.
     }
 
     /**
@@ -382,7 +397,7 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
      * Otherwise null.
      */
     public Executor getExecutor() {
-        for( Computer c : Hudson.getInstance().getComputers() ) {
+        for( Computer c : Jenkins.getInstance().getComputers() ) {
             for (Executor e : c.getExecutors()) {
                 if(e.getCurrentExecutable()==this)
                     return e;
@@ -773,10 +788,9 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
      * Obtains the absolute URL to this build.
      *
      * @deprecated
-     *      This method shall <b>NEVER</b> be used during HTML page rendering, as it won't work with
-     *      network set up like Apache reverse proxy.
-     *      This method is only intended for the remote API clients who cannot resolve relative references
-     *      (even this won't work for the same reason, which should be fixed.)
+     *      This method shall <b>NEVER</b> be used during HTML page rendering, as it's too easy for
+     *      misconfiguration to break this value, with network set up like Apache reverse proxy.
+     *      This method is only intended for the remote API clients who cannot resolve relative references.
      */
     @Exported(visibility=2,name="url")
     public final String getAbsoluteUrl() {
@@ -805,7 +819,7 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
     }
 
     public Descriptor getDescriptorByName(String className) {
-        return Hudson.getInstance().getDescriptorByName(className);
+        return Jenkins.getInstance().getDescriptorByName(className);
     }
 
     /**
@@ -1374,7 +1388,7 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
                     LOGGER.log(FINE, "Build "+this+" aborted",e);
                 } catch( InterruptedException e) {
                     // aborted
-                    result = Result.ABORTED;
+                    result = Executor.currentExecutor().abortResult();
                     listener.getLogger().println(Messages.Run_BuildAborted());
                     LOGGER.log(Level.INFO,toString()+" aborted",e);
                 } catch( Throwable e ) {
@@ -1601,18 +1615,21 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
                 if(trP==null) {
                     if(trN!=null && trN.getFailCount()>0)
                         return new Summary(false, Messages.Run_Summary_TestFailures(trN.getFailCount()));
-                    else // ???
-                        return new Summary(false, Messages.Run_Summary_Unstable());
+                } else {
+                    if(trN.getFailCount()!= 0) {
+                        if(trP.getFailCount()==0)
+                            return new Summary(true, Messages.Run_Summary_TestsStartedToFail(trN.getFailCount()));
+                        if(trP.getFailCount() < trN.getFailCount())
+                            return new Summary(true, Messages.Run_Summary_MoreTestsFailing(trN.getFailCount()-trP.getFailCount(), trN.getFailCount()));
+                        if(trP.getFailCount() > trN.getFailCount())
+                            return new Summary(false, Messages.Run_Summary_LessTestsFailing(trP.getFailCount()-trN.getFailCount(), trN.getFailCount()));
+                        
+                        return new Summary(false, Messages.Run_Summary_TestsStillFailing(trN.getFailCount()));
+                    }
                 }
-                if(trP.getFailCount()==0)
-                    return new Summary(true, Messages.Run_Summary_TestsStartedToFail(trN.getFailCount()));
-                if(trP.getFailCount() < trN.getFailCount())
-                    return new Summary(true, Messages.Run_Summary_MoreTestsFailing(trN.getFailCount()-trP.getFailCount(), trN.getFailCount()));
-                if(trP.getFailCount() > trN.getFailCount())
-                    return new Summary(false, Messages.Run_Summary_LessTestsFailing(trP.getFailCount()-trN.getFailCount(), trN.getFailCount()));
-
-                return new Summary(false, Messages.Run_Summary_TestsStillFailing(trN.getFailCount()));
             }
+            
+            return new Summary(false, Messages.Run_Summary_Unstable());
         }
 
         return new Summary(false, Messages.Run_Summary_Unknown());
@@ -1625,7 +1642,7 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
         if(Functions.isArtifactsPermissionEnabled()) {
           checkPermission(ARTIFACTS);
         }
-        return new DirectoryBrowserSupport(this,new FilePath(getArtifactsDir()), project.getDisplayName()+' '+getDisplayName(), "package.gif", true);
+        return new DirectoryBrowserSupport(this,new FilePath(getArtifactsDir()), project.getDisplayName()+' '+getDisplayName(), "package.png", true);
     }
 
     /**
@@ -1658,7 +1675,17 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
         rsp.setContentType("text/plain;charset=UTF-8");
         // Prevent jelly from flushing stream so Content-Length header can be added afterwards
         FlushProofOutputStream out = new FlushProofOutputStream(rsp.getCompressedOutputStream(req));
-        getLogText().writeLogTo(0,out);
+        try{
+        	getLogText().writeLogTo(0,out);
+        } catch (IOException e) {
+			// see comment in writeLogTo() method
+			InputStream input = getLogInputStream();
+			try {
+				IOUtils.copy(input, out);
+			} finally {
+				IOUtils.closeQuietly(input);
+			}
+		}
         out.close();
     }
 
@@ -1764,7 +1791,7 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
         Computer c = Computer.currentComputer();
         if (c!=null)
             env = c.getEnvironment().overrideAll(env);
-        String rootUrl = Hudson.getInstance().getRootUrl();
+        String rootUrl = Jenkins.getInstance().getRootUrl();
         if(rootUrl!=null) {
             env.put("JENKINS_URL", rootUrl);
             env.put("HUDSON_URL", rootUrl); // Legacy compatibility
@@ -1772,14 +1799,18 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
             env.put("JOB_URL", rootUrl+getParent().getUrl());
         }
         
-        env.put("JENKINS_HOME", Hudson.getInstance().getRootDir().getPath() );
-        env.put("HUDSON_HOME", Hudson.getInstance().getRootDir().getPath() );   // legacy compatibility
+        env.put("JENKINS_HOME", Jenkins.getInstance().getRootDir().getPath() );
+        env.put("HUDSON_HOME", Jenkins.getInstance().getRootDir().getPath() );   // legacy compatibility
 
         Thread t = Thread.currentThread();
         if (t instanceof Executor) {
             Executor e = (Executor) t;
             env.put("EXECUTOR_NUMBER",String.valueOf(e.getNumber()));
-            env.put("NODE_NAME",e.getOwner().getName());
+	    if(e.getOwner() instanceof MasterComputer) {
+		env.put("NODE_NAME", "master");
+	    } else {
+	    	env.put("NODE_NAME",e.getOwner().getName());
+	    }
             Node n = e.getOwner().getNode();
             if (n!=null)
                 env.put("NODE_LABELS",Util.join(n.getAssignedLabels()," "));
@@ -1797,8 +1828,8 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
      */
     public final EnvVars getCharacteristicEnvVars() {
         EnvVars env = new EnvVars();
-        env.put("JENKINS_SERVER_COOKIE",Util.getDigestOf("ServerID:"+Hudson.getInstance().getSecretKey()));
-        env.put("HUDSON_SERVER_COOKIE",Util.getDigestOf("ServerID:"+Hudson.getInstance().getSecretKey())); // Legacy compatibility
+        env.put("JENKINS_SERVER_COOKIE",Util.getDigestOf("ServerID:"+ Jenkins.getInstance().getSecretKey()));
+        env.put("HUDSON_SERVER_COOKIE",Util.getDigestOf("ServerID:"+ Jenkins.getInstance().getSecretKey())); // Legacy compatibility
         env.put("BUILD_NUMBER",String.valueOf(number));
         env.put("BUILD_ID",getId());
         env.put("BUILD_TAG","jenkins-"+getParent().getName()+"-"+number);
@@ -1818,7 +1849,7 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
         String jobName = id.substring(0, hash);
         int number = Integer.parseInt(id.substring(hash + 1));
 
-        Job<?,?> job = (Job<?,?>) Hudson.getInstance().getItem(jobName);
+        Job<?,?> job = (Job<?,?>) Jenkins.getInstance().getItem(jobName);
         return job.getBuildByNumber(number);
     }
 
@@ -1853,6 +1884,12 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
     }
 
     public static final XStream XSTREAM = new XStream2();
+
+    /**
+     * Alias to {@link #XSTREAM} so that one can access additional methods on {@link XStream2} more easily.
+     */
+    public static final XStream2 XSTREAM2 = (XStream2)XSTREAM;
+
     static {
         XSTREAM.alias("build",FreeStyleBuild.class);
         XSTREAM.alias("matrix-build",MatrixBuild.class);
@@ -1906,11 +1943,11 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
     }
 
     public static final PermissionGroup PERMISSIONS = new PermissionGroup(Run.class,Messages._Run_Permissions_Title());
-    public static final Permission DELETE = new Permission(PERMISSIONS,"Delete",Messages._Run_DeletePermission_Description(),Permission.DELETE);
-    public static final Permission UPDATE = new Permission(PERMISSIONS,"Update",Messages._Run_UpdatePermission_Description(),Permission.UPDATE);
+    public static final Permission DELETE = new Permission(PERMISSIONS,"Delete",Messages._Run_DeletePermission_Description(),Permission.DELETE, PermissionScope.RUN);
+    public static final Permission UPDATE = new Permission(PERMISSIONS,"Update",Messages._Run_UpdatePermission_Description(),Permission.UPDATE, PermissionScope.RUN);
     /** See {@link hudson.Functions#isArtifactsPermissionEnabled} */
     public static final Permission ARTIFACTS = new Permission(PERMISSIONS,"Artifacts",Messages._Run_ArtifactsPermission_Description(), null,
-                                                              Functions.isArtifactsPermissionEnabled());
+                                                              Functions.isArtifactsPermissionEnabled(), new PermissionScope[]{PermissionScope.RUN});
 
     private static class DefaultFeedAdapter implements FeedAdapter<Run> {
         public String getEntryTitle(Run entry) {

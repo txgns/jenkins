@@ -36,12 +36,18 @@ import hudson.model.listeners.SaveableListener;
 import hudson.security.ACL;
 import hudson.security.AccessControlled;
 import hudson.security.Permission;
+import hudson.security.SecurityRealm;
 import hudson.util.RunList;
 import hudson.util.XStream2;
+import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 
 import org.acegisecurity.Authentication;
+import org.acegisecurity.AuthenticationException;
+import org.acegisecurity.GrantedAuthority;
+import org.acegisecurity.providers.UsernamePasswordAuthenticationToken;
 import org.acegisecurity.providers.anonymous.AnonymousAuthenticationToken;
+import org.acegisecurity.userdetails.UserDetails;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
@@ -167,7 +173,7 @@ public class User extends AbstractModelObject implements AccessControlled, Savea
      */
     @Exported(visibility=999)
     public String getAbsoluteUrl() {
-        return Hudson.getInstance().getRootUrl()+getUrl();
+        return Jenkins.getInstance().getRootUrl()+getUrl();
     }
 
     /**
@@ -236,10 +242,24 @@ public class User extends AbstractModelObject implements AccessControlled, Savea
     }
 
     /**
+     * Creates an {@link Authentication} object that represents this user.
+     */
+    public Authentication impersonate() {
+        try {
+            UserDetails u = Jenkins.getInstance().getSecurityRealm().loadUserByUsername(id);
+            return new UsernamePasswordAuthenticationToken(u.getUsername(), "", u.getAuthorities());
+        } catch (AuthenticationException e) {
+            // TODO: use the stored GrantedAuthorities
+            return new UsernamePasswordAuthenticationToken(id, "",
+                new GrantedAuthority[]{SecurityRealm.AUTHENTICATED_AUTHORITY});
+        }
+    }
+
+    /**
      * Accepts the new description.
      */
     public synchronized void doSubmitDescription( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
-        checkPermission(Hudson.ADMINISTER);
+        checkPermission(Jenkins.ADMINISTER);
 
         description = req.getParameter("description");
         save();
@@ -297,7 +317,7 @@ public class User extends AbstractModelObject implements AccessControlled, Savea
      * @since 1.172
      */
     public static User current() {
-        Authentication a = Hudson.getAuthentication();
+        Authentication a = Jenkins.getAuthentication();
         if(a instanceof AnonymousAuthenticationToken)
             return null;
         return get(a.getName());
@@ -363,7 +383,7 @@ public class User extends AbstractModelObject implements AccessControlled, Savea
     @WithBridgeMethods(List.class)
     public RunList getBuilds() {
         List<AbstractBuild> r = new ArrayList<AbstractBuild>();
-        for (AbstractProject<?,?> p : Hudson.getInstance().getAllItems(AbstractProject.class))
+        for (AbstractProject<?,?> p : Jenkins.getInstance().getAllItems(AbstractProject.class))
             for (AbstractBuild<?,?> b : p.getBuilds())
                 if(b.hasParticipant(this))
                     r.add(b);
@@ -376,7 +396,7 @@ public class User extends AbstractModelObject implements AccessControlled, Savea
      */
     public Set<AbstractProject<?,?>> getProjects() {
         Set<AbstractProject<?,?>> r = new HashSet<AbstractProject<?,?>>();
-        for (AbstractProject<?,?> p : Hudson.getInstance().getAllItems(AbstractProject.class))
+        for (AbstractProject<?,?> p : Jenkins.getInstance().getAllItems(AbstractProject.class))
             if(p.hasParticipant(this))
                 r.add(p);
         return r;
@@ -397,7 +417,7 @@ public class User extends AbstractModelObject implements AccessControlled, Savea
      * Gets the directory where Hudson stores user information.
      */
     private static File getRootDir() {
-        return new File(Hudson.getInstance().getRootDir(), "users");
+        return new File(Jenkins.getInstance().getRootDir(), "users");
     }
 
     /**
@@ -433,7 +453,7 @@ public class User extends AbstractModelObject implements AccessControlled, Savea
      * Accepts submission from the configuration page.
      */
     public void doConfigSubmit( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, FormException {
-        checkPermission(Hudson.ADMINISTER);
+        checkPermission(Jenkins.ADMINISTER);
 
         fullName = req.getParameter("fullName");
         description = req.getParameter("description");
@@ -470,8 +490,8 @@ public class User extends AbstractModelObject implements AccessControlled, Savea
      */
     public void doDoDelete(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
         requirePOST();
-        checkPermission(Hudson.ADMINISTER);
-        if (id.equals(Hudson.getAuthentication().getName())) {
+        checkPermission(Jenkins.ADMINISTER);
+        if (id.equals(Jenkins.getAuthentication().getName())) {
             rsp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Cannot delete self");
             return;
         }
@@ -491,7 +511,7 @@ public class User extends AbstractModelObject implements AccessControlled, Savea
 
     public void doRssLatest(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
         final List<Run> lastBuilds = new ArrayList<Run>();
-        for (final TopLevelItem item : Hudson.getInstance().getItems()) {
+        for (final TopLevelItem item : Jenkins.getInstance().getItems()) {
             if (!(item instanceof Job)) continue;
             for (Run r = ((Job) item).getLastBuild(); r != null; r = r.getPreviousBuild()) {
                 if (!(r instanceof AbstractBuild)) continue;
@@ -528,7 +548,7 @@ public class User extends AbstractModelObject implements AccessControlled, Savea
     }
 
     public ACL getACL() {
-        final ACL base = Hudson.getInstance().getAuthorizationStrategy().getACL(this);
+        final ACL base = Jenkins.getInstance().getAuthorizationStrategy().getACL(this);
         // always allow a non-anonymous user full control of himself.
         return new ACL() {
             public boolean hasPermission(Authentication a, Permission permission) {
@@ -550,7 +570,7 @@ public class User extends AbstractModelObject implements AccessControlled, Savea
      * With ADMINISTER permission, can delete users with persisted data but can't delete self.
      */
     public boolean canDelete() {
-        return hasPermission(Hudson.ADMINISTER) && !id.equals(Hudson.getAuthentication().getName())
+        return hasPermission(Jenkins.ADMINISTER) && !id.equals(Jenkins.getAuthentication().getName())
                 && new File(getRootDir(), id).exists();
     }
 

@@ -1,7 +1,7 @@
 /*
  * The MIT License
  * 
- * Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi
+ * Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, CloudBees, Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,11 +27,12 @@ import hudson.FilePath;
 import hudson.Util;
 import hudson.maven.MavenBuild;
 import hudson.maven.MavenBuildProxy;
+import hudson.model.Api;
 import hudson.model.BuildListener;
 import hudson.model.FingerprintMap;
-import hudson.model.Hudson;
+import jenkins.model.Jenkins;
 
-import org.apache.maven.RepositoryUtils;
+import hudson.util.HttpResponses;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.factory.ArtifactFactory;
 import org.apache.maven.artifact.handler.ArtifactHandler;
@@ -39,6 +40,10 @@ import org.apache.maven.artifact.handler.DefaultArtifactHandler;
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 
 import com.google.common.collect.Maps;
+import org.kohsuke.stapler.AncestorInPath;
+import org.kohsuke.stapler.HttpResponse;
+import org.kohsuke.stapler.export.Exported;
+import org.kohsuke.stapler.export.ExportedBean;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -61,10 +66,12 @@ import java.util.logging.Logger;
  * @author Kohsuke Kawaguchi
  * @since 1.189
  */
+@ExportedBean
 public final class MavenArtifact implements Serializable {
     /**
      * Basic parameters of a Maven artifact.
      */
+    @Exported
     public final String groupId, artifactId, version, classifier, type;
 
     /**
@@ -78,6 +85,7 @@ public final class MavenArtifact implements Serializable {
      * use their <tt>finalName</tt> if one is configured.) This is often
      * different from {@link #canonicalName}.
      */
+    @Exported
     public final String fileName;
 
     /**
@@ -88,13 +96,15 @@ public final class MavenArtifact implements Serializable {
      * The reason we persist this is that the extension is only available
      * through {@link ArtifactHandler}. 
      */
+    @Exported
     public final String canonicalName;
 
     /**
      * The md5sum for this artifact.
      */
+    @Exported
     public final String md5sum;
-    
+
     public MavenArtifact(Artifact a) throws IOException {
         this.groupId = a.getGroupId();
         this.artifactId = a.getArtifactId();
@@ -186,6 +196,15 @@ public final class MavenArtifact implements Serializable {
         return f;
     }
 
+    /**
+     * Serve the file.
+     *
+     * TODO: figure out how to make this URL more discoverable to the remote API.
+     */
+    public HttpResponse doFile(@AncestorInPath MavenArtifactRecord parent) throws IOException {
+        return HttpResponses.staticResource(getFile(parent.parent));
+    }
+
     private FilePath getArtifactArchivePath(MavenBuildProxy build, String groupId, String artifactId, String version) {
         return build.getArtifactsDir().child(groupId).child(artifactId).child(version).child(canonicalName);
     }
@@ -257,8 +276,12 @@ public final class MavenArtifact implements Serializable {
      * Called from within the master to record fingerprint.
      */
     public void recordFingerprint(MavenBuild build) throws IOException {
-        FingerprintMap map = Hudson.getInstance().getFingerprintMap();
+        FingerprintMap map = Jenkins.getInstance().getFingerprintMap();
         map.getOrCreate(build,fileName,md5sum);
+    }
+
+    public Api getApi() {
+        return new Api(this);
     }
 
     private static final Logger LOGGER = Logger.getLogger(MavenArtifact.class.getName());

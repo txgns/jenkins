@@ -25,6 +25,7 @@ package hudson.tasks.junit;
 
 import hudson.tasks.test.TestObject;
 import hudson.util.IOException2;
+import hudson.util.io.ParserConfigurator;
 import org.apache.commons.io.FileUtils;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -85,19 +86,29 @@ public final class SuiteResult implements Serializable {
     }
 
     /**
+     * Passed to {@link ParserConfigurator}.
+     * @since 1.416
+     */
+    public static class SuiteResultParserConfigurationContext {
+        public final File xmlReport;
+
+        SuiteResultParserConfigurationContext(File xmlReport) {
+            this.xmlReport = xmlReport;
+        }
+    }
+
+    /**
      * Parses the JUnit XML file into {@link SuiteResult}s.
      * This method returns a collection, as a single XML may have multiple &lt;testsuite>
      * elements wrapped into the top-level &lt;testsuites>.
      */
-    static List<SuiteResult> parse(File xmlReport, boolean keepLongStdio) throws DocumentException, IOException {
+    static List<SuiteResult> parse(File xmlReport, boolean keepLongStdio) throws DocumentException, IOException, InterruptedException {
         List<SuiteResult> r = new ArrayList<SuiteResult>();
 
         // parse into DOM
         SAXReader saxReader = new SAXReader();
-        // install EntityResolver for resolving DTDs, which are in files created by TestNG.
-        // (see https://hudson.dev.java.net/servlets/ReadMsg?listName=users&msgNo=5530)
-        XMLEntityResolver resolver = new XMLEntityResolver();
-        saxReader.setEntityResolver(resolver);
+        ParserConfigurator.applyConfiguration(saxReader,new SuiteResultParserConfigurationContext(xmlReport));
+
         Document result = saxReader.read(xmlReport);
         Element root = result.getRootElement();
 
@@ -112,7 +123,8 @@ public final class SuiteResult implements Serializable {
             parseSuite(xmlReport, keepLongStdio, r, suite);
 
         // child test cases
-        if (root.element("testcase")!=null)
+        // FIXME: do this also if no testcases!
+        if (root.element("testcase")!=null || root.element("error")!=null)
             r.add(new SuiteResult(xmlReport, root, keepLongStdio));
     }
 
@@ -144,11 +156,11 @@ public final class SuiteResult implements Serializable {
         }
 
         for (Element e : (List<Element>)suite.elements("testcase")) {
-            // https://hudson.dev.java.net/issues/show_bug.cgi?id=1233 indicates that
+            // https://issues.jenkins-ci.org/browse/JENKINS-1233 indicates that
             // when <testsuites> is present, we are better off using @classname on the
             // individual testcase class.
 
-            // https://hudson.dev.java.net/issues/show_bug.cgi?id=1463 indicates that
+            // https://issues.jenkins-ci.org/browse/JENKINS-1463 indicates that
             // @classname may not exist in individual testcase elements. We now
             // also test if the testsuite element has a package name that can be used
             // as the class name instead of the file name which is default.
@@ -157,7 +169,7 @@ public final class SuiteResult implements Serializable {
                 classname = suite.attributeValue("name");
             }
 
-            // https://hudson.dev.java.net/issues/show_bug.cgi?id=1233 and
+            // https://issues.jenkins-ci.org/browse/JENKINS-1233 and
             // http://www.nabble.com/difference-in-junit-publisher-and-ant-junitreport-tf4308604.html#a12265700
             // are at odds with each other --- when both are present,
             // one wants to use @name from <testsuite>,

@@ -35,7 +35,7 @@ import hudson.model.Cause.UpstreamCause;
 import hudson.model.DependecyDeclarer;
 import hudson.model.DependencyGraph;
 import hudson.model.DependencyGraph.Dependency;
-import hudson.model.Hudson;
+import jenkins.model.Jenkins;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
 import hudson.model.Items;
@@ -46,6 +46,7 @@ import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.model.listeners.ItemListener;
 import hudson.security.AccessControlled;
+import hudson.tasks.BuildTrigger.DescriptorImpl.ItemListenerImpl;
 import hudson.util.FormValidation;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
@@ -95,9 +96,13 @@ public class BuildTrigger extends Recorder implements DependecyDeclarer {
      */
     private final Result threshold;
 
-    @DataBoundConstructor
     public BuildTrigger(String childProjects, boolean evenIfUnstable) {
         this(childProjects,evenIfUnstable ? Result.UNSTABLE : Result.SUCCESS);
+    }
+
+    @DataBoundConstructor
+    public BuildTrigger(String childProjects, String threshold) {
+        this(childProjects, Result.fromString(StringUtils.defaultString(threshold, Result.SUCCESS.toString())));
     }
 
     public BuildTrigger(String childProjects, Result threshold) {
@@ -131,7 +136,7 @@ public class BuildTrigger extends Recorder implements DependecyDeclarer {
      *      Use {@link #getChildProjects(ItemGroup)}
      */
     public List<AbstractProject> getChildProjects() {
-        return getChildProjects(Hudson.getInstance());
+        return getChildProjects(Jenkins.getInstance());
     }
 
     public List<AbstractProject> getChildProjects(AbstractProject owner) {
@@ -186,7 +191,7 @@ public class BuildTrigger extends Recorder implements DependecyDeclarer {
     public static boolean execute(AbstractBuild build, BuildListener listener) {
         PrintStream logger = listener.getLogger();
         // Check all downstream Project of the project, not just those defined by BuildTrigger
-        final DependencyGraph graph = Hudson.getInstance().getDependencyGraph();
+        final DependencyGraph graph = Jenkins.getInstance().getDependencyGraph();
         List<Dependency> downstreamProjects = new ArrayList<Dependency>(
                 graph.getDownstreamDependencies(build.getProject()));
         // Sort topologically
@@ -297,7 +302,7 @@ public class BuildTrigger extends Recorder implements DependecyDeclarer {
             }
             return new BuildTrigger(
                 childProjectsString,
-                formData.has("evenIfUnstable") && formData.getBoolean("evenIfUnstable"));
+                formData.optString("threshold", Result.SUCCESS.toString()));
         }
 
         @Override
@@ -322,9 +327,10 @@ public class BuildTrigger extends Recorder implements DependecyDeclarer {
             while(tokens.hasMoreTokens()) {
                 String projectName = tokens.nextToken().trim();
                 if (StringUtils.isNotBlank(projectName)) {
-                    Item item = Hudson.getInstance().getItem(projectName,project,Item.class);
+                    Item item = Jenkins.getInstance().getItem(projectName,project,Item.class);
                     if(item==null)
-                        return FormValidation.error(Messages.BuildTrigger_NoSuchProject(projectName,AbstractProject.findNearest(projectName).getName()));
+                        return FormValidation.error(Messages.BuildTrigger_NoSuchProject(projectName,
+                                AbstractProject.findNearest(projectName,project.getParent()).getRelativeNameFrom(project)));
                     if(!(item instanceof AbstractProject))
                         return FormValidation.error(Messages.BuildTrigger_NotBuildable(projectName));
                     hasProjects = true;
@@ -339,7 +345,7 @@ public class BuildTrigger extends Recorder implements DependecyDeclarer {
 
         public AutoCompletionCandidates doAutoCompleteChildProjects(@QueryParameter String value) {
             AutoCompletionCandidates candidates = new AutoCompletionCandidates();
-            List<Job> jobs = Hudson.getInstance().getItems(Job.class);
+            List<Job> jobs = Jenkins.getInstance().getItems(Job.class);
             for (Job job: jobs) {
                 if (job.getFullName().startsWith(value)) {
                     if (job.hasPermission(Item.READ)) {
@@ -356,7 +362,7 @@ public class BuildTrigger extends Recorder implements DependecyDeclarer {
             public void onRenamed(Item item, String oldName, String newName) {
                 // update BuildTrigger of other projects that point to this object.
                 // can't we generalize this?
-                for( Project<?,?> p : Hudson.getInstance().getProjects() ) {
+                for( Project<?,?> p : Jenkins.getInstance().getProjects() ) {
                     BuildTrigger t = p.getPublishersList().get(BuildTrigger.class);
                     if(t!=null) {
                         if(t.onJobRenamed(oldName,newName)) {

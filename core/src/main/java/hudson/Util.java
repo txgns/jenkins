@@ -24,7 +24,7 @@
 package hudson;
 
 import hudson.model.TaskListener;
-import hudson.model.Hudson;
+import jenkins.model.Jenkins;
 import static hudson.util.jna.GNUCLibrary.LIBC;
 
 import hudson.util.IOException2;
@@ -200,11 +200,14 @@ public class Util {
         StringBuilder str = new StringBuilder((int)logfile.length());
 
         BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(logfile),charset));
-        char[] buf = new char[1024];
-        int len;
-        while((len=r.read(buf,0,buf.length))>0)
-           str.append(buf,0,len);
-        r.close();
+        try {
+            char[] buf = new char[1024];
+            int len;
+            while((len=r.read(buf,0,buf.length))>0)
+               str.append(buf,0,len);
+        } finally {
+            r.close();
+        }
 
         return str.toString();
     }
@@ -302,7 +305,16 @@ public class Util {
     public static void deleteRecursive(File dir) throws IOException {
         if(!isSymlink(dir))
             deleteContentsRecursive(dir);
-        deleteFile(dir);
+        try {
+            deleteFile(dir);
+        } catch (IOException e) {
+            // if some of the child directories are big, it might take long enough to delete that
+            // it allows others to create new files, causing problemsl ike JENKINS-10113
+            // so give it one more attempt before we give up.
+            if(!isSymlink(dir))
+                deleteContentsRecursive(dir);
+            deleteFile(dir);
+        }
     }
 
     /*
@@ -501,11 +513,6 @@ public class Util {
     }
 
     /**
-     * Write-only buffer.
-     */
-    private static final byte[] garbage = new byte[8192];
-
-    /**
      * Computes MD5 digest of the given input stream.
      *
      * @param source
@@ -517,9 +524,10 @@ public class Util {
         try {
             MessageDigest md5 = MessageDigest.getInstance("MD5");
 
+            byte[] buffer = new byte[1024];
             DigestInputStream in =new DigestInputStream(source,md5);
             try {
-                while(in.read(garbage)>0)
+                while(in.read(buffer)>0)
                     ; // simply discard the input
             } finally {
                 in.close();
@@ -699,7 +707,7 @@ public class Util {
             OutputStreamWriter w = new OutputStreamWriter(buf,"UTF-8");
 
             for (int i = 0; i < s.length(); i++) {
-                int c = (int) s.charAt(i);
+                int c = s.charAt(i);
                 if (c<128 && c!=' ') {
                     out.append((char) c);
                 } else {
@@ -1106,7 +1114,7 @@ public class Util {
      */
     public static String wrapToErrorSpan(String s) {
         s = "<span class=error><img src='"+
-            Stapler.getCurrentRequest().getContextPath()+ Hudson.RESOURCE_PATH+
+            Stapler.getCurrentRequest().getContextPath()+ Jenkins.RESOURCE_PATH+
             "/images/none.gif' height=16 width=1>"+s+"</span>";
         return s;
     }

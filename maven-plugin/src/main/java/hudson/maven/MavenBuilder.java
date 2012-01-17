@@ -29,6 +29,7 @@ import hudson.maven.agent.Main;
 import hudson.maven.agent.PluginManagerListener;
 import hudson.maven.reporters.SurefireArchiver;
 import hudson.model.BuildListener;
+import hudson.model.Executor;
 import hudson.model.Result;
 import hudson.remoting.Callable;
 import hudson.remoting.Channel;
@@ -153,12 +154,7 @@ public abstract class MavenBuilder extends AbstractMavenBuilder implements Deleg
             
             markAsSuccess = false;
 
-            // working around NPE when someone puts a null value into systemProps.
-            for (Map.Entry<String,String> e : systemProps.entrySet()) {
-                if (e.getValue()==null)
-                    throw new IllegalArgumentException("System property "+e.getKey()+" has a null value");
-                System.getProperties().put(e.getKey(), e.getValue());
-            }
+            registerSystemProperties();
 
             listener.getLogger().println(formatArgs(goals));
             int r = Main.launch(goals.toArray(new String[goals.size()]));
@@ -178,7 +174,7 @@ public abstract class MavenBuilder extends AbstractMavenBuilder implements Deleg
                     for (Future<?> g : futures)
                         g.cancel(true);
                     listener.getLogger().println(Messages.MavenBuilder_Aborted());
-                    return Result.ABORTED;
+                    return Executor.currentExecutor().abortResult();
                 } catch (ExecutionException e) {
                     e.printStackTrace(listener.error(Messages.MavenBuilder_AsyncFailed()));
                 }

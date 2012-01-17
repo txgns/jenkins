@@ -24,7 +24,7 @@
 package hudson.maven;
 
 import hudson.model.BuildListener;
-import hudson.model.Hudson;
+import jenkins.model.Jenkins;
 import hudson.model.Result;
 import hudson.remoting.DelegatingCallable;
 
@@ -71,10 +71,23 @@ public abstract class AbstractMavenBuilder implements DelegatingCallable<Result,
             buf.append(' ').append(filteredArg);
         }
         return buf.toString();
-    }    
-    
-    
+    }
 
+    /**
+     * Add all the {@link #systemProps hudson defined system properties} into the {@link System#getProperties() system properties}
+     * @throws IllegalArgumentException if a {@link #systemProps hudson system property} has an empty key or null value
+     *      as it blows up Maven.
+     * @see https://groups.google.com/forum/#!topic/jenkinsci-dev/hoxoNi7sNtk/discussion
+     */
+    protected void registerSystemProperties() {
+        for (Map.Entry<String,String> e : systemProps.entrySet()) {
+            if ("".equals(e.getKey()))
+                throw new IllegalArgumentException("System property has an empty key");
+            if (e.getValue()==null)
+                throw new IllegalArgumentException("System property "+e.getKey()+" has a null value");
+            System.getProperties().put(e.getKey(), e.getValue());
+        }
+    }
 
     protected String format(NumberFormat n, long nanoTime) {
         return n.format(nanoTime/1000000);
@@ -82,7 +95,7 @@ public abstract class AbstractMavenBuilder implements DelegatingCallable<Result,
 
     // since reporters might be from plugins, use the uberjar to resolve them.
     public ClassLoader getClassLoader() {
-        return Hudson.getInstance().getPluginManager().uberClassLoader;
+        return Jenkins.getInstance().getPluginManager().uberClassLoader;
     }    
     
 }
