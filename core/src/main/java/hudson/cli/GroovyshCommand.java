@@ -58,7 +58,7 @@ public class GroovyshCommand extends CLICommand {
     @Override
     public int main(List<String> args, Locale locale, InputStream stdin, PrintStream stdout, PrintStream stderr) {
         // this allows the caller to manipulate the JVM state, so require the admin privilege.
-        Hudson.getInstance().checkPermission(Hudson.ADMINISTER);
+        Hudson.getInstance().checkPermission(Hudson.EXECUTE_SCRIPT);
         // TODO: ^as this class overrides main() (which has authentication stuff),
         // how to get ADMIN permission for this command?
 
