@@ -45,6 +45,7 @@ import hudson.model.Environment;
 import hudson.model.Executor;
 import hudson.model.Fingerprint;
 import jenkins.model.Jenkins;
+import hudson.model.Node;
 import hudson.model.ParameterDefinition;
 import hudson.model.ParametersAction;
 import hudson.model.ParametersDefinitionProperty;
@@ -163,10 +164,20 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
         if (mvn == null)
             throw new AbortException(Messages.MavenModuleSetBuild_NoMavenConfigured());
 
-        mvn = mvn.forEnvironment(envs).forNode(
-                Computer.currentComputer().getNode(), log);
-        envs.put("M2_HOME", mvn.getHome());
-        envs.put("PATH+MAVEN", mvn.getHome() + "/bin");
+        
+        mvn = mvn.forEnvironment(envs);
+        
+        Computer computer = Computer.currentComputer();
+        if (computer != null) { // just in case were not in a build
+            Node node = computer.getNode();
+            if (node != null) {
+                mvn = mvn.forNode(node, log);
+                
+                envs.put("M2_HOME", mvn.getHome());
+                envs.put("PATH+MAVEN", mvn.getHome() + "/bin");
+            }
+        }
+        
         return envs;
     }
 
