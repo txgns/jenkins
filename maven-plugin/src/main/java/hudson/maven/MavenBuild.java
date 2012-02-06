@@ -55,6 +55,7 @@ import hudson.util.DescribableList;
 import hudson.util.IOUtils;
 import hudson.util.ReflectionUtils;
 import org.apache.maven.BuildFailureException;
+import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.execution.ReactorManager;
 import org.apache.maven.lifecycle.LifecycleExecutionException;
