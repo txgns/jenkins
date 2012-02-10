@@ -180,9 +180,13 @@ public class MavenModule extends AbstractMavenProject<MavenModule,MavenBuild> im
      */
     public List<MavenModule> getSubsidiaries() {
         List<MavenModule> r = new ArrayList<MavenModule>();
-        for (MavenModule mm : getParent().getModules())
+        for (MavenModule mm : getParent().getModules()) {
+            if(mm == null) LOGGER.log(Level.SEVERE, "MavenModule is null from getParent().getModules()");
+            if(mm.getRelativePath() == null) LOGGER.log(Level.SEVERE, "MavenModule getRelativePath is null");
+            if(getRelativePath() == null) LOGGER.log(Level.SEVERE, "this getRelativePath is null");
             if(mm!=this && mm.getRelativePath().startsWith(getRelativePath()))
                 r.add(mm);
+        }
         return r;
     }
 
