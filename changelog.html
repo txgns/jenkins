@@ -54,10 +54,10 @@ Upcoming changes</a>
 
 <!-- Record your changes in the trunk here. -->
 <div id="trunk" style="display:none"><!--=TRUNK-BEGIN=-->
-<ul class=image>
+<ul class=image> 
   <li class=bug>
-      Fixed a hash DoS vulnerability.
-    (<a href="http://www.ocert.org/advisories/ocert-2011-003.html">SECURITY-22</a>)
+    Rewrote the JDK installer to remove problematic HtmlUnit dependencies.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11420">issue 11420</a>)
   <li class=bug>
     Fixed ConcurrentModificationException in parallel Maven 3 builds.
     (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11256">issue 11256</a>)
@@ -70,14 +70,17 @@ Upcoming changes</a>
   <li class=rfe>
     add new action type to enable plugins to intercept the maven 'goals and options' (needed for security bug fix)
   <li class=bug>
-    Fixed random OutOfMemoryError with console annotations
-  (<a href="https://issues.jenkins-ci.org/browse/JENKINS-9349">issue 9349</a>)
+    Fixed NPE in Subversion polling of Maven jobs.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11592">issue 11592</a>)
   <li class=bug>
-    Fixed the OutOfMemoryError in trying to download/install JDK
-    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10689">issue 10689</a>)
+    maven submodule build fails doing mkdir on master.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10831">issue 10831</a>)
   <li class=bug>
-    If running as a daemon, don't daemonize one more time during restart.
-    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11742">issue 11742</a>)
+    Fixed a <tt>NoSuchMethodError</tt> on JBoss 5.1 EAP
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11960">issue 11960</a>)
+  <li class=bug>
+    Failure to check the username/groupname in the matrix security shouldn't hide the user name
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-9519">issue 9519</a>)
 </ul>
 </div><!--=TRUNK-END=-->
 
