@@ -26,9 +26,9 @@ THE SOFTWARE.
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>org.jenkins-ci</groupId>
-    <artifactId>jenkins</artifactId>
-    <version>1.22</version>
+    <groupId>com.cloudbees</groupId>
+    <artifactId>cloudbees-internal-parent</artifactId>
+    <version>3</version>
   </parent>
 
   <groupId>org.jenkins-ci.main</groupId>
@@ -60,16 +60,6 @@ THE SOFTWARE.
     <developerConnection>scm:git:ssh://git@github.com/jenkinsci/jenkins.git</developerConnection>
     <url>https://github.com/jenkinsci/jenkins</url>
   </scm>
-  <distributionManagement>
-    <site>
-      <id>hudson-www</id>
-      <url>scp://jenkins-ci.org/home/kohsuke/www/hudson-labs.org/maven-site/</url>
-    </site>
-    <snapshotRepository>
-      <id>maven.jenkins-ci.org</id>
-      <url>http://maven.jenkins-ci.org:8081/content/repositories/snapshots</url>
-    </snapshotRepository>
-  </distributionManagement>
 
   <properties>
     <!-- *.html files are in UTF-8, and *.properties are in iso-8859-1, so this configuration is acturally incorrect,
