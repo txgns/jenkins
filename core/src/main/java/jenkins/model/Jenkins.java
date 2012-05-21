@@ -1402,7 +1402,7 @@ public class Jenkins extends AbstractCIBase implements ModifiableItemGroup<TopLe
      * Gets the read-only list of all {@link View}s.
      */
     @Exported
-    public synchronized Collection<View> getViews() {
+    public Collection<View> getViews() {
         return viewGroupMixIn.getViews();
     }
 
