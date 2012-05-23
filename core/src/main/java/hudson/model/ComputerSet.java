@@ -140,7 +140,7 @@ public final class ComputerSet extends AbstractModelObject {
     public int getTotalExecutors() {
         int r=0;
         for (Computer c : get_all()) {
-            if(c.isOnline())
+            if(c.getNode().getMode() != Node.Mode.EXCLUSIVE && c.isOnline())
                 r += c.countExecutors();
         }
         return r;
@@ -153,7 +153,7 @@ public final class ComputerSet extends AbstractModelObject {
     public int getBusyExecutors() {
         int r=0;
         for (Computer c : get_all()) {
-            if(c.isOnline())
+            if(c.getNode().getMode() != Node.Mode.EXCLUSIVE && c.isOnline())
                 r += c.countBusy();
         }
         return r;
