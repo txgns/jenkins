@@ -191,8 +191,7 @@ public abstract class Cause {
 
         @Exported(visibility=3)
         public String getUserName() {
-        	User u = User.get(authenticationName, false);
-            return u != null ? u.getDisplayName() : authenticationName;
+        	return authenticationName;
         }
 
         @Override
