@@ -38,7 +38,6 @@ import hudson.remoting.Callable;
 import hudson.util.ArgumentListBuilder;
 import hudson.util.FormValidation;
 import hudson.util.HttpResponses;
-import hudson.util.IOException2;
 import hudson.util.Secret;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
@@ -226,11 +225,14 @@ public class JDKInstaller extends ToolInstaller {
 
             ArgumentListBuilder args = new ArgumentListBuilder();
             args.add(jdkBundle);
-            args.add("/s");
+            if (isJava15() || isJava14()) {
+                args.add("/s","/v/qn REBOOT=ReallySuppress INSTALLDIR=\\\""+ expectedLocation +"\\\" /L \\\""+logFile+"\\\"");
+            } else {
+                // modern version supports arguments in more sane format.
+                args.add("/s","/v","/qn","/L","\\\""+logFile+"\\\"","REBOOT=ReallySuppress","INSTALLDIR=\\\""+ expectedLocation+"\\\"");
+            }
             // according to http://community.acresso.com/showthread.php?t=83301, \" is the trick to quote values with whitespaces.
             // Oh Windows, oh windows, why do you have to be so difficult?
-            args.add("/v/qn REBOOT=Suppress INSTALLDIR=\\\""+ expectedLocation +"\\\" /L \\\""+logFile+"\\\"");
-
             int r = launcher.launch().cmds(args).stdout(out)
                     .pwd(new FilePath(launcher.getChannel(), expectedLocation)).join();
             if (r != 0) {
@@ -249,6 +251,14 @@ public class JDKInstaller extends ToolInstaller {
 
             break;
         }
+    }
+
+    private boolean isJava15() {
+        return id.contains("-1.5");
+    }
+
+    private boolean isJava14() {
+        return id.contains("-1.4");
     }
 
     /**
@@ -356,6 +366,7 @@ public class JDKInstaller extends ToolInstaller {
             if(jpc.getUserName() != null)
                 hc.getState().setProxyCredentials(AuthScope.ANY,new UsernamePasswordCredentials(jpc.getUserName(),jpc.getPassword()));
         }
+
         int authCount=0, totalPageCount=0;  // counters for avoiding infinite loop
 
         HttpMethodBase m = new GetMethod(primary.filepath);
@@ -661,7 +672,7 @@ public class JDKInstaller extends ToolInstaller {
 
         public FormValidation doCheckAcceptLicense(@QueryParameter boolean value) {
             if (username==null || password==null)
-                return FormValidation.errorWithMarkup(Messages.JDKInstaller_RequireOracleAccount(Stapler.getCurrentRequest().getContextPath()+getDescriptorUrl()+"/enterCredential"));
+                return FormValidation.errorWithMarkup(Messages.JDKInstaller_RequireOracleAccount(Stapler.getCurrentRequest().getContextPath()+'/'+getDescriptorUrl()+"/enterCredential"));
             if (value) {
                 return FormValidation.ok();
             } else {

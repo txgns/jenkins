@@ -38,6 +38,15 @@ THE SOFTWARE.
     <p:config-upstream-pseudo-trigger />
   </p:config-trigger>
 
+  <f:section title="${%Pre Steps}">
+    <f:block>
+      <f:hetero-list name="prebuilder" hasHeader="true"
+                     descriptors="${h.getBuilderDescriptors(it)}"
+                     items="${it.prebuilders}"
+                     addCaption="${%Add pre-build step}"/>
+    </f:block>
+  </f:section>
+  
   <f:section title="${%Build}">
     <j:set var="mavens" value="${it.descriptor.mavenDescriptor.installations}" />
     <j:if test="${empty(mavens)}">
@@ -89,6 +98,8 @@ THE SOFTWARE.
         checked="${!it.aggregatorStyleBuild}" />
       <f:optionalBlock name="maven.usePrivateRepository" title="${%Use private Maven repository}" help="/plugin/maven-plugin/private-repository.html"
         checked="${it.usesPrivateRepository()}" />
+      <f:optionalBlock name="maven.perModuleEmail" title="${%Send e-mail for each failed module}" help="/plugin/maven-plugin/per-module-email.html"
+        checked="${it.isPerModuleEmail()}" />
       <f:optionalBlock name="maven.resolveDependencies" title="${%Resolve Dependencies during Pom parsing}" 
         checked="${it.isResolveDependencies()}" /> 
       <f:optionalBlock name="maven.runHeadless" title="${%Run Headless}" help="/plugin/maven-plugin/run-headless.html"
@@ -104,8 +115,45 @@ THE SOFTWARE.
             <f:option selected="${it.mavenValidationLevel == level.value}" value="${level.value}">${level.key}</f:option>
           </j:forEach>
         </select>
-      </f:entry>                 
+      </f:entry>
+
+      <j:set var="mavenSettingsConfigs" value="${it.allMavenSettingsConfigs}" />
+      <f:entry title="${%Maven Settings Configs}">
+        <select class="setting-input" name="maven.mavenSettingsConfigId">
+          <f:option value="">- select -</f:option>
+          <j:forEach var="settingConfig" items="${mavenSettingsConfigs}">
+            <f:option selected="${it.settingConfigId == settingConfig.id}" value="${settingConfig.id}">${settingConfig.name}</f:option>
+          </j:forEach>
+        </select>
+      </f:entry>
+
+      <j:set var="mavenGlobalSettingsConfigs" value="${it.allGlobalMavenSettingsConfigs}" />
+      <f:entry title="${%Maven Global Settings Configs}">
+        <select class="setting-input" name="maven.mavenGlobalSettingConfigId">
+          <f:option value="">- select -</f:option>
+          <j:forEach var="globalSettingConfig" items="${mavenGlobalSettingsConfigs}">
+            <f:option selected="${it.globalSettingConfigId == globalSettingConfig.id}" value="${globalSettingConfig.id}">${globalSettingConfig.name}</f:option>
+          </j:forEach>
+        </select>
+      </f:entry>
+
     </f:advanced>
+  </f:section>
+
+  <f:section title="${%Post Steps}">
+    <f:entry description="${%criteriaDescription}">
+      <f:radio name="post-steps.runIfResult" value="success" checked="${instance.runPostStepsIfResult.toString() =='SUCCESS'}" title="${%runIfStable}"/>
+      <st:nbsp />
+      <f:radio name="post-steps.runIfResult" value="unstable" checked="${instance.runPostStepsIfResult.toString() =='UNSTABLE'}" title="${%runIfSuccessful}"/>
+      <st:nbsp />
+      <f:radio name="post-steps.runIfResult" value="failure" checked="${instance==null || instance.runPostStepsIfResult.toString() =='FAILURE'}" title="${%runAlways}"/>
+    </f:entry>
+    <f:block>
+      <f:hetero-list name="postbuilder" hasHeader="true"
+                     descriptors="${h.getBuilderDescriptors(it)}"
+                     items="${it.postbuilders}"
+                     addCaption="${%Add post-build step}"/>
+    </f:block>
   </f:section>
 
   <j:invokeStatic var="reporters" className="hudson.maven.MavenReporters" method="getConfigurableList" />
@@ -114,6 +162,7 @@ THE SOFTWARE.
                       descriptors="${reporters}"
                       instances="${it.reporters.toMap()}" />
   </j:if>
+
 
   <p:config-buildWrappers />
   <p:config-publishers />

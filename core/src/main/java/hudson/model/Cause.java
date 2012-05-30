@@ -36,7 +36,7 @@ import org.kohsuke.stapler.export.ExportedBean;
 import com.thoughtworks.xstream.converters.UnmarshallingContext;
 
 /**
- * Cause object base class.  This class hierarchy is used to keep track of why 
+ * Cause object base class.  This class hierarchy is used to keep track of why
  * a given build was started. This object encapsulates the UI rendering of the cause,
  * as well as providing more useful information in respective subypes.
  *
@@ -89,13 +89,13 @@ public abstract class Cause {
         public LegacyCodeCause() {
             stackTrace = new Exception().getStackTrace();
         }
-        
+
         @Override
         public String getShortDescription() {
             return Messages.Cause_LegacyCodeCause_ShortDescription();
         }
     }
-    
+
     /**
      * A build is triggered by the completion of another build (AKA upstream build.)
      */
@@ -116,7 +116,7 @@ public abstract class Cause {
         public UpstreamCause(AbstractBuild<?,?> up) {
             this((Run<?,?>)up);
         }
-        
+
         public UpstreamCause(Run<?, ?> up) {
             upstreamBuild = up.getNumber();
             upstreamProject = up.getParent().getFullName();
@@ -152,7 +152,7 @@ public abstract class Cause {
         public String getUpstreamUrl() {
             return upstreamUrl;
         }
-        
+
         @Override
         public String getShortDescription() {
             return Messages.Cause_UpstreamCause_ShortDescription(upstreamProject, upstreamBuild);
@@ -182,6 +182,9 @@ public abstract class Cause {
 
     /**
      * A build is started by an user action.
+     *
+     * @deprecated 1.428
+     *   use {@link UserIdCause}
      */
     public static class UserCause extends Cause {
         private String authenticationName;
@@ -208,6 +211,59 @@ public abstract class Cause {
         @Override
         public int hashCode() {
             return 295 + (this.authenticationName != null ? this.authenticationName.hashCode() : 0);
+        }
+    }
+
+    /**
+     * A build is started by an user action.
+     *
+     * @since 1.427
+     */
+    public static class UserIdCause extends Cause {
+
+        private String userId;
+
+        public UserIdCause() {
+            User user = User.current();
+            this.userId = (user == null) ? null : user.getId();
+        }
+
+        @Exported(visibility = 3)
+        public String getUserId() {
+            return userId;
+        }
+
+        @Exported(visibility = 3)
+        public String getUserName() {
+            String userName = "anonymous";
+            if (userId != null) {
+                User user = User.get(userId, false);
+                if (user != null)
+                    userName = user.getDisplayName();
+            }
+            return userName;
+        }
+
+        @Override
+        public String getShortDescription() {
+            return Messages.Cause_UserIdCause_ShortDescription(getUserName());
+        }
+
+        @Override
+        public void print(TaskListener listener) {
+            listener.getLogger().println(Messages.Cause_UserIdCause_ShortDescription(
+                    HyperlinkNote.encodeTo("/user/"+getUserId(), getUserName())));
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof UserIdCause && Arrays.equals(new Object[]{userId},
+                    new Object[]{((UserIdCause) o).userId});
+        }
+
+        @Override
+        public int hashCode() {
+            return 295 + (this.userId != null ? this.userId.hashCode() : 0);
         }
     }
 

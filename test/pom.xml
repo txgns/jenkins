@@ -29,11 +29,10 @@ THE SOFTWARE.
   <parent>
     <artifactId>pom</artifactId>
     <groupId>org.jenkins-ci.main</groupId>
-    <version>1.424.5-SNAPSHOT</version>
+    <version>1.447.1-SNAPSHOT</version>
   </parent>
   <groupId>org.jenkins-ci.main</groupId>
   <artifactId>jenkins-test-harness</artifactId>
-  <packaging>stapler-jar</packaging>
 
   <name>Test harness for Jenkins and plugins</name>
   <description>
@@ -63,6 +62,11 @@ THE SOFTWARE.
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>ant</artifactId>
+      <version>1.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>subversion</artifactId>
       <version>1.25</version>
     </dependency>
@@ -85,18 +89,16 @@ THE SOFTWARE.
     </dependency>
     <dependency>
       <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.8.2</version>
+      <artifactId>junit-dep</artifactId>
     </dependency>
-    <!--dependency>
-      <groupId>org.openqa.selenium.client-drivers</groupId>
-      <artifactId>selenium-java-client-driver</artifactId>
-      <version>1.0-beta-1</version>
-    </dependency-->
+    <dependency>
+      <groupId>org.hamcrest</groupId>
+      <artifactId>hamcrest-library</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.jenkins-ci</groupId>
       <artifactId>htmlunit</artifactId>
-      <version>2.6-jenkins-5</version>
+      <version>2.6-jenkins-6</version>
       <exclusions>
         <exclusion>
           <!--  hides JDK DOM classes in Eclipse -->
@@ -130,7 +132,6 @@ THE SOFTWARE.
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
-      <version>1.8.5</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -180,6 +181,7 @@ THE SOFTWARE.
             <artifactId>ant</artifactId>
             <version>1.8.0</version>
           </dependency>
+          <!-- Usually a dependency of ant, but some people seem to have an incomplete ant POM. See JENKINS-11416 -->
           <dependency>
             <groupId>org.apache.ant</groupId>
             <artifactId>ant-launcher</artifactId>
@@ -214,7 +216,7 @@ THE SOFTWARE.
                 <configuration>
                   <fork>true</fork>
                   <concurrency>${concurrency}</concurrency>
-                  <argLine>-Dfile.encoding=UTF-8</argLine>
+                  <argLine>-Dfile.encoding=UTF-8 -XX:MaxPermSize=128m</argLine>
                   <timeout>300</timeout>
                   <systemProperties>
                     <property>
@@ -233,6 +235,10 @@ THE SOFTWARE.
                     <property>
                       <name>buildDirectory</name>
                       <value>${project.build.directory}</value>
+                    </property>
+                    <property>
+                      <name>java.awt.headless</name>
+                      <value>true</value>
                     </property>
                   </systemProperties>
                 </configuration>

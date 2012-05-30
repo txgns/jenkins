@@ -48,7 +48,6 @@ import hudson.util.RunList;
 import hudson.views.ListViewColumn;
 import hudson.widgets.Widget;
 import jenkins.model.Jenkins;
-import net.sf.json.JSONObject;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
@@ -455,9 +454,12 @@ public abstract class View extends AbstractModelObject implements AccessControll
     }
     
     public Object getDynamic(String token) {
-        for (Action a : getActions())
+        for (Action a : getActions()) {
+            String url = a.getUrlName();
+            if (url==null)  continue;
             if(a.getUrlName().equals(token))
                 return a;
+        }
         return null;
     }
 
@@ -698,6 +700,7 @@ public abstract class View extends AbstractModelObject implements AccessControll
      */
     public final synchronized void doConfigSubmit( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, FormException {
         checkPermission(CONFIGURE);
+        requirePOST();
 
         submit(req);
 
@@ -706,8 +709,6 @@ public abstract class View extends AbstractModelObject implements AccessControll
         filterQueue = req.getParameter("filterQueue") != null;
 
         rename(req.getParameter("name"));
-
-        JSONObject json = req.getSubmittedForm();
 
         getProperties().rebuild(req, req.getSubmittedForm(), getApplicablePropertyDescriptors());
 

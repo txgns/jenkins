@@ -54,10 +54,147 @@ Upcoming changes</a>
 
 <!-- Record your changes in the trunk here. -->
 <div id="trunk" style="display:none"><!--=TRUNK-BEGIN=-->
-<ul class=image> 
+<ul class=image>
+</ul>
+</div><!--=TRUNK-END=-->
+
+<!-- these changes are controlled by the release process. DO NOT MODIFY -->
+<div id="rc" style="display:none;"><!--=BEGIN=-->
+<h3><a name=v1.447>What's new in 1.447</a> <!--=DATE=--></h3>
+<ul class=image>
   <li class=bug>
-    Rewrote the JDK installer to remove problematic HtmlUnit dependencies.
-    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11420">issue 11420</a>)
+    Fixed a hash DoS vulnerability.
+    (<a href="http://www.ocert.org/advisories/ocert-2011-003.html">SECURITY-22</a>)
+  <li class=bug>
+  NullPointerException in maven-plugin: Maven3Builder / ExecutedMojo (1.445)
+  (<a href="https://issues.jenkins-ci.org/browse/JENKINS-12259">issue 12259</a>)
+  <li class='rfe'>
+    Reduced overhead of maven jobs.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11883">issue 11883</a>)
+  <li class=bug>
+    Link to user profile from console output should go to the user ID, not the user name
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-12279">issue 12279</a>)
+</ul>
+</div><!--=END=-->
+<h3><a name=v1.446>What's new in 1.446</a> (2012/01/02)</h3>
+<ul class=image>
+  <li class='major rfe'>
+    Jenkins now acts as an SSH daemon
+    (<a href="https://wiki.jenkins-ci.org/display/JENKINS/Jenkins+SSH">doc</a>)
+  <li class='rfe'>
+    Added hyperlinks to console output
+    (<a href="https://github.com/jenkinsci/jenkins/pull/334">pull #334</a>)
+  <li class='rfe'>
+    Add option to disable mailnotifications for each failed maven module.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-5695">issue 5695</a>)
+  <li class='rfe'>
+    Sort workspace file list based on request locale.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-12139">issue 12139</a>)
+</ul>
+<h3><a name=v1.445>What's new in 1.445</a> (2011/12/26)</h3>
+<ul class=image>
+  <li class=rfe>
+    CLI now supports using HTTP proxy for tunneling its TCP/IP connection.
+  <li class=rfe>
+    CLI now supports routing TCP/IP requests without going through HTTP reverse proxy.
+  <li class=rfe>
+    If reload fails, don't let the partially loaded state running, or risk the user overwriting the configs they have.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11204">issue 11204</a>)
+  <li class=rfe>
+    Update center UI improvement. "Install" button is now always visisble.
+  <li class=rfe>
+    Configuration UI improvement. "Save" button is always visible.
+  <li class=bug>
+    Fixed a bug where a large output from Maven can cause module log output to go out of sync with module build log files.
+  <li class=bug>
+    Confusing error message when the --username option is used on the system with the .ssh directory.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11873">issue 11873</a>)
+  <li class=bug>
+    Fixed prematurely re-drawn matrix test result graph.
+</ul>
+<h3><a name=v1.444>What's new in 1.444</a> (2011/12/19)</h3>
+<ul class=image>
+  <li class=rfe>
+    Make the matrix configuration table looks like the rest of Jenkins tables.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10251">issue 10251</a>)
+  <li class=rfe>
+    Improved Italian translation.
+  <li class=bug>
+    Fixed the incorrect table border cropping
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-12061">issue 12061</a>)
+</ul>
+<h3><a name=v1.443>What's new in 1.443</a> (2011/12/12)</h3>
+<ul class=image>
+  <li class=bug>
+    Wagon 2.0 upgrade broke the Redeploy task for webdav repositories
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11318">issue 11318</a>)
+  <li class=bug>
+    Self-restart wasn't working with 32bit x86 Solaris
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-6629">issue 6629</a>)
+  <li class=bug>
+    Fixed IPv6 handling in Winstone
+    (<a href="https://github.com/jenkinsci/winstone/pull/2">pull request #2</a>)
+  <li class=bug>
+    OS X installer can fail to set the file permissions correctly.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11714">issue 11714</a>)
+  <li class=bug>
+    Build history time line wasn't working for IE8.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-7403">issue 7403</a>)
+  <li class=bug>
+    Build history time line should be resizable
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11834">issue 11834</a>)
+  <li class=bug>
+    Fixed a bug in Windows registry enumeration with large data.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11767">issue 11767</a>)
+  <li class=bug>
+    Debian/Ubuntu init script does not wait long enough during stop operation
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11744">issue 11744</a>)
+  <li class=bug>
+    Jenkins takes up too much space in /var/run
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11366">issue 11366</a>)
+  <li class=bug>
+    Fixed a <tt>NoSuchMethodError</tt> on JBoss 5.1 EAP
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11960">issue 11960</a>)
+  <li class=bug>
+    Use $JENKINS_USER in Debian postinst script.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-5771">issue 5771</a>)
+  <li class=bug>
+    Fixed a bug where Jenkins failed to show localized text for Hebrew, Indonesian, and Yedish.
+  <li class=bug>
+    Canonical name of Maven artifacts may end with "-" if classifier is empty.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11819">issue 11819</a>) 
+  <li class=rfe>
+    Proxy configuration supported "no proxy host" setting to allow some hosts to bypass proxy.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-8710">issue 8710</a>)
+  <li class=rfe>
+    Added/improved localization to Arabic, Bulgarian, Catalan, Czech, Danish, German, Greek, Esperanto, Spanish, Estonian, Basque, Finnish, French, Hebrew, Hindi, Hungarian, Indonesian, Icelandic, Italian, Kannada, Korean, Lithuanian, Latvian, Marathi, Norwegian, Dutch, Polish, Portugeese, Romanian, Russian, Slovak, Slovenian, Serbian, Swedish, Telgu, Turkish, Ukrainian, and Chinese. Thanks everyone!
+</ul>
+<h3><a name=v1.442>What's new in 1.442</a> (2011/12/05)</h3>
+<ul class=image>
+  <li class=bug>
+    Workspaces mixed when launching multiple concurrent builds.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11825">issue 11825</a>)
+  <li class=bug>
+    Fixed ConcurrentModificationException in parallel Maven 3 builds.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11256">issue 11256</a>)
+  <li class=bug>
+    Copy artifacts fails on windows slaves due to failing to set a timestamp.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11073">issue 11073</a>)
+  <li class=rfe>
+    Upgrade aether version to 1.13 and sisu to 2.3.0 .
+  <li class=rfe>
+    add new action type to enable plugins to intercept the maven 'goals and options' 
+    (<a href="https://github.com/jenkinsci/jenkins/pull/316">pull #316</a>)
+  <li class=rfe>
+    Upgrade to Maven Wagon 2.1 which supports preemptive authz for dav deployment.
+  <li class='major rfe'>
+    Plugins can be now installed without taking Jenkins offline.
+</ul>
+<h3><a name=v1.441>What's new in 1.441</a> (2011/11/27)</h3>
+<ul class=image>
+  <li class=bug>
+    If running as a daemon, don't daemonize one more time during restart.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11742">issue 11742</a>)
   <li class=bug>
     Fixed ConcurrentModificationException in parallel Maven 3 builds.
     (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11256">issue 11256</a>)
@@ -72,21 +209,388 @@ Upcoming changes</a>
   <li class=bug>
     Fixed NPE in Subversion polling of Maven jobs.
     (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11592">issue 11592</a>)
+  <li class=rfe>
+    CLI jar now has the version number in the manifest as well as the "-version" option.
+</ul>
+<h3><a name=v1.440>What's new in 1.440</a> (2011/11/17)</h3>
+<ul class=image>
+  <li class=bug>
+    Sorting "diff" in test result requires 2 clicks
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-5460">issue 5460</a>)
+  <li class=bug>
+    java.io.IOException: Unexpected termination of the channel - SEVERE: I/O error in channel Chunked connection when using jenkins-cli.jar (works on older Hudson version)
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11130">issue 11130</a>)
+  <li class=bug>
+    Debian init script now returns the proper exit code from the 'status' command.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11306">issue 11306</a>)
+  <li class=bug>
+    Fixed a bug in Mac OS X ProcessKiller argument parsing.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-9634">issue 9634</a>)
+  <li class=bug>
+    Dependency wasn't recalculated with CLI "update-job" command.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11636">issue 11636</a>)
+  <li class=rfe>
+    Sortable table wasn't "stable" when there are same values in different rows
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11551">issue 11551</a>)
+  <li class=rfe>
+    Managed windows slaves can be now run as a specific user account
+    (<a href="https://github.com/jenkinsci/jenkins/pull/289">pull #289</a>) 
+  <li class=rfe>
+    Description field now has the preview button to test it inline.
+    (<a href="https://github.com/jenkinsci/jenkins/pull/243">pull #243</a>)
+  <li class=rfe>
+    Record fingerprints of parent POMs - only working with Maven 2.2 or newer
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-8383">issue 8383</a>)
+  <li class=rfe>
+    Maven mojo records can be now sorted
+</ul>
+<h3><a name=v1.439>What's new in 1.439</a> (2011/11/14)</h3>
+<ul class=image>
+  <li class=bug>
+    Fixed random OutOfMemoryError with console annotations
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-9349">issue 9349</a>)
+  <li class=bug>
+    Fix small UI issue on build queue.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11637">issue 11637</a>)
+  <li class=rfe>
+    Textbox for numbers should be type=number
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11513">issue 11513</a>)
+  <li class=rfe>
+    Added an extension point to sort matrix configuration builds when executing them sequentially
+    (<a href="https://github.com/jenkinsci/jenkins/pull/301">pull #301</a>) 
+</ul>
+<h3><a name=v1.438>What's new in 1.438</a> (2011/11/07)</h3>
+<ul class=image>
+  <li class='major bug'>
+    Thanks to Luca De Fulgentis, fixed XSS vulnerability with the built-in servlet container.
+    (SECURITY-17)
+  <li class=bug>
+    Repeated ids, expandTextArea() and multiple "Invoke Ant" build steps.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10989">issue 10989</a>)
+  <li class=bug>
+    Improve the resilience to the missing 'nextBuildNumber' file.
+  (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11563">issue 11563</a>)
+  <li class=bug>
+    NPE when running Maven 3 jobs with -T.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11458">issue 11458</a>)
+  <li class=rfe>
+    Support mailto: links in actions.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-7725">issue 7725</a>)
+  <li class=rfe>
+    Rewrote the JDK installer to remove problematic HtmlUnit dependencies.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11420">issue 11420</a>)
+</ul>
+<h3><a name=v1.437>What's new in 1.437</a> (2011/10/31)</h3>
+<ul class=image>
+  <li class=rfe>
+    Added MIME headers with job name and build result to notification emails.
+  <li class=bug>
+    "Changes" in Build Summary broken in IE standard mode since 1.434
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11383">issue 11383</a>)
+  <li class=bug>
+    GET request to configSubmit wipes some configuration
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11397">issue 11397</a>, <a href="https://issues.jenkins-ci.org/browse/JENKINS-7847">issue 7847</a>)
+  <li class=bug>
+    Jenkins logo headless when server is starting.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11444">issue 11444</a>)
+  <li class=rfe>
+    Allow update center CA certificates to be placed in $JENKINS_HOME/update-center-rootCAs
+</ul>
+<h3><a name=v1.436>What's new in 1.436</a> (2011/10/23)</h3>
+<ul class=image>
+  <li class=bug>
+    Fixed a plugin boot problem that causes Jenkins to startup gracefully when some optional plugin dependencies aren't met (such as ivy to nant)
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11279">issue 11279</a>)
+  <li class=bug>
+    Avoid overwriting the repository definitions.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11229">issue 11229</a>)
+  <li class=bug>
+    "Tailing" the console of an active job broken in 1.434
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11307">issue 11307</a>)
+  <li class=bug>
+    Fingerprint's age should be sorted by its elapsed time
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-9210">issue 9210</a>)
+  <li class=rfe>
+    Improved the classloading performance
+  <li class=rfe>
+    Expose original file name as a String parameter on for FileParameters
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11326">issue 11326</a>)
+  <li class=rfe>
+    Added hyperlinks to build trigger console messages.
+    (<a href="https://github.com/jenkinsci/jenkins/pull/291">pull #291</a>) 
+</ul>
+<h3><a name=v1.435>What's new in 1.435</a> (2011/10/17)</h3>
+<ul class=image>
+  <li class=bug>
+    Fixed the XML encoding sniffing problem in environments that have old JAXP
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-4525">issue 4525</a>)
+  <li class=bug>
+    Suggestions for search do not work since 1.433
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11208">issue 11208</a>)
+  <li class=rfe>
+    "System Admin E-mail Address" is confusing label for notification mail "from"
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11209">issue 11209</a>)    
+</ul>
+<h3><a name=v1.434>What's new in 1.434</a> (2011/10/09)</h3>
+<ul class=image>
+  <li class=bug>
+    Add support for android-maven-plugin integration test reports and fix an error with 2.x maven-android-plugin
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10913">issue 10913</a>)    
+  <li class=bug>
+    HTTPS on port 80 makes Jenkins infer his URI incorrectly
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11151">issue 11151</a>)
+  <li class=bug>
+    Resizable textarea handle does not work if CodeMirror is enabled
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11132">issue 11132</a>)
+  <li class=bug>
+    "Alternate settings file" build parameter is getting cleaned after job execution
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10955">issue 10955</a>)
+  <li class=rfe>
+    upgrade Apache Maven Wagon to 2.0.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11164">issue 11164</a>)
+  <li class=rfe>
+    Made build SCM change set a weak reference to reduce heap usage 
+  <li class=rfe>
+    Added a way to show avatar images on user pages.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-7494">issue 7494</a>)    
+</ul>
+<h3><a name=v1.433>What's new in 1.433</a> (2011/10/01)</h3>
+<ul class=image>
+  <li class=bug>
+    Port on HTTP Proxy Configure accepts characters except the digits
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11068">issue 11068</a>)
+  <li class=bug>
+    Broken link in help text of HTTP Proxy Configuration
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11051">issue 11051</a>)
+  <li class=bug>
+    Broken help button for Log Recorders
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11052">issue 11052</a>)
+  <li class=bug>
+    Fatal exception apparently within Xalan code on AIX
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10851">issue 10851</a>) 
+  <li class=bug>
+    NOT_BUILT &amp; other build status are reported inconsistently
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11013">issue 11013</a>)
+  <li class=bug>
+    Canceling a parent multi-config build produces non-deserializable build.xml
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10903">issue 10903</a>)
+  <li class=bug>
+    Label of the master should be editable if cloud is set up.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11100">issue 11100</a>)
+  <li class=rfe>
+    Improved the error diagnosis by ping-driven connection termination.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11097">issue 11097</a>)
+  <li class=rfe>
+    YUI updated to 2.9
+  <li class=rfe>
+    Concurrent build is no longer beta
+  <li class=rfe>  
+    Permission check added when viewing configuration of computer set.
+  <li class='major rfe'>  
+    Maven project now supports arbitrary build steps
+    (<a href="https://github.com/jenkinsci/jenkins/pull/233">pull #233</a>) 
+  <li class='major rfe'>  
+    Jenkins internally started using Guice for loading extensions
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-8751">issue 8751</a>) 
+</ul>
+<h3><a name=v1.432>What's new in 1.432</a> (2011/09/25)</h3>
+<ul class=image>
+  <li class=bug>
+    JDK auto-installation does not respect proxy settings
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10634">issue 10634</a>)
+  <li class=bug>
+    Tools download does not respect proxy settings
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-5271">issue 5271</a>)
+  <li class=bug>
+    Recover from a corrupted JSON update data file automatically
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-7034">issue 7034</a>)
+  <li class=bug>
+    Fixed the reported system reboot problem on installing JDK on Windows
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-7288">issue 7288</a>)
+  <li class=bug>
+    Fixed the OutOfMemoryError in trying to download/install JDK
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10689">issue 10689</a>)
+  <li class=rfe>
+    Enabled shortcut key on script console
+  <li class=rfe>
+    Remember sortable table state into local storage
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-203">issue 203</a>)
+</ul>
+<h3><a name=v1.431>What's new in 1.431</a> (2011/09/19)</h3>
+<ul class=image>
+  <li class=bug>
+    Jenkins unable to start if the /tmp/jna catalogue exists and is owned by a different user
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10774">issue 10774</a>)
+  <li class=rfe>
+    Display the file size in the artifact list page
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-7798">issue 7798</a>)
+  <li class=rfe>
+    Fixed a file permission handling in the unzip code.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-9577">issue 9577</a>)
+  <li class=rfe>
+    Add "un/check all" buttons on matrix-based security.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-7565">issue 7565</a>)
+</ul>
+<h3><a name=v1.430>What's new in 1.430</a> (2011/09/11)</h3>
+<ul class=image>
+  <li class=bug>
+    Added way to mark all plugins to be updated at once
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10443">issue 10443</a>)
+  <li class=bug>
+    Fixed a bug in the UI JavaScript behavior with IE
+  <li class=bug>
+    Matrix project pages don't show latest test results.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10864">issue 10864</a>)
+  <li class=rfe>
+  Bundling <a href="https://wiki.jenkins-ci.org/display/JENKINS/Translation+Assistance+Plugin">the translation assistance plugin</a> in the hope of increasing the contribution.
+  <li class=rfe>
+  Introduce a fine-grained permission to control who is allowed to run the Groovy Console.
+  <li class=rfe>
+    Maven jobs should include fingerprints of their parent POMs
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-8383">issue 8383</a>)
+  <li class=rfe>
+    Add support for maven-android-plugin integration test reports
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10913">issue 10913</a>)    
+</ul>
+<h3><a name=v1.429>What's new in 1.429</a> (2011/09/06)</h3>
+<ul class=image>
   <li class=bug>
     maven submodule build fails doing mkdir on master.
     (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10831">issue 10831</a>)
   <li class=bug>
-    Fixed a <tt>NoSuchMethodError</tt> on JBoss 5.1 EAP
-    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11960">issue 11960</a>)
+    CLI clients should be able to see plugin classes
+    <a href="http://jenkins.361315.n4.nabble.com/channel-example-and-plugin-classes-gives-ClassNotFoundException-tp3756092p3756092.html">report</a>
   <li class=bug>
-    Failure to check the username/groupname in the matrix security shouldn't hide the user name
-    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-9519">issue 9519</a>)
+    Fixed NPE in running <tt>assembly:assembly</tt> with Maven3
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-8837">issue 8837</a>)
+  <li class=bug>
+    Fixed a bug in one of the file copy operations that caused the copy-artifact plugin to fail to preserve the timestamp.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10805">issue 10805</a>)
+  <li class=bug>
+    Jenkins didn't start on IBM JDK.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10810">issue 10810</a>)
+  <li class=bug>
+    Fixed a possible NPE during the boot sequence
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10799">issue 10799</a>)
+  <li class=rfe>
+    stdin/stdout based remote slaves, such as ones launched via SSH or script, now does a better redirect to avoid interference with JVM output to stdout.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-8856">issue 8856</a>)
+  <li class=bug>
+    Project names in fingerprint records weren't updated when a project is renamed.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10330">issue 10330</a>)
+  <li class=rfe>
+    External job submision now supports &ly;displayName> and &lt;description> elements
+    (<a href="https://github.com/jenkinsci/jenkins/pull/215">pull 215</a>)
 </ul>
-</div><!--=TRUNK-END=-->
+<h3><a name=v1.428>What's new in 1.428</a> (2011/08/29)</h3>
+<ul class=image>
+  <li class=bug>
+    CLI jar download was making the browser prefer a wrong file name.
+  <li class=bug>
+    Link "Started by user XXX" broken on build status page if user name modified.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10698">issue 10698</a>)
+  <li class=bug>
+    404 error when clicking "Build History" link on MyView.
+  <li class=bug>
+    Add a DefaultViewsTabBar config.jelly to avoid jelly exception
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10640">issue 10640</a>)
+  <li class=rfe>
+    go back to view page when job is deleted.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10510">issue 10510</a>)
+  <li class=rfe>
+    A Global Environment variable with an empty key would fail maven builds since 1.424. Ignore these variables instead of failing the build.
+    (<a href="https://groups.google.com/forum/#!searchin/jenkinsci-users/timp/jenkinsci-users/YThhsdGBVwM/7_7GMYIYiRIJ">report</a>)
 
-<!-- these changes are controlled by the release process. DO NOT MODIFY -->
-<div id="rc" style="display:none;"><!--=BEGIN=-->
-<h3><a name=v1.424>What's new in 1.424</a> <!--=DATE=--></h3>
+</ul>
+<h3><a name=v1.427>What's new in 1.427</a> (2011/08/19)</h3>
+<ul class=image>
+  <li class='major bug'>
+    Builds failing while archiving test result if build is running in different VM (e.g. IBM J9) than Jenkins is
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10030">issue 10030</a>)
+  <li class='major bug'>
+    Maven builds failing with NullPointerException at the end.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10715">issue 10715</a>)
+  <li class=bug>
+    Jenkins self-restart causes process name to change from java to exe
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-9206">issue 9206</a>)
+  <li class=bug>
+    Fixed a bug where SSH public key authentication for CLI wasn't working for username/password based security realm.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10647">issue 10647</a>)
+  <li class=bug>
+    Failing to install a plugin from CLI should result in non-zero exit code
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10057">issue 10057</a>)
+  <li class=bug>
+    Fixed NPE in trying to diagnose undefined job error.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-7826">issue 7826</a>)
+  <li class=bug>
+    Disable auto refresh in slave markOffline screen
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10608">issue 10608</a>)
+  <li class=bug>
+    Workspace-cleanup thread shouldn't delete custom workspace directories
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-8880">issue 8880</a>)
+  <li class=rfe>
+    Improved the speed of shutdown
+  <li class=rfe>
+    RPM package should honor user-modified configuration file better
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10037">issue 10037</a>)
+  <li class=rfe>
+    OS X package now provides customizable commandline
+    (<a href="https://github.com/jenkinsci/jenkins/pull/195">pull request 195</a>)
+  <li class=rfe>
+    Improved the remote API for queue
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10414">issue 10414</a>)
+  <li class=rfe>
+    Added a dignosis CLI command to report the current granted authorities.
+  <li class=rfe>
+    Added a CLI command to set display name of the build
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-9126">issue 9126</a>)
+  <li class=rfe>
+    Added an option in CLI build command to check for SCM changes before carrying out a build
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-9968">issue 9968</a>)
+  <li class=rfe>
+    If CLI fails to connect via a JNLP Slave port, fall back to HTTP full-duplex.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10611">issue 10611</a>)
+  <li class=rfe>
+    Added two CLI commands to manipulate job by its XML definition.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-8797">issue 8797</a>)
+  <li class=rfe>
+    Added two CLI commands to shutdown Jenkins
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-6594">issue 6594</a>)
+  <li class=rfe>
+    Fixed unclear text for Tabs with no jobs
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-9330">issue 9330</a>)
+</ul>
+<h3><a name=v1.426>What's new in 1.426</a> (2011/08/15)</h3>
+<ul class=image>
+  <li class=bug>
+    Auto Install JDK asks for Oracle account, but the link goes 404.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10556">issue 10556</a>)
+  <li class=rfe>
+    Record and display who aborted builds.
+  <li class=rfe>
+    Added API token support.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-9363">issue 9363</a>)
+  <li class=rfe>
+    Maven Plugin can use settings and global settings files provided by the config provider plugin
+  <li class=bug>
+    Fixed background of title image
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-9571">issue 9571</a>)
+</ul>
+<h3><a name=v1.425>What's new in 1.425</a> (2011/08/08)</h3>
+<ul class=image>
+  <li class=rfe>
+    Make syntax highlighting optional
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10509">issue 10509</a>)
+  <li class=bug>
+    isPartial() check for matrix builds now only reference active configurations.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10197">issue 10197</a>)
+  <li class=bug>
+    Maven jobs building plugins were no longer identified as upstream snapshot dependencies.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10530">issue 10530</a>)
+  <li class=bug>
+    MAVEN_OPTS configuration wasn't expanding environment variables.
+</ul>
+<h3><a name=v1.424>What's new in 1.424</a> (2011/08/01)</h3>
 <ul class=image>
   <li class='major bug'>
     Java Web Start binaries weren't signed.
@@ -115,8 +619,12 @@ Upcoming changes</a>
   <li class='major rfe'>
     Updated JDK installer to reflect changes in Oracle download server
     (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10511">issue 10511</a>)
+  <li class='major bug'>
+    Fixed memory leak in the master/slave communication.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10424">issue 10424</a>)
+  <li class='bug'>
+    Fixed a problem in the core that prevents CLI users from authenticating with Crowd plugin (and others like it.)
 </ul>
-</div><!--=END=-->
 <h3><a name=v1.423>What's new in 1.423</a> (2011/07/25)</h3>
 <ul class=image>
   <li class='major bug'>

@@ -225,6 +225,9 @@ public final class WebAppMain implements ServletContextListener {
                                 User.getUnknown().getBuilds();
                             }
                         }, 1000*10);
+
+                        // at this point we are open for business and serving requests normally
+                        LOGGER.info("Jenkins is fully up and running");
                         success = true;
                     } catch (Error e) {
                         LOGGER.log(Level.SEVERE, "Failed to initialize Jenkins",e);
@@ -257,6 +260,7 @@ public final class WebAppMain implements ServletContextListener {
 	/**
      * Installs log handler to monitor all Hudson logs.
      */
+    @edu.umd.cs.findbugs.annotations.SuppressWarnings("LG_LOST_LOGGER_DUE_TO_WEAK_REFERENCE")
     private void installLogger() {
         Jenkins.logRecords = handler.getView();
         Logger.getLogger("hudson").addHandler(handler);

@@ -23,6 +23,7 @@
  */
 package hudson.scm;
 
+import hudson.AbortException;
 import hudson.ExtensionPoint;
 import hudson.FilePath;
 import hudson.Launcher;
@@ -154,7 +155,7 @@ public abstract class SCM implements Describable<SCM>, ExtensionPoint {
      *
      * <p>
      * This flag also affects the mutual exclusion control between builds and polling.
-     * If this methods returns false, polling will continu asynchronously even
+     * If this methods returns false, polling will continue asynchronously even
      * when a build is in progress, but otherwise the polling activity is blocked
      * if a build is currently using a workspace.
      *
@@ -174,7 +175,7 @@ public abstract class SCM implements Describable<SCM>, ExtensionPoint {
      * Called before a workspace is deleted on the given node, to provide SCM an opportunity to perform clean up.
      *
      * <p>
-     * Hudson periodically scans through all the slaves and removes old workspaces that are deemed unnecesasry.
+     * Hudson periodically scans through all the slaves and removes old workspaces that are deemed unnecessary.
      * This behavior is implemented in {@link WorkspaceCleanupThread}, and it is necessary to control the
      * disk consumption on slaves. If we don't do this, in a long run, all the slaves will have workspaces
      * for all the projects, which will be prohibitive in big Hudson.
@@ -408,10 +409,14 @@ public abstract class SCM implements Describable<SCM>, ExtensionPoint {
      * @return
      *      false if the operation fails. The error should be reported to the listener.
      *      Otherwise return the changes included in this update (if this was an update.)
+     *      <p>
+     *      Using the return value to indicate success/failure should
+     *      be considered deprecated, and implementations are encouraged
+     *      to throw {@link AbortException} to indicate a failure.
      *
      * @throws InterruptedException
      *      interruption is usually caused by the user aborting the build.
-     *      this exception will cause the build to fail.
+     *      this exception will cause the build to be aborted.
      */
     public abstract boolean checkout(AbstractBuild<?,?> build, Launcher launcher, FilePath workspace, BuildListener listener, File changelogFile) throws IOException, InterruptedException;
 
@@ -454,7 +459,7 @@ public abstract class SCM implements Describable<SCM>, ExtensionPoint {
      *
      * <p>
      * Collaboration between {@link Builder} and {@link SCM} allows
-     * Hudson to find build.xml wihout asking the user to enter "xyz" again.
+     * Hudson to find build.xml without asking the user to enter "xyz" again.
      *
      * <p>
      * This method is for this purpose. It takes the workspace

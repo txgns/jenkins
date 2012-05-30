@@ -25,7 +25,14 @@ package hudson.markup;
 
 import hudson.ExtensionPoint;
 import hudson.model.AbstractDescribableImpl;
+import hudson.util.HttpResponses;
+import jenkins.model.Jenkins;
+import org.kohsuke.stapler.HttpResponse;
+import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.StaplerResponse;
 
+import javax.servlet.ServletException;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
@@ -40,6 +47,11 @@ import java.io.Writer;
  * <p>
  * This is an extension point in Hudson, allowing plugins to implement different markup formatters.
  *
+ * <p>
+ * Implement the following methods to enable and control CodeMirror syntax highlighting
+ * public String getCodeMirrorMode() // return null to disable CodeMirror dynamically
+ * public String getCodeMirrorConfig()
+ *   
  * <h2>Views</h2>
  * <p>
  * This extension point must have a valid <tt>config.jelly</tt> that feeds the constructor.
@@ -85,5 +97,15 @@ public abstract class MarkupFormatter extends AbstractDescribableImpl<MarkupForm
     @Override
     public MarkupFormatterDescriptor getDescriptor() {
         return (MarkupFormatterDescriptor)super.getDescriptor();
+    }
+
+    /**
+     * Generate HTML for preview, using markup formatter.
+     * Can be called from other views.
+     */
+    public HttpResponse doPreviewDescription(@QueryParameter String text) throws IOException {
+        StringWriter w = new StringWriter();
+        translate(text, w);
+        return HttpResponses.html(w.toString());
     }
 }

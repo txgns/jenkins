@@ -23,6 +23,7 @@
  */
 package hudson.model;
 
+import com.google.common.collect.ImmutableList;
 import hudson.AbortException;
 import hudson.EnvVars;
 import hudson.Functions;
@@ -30,6 +31,7 @@ import hudson.Launcher;
 import hudson.Util;
 import hudson.FilePath;
 import hudson.console.AnnotatedLargeText;
+import hudson.console.HyperlinkNote;
 import hudson.console.ExpandableDetailsNote;
 import hudson.model.listeners.RunListener;
 import hudson.slaves.WorkspaceList;
@@ -69,7 +71,9 @@ import com.cloudbees.hudson.model.PsuedoNode;
 import javax.servlet.ServletException;
 import java.io.File;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.io.StringWriter;
+import java.lang.ref.WeakReference;
 import java.text.MessageFormat;
 import java.util.AbstractSet;
 import java.util.ArrayList;
@@ -126,7 +130,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
     /**
      * Changes in this build.
      */
-    private volatile transient ChangeLogSet<? extends Entry> changeSet;
+    private volatile transient WeakReference<ChangeLogSet<? extends Entry>> changeSet;
 
     /**
      * Cumulative list of people who contributed to the build problem.
@@ -196,12 +200,13 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
     }
 
     /**
-     * Set the name of the slave that the build was performed on.
-     * @param builtOn
+     * Allows subtypes to set the value of {@link #builtOn}.
+     * This is used for those implementations where an {@link AbstractBuild} is made 'built' without
+     * actually running its {@link #run()} method.
+     *
      * @since 1.429
      */
-    public void setBuiltOnStr( String builtOn )
-    {
+    protected void setBuiltOnStr( String builtOn ) {
         this.builtOn = builtOn;
     }
 
@@ -451,8 +456,9 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
 
             launcher = createLauncher(listener);
             if (!Jenkins.getInstance().getNodes().isEmpty())
-                listener.getLogger().println(node instanceof Jenkins ? Messages.AbstractBuild_BuildingOnMaster() : Messages.AbstractBuild_BuildingRemotely(builtOn));
-
+                listener.getLogger().println(node instanceof Jenkins ? Messages.AbstractBuild_BuildingOnMaster() : 
+                    Messages.AbstractBuild_BuildingRemotely(HyperlinkNote.encodeTo("/computer/"+ builtOn, builtOn)));
+            
             final Lease lease = decideWorkspace(node,Computer.currentComputer().getWorkspaceList());
 
             try {
@@ -567,7 +573,6 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
         }
         
         private void checkout(BuildListener listener) throws Exception {
-            try {
                 for (int retryCount=project.getScmCheckoutRetryCount(); ; retryCount--) {
                     // for historical reasons, null in the scm field means CVS, so we need to explicitly set this to something
                     // in case check out fails and leaves a broken changelog.xml behind.
@@ -580,14 +585,16 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
                             SCM scm = project.getScm();
 
                             AbstractBuild.this.scm = scm.createChangeLogParser();
-                            AbstractBuild.this.changeSet = AbstractBuild.this.calcChangeSet();
+                            AbstractBuild.this.changeSet = new WeakReference<ChangeLogSet<? extends Entry>>(AbstractBuild.this.calcChangeSet());
 
                             for (SCMListener l : Jenkins.getInstance().getSCMListeners())
-                                l.onChangeLogParsed(AbstractBuild.this,listener,changeSet);
+                                l.onChangeLogParsed(AbstractBuild.this,listener,getChangeSet());
                             return;
                         }
                     } catch (AbortException e) {
                         listener.error(e.getMessage());
+                    } catch (InterruptedIOException e) {
+                        throw (InterruptedException)new InterruptedException().initCause(e);
                     } catch (IOException e) {
                         // checkout error not yet reported
                         e.printStackTrace(listener.getLogger());
@@ -599,11 +606,6 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
                     listener.getLogger().println("Retrying after 10 seconds");
                     Thread.sleep(10000);
                 }
-            } catch (InterruptedException e) {
-                listener.getLogger().println(Messages.AbstractProject_ScmAborted());
-                LOGGER.log(Level.INFO, AbstractBuild.this + " aborted", e);
-                throw new RunnerAbortedException();
-            }
         }
 
         /**
@@ -742,6 +744,20 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
     }
 
     /**
+     * get the fingerprints associated with this build
+     *
+     * @return never null
+     */
+    @Exported(name = "fingerprint", inline = true, visibility = -1)
+    public Collection<Fingerprint> getBuildFingerprints() {
+        FingerprintAction fingerprintAction = getAction(FingerprintAction.class);
+        if (fingerprintAction != null) {
+            return fingerprintAction.getFingerprints().values();
+        }
+        return Collections.<Fingerprint>emptyList();
+    }
+
+    /**
      * Gets the changes incorporated into this build.
      *
      * @return never null.
@@ -765,17 +781,21 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
             }
         }
 
-        if (changeSet==null) // cached value
-            try {
-                changeSet = calcChangeSet();
-            } finally {
-                // defensive check. if the calculation fails (such as through an exception),
-                // set a dummy value so that it'll work the next time. the exception will
-                // be still reported, giving the plugin developer an opportunity to fix it.
-                if (changeSet==null)
-                    changeSet=ChangeLogSet.createEmpty(this);
-            }
-        return changeSet;
+        ChangeLogSet<? extends Entry> cs = null;
+        if (changeSet!=null)
+            cs = changeSet.get();
+
+        if (cs==null)
+            cs = calcChangeSet();
+
+        // defensive check. if the calculation fails (such as through an exception),
+        // set a dummy value so that it'll work the next time. the exception will
+        // be still reported, giving the plugin developer an opportunity to fix it.
+        if (cs==null)
+            cs = ChangeLogSet.createEmpty(this);
+
+        changeSet = new WeakReference<ChangeLogSet<? extends Entry>>(cs);
+        return cs;
     }
 
     /**
@@ -832,6 +852,28 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
         EnvVars.resolve(env);
 
         return env;
+    }
+
+    /**
+     * During the build, expose the environments contributed by {@link BuildWrapper}s and others.
+     * 
+     * <p>
+     * Since 1.444, executor thread that's doing the build can access mutable underlying list,
+     * which allows the caller to add/remove environments. The recommended way of adding
+     * environment is through {@link BuildWrapper}, but this might be handy for build steps
+     * who wants to expose additional environment variables to the rest of the build.
+     * 
+     * @return can be empty list, but never null. Immutable.
+     * @since 1.437
+     */
+    public EnvironmentList getEnvironments() {
+        Executor e = Executor.currentExecutor();
+        if (e!=null && e.getCurrentExecutable()==this) {
+            if (buildEnvironments==null)    buildEnvironments = new ArrayList<Environment>();
+            return new EnvironmentList(buildEnvironments); 
+        }
+        
+        return new EnvironmentList(buildEnvironments==null ? Collections.<Environment>emptyList() : ImmutableList.copyOf(buildEnvironments));
     }
 
     public Calendar due() {
@@ -1119,8 +1161,8 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
         FingerprintAction o = from.getAction(FingerprintAction.class);
         if (n==null || o==null)     return Collections.emptyMap();
 
-        Map<AbstractProject,Integer> ndep = n.getDependencies();
-        Map<AbstractProject,Integer> odep = o.getDependencies();
+        Map<AbstractProject,Integer> ndep = n.getDependencies(true);
+        Map<AbstractProject,Integer> odep = o.getDependencies(true);
 
         Map<AbstractProject,DependencyChange> r = new HashMap<AbstractProject,DependencyChange>();
 
@@ -1201,6 +1243,8 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
      */
     public synchronized void doStop(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
         Executor e = getExecutor();
+        if (e==null)
+            e = getOneOffExecutor();
         if (e!=null)
             e.doStop(req,rsp);
         else
@@ -1210,3 +1254,5 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
 
     private static final Logger LOGGER = Logger.getLogger(AbstractBuild.class.getName());
 }
+
+

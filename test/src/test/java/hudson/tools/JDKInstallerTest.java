@@ -2,7 +2,6 @@ package hudson.tools;
 
 import com.gargoylesoftware.htmlunit.html.HtmlForm;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import hudson.model.Descriptor;
 import hudson.model.DownloadService;
 import hudson.tools.JDKInstaller.DescriptorImpl;
 import org.jvnet.hudson.test.HudsonTestCase;
@@ -102,6 +101,10 @@ public class JDKInstallerTest extends HudsonTestCase {
      * Can we locate the bundles?
      */
     public void testLocate() throws Exception {
+        // this is a really time consuming test, so only run it when we really want.
+        if(!Boolean.getBoolean("jenkins.testJDKInstaller"))
+            return;
+
         retrieveUpdateCenterData();
 
         JDKInstaller i = new JDKInstaller("jdk-6u13-oth-JPR@CDS-CDS_Developer", true);
@@ -139,7 +142,7 @@ public class JDKInstallerTest extends HudsonTestCase {
      */
     private void doTestAutoInstallation(String id, String fullversion) throws Exception {
         // this is a really time consuming test, so only run it when we really want
-        if(!Boolean.getBoolean("hudson.sunTests"))
+        if(!Boolean.getBoolean("jenkins.testJDKInstaller"))
             return;
 
         retrieveUpdateCenterData();

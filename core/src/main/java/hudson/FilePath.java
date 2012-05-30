@@ -61,9 +61,6 @@ import org.apache.tools.tar.TarEntry;
 import org.apache.commons.io.input.CountingInputStream;
 import org.apache.commons.fileupload.FileItem;
 import org.kohsuke.stapler.Stapler;
-import org.jvnet.robust_http_client.RetryableHttpStream;
-
-import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileFilter;
@@ -94,12 +91,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.GZIPInputStream;
-import java.util.zip.ZipInputStream;
 
 import com.sun.jna.Native;
+import java.util.Enumeration;
 import java.util.logging.Logger;
 import org.apache.tools.ant.taskdefs.Chmod;
 
+import org.apache.tools.zip.ZipFile;
+import org.apache.tools.zip.ZipEntry;
+        
 /**
  * {@link File} like object with remoting support.
  *
@@ -291,7 +291,7 @@ public final class FilePath implements Serializable {
     /**
      * Checks if the remote path is Unix.
      */
-    private boolean isUnix() {
+    boolean isUnix() {
         // if the path represents a local path, there' no need to guess.
         if(!isRemote())
             return File.pathSeparatorChar!=';';
@@ -418,8 +418,12 @@ public final class FilePath implements Serializable {
      */
     public void unzip(final FilePath target) throws IOException, InterruptedException {
         target.act(new FileCallable<Void>() {
+
             public Void invoke(File dir, VirtualChannel channel) throws IOException {
-                unzip(dir,FilePath.this.read());
+                if (FilePath.this.isRemote())
+                    unzip(dir, FilePath.this.read()); // use streams
+                else
+                    unzip(dir, new File(FilePath.this.getRemote())); // shortcut to local file
                 return null;
             }
             private static final long serialVersionUID = 1L;
@@ -466,21 +470,43 @@ public final class FilePath implements Serializable {
     }
 
     private void unzip(File dir, InputStream in) throws IOException {
+        File tmpFile = File.createTempFile("tmpzip", null); // uses java.io.tmpdir
+        try {
+            IOUtils.copy(in, tmpFile);
+            unzip(dir,tmpFile);
+        }
+        finally {
+            tmpFile.delete();
+        }
+    }
+
+    private void unzip(File dir, File zipFile) throws IOException {
         dir = dir.getAbsoluteFile();    // without absolutization, getParentFile below seems to fail
-        ZipInputStream zip = new ZipInputStream(new BufferedInputStream(in));
-        java.util.zip.ZipEntry e;
+        ZipFile zip = new ZipFile(zipFile);
+        @SuppressWarnings("unchecked")
+        Enumeration<ZipEntry> entries = zip.getEntries();
 
         try {
-            while((e=zip.getNextEntry())!=null) {
-                File f = new File(dir,e.getName());
-                if(e.isDirectory()) {
+            while (entries.hasMoreElements()) {
+                ZipEntry e = entries.nextElement();
+                File f = new File(dir, e.getName());
+                if (e.isDirectory()) {
                     f.mkdirs();
                 } else {
                     File p = f.getParentFile();
-                    if(p!=null) p.mkdirs();
-                    IOUtils.copy(zip, f);
+                    if (p != null) {
+                        p.mkdirs();
+                    }
+                    IOUtils.copy(zip.getInputStream(e), f);
+                    try {
+                        FilePath target = new FilePath(f);
+                        int mode = e.getUnixMode();
+                        if (mode!=0)    // Ant returns 0 if the archive doesn't record the access mode
+                            target.chmod(mode);
+                    } catch (InterruptedException ex) {
+                        LOGGER.log(Level.WARNING, "unable to set permissions", ex);
+                    }
                     f.setLastModified(e.getTime());
-                    zip.closeEntry();
                 }
             }
         } finally {
@@ -678,7 +704,7 @@ public final class FilePath implements Serializable {
     }
 
     /**
-     * Conveniene method to call {@link FilePath#copyTo(FilePath)}.
+     * Convenience method to call {@link FilePath#copyTo(FilePath)}.
      * 
      * @since 1.311
      */
@@ -716,7 +742,7 @@ public final class FilePath implements Serializable {
      *
      * @see FilePath#act(FileCallable)
      */
-    public static interface FileCallable<T> extends Serializable {
+    public interface FileCallable<T> extends Serializable {
         /**
          * Performs the computational task on the node where the data is located.
          *
@@ -1034,6 +1060,7 @@ public final class FilePath implements Serializable {
      */
     public void touch(final long timestamp) throws IOException, InterruptedException {
         act(new FileCallable<Void>() {
+            private static final long serialVersionUID = -5094638816500738429L;
             public Void invoke(File f, VirtualChannel channel) throws IOException {
                 if(!f.exists())
                     new FileOutputStream(f).close();
@@ -1042,6 +1069,28 @@ public final class FilePath implements Serializable {
                 return null;
             }
         });
+    }
+    
+    private void setLastModifiedIfPossible(final long timestamp) throws IOException, InterruptedException {
+        String message = act(new FileCallable<String>() {
+            private static final long serialVersionUID = -828220335793641630L;
+            public String invoke(File f, VirtualChannel channel) throws IOException {
+                if(!f.setLastModified(timestamp)) {
+                    if (Functions.isWindows()) {
+                        // On Windows this seems to fail often. See JENKINS-11073
+                        // Therefore don't fail, but just log a warning
+                        return "Failed to set the timestamp of "+f+" to "+timestamp;
+                    } else {
+                        throw new IOException("Failed to set the timestamp of "+f+" to "+timestamp);
+                    }
+                }
+                return null;
+            }
+        });
+
+        if (message!=null) {
+            LOGGER.warning(message);
+        }
     }
 
     /**
@@ -1392,13 +1441,14 @@ public final class FilePath implements Serializable {
     }
 
     /**
-     * Copies this file to the specified target, with file permissions intact.
+     * Copies this file to the specified target, with file permissions and other meta attributes intact.
      * @since 1.311
      */
     public void copyToWithPermission(FilePath target) throws IOException, InterruptedException {
         copyTo(target);
         // copy file permission
         target.chmod(mode());
+        target.setLastModifiedIfPossible(lastModified());
     }
 
     /**
@@ -1408,6 +1458,7 @@ public final class FilePath implements Serializable {
         final OutputStream out = new RemoteOutputStream(os);
 
         act(new FileCallable<Void>() {
+            private static final long serialVersionUID = 4088559042349254141L;
             public Void invoke(File f, VirtualChannel channel) throws IOException {
                 FileInputStream fis = null;
                 try {

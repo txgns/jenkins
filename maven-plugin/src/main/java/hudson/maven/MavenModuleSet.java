@@ -29,9 +29,12 @@ import static hudson.model.ItemGroupMixIn.loadChildren;
 import hudson.CopyOnWrite;
 import hudson.EnvVars;
 import hudson.Extension;
+import hudson.ExtensionList;
 import hudson.FilePath;
+import hudson.Functions;
 import hudson.Indenter;
 import hudson.Util;
+import hudson.maven.settings.SettingsProviderUtils;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
 import hudson.model.BuildableItemWithBuildWrappers;
@@ -39,15 +42,16 @@ import hudson.model.DependencyGraph;
 import hudson.model.Descriptor;
 import hudson.model.Descriptor.FormException;
 import hudson.model.Executor;
-import jenkins.model.Jenkins;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
 import hudson.model.Job;
 import hudson.model.Queue;
 import hudson.model.Queue.Task;
 import hudson.model.ResourceActivity;
+import hudson.model.Result;
 import hudson.model.SCMedItem;
 import hudson.model.Saveable;
+import hudson.model.TaskListener;
 import hudson.model.TopLevelItem;
 import hudson.search.CollectionSearchIndex;
 import hudson.search.SearchIndexBuilder;
@@ -55,12 +59,13 @@ import hudson.tasks.BuildStep;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildWrapper;
 import hudson.tasks.BuildWrappers;
+import hudson.tasks.Builder;
 import hudson.tasks.Fingerprinter;
-import hudson.tasks.JavadocArchiver;
 import hudson.tasks.Mailer;
 import hudson.tasks.Maven;
 import hudson.tasks.Maven.MavenInstallation;
 import hudson.tasks.Publisher;
+import hudson.tasks.JavadocArchiver;
 import hudson.tasks.junit.JUnitResultArchiver;
 import hudson.util.CopyOnWriteMap;
 import hudson.util.DescribableList;
@@ -83,10 +88,13 @@ import java.util.Stack;
 
 import javax.servlet.ServletException;
 
+import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.maven.model.building.ModelBuildingRequest;
+import org.jenkinsci.lib.configprovider.ConfigProvider;
+import org.jenkinsci.lib.configprovider.model.Config;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.QueryParameter;
@@ -105,6 +113,8 @@ import org.kohsuke.stapler.export.Exported;
  * @author Kohsuke Kawaguchi
  */
 public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenModuleSetBuild> implements TopLevelItem, ItemGroup<MavenModule>, SCMedItem, Saveable, BuildableItemWithBuildWrappers {
+	
+
     /**
      * All {@link MavenModule}s, keyed by their {@link MavenModule#getModuleName()} module name}s.
      */
@@ -175,6 +185,14 @@ public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenMod
      * @since 1.223
      */
     private boolean usePrivateRepository = false;
+    
+   /**
+    * If true, the build will send a failure e-mail for each failing maven module.
+    * Defaults to <code>true</code> to simulate old behavior. 
+    * <p>
+    * see JENKINS-5695. 
+    */
+    private Boolean perModuleEmail = Boolean.TRUE;
 
     /**
      * If true, do not automatically schedule a build when one of the project dependencies is built.
@@ -214,6 +232,21 @@ public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenMod
     private boolean runHeadless = false;
 
     /**
+     * @since 1.426
+     */
+    private String settingConfigId;
+
+    /**
+     * @since 1.426
+     */
+    private String globalSettingConfigId;
+
+    /**
+     * used temporary during maven build to store file path
+     * @since 1.426
+     */
+    protected transient String globalSettingConfigPath;
+    /**
      * Reporters configured at {@link MavenModuleSet} level. Applies to all {@link MavenModule} builds.
      */
     private DescribableList<MavenReporter,Descriptor<MavenReporter>> reporters =
@@ -233,6 +266,18 @@ public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenMod
     private DescribableList<BuildWrapper,Descriptor<BuildWrapper>> buildWrappers =
         new DescribableList<BuildWrapper, Descriptor<BuildWrapper>>(this);
 
+	/**
+     * List of active {@link Builder}s configured for this project.
+     */
+    private DescribableList<Builder,Descriptor<Builder>> prebuilders =
+            new DescribableList<Builder,Descriptor<Builder>>(this);
+    
+    private DescribableList<Builder,Descriptor<Builder>> postbuilders =
+            new DescribableList<Builder,Descriptor<Builder>>(this);
+	
+    private Result runPostStepsIfResult;
+    
+   
     /**
      * @deprecated
      *      Use {@link #MavenModuleSet(ItemGroup, String)}
@@ -243,6 +288,39 @@ public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenMod
 
     public MavenModuleSet(ItemGroup parent, String name) {
         super(parent,name);
+    }
+
+    /**
+     * Builders that are run before the main Maven execution.
+     *
+     * @since 1.433
+     */
+	public DescribableList<Builder,Descriptor<Builder>> getPrebuilders() {
+        return prebuilders;
+    }
+	
+    /**
+     * Builders that are run after the main Maven execution.
+     *
+     * @since 1.433
+     */
+	public DescribableList<Builder,Descriptor<Builder>> getPostbuilders() {
+        return postbuilders;
+    }
+	
+	/**
+     * {@link #postbuilders} are run if the result is better or equal to this threshold.
+     *
+     * @return
+     *      never null
+     * @since 1.433
+	 */
+	public Result getRunPostStepsIfResult() {
+		return Functions.defaulted(runPostStepsIfResult,Result.FAILURE);
+	}
+
+    public void setRunPostStepsIfResult(Result v) {
+        this.runPostStepsIfResult = Functions.defaulted(v,Result.FAILURE);
     }
 
     public String getUrlChildPrefix() {
@@ -366,6 +444,10 @@ public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenMod
         return usePrivateRepository;
     }
 
+    public boolean isPerModuleEmail() {
+        return perModuleEmail;
+    }
+    
     public boolean ignoreUpstremChanges() {
         return ignoreUpstremChanges;
     }
@@ -421,8 +503,40 @@ public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenMod
 
     public int getMavenValidationLevel() {
         return mavenValidationLevel;
-    }    
-    
+    }
+
+    /**
+     * @since 1.426
+     * @return
+     */
+    public String getSettingConfigId() {
+        return settingConfigId;
+    }
+
+    /**
+     * @since 1.426
+     * @param settingConfigId
+     */
+    public void setSettingConfigId( String settingConfigId ) {
+        this.settingConfigId = settingConfigId;
+    }
+
+    /**
+     * @since 1.426
+     * @return
+     */
+    public String getGlobalSettingConfigId() {
+        return globalSettingConfigId;
+    }
+
+    /**
+     * @since 1.426
+     * @param globalSettingConfigId
+     */
+    public void setGlobalSettingConfigId( String globalSettingConfigId ) {
+        this.globalSettingConfigId = globalSettingConfigId;
+    }
+
     /**
      * List of active {@link MavenReporter}s that should be applied to all module builds.
      */
@@ -542,16 +656,31 @@ public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenMod
             this.sortedActiveModules = getDisabledModules(false);
         }
 
-        if(reporters==null)
+        if(reporters==null){
             reporters = new DescribableList<MavenReporter, Descriptor<MavenReporter>>(this);
+        }
         reporters.setOwner(this);
-        if(publishers==null)
+        if(publishers==null){
             publishers = new DescribableList<Publisher,Descriptor<Publisher>>(this);
+        }
         publishers.setOwner(this);
-        if(buildWrappers==null)
+        if(buildWrappers==null){
             buildWrappers = new DescribableList<BuildWrapper, Descriptor<BuildWrapper>>(this);
+        }
         buildWrappers.setOwner(this);
-
+        if(prebuilders==null){
+        	prebuilders = new DescribableList<Builder,Descriptor<Builder>>(this);
+        }
+        prebuilders.setOwner(this);
+        if(postbuilders==null){
+        	postbuilders = new DescribableList<Builder,Descriptor<Builder>>(this);
+        }
+        postbuilders.setOwner(this);
+        
+        if(perModuleEmail == null){
+            perModuleEmail = Boolean.TRUE;
+        }
+        
         updateTransientActions();
     }
 
@@ -607,6 +736,8 @@ public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenMod
         
         publishers.buildDependencyGraph(this,graph);
         buildWrappers.buildDependencyGraph(this,graph);
+        prebuilders.buildDependencyGraph(this,graph);
+        postbuilders.buildDependencyGraph(this,graph);
     }
 
     public MavenModule getRootModule() {
@@ -624,7 +755,9 @@ public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenMod
 
         activities.addAll(super.getResourceActivities());
         activities.addAll(Util.filter(publishers,ResourceActivity.class));
-        activities.addAll(Util.filter(buildWrappers,ResourceActivity.class));
+        activities.addAll(Util.filter(buildWrappers, ResourceActivity.class));
+        activities.addAll(Util.filter(prebuilders,ResourceActivity.class));
+        activities.addAll(Util.filter(postbuilders,ResourceActivity.class));
 
         return activities;
     }
@@ -761,6 +894,40 @@ public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenMod
     }
 
     /**
+     * @since 1.426
+     * @return
+     */
+    public List<Config> getAllMavenSettingsConfigs() {
+        List<Config> mavenSettingsConfigs = new ArrayList<Config>();
+        ExtensionList<ConfigProvider> configProviders = ConfigProvider.all();
+        if (configProviders != null && configProviders.size() > 0) {
+            for (ConfigProvider configProvider : configProviders) {
+            	if (SettingsProviderUtils.isMavenSettingsProvider( configProvider )){
+                    mavenSettingsConfigs.addAll( configProvider.getAllConfigs() );
+                }
+            }
+        }
+        return mavenSettingsConfigs;
+    }
+    
+    /**
+     * @since 1.426
+     * @return
+     */
+    public List<Config> getAllGlobalMavenSettingsConfigs() {
+        List<Config> globalMavenSettingsConfigs = new ArrayList<Config>();
+        ExtensionList<ConfigProvider> configProviders = ConfigProvider.all();
+        if (configProviders != null && configProviders.size() > 0) {
+            for (ConfigProvider configProvider : configProviders) {
+                if (SettingsProviderUtils.isGlobalMavenSettingsProvider( configProvider )){
+                    globalMavenSettingsConfigs.addAll( configProvider.getAllConfigs() );
+                }
+            }
+        }
+        return globalMavenSettingsConfigs;
+    }
+
+    /**
      * Set mavenOpts.
      */
     public void setMavenOpts(String mavenOpts) {
@@ -836,6 +1003,7 @@ public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenMod
         mavenName = req.getParameter("maven_version");
         aggregatorStyleBuild = !req.hasParameter("maven.perModuleBuild");
         usePrivateRepository = req.hasParameter("maven.usePrivateRepository");
+        perModuleEmail = req.hasParameter("maven.perModuleEmail");
         ignoreUpstremChanges = !json.has("triggerByDependency");
         runHeadless = req.hasParameter("maven.runHeadless");
         incrementalBuild = req.hasParameter("maven.incrementalBuild");
@@ -846,6 +1014,12 @@ public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenMod
         reporters.rebuild(req,json,MavenReporters.getConfigurableList());
         publishers.rebuild(req,json,BuildStepDescriptor.filter(Publisher.all(),this.getClass()));
         buildWrappers.rebuild(req,json,BuildWrappers.getFor(this));
+        settingConfigId = req.getParameter( "maven.mavenSettingsConfigId" );
+        globalSettingConfigId = req.getParameter( "maven.mavenGlobalSettingConfigId" );
+
+        runPostStepsIfResult = Result.fromString(req.getParameter( "post-steps.runIfResult"));
+        prebuilders.rebuildHetero(req,json, Builder.all(), "prebuilder");
+        postbuilders.rebuildHetero(req,json, Builder.all(), "postbuilder");
     }
 
     /**
@@ -970,13 +1144,5 @@ public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenMod
             Mailer.class,           // for historical reasons, Maven uses MavenMailer
             JUnitResultArchiver.class // done by SurefireArchiver
         ));
-
-
     }
-
-
-
-
-
-
 }

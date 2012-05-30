@@ -30,14 +30,12 @@ import hudson.maven.reporters.SurefireArchiver;
 import hudson.slaves.WorkspaceList;
 import hudson.slaves.WorkspaceList.Lease;
 import hudson.maven.agent.AbortException;
-import hudson.maven.reporters.SurefireArchiver;
 import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
 import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.model.Environment;
 import hudson.model.Executor;
-import jenkins.model.Jenkins;
 import hudson.model.Node;
 import hudson.model.Result;
 import hudson.model.Run;
@@ -45,17 +43,13 @@ import hudson.model.TaskListener;
 import hudson.remoting.Channel;
 import hudson.scm.ChangeLogSet;
 import hudson.scm.ChangeLogSet.Entry;
-import hudson.slaves.WorkspaceList;
-import hudson.slaves.WorkspaceList.Lease;
 import hudson.tasks.BuildWrapper;
 import hudson.tasks.Maven.MavenInstallation;
 import hudson.tasks.Publisher;
 import hudson.util.ArgumentListBuilder;
 import hudson.util.DescribableList;
 import hudson.util.IOUtils;
-import hudson.util.ReflectionUtils;
 import org.apache.maven.BuildFailureException;
-import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.execution.ReactorManager;
 import org.apache.maven.lifecycle.LifecycleExecutionException;
@@ -85,6 +79,7 @@ import java.util.logging.Logger;
  * 
  * @author Kohsuke Kawaguchi
  */
+@SuppressWarnings("deprecation") // as we're restricted to Maven 2.x API here, but compile against Maven 3.x we cannot avoid deprecations
 public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
     /**
      * {@link MavenReporter}s that will contribute project actions.
@@ -290,24 +285,30 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
         return super.getParent();
     }
 
+    // allow MavenModuleSetBuild to set this.
+    @Override
+    protected void setBuiltOnStr(String builtOn) {
+        super.setBuiltOnStr(builtOn);
+    }
+
     /**
      * Runs Maven and builds the project.
      */
     private static final class Builder extends MavenBuilder {
         private final MavenBuildProxy buildProxy;
-        private final MavenReporter[] reporters;
 
         /**
          * Records of what was executed.
          */
         private final List<ExecutedMojo> executedMojos = new ArrayList<ExecutedMojo>();
+        private final ModuleName moduleName;
 
         private long startTime;
 
-        public Builder(BuildListener listener,MavenBuildProxy buildProxy,MavenReporter[] reporters, List<String> goals, Map<String,String> systemProps) {
-            super(listener,goals,systemProps);
+        public Builder(BuildListener listener,MavenBuildProxy buildProxy,MavenModule module, List<String> goals, Map<String,String> systemProps) {
+            super(listener,Collections.singleton(module),goals,systemProps);
             this.buildProxy = new FilterImpl(buildProxy);
-            this.reporters = reporters;
+            this.moduleName = module.getModuleName();
         }
 
         private class FilterImpl extends MavenBuildProxy.Filter<MavenBuildProxy> implements Serializable {
@@ -317,34 +318,28 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
 
             @Override
             public void executeAsync(final BuildCallable<?,?> program) throws IOException {
-                futures.add(Channel.current().callAsync(new AsyncInvoker(core,program)));
+                recordAsynchronousExecution(Channel.current().callAsync(new AsyncInvoker(core,program)));
             }
 
-            public MavenBuildInformation getMavenBuildInformation()
-            {
-                return super.core.getMavenBuildInformation();
-            }            
-            
             private static final long serialVersionUID = 1L;
-
         }
 
         @Override
         void preBuild(MavenSession session, ReactorManager rm, EventDispatcher dispatcher) throws BuildFailureException, LifecycleExecutionException, IOException, InterruptedException {
-            for (MavenReporter r : reporters)
+            for (MavenReporter r : reporters.get(moduleName))
                 r.preBuild(buildProxy,rm.getTopLevelProject(),listener);
         }
 
         @Override
         void postBuild(MavenSession session, ReactorManager rm, EventDispatcher dispatcher) throws BuildFailureException, LifecycleExecutionException, IOException, InterruptedException {
             buildProxy.setExecutedMojos(executedMojos);
-            for (MavenReporter r : reporters)
+            for (MavenReporter r : reporters.get(moduleName))
                 r.postBuild(buildProxy,rm.getTopLevelProject(),listener);
         }
 
         @Override
         void preExecute(MavenProject project, MojoInfo info) throws IOException, InterruptedException, AbortException {
-            for (MavenReporter r : reporters)
+            for (MavenReporter r : reporters.get(moduleName))
                 if(!r.preExecute(buildProxy,project,info,listener))
                     throw new AbortException(r+" failed");
 
@@ -355,28 +350,28 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
         void postExecute(MavenProject project, MojoInfo info, Exception exception) throws IOException, InterruptedException, AbortException {
             executedMojos.add(new ExecutedMojo(info,System.currentTimeMillis()-startTime));
 
-            for (MavenReporter r : reporters)
+            for (MavenReporter r : reporters.get(moduleName))
                 if(!r.postExecute(buildProxy,project,info,listener,exception))
                     throw new AbortException(r+" failed");
         }
 
         @Override
         void onReportGenerated(MavenProject project, MavenReportInfo report) throws IOException, InterruptedException, AbortException {
-            for (MavenReporter r : reporters)
+            for (MavenReporter r : reporters.get(moduleName))
                 if(!r.reportGenerated(buildProxy,project,report,listener))
                     throw new AbortException(r+" failed");
         }
 
         @Override
         void preModule(MavenProject project) throws InterruptedException, IOException, AbortException {
-            for (MavenReporter r : reporters)
+            for (MavenReporter r : reporters.get(moduleName))
                 if(!r.enterModule(buildProxy,project,listener))
                     throw new AbortException(r+" failed");
         }
 
         @Override
         void postModule(MavenProject project) throws InterruptedException, IOException, AbortException {
-            for (MavenReporter r : reporters)
+            for (MavenReporter r : reporters.get(moduleName))
                 if(!r.leaveModule(buildProxy,project,listener))
                     throw new AbortException(r+" failed");
         }
@@ -388,6 +383,8 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
      * {@link MavenBuildProxy} implementation.
      */
     class ProxyImpl implements MavenBuildProxy, Serializable {
+        private static final long serialVersionUID = 8865133776526671879L;
+
         public <V, T extends Throwable> V execute(BuildCallable<V, T> program) throws T, IOException, InterruptedException {
             return program.call(MavenBuild.this);
         }
@@ -463,6 +460,8 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
     }
 
     public class ProxyImpl2 extends ProxyImpl implements MavenBuildProxy2 {
+        private static final long serialVersionUID = -3377221864644014218L;
+        
         private final SplittableBuildListener listener;
         long startTime;
         private final OutputStream log;
@@ -679,7 +678,7 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
             LOGGER.fine(getFullDisplayName()+" is building with mavenVersion " + mavenVersion + " from file " + mavenInformation.getVersionResourcePath());
             
 
-            boolean maven3orLater = new ComparableVersion(mavenVersion).compareTo( new ComparableVersion ("3.0") ) >= 0;
+            boolean maven3orLater = MavenUtil.maven3orLater(mavenVersion);
 
             ProcessCache.MavenProcess process = MavenBuild.mavenProcessCache.get( launcher.getChannel(), listener, maven3orLater
                 ? new Maven3ProcessFactory(
@@ -714,18 +713,19 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
             // backward compatibility
             systemProps.put("hudson.build.number",String.valueOf(getNumber()));
 
-            boolean normalExit = false;
             if (maven3orLater)
             { 
                 // FIXME here for maven 3 builds
+                listener.getLogger().println("Building single Maven modules is not implemented for Maven 3, yet!");
                 return Result.ABORTED;
             }
             else
             {
+                boolean normalExit = false;
                 try {
                     Result r = process.call(new Builder(
                         listener,new ProxyImpl(),
-                        reporters.toArray(new MavenReporter[reporters.size()]), margs.toList(), systemProps));
+                        getProject(), margs.toList(), systemProps));
                     normalExit = true;
                     return r;
                 } finally {

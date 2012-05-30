@@ -52,10 +52,11 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.Writer;
 import java.io.StringWriter;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Represents an XML data file that Hudson uses as a data file.
+ * Represents an XML data file that Jenkins uses as a data file.
  *
  *
  * <h2>Evolving data format</h2>
@@ -124,7 +125,9 @@ public final class XmlFile {
      * Loads the contents of this file into a new object.
      */
     public Object read() throws IOException {
-        LOGGER.fine("Reading "+file);
+        if (LOGGER.isLoggable(Level.FINE)) {
+            LOGGER.fine("Reading "+file);
+        }
         InputStream in = new BufferedInputStream(new FileInputStream(file));
         try {
             return xs.fromXML(in);
@@ -258,8 +261,7 @@ public final class XmlFile {
                 @Override
                 public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
                     attempt();
-                    // if we still haven't found it at the first start element,
-                    // there's something wrong.
+                    // if we still haven't found it at the first start element, then we are not going to find it.
                     throw new Eureka(null);
                 }
 
@@ -276,9 +278,11 @@ public final class XmlFile {
             // can't reach here
             throw new AssertionError();
         } catch (Eureka e) {
-            if(e.encoding==null)
-                throw new IOException("Failed to detect encoding of "+file);
-            return e.encoding;
+            if(e.encoding!=null)
+                return e.encoding;
+            // the environment can contain old version of Xerces and others that do not support Locator2
+            // in such a case, assume UTF-8 rather than fail, since Jenkins internally always write XML in UTF-8
+            return "UTF-8";
         } catch (SAXException e) {
             throw new IOException2("Failed to detect encoding of "+file,e);
         } catch (ParserConfigurationException e) {

@@ -23,6 +23,7 @@
  */
 package hudson.tasks;
 
+import hudson.AbortException;
 import hudson.Launcher;
 import hudson.Extension;
 import hudson.ExtensionList;
@@ -61,6 +62,11 @@ import java.util.WeakHashMap;
  * be null (which is the case when you access the field for the first time
  * the object is restored.)
  *
+ * <h2>Lifecycle</h2>
+ * <p>
+ * Build steps are instantiated when the user saves the job configuration, and sticks
+ * around in memory until the job configuration is overwritten.
+ *
  * @author Kohsuke Kawaguchi
  */
 public interface BuildStep {
@@ -71,6 +77,10 @@ public interface BuildStep {
      * @return
      *      true if the build can continue, false if there was an error
      *      and the build needs to be aborted.
+     *      <p>
+     *      Using the return value to indicate success/failure should
+     *      be considered deprecated, and implementations are encouraged
+     *      to throw {@link AbortException} to indicate a failure.
      */
     boolean prebuild( AbstractBuild<?,?> build, BuildListener listener );
 
@@ -85,6 +95,10 @@ public interface BuildStep {
      * @return
      *      true if the build can continue, false if there was an error
      *      and the build needs to be aborted.
+     *      <p>
+     *      Using the return value to indicate success/failure should
+     *      be considered deprecated, and implementations are encouraged
+     *      to throw {@link AbortException} to indicate a failure.
      *
      * @throws InterruptedException
      *      If the build is interrupted by the user (in an attempt to abort the build.)
@@ -203,7 +217,7 @@ public interface BuildStep {
      *      Use {@link Builder#all()} for read access, and use
      *      {@link Extension} for registration.
      */
-    public static final List<Descriptor<Builder>> BUILDERS = new DescriptorList<Builder>(Builder.class);
+    List<Descriptor<Builder>> BUILDERS = new DescriptorList<Builder>(Builder.class);
 
     /**
      * List of all installed publishers.
@@ -219,12 +233,12 @@ public interface BuildStep {
      *      Use {@link Publisher#all()} for read access, and use
      *      {@link Extension} for registration.
      */
-    public static final PublisherList PUBLISHERS = new PublisherList();
+    PublisherList PUBLISHERS = new PublisherList();
 
     /**
      * List of publisher descriptor.
      */
-    public static final class PublisherList extends AbstractList<Descriptor<Publisher>> {
+    final class PublisherList extends AbstractList<Descriptor<Publisher>> {
         /**
          * {@link Descriptor}s are actually stored in here.
          * Since {@link PublisherList} lives longer than {@link jenkins.model.Jenkins} we cannot directly use {@link ExtensionList}.

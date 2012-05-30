@@ -25,6 +25,7 @@ package hudson.cli;
 
 import groovy.lang.GroovyShell;
 import groovy.lang.Binding;
+import hudson.cli.util.ScriptLoader;
 import hudson.model.AbstractProject;
 import jenkins.model.Jenkins;
 import hudson.model.Item;
@@ -56,7 +57,7 @@ import java.net.MalformedURLException;
 public class GroovyCommand extends CLICommand implements Serializable {
     @Override
     public String getShortDescription() {
-        return "Executes the specified Groovy script";
+        return Messages.GroovyCommand_ShortDescription();
     }
 
     @Argument(metaVar="SCRIPT",usage="Script to be executed. File, URL or '=' to represent stdin.")
@@ -70,7 +71,7 @@ public class GroovyCommand extends CLICommand implements Serializable {
 
     protected int run() throws Exception {
         // this allows the caller to manipulate the JVM state, so require the execute script privilege.
-        Jenkins.getInstance().checkPermission(Jenkins.EXECUTE_SCRIPT);
+        Jenkins.getInstance().checkPermission(Jenkins.RUN_SCRIPTS);
 
         Binding binding = new Binding();
         binding.setProperty("out",new PrintWriter(stdout,true));
@@ -103,26 +104,7 @@ public class GroovyCommand extends CLICommand implements Serializable {
         if (script.equals("="))
             return IOUtils.toString(stdin);
 
-        return channel.call(new Callable<String,IOException>() {
-            public String call() throws IOException {
-                File f = new File(script);
-                if(f.exists())
-                    return FileUtils.readFileToString(f);
-
-                URL url;
-                try {
-                    url = new URL(script);
-                } catch (MalformedURLException e) {
-                    throw new AbortException("Unable to find a script "+script);
-                }
-                InputStream s = url.openStream();
-                try {
-                    return IOUtils.toString(s);
-                } finally {
-                    s.close();
-                }
-            }
-        });
+        return checkChannel().call(new ScriptLoader(script));
     }
 }
 

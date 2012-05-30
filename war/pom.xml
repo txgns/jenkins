@@ -28,7 +28,7 @@ THE SOFTWARE.
   <parent>
     <groupId>org.jenkins-ci.main</groupId>
     <artifactId>pom</artifactId>
-    <version>1.424.5-SNAPSHOT</version>
+    <version>1.447.1-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -51,7 +51,7 @@ THE SOFTWARE.
     <dependency>
       <groupId>org.jenkins-ci</groupId>
       <artifactId>executable-war</artifactId>
-      <version>1.25</version>
+      <version>1.26</version>
       <scope>provided</scope>
     </dependency>
 
@@ -99,7 +99,7 @@ THE SOFTWARE.
       -->
       <groupId>org.jenkins-ci</groupId>
       <artifactId>winstone</artifactId>
-      <version>0.9.10-jenkins-34</version>
+      <version>0.9.10-jenkins-35</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -110,11 +110,39 @@ THE SOFTWARE.
     <dependency>
       <groupId>org.jenkins-ci.modules</groupId>
       <artifactId>ssh-cli-auth</artifactId>
-      <version>1.1</version>
+      <version>1.2</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.modules</groupId>
+      <artifactId>sshd</artifactId>
+      <version>1.2</version>
+    </dependency>
+    <dependency>
+      <!--
+        We bundle slf4j binding since we got some components (sshd for example)
+        that uses slf4j.
+
+        The problem with not shipping any binding in the war is that if the
+        servlet container does use slf4j in itself, then we got a classloader
+        constraint violation (see JENKINS-12334) as we try to load StaticLoggerBinder
+        which resides in the binding jar (this jar would be from container implementation,
+        which relies on slf4j api in the container, when we have our own slf4j API jar
+        statically depending on the binding jar.)
+
+        We also get tickets like JENKINS-12650 for not reporting logs at all
+        (although this is a non-fatal problem.)
+
+        The downside of adding a jar is that we can potentially get "multiple binding jar"
+        warning like http://www.slf4j.org/codes.html, but that's at least non-fatal.
+      -->
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-jdk14</artifactId>
     </dependency>
 
+
     <!-- offline profiler API when we need it -->
-    <!--dependency>
+
+    <!--dependency
       <groupId>com.yourkit.api</groupId>
       <artifactId>yjp</artifactId>
       <version>dontcare</version>
@@ -217,19 +245,37 @@ THE SOFTWARE.
                 <artifactItem>
                   <groupId>org.jenkins-ci.plugins</groupId>
                   <artifactId>ssh-slaves</artifactId>
-                  <version>0.17</version>
+                  <version>0.21</version>
                   <type>hpi</type>
                 </artifactItem>
                 <artifactItem>
                   <groupId>org.jenkins-ci.plugins</groupId>
                   <artifactId>subversion</artifactId>
-                  <version>1.28</version>
+                  <version>1.34</version>
                   <type>hpi</type>
                 </artifactItem>
                 <artifactItem>
-                  <groupId>org.jvnet.hudson.plugins</groupId>
+                  <groupId>org.jenkins-ci.plugins</groupId>
                   <artifactId>cvs</artifactId>
-                  <version>1.2</version>
+                  <version>1.6</version>
+                  <type>hpi</type>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>org.jenkins-ci.plugins</groupId>
+                  <artifactId>ant</artifactId>
+                  <version>1.1</version>
+                  <type>hpi</type>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>org.jenkins-ci.plugins</groupId>
+                  <artifactId>javadoc</artifactId>
+                  <version>1.0</version>
+                  <type>hpi</type>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>org.jenkins-ci.plugins</groupId>
+                  <artifactId>translation</artifactId>
+                  <version>1.8</version>
                   <type>hpi</type>
                 </artifactItem>
               </artifactItems>
@@ -271,6 +317,8 @@ THE SOFTWARE.
         <!-- version specified in grandparent pom -->
         <configuration>
           <generateLicenseXml>${project.build.outputDirectory}/META-INF/licenses.xml</generateLicenseXml>
+          <generateLicenseHtml>${project.build.outputDirectory}/META-INF/licenses.html</generateLicenseHtml>
+          <attach>true</attach>
           <inlineScript>
             filter {
                 // add Winstone since we are bundling it.
@@ -348,7 +396,8 @@ THE SOFTWARE.
               <name>hudson.bundled.plugins</name>
               <value>
                   ${basedir}/../maven-plugin/target/test-classes/the.hpl,
-                  ${basedir}/../ui-samples-plugin/target/test-classes/the.hpl
+                  ${basedir}/../ui-samples-plugin/target/test-classes/the.hpl,
+                  ${project.build.directory}/${project.build.finalName}/WEB-INF/plugins/javadoc.hpi
               </value>
             </systemProperty>
             <systemProperty>

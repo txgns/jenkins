@@ -666,10 +666,10 @@ var hudsonRules = {
 // validate required form values
     "INPUT.required" : function(e) { registerRegexpValidator(e,/./,"Field is required"); },
 
-// validate form values to be a number
-    "INPUT.number" : function(e) { registerRegexpValidator(e,/^(\d+|)$/,"Not a number"); },
+// validate form values to be an integer
+    "INPUT.number" : function(e) { registerRegexpValidator(e,/^(\d+|)$/,"Not an integer"); },
     "INPUT.positive-number" : function(e) {
-        registerRegexpValidator(e,/^(\d*[1-9]\d*|)$/,"Not a positive number");
+        registerRegexpValidator(e,/^(\d*[1-9]\d*|)$/,"Not a positive integer");
     },
 
     "INPUT.auto-complete": function(e) {// form field with auto-completion support 
@@ -678,11 +678,18 @@ var hudsonRules = {
         e.parentNode.insertBefore(div,e.nextSibling);
         e.style.position = "relative"; // or else by default it's absolutely positioned, making "width:100%" break
 
-        var ds = new YAHOO.widget.DS_XHR(e.getAttribute("autoCompleteUrl"),["suggestions","name"]);
-        ds.scriptQueryParam = "value";
+        var ds = new YAHOO.util.XHRDataSource(e.getAttribute("autoCompleteUrl"));
+        ds.responseType = YAHOO.util.XHRDataSource.TYPE_JSON;
+        ds.responseSchema = {
+            resultsList: "suggestions",
+            fields: ["name"]
+        };
         
         // Instantiate the AutoComplete
         var ac = new YAHOO.widget.AutoComplete(e, div, ds);
+        ac.generateRequest = function(query) {
+            return "?value=" + query;
+        };
         ac.prehighlightClassName = "yui-ac-prehighlight";
         ac.animSpeed = 0;
         ac.useShadow = true;
@@ -727,9 +734,17 @@ var hudsonRules = {
         var h = e.clientHeight;
         var config = e.getAttribute("codemirror-config") || "";
         config = eval('({'+config+'})');
-        var w = CodeMirror.fromTextArea(e,config).getWrapperElement();
-        w.setAttribute("style","border:1px solid black;");
-        w.style.height = h+"px";
+        var codemirror = CodeMirror.fromTextArea(e,config);
+        e.codemirrorObject = codemirror;
+        if(typeof(codemirror.getScrollerElement) !== "function") {
+            // Maybe older versions of CodeMirror do not provide getScrollerElement method.
+            codemirror.getScrollerElement = function(){
+                return findElementsBySelector(codemirror.getWrapperElement(), ".CodeMirror-scroll")[0];
+            };
+        }
+        var scroller = codemirror.getScrollerElement();
+        scroller.setAttribute("style","border:1px solid black;");
+        scroller.style.height = h+"px";
     },
 
 // deferred client-side clickable map.
@@ -786,30 +801,39 @@ var hudsonRules = {
             return;
         }
 
-        var handle = textarea.nextSibling;
-        if(handle==null || handle.className!="textarea-handle") return;
+        // CodeMirror inserts a wrapper element next to the textarea.
+        // textarea.nextSibling may not be the handle.
+        var handles = findElementsBySelector(textarea.parentNode, ".textarea-handle");
+        if(handles.length != 1) return;
+        var handle = handles[0];
 
         var Event = YAHOO.util.Event;
 
+        function getCodemirrorScrollerOrTextarea(){
+            return textarea.codemirrorObject ? textarea.codemirrorObject.getScrollerElement() : textarea;
+        }
         handle.onmousedown = function(ev) {
             ev = Event.getEvent(ev);
-            var offset = textarea.offsetHeight-Event.getPageY(ev);
-            textarea.style.opacity = 0.5;
+            var s = getCodemirrorScrollerOrTextarea();
+            var offset = s.offsetHeight-Event.getPageY(ev);
+            s.style.opacity = 0.5;
             document.onmousemove = function(ev) {
                 ev = Event.getEvent(ev);
                 function max(a,b) { if(a<b) return b; else return a; }
-                textarea.style.height = max(32, offset + Event.getPageY(ev)) + 'px';
+                s.style.height = max(32, offset + Event.getPageY(ev)) + 'px';
                 return false;
             };
             document.onmouseup = function() {
                 document.onmousemove = null;
                 document.onmouseup = null;
-                textarea.style.opacity = 1;
+                var s = getCodemirrorScrollerOrTextarea();
+                s.style.opacity = 1;
             }
         };
         handle.ondblclick = function() {
-            textarea.style.height = "";
-            textarea.rows = textarea.value.split("\n").length;
+            var s = getCodemirrorScrollerOrTextarea();
+            s.style.height = "1px"; // To get actual height of the textbox, shrink it and show its scrollbar
+            s.style.height = s.scrollHeight + 'px';
         }
     },
 
@@ -851,6 +875,54 @@ var hudsonRules = {
         // set start.ref to checkbox in preparation of row-set-end processing
         var checkbox = e.firstChild.firstChild;
         e.setAttribute("ref", checkbox.id = "cb"+(iota++));
+    },
+
+    // radioBlock.jelly
+    "INPUT.radio-block-control" : function(r) {
+        r.id = "radio-block-"+(iota++);
+
+        // when one radio button is clicked, we need to update foldable block for
+        // other radio buttons with the same name. To do this, group all the
+        // radio buttons with the same name together and hang it under the form object
+        var f = r.form;
+        var radios = f.radios;
+        if (radios == null)
+            f.radios = radios = {};
+
+        var g = radios[r.name];
+        if (g == null) {
+            radios[r.name] = g = object(radioBlockSupport);
+            g.buttons = [];
+        }
+
+        var s = findAncestorClass(r,"radio-block-start");
+        s.setAttribute("ref", r.id);
+
+        // find the end node
+        var e = (function() {
+            var e = s;
+            var cnt=1;
+            while(cnt>0) {
+                e = e.nextSibling;
+                if (Element.hasClassName(e,"radio-block-start"))
+                    cnt++;
+                if (Element.hasClassName(e,"radio-block-end"))
+                    cnt--;
+            }
+            return e;
+        })();
+
+        var u = function() {
+            g.updateSingleButton(r,s,e);
+        };
+        g.buttons.push(u);
+
+        // apply the initial visibility
+        u();
+
+        // install event handlers to update visibility.
+        // needs to use onclick and onchange for Safari compatibility
+        r.onclick = r.onchange = function() { g.updateButtons(); };
     },
 
     // see RowVisibilityGroupTest
@@ -902,6 +974,7 @@ var hudsonRules = {
             updateVisibility : function() {
                 var display = (this.outerVisible && this.innerVisible) ? "" : "none";
                 for (var e=this.start; e!=this.end; e=e.nextSibling) {
+                    if (e.nodeType!=1)  continue;
                     if (e.rowVisibilityGroup && e!=this.start) {
                         e.rowVisibilityGroup.makeOuterVisisble(this.innerVisible);
                         e = e.rowVisibilityGroup.end; // the above call updates visibility up to e.rowVisibilityGroup.end inclusive
@@ -939,6 +1012,9 @@ var hudsonRules = {
         }
         var start = e;
 
+        // @ref on start refers to the ID of the element that controls the JSON object created from these rows
+        // if we don't find it, turn the start node into the governing node (thus the end result is that you
+        // created an intermediate JSON object that's always on.)
         var ref = start.getAttribute("ref");
         if(ref==null)
             start.id = ref = "rowSetStart"+(iota++);
@@ -1001,54 +1077,6 @@ var hudsonRules = {
                 if (inputs[i].defaultChecked) inputs[i].checked = true;
             }
         }
-    },
-
-    // radioBlock.jelly
-    "INPUT.radio-block-control" : function(r) {
-        r.id = "radio-block-"+(iota++);
-
-        // when one radio button is clicked, we need to update foldable block for
-        // other radio buttons with the same name. To do this, group all the
-        // radio buttons with the same name together and hang it under the form object
-        var f = r.form;
-        var radios = f.radios;
-        if (radios == null)
-            f.radios = radios = {};
-
-        var g = radios[r.name];
-        if (g == null) {
-            radios[r.name] = g = object(radioBlockSupport);
-            g.buttons = [];
-        }
-
-        var s = findAncestorClass(r,"radio-block-start");
-
-        // find the end node
-        var e = (function() {
-            var e = s;
-            var cnt=1;
-            while(cnt>0) {
-                e = e.nextSibling;
-                if (Element.hasClassName(e,"radio-block-start"))
-                    cnt++;
-                if (Element.hasClassName(e,"radio-block-end"))
-                    cnt--;
-            }
-            return e;
-        })();
-
-        var u = function() {
-            g.updateSingleButton(r,s,e);
-        };
-        applyNameRef(s,e,r.id);
-        g.buttons.push(u);
-
-        // apply the initial visibility
-        u();
-
-        // install event handlers to update visibility.
-        // needs to use onclick and onchange for Safari compatibility
-        r.onclick = r.onchange = function() { g.updateButtons(); };
     },
 
     // editableComboBox.jelly
@@ -1169,6 +1197,106 @@ var hudsonRules = {
 
     ".button-with-dropdown" : function (e) {
         new YAHOO.widget.Button(e, { type: "menu", menu: e.nextSibling });
+    },
+
+    "DIV.textarea-preview-container" : function (e) {
+        var previewDiv = findElementsBySelector(e,".textarea-preview")[0];
+        var showPreview = findElementsBySelector(e,".textarea-show-preview")[0];
+        var hidePreview = findElementsBySelector(e,".textarea-hide-preview")[0];
+        $(hidePreview).hide();
+        $(previewDiv).hide();
+
+        showPreview.onclick = function() {
+            // Several TEXTAREAs may exist if CodeMirror is enabled. The first one has reference to the CodeMirror object.
+            var textarea = e.parentNode.getElementsByTagName("TEXTAREA")[0];
+            var text = textarea.codemirrorObject ? textarea.codemirrorObject.getValue() : textarea.value;
+            var render = function(txt) {
+                $(hidePreview).show();
+                $(previewDiv).show();
+                previewDiv.innerHTML = txt;
+            };
+
+            new Ajax.Request(rootURL + showPreview.getAttribute("previewEndpoint"), {
+                method: "POST",
+                requestHeaders: "Content-Type: application/x-www-form-urlencoded",
+                parameters: {
+                    text: text
+                },
+                onSuccess: function(obj) {
+                    render(obj.responseText)
+                },
+                onFailure: function(obj) {
+                    render(obj.status + " " + obj.statusText + "<HR/>" + obj.responseText)
+                }
+            });
+            return false;
+        }
+
+        hidePreview.onclick = function() {
+            $(hidePreview).hide();
+            $(previewDiv).hide();
+        };
+    },
+
+    /*
+        Use on div tag to make it sticky visible on the bottom of the page.
+        When page scrolls it remains in the bottom of the page
+        Convenient on "OK" button and etc for a long form page
+     */
+    "#bottom-sticker" : function(sticker) {
+        var DOM = YAHOO.util.Dom;
+
+        var shadow = document.createElement("div");
+        sticker.parentNode.insertBefore(shadow,sticker);
+
+        var edge = document.createElement("div");
+        edge.className = "bottom-sticker-edge";
+        sticker.insertBefore(edge,sticker.firstChild);
+
+        function adjustSticker() {
+            shadow.style.height = sticker.offsetHeight + "px";
+
+            var viewport = DOM.getClientRegion();
+            var pos = DOM.getRegion(shadow);
+
+            sticker.style.position = "fixed";
+            sticker.style.bottom = Math.max(0, viewport.bottom - pos.bottom) + "px"
+        }
+
+        // react to layout change
+        Element.observe(window,"scroll",adjustSticker);
+        Element.observe(window,"resize",adjustSticker);
+        // initial positioning
+        Element.observe(window,"load",adjustSticker);
+        adjustSticker();
+    },
+
+    "#top-sticker" : function(sticker) {
+        var DOM = YAHOO.util.Dom;
+
+        var shadow = document.createElement("div");
+        sticker.parentNode.insertBefore(shadow,sticker);
+
+        var edge = document.createElement("div");
+        edge.className = "top-sticker-edge";
+        sticker.insertBefore(edge);
+
+        function adjustSticker() {
+            shadow.style.height = sticker.offsetHeight + "px";
+
+            var viewport = DOM.getClientRegion();
+            var pos = DOM.getRegion(shadow);
+
+            sticker.style.position = "fixed";
+            sticker.style.top = Math.max(0, pos.top-viewport.top) + "px"
+        }
+
+        // react to layout change
+        Element.observe(window,"scroll",adjustSticker);
+        Element.observe(window,"resize",adjustSticker);
+        // initial positioning
+        Element.observe(window,"load",adjustSticker);
+        adjustSticker();
     }
 };
 
@@ -1216,7 +1344,7 @@ function refillOnChange(e,onChange) {
                 if (window.YUI!=null)      YUI.log("Unable to find a nearby control of the name "+name,"warn")
                 return;
             }
-            try { c.addEventListener("change",h,false); } catch (ex) { c.attachEvent("change",h); }
+            try { c.addEventListener("change",h,false); } catch (ex) { c.attachEvent("onchange",h); }
             deps.push({name:Path.tail(name),control:c});
         });
     }
@@ -1251,12 +1379,16 @@ function replaceDescription() {
     return false;
 }
 
+/**
+ * Indicates that form fields from rows [s,e) should be grouped into a JSON object,
+ * and attached under the element identified by the specified id.
+ */
 function applyNameRef(s,e,id) {
     $(id).groupingNode = true;
     // s contains the node itself
     for(var x=s.nextSibling; x!=e; x=x.nextSibling) {
         // to handle nested <f:rowSet> correctly, don't overwrite the existing value
-        if(x.getAttribute("nameRef")==null)
+        if(x.nodeType==1 && x.getAttribute("nameRef")==null)
             x.setAttribute("nameRef",id);
     }
 }
@@ -1331,7 +1463,7 @@ function AutoScroller(scrollContainer) {
             if (scrollDiv.scrollHeight > 0)
                 return scrollDiv.scrollHeight;
             else
-                if (objDiv.offsetHeight > 0)
+                if (scrollDiv.offsetHeight > 0)
                     return scrollDiv.offsetHeight;
 
             return null; // huh?
@@ -1346,7 +1478,8 @@ function AutoScroller(scrollContainer) {
             // the element height.
             //var height = ((scrollDiv.style.pixelHeight) ? scrollDiv.style.pixelHeight : scrollDiv.offsetHeight);
             var height = getViewportHeight();
-            var diff = currentHeight - scrollDiv.scrollTop - height;
+            var scrollPos = Math.max(scrollDiv.scrollTop, document.documentElement.scrollTop);
+            var diff = currentHeight - scrollPos - height;
             // window.alert("currentHeight=" + currentHeight + ",scrollTop=" + scrollDiv.scrollTop + ",height=" + height);
 
             return diff < this.bottomThreshold;
@@ -1354,7 +1487,9 @@ function AutoScroller(scrollContainer) {
 
         scrollToBottom : function() {
             var scrollDiv = $(this.scrollContainer);
-            scrollDiv.scrollTop = this.getCurrentHeight();
+            var currentHeight = this.getCurrentHeight();
+            if(document.documentElement) document.documentElement.scrollTop = currentHeight
+            scrollDiv.scrollTop = currentHeight;
         }
     };
 }
@@ -1385,15 +1520,18 @@ function scrollIntoView(e) {
 // used in expandableTextbox.jelly to change a input field into a text area
 function expandTextArea(button,id) {
     button.style.display="none";
-    var field = document.getElementById(id);
+    var field = button.parentNode.previousSibling.children[0];
     var value = field.value.replace(/ +/g,'\n');
-    var n = field;
-    while(n.tagName!="TABLE")
+    
+    var n = button; 
+    while (n.tagName != "TABLE")
+    {
         n = n.parentNode;
-    n.parentNode.innerHTML =
+    }
+
+    n.parentNode.innerHTML = 
         "<textarea rows=8 class='setting-input' name='"+field.name+"'>"+value+"</textarea>";
 }
-
 
 // refresh a part of the HTML specified by the given ID,
 // by using the contents fetched from the given URL.
@@ -1581,7 +1719,7 @@ var repeatableSupport = {
 
 // prototype object to be duplicated for each radio button group
 var radioBlockSupport = {
-    buttons : null,
+    buttons : null, // set of functions, one for updating one radio block each
 
     updateButtons : function() {
         for( var i=0; i<this.buttons.length; i++ )
@@ -1708,8 +1846,12 @@ function getStyle(e,a){
 
 // set up logic behind the search box
 function createSearchBox(searchURL) {
-    var ds = new YAHOO.widget.DS_XHR(searchURL+"suggest",["suggestions","name"]);
-    ds.queryMatchCase = false;
+    var ds = new YAHOO.util.XHRDataSource(searchURL+"suggest");
+    ds.responseType = YAHOO.util.XHRDataSource.TYPE_JSON;
+    ds.responseSchema = {
+        resultsList: "suggestions",
+        fields: ["name"]
+    };
     var ac = new YAHOO.widget.AutoComplete("search-box","search-box-completion",ds);
     ac.typeAhead = false;
 
@@ -1943,6 +2085,19 @@ function buildFormTree(form) {
         return false;
     }
 }
+
+/**
+ * @param {boolean} toggle
+ *      When true, will check all checkboxes in the page. When false, unchecks them all.
+ */
+var toggleCheckboxes = function(toggle) {
+    var inputs = document.getElementsByTagName("input");
+    for(var i=0; i<inputs.length; i++) {
+        if(inputs[i].type === "checkbox") {
+            inputs[i].checked = toggle;
+        }
+    }
+};
 
 // this used to be in prototype.js but it must have been removed somewhere between 1.4.0 to 1.5.1
 String.prototype.trim = function() {
@@ -2315,4 +2470,3 @@ function createComboBox(idOrField,valueFunction) {
 Ajax.Request.prototype.dispatchException = function(e) {
     throw e;
 }
-

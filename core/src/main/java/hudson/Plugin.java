@@ -54,7 +54,7 @@ import com.thoughtworks.xstream.XStream;
  *
  * <p>
  * A plugin is bound to URL space of Hudson as <tt>${rootURL}/plugin/foo/</tt>,
- * where "foo" is taken from your plugin name "foo.hpi". All your web resources
+ * where "foo" is taken from your plugin name "foo.jpi". All your web resources
  * in src/main/webapp are visible from this URL, and you can also define Jelly
  * views against your Plugin class, and those are visible in this URL, too.
  *
@@ -74,7 +74,7 @@ import com.thoughtworks.xstream.XStream;
 public abstract class Plugin implements Saveable {
 
     /**
-     * Set by the {@link PluginManager}.
+     * Set by the {@link PluginManager}, before the {@link #start()} method is called.
      * This points to the {@link PluginWrapper} that wraps
      * this {@link Plugin} object.
      */
@@ -93,6 +93,15 @@ public abstract class Plugin implements Saveable {
      * @since 1.42
      */
     public void setServletContext(ServletContext context) {
+    }
+
+    /**
+     * Gets the paired {@link PluginWrapper}.
+     *
+     * @since 1.426
+     */
+    public PluginWrapper getWrapper() {
+        return wrapper;
     }
 
     /**

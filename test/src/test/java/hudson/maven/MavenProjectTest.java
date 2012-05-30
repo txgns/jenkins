@@ -23,7 +23,10 @@
  */
 package hudson.maven;
 
+import hudson.model.Item;
+import hudson.model.Result;
 import hudson.tasks.Maven.MavenInstallation;
+import hudson.tasks.Shell;
 
 import java.io.File;
 
@@ -150,5 +153,31 @@ public class MavenProjectTest extends HudsonTestCase {
         project.setRootPOM(pom.getAbsolutePath());
         project.setGoals("install");
         buildAndAssertSuccess(project);
+    }
+
+    /**
+     * Config roundtrip test around pre/post build step
+     */
+    public void testConfigRoundtrip() throws Exception {
+        MavenModuleSet m = createMavenProject();
+        Shell b1 = new Shell("1");
+        Shell b2 = new Shell("2");
+        m.getPrebuilders().add(b1);
+        m.getPostbuilders().add(b2);
+        configRoundtrip((Item)m);
+
+        assertEquals(1,  m.getPrebuilders().size());
+        assertNotSame(b1,m.getPrebuilders().get(Shell.class));
+        assertEquals("1",m.getPrebuilders().get(Shell.class).getCommand());
+
+        assertEquals(1,  m.getPostbuilders().size());
+        assertNotSame(b2,m.getPostbuilders().get(Shell.class));
+        assertEquals("2",m.getPostbuilders().get(Shell.class).getCommand());
+
+        for (Result r : new Result[]{Result.SUCCESS, Result.UNSTABLE, Result.FAILURE}) {
+            m.setRunPostStepsIfResult(r);
+            configRoundtrip((Item)m);
+            assertEquals(r,m.getRunPostStepsIfResult());
+        }
     }
 }

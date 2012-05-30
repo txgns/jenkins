@@ -138,7 +138,7 @@ public class MailSender {
         do {
             b=b.getPreviousBuild();
             if(b==null) return null;
-        } while(b.getResult()==Result.ABORTED);
+        } while((b.getResult()==Result.ABORTED) || (b.getResult()==Result.NOT_BUILT));
         return b.getResult();
     }
 
@@ -305,6 +305,8 @@ public class MailSender {
         MimeMessage msg = new MimeMessage(Mailer.descriptor().createSession());
         // TODO: I'd like to put the URL to the page in here,
         // but how do I obtain that?
+        msg.addHeader("X-Jenkins-Job", build.getProject().getDisplayName());
+        msg.addHeader("X-Jenkins-Result", build.getResult().toString());
         msg.setContent("", "text/plain");
         msg.setFrom(new InternetAddress(Mailer.descriptor().getAdminAddress()));
         msg.setSentDate(new Date());

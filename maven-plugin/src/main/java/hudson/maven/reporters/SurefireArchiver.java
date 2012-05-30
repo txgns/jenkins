@@ -27,6 +27,7 @@ import hudson.Extension;
 import hudson.Util;
 import hudson.maven.Maven3Builder;
 import hudson.maven.MavenBuild;
+import hudson.maven.MavenBuildInformation;
 import hudson.maven.MavenBuildProxy;
 import hudson.maven.MavenBuildProxy.BuildCallable;
 import hudson.maven.MavenBuilder;
@@ -158,17 +159,22 @@ public class SurefireArchiver extends MavenReporter {
                 
                 // if surefire plugin is going to kill maven because of a test failure,
                 // intercept that (or otherwise build will be marked as failure)
-                if(failCount>0 && error instanceof MojoFailureException) {
-                    MavenBuilder.markAsSuccess = true;
-                }
-                // TODO currently error is empty : will be here with maven 3.0.2+
                 if(failCount>0) {
-                    Maven3Builder.markAsSuccess = true;
+                    markBuildAsSuccess(error,build.getMavenBuildInformation());
                 }
             }
         }
 
         return true;
+    }
+    
+    @edu.umd.cs.findbugs.annotations.SuppressWarnings(value="ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD", justification="It's okay to write to static fields here, as each Maven build is started in its own VM")
+    private void markBuildAsSuccess(Throwable mojoError, MavenBuildInformation buildInfo) {
+        if(mojoError == null // in the success case we don't get any exception in Maven 3.0.2+; Maven < 3.0.2 returns no exception anyway
+           || mojoError instanceof MojoFailureException) {
+            MavenBuilder.markAsSuccess = true;
+            Maven3Builder.markAsSuccess = true;
+        }
     }
     
     /**
@@ -231,6 +237,8 @@ public class SurefireArchiver extends MavenReporter {
             && (!mojo.is("org.eclipse.tycho", "tycho-surefire-plugin", "test"))
             && (!mojo.is("org.sonatype.tycho", "maven-osgi-test-plugin", "test"))
             && (!mojo.is("org.codehaus.mojo", "gwt-maven-plugin", "test"))
+            && (!mojo.is("com.jayway.maven.plugins.android.generation2", "maven-android-plugin", "internal-integration-test"))
+            && (!mojo.is("com.jayway.maven.plugins.android.generation2", "android-maven-plugin", "internal-integration-test"))
             && (!mojo.is("org.apache.maven.plugins", "maven-surefire-plugin", "test"))
             && (!mojo.is("org.apache.maven.plugins", "maven-failsafe-plugin", "integration-test")))
             return false;
@@ -280,8 +288,25 @@ public class SurefireArchiver extends MavenReporter {
                 if (((skipTests != null) && (skipTests))) {
                     return false;
                 }
+            } else if (mojo.is("com.jayway.maven.plugins.android.generation2", "android-maven-plugin", "internal-integration-test")) {
+                Boolean skipTests = mojo.getConfigurationValue("skipTests", Boolean.class);
+                if (((skipTests != null) && (skipTests))) {
+                    return false;
+                }
+            } else if (mojo.is("com.jayway.maven.plugins.android.generation2", "maven-android-plugin", "internal-integration-test")) {
+                if (mojo.pluginName.version.compareTo("3.0.0-alpha-6") < 0) {
+                    // Earlier versions do not support tests
+                    return false;
+                } else {
+                    Boolean skipTests = mojo.getConfigurationValue("skipTests", Boolean.class);
+                    if (((skipTests != null) && (skipTests))) {
+                        return false;
+                    }
+                }
+            } else if (mojo.is("org.codehaus.mojo", "gwt-maven-plugin", "test") && mojo.pluginName.version.compareTo("1.2") < 0) {
+                    // gwt-maven-plugin < 1.2 does not implement required Surefire option
+                    return false;
             }
-
         } catch (ComponentConfigurationException e) {
             return false;
         }

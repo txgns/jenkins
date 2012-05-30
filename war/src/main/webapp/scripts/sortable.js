@@ -62,6 +62,7 @@ function ts_makeSortable(table) {
         if(initialSortDir!=arrowTable.none)
             cell.firstChild.lastChild.sortdir = initialSortDir;
     }
+    ts_loadDirection(table);
 }
 
 function ts_getInnerText(el) {
@@ -96,14 +97,15 @@ function extractData(x) {
 
 var arrowTable = {
     up: {
-        text: "&nbsp;&nbsp;&uarr;",
-        reorder: function(rows) { rows.reverse(); }
+        id: "up",
+        text: "&nbsp;&nbsp;&uarr;"
     },
     down: {
-        text: "&nbsp;&nbsp;&darr;",
-        reorder: function() {}
+        id: "down",
+        text: "&nbsp;&nbsp;&darr;"
     },
     none: {
+        id: "none",
         text: "&nbsp;&nbsp;&nbsp;"
     },
     lnkRef: null
@@ -133,37 +135,40 @@ function ts_resortTable(lnk) {
     for (i=0;i<table.rows[0].length;i++) { firstRow[i] = table.rows[0][i]; }
     for (j=1;j<table.rows.length;j++) { newRows[j-1] = table.rows[j]; }
 
-    newRows.sort(function(a,b) {
-      return sortfn(
-              extractData(a.cells[column]),
-              extractData(b.cells[column]));
-    });
-
     var dir = span.sortdir;
     if (arrowTable.lnkRef != lnk) {
         if (dir == null) dir = arrowTable.up;
     } else {
         dir = dir.next; // new sort direction
     }
-		
+    var sortfn2 = sortfn;
+    if(dir === arrowTable.up) {
+        // ascending
+        sortfn2 = function(a,b){return -sortfn(a,b)};
+    }
+    newRows.sort(function(a,b) {
+        return sortfn2(
+            extractData(a.cells[column]),
+            extractData(b.cells[column]));
+    });
+
     arrowTable.lnkRef = lnk; // make column sort down only if column selected is same as last
-    dir.reorder(newRows);
     span.sortdir = dir;
 
     // We appendChild rows that already exist to the tbody, so it moves them rather than creating new ones
     // don't do sortbottom rows
     for (var i=0;i<newRows.length;i++) {
-        if (!newRows[i].className || (newRows[i].className && (newRows[i].className.indexOf('sortbottom') == -1)))
+        if (Element.hasClassName(newRows[i], 'sortbottom'))
             table.tBodies[0].appendChild(newRows[i]);
     }
     // do sortbottom rows only
     for (var i=0;i<newRows.length;i++) {
-        if (newRows[i].className && (newRows[i].className.indexOf('sortbottom') != -1))
+        if (! Element.hasClassName(newRows[i], 'sortbottom'))
             table.tBodies[0].appendChild(newRows[i]);
     }
 
     // Delete any other arrows there may be showing
-    var allspans = table.getElementsByTagName("span");
+    var allspans = table.rows[0].getElementsByTagName("span");
     for (var ci=0;ci<allspans.length;ci++) {
         if (allspans[ci].className == 'sortarrow') {
             allspans[ci].innerHTML = arrowTable.none.text;
@@ -171,6 +176,7 @@ function ts_resortTable(lnk) {
     }
 
     span.innerHTML = dir.text;
+    ts_saveDirection(table, column, dir);
 }
 
 function getParent(el, pTagName) {
@@ -227,4 +233,62 @@ function ts_sort_default(a,b) {
     if (a==b) return 0;
     if (a<b) return -1;
     return 1;
+}
+
+function ts_getIndexOfSortableTable(table){
+    var allTables = document.getElementsByTagName("TABLE");
+    var sortableTables = [];
+    for (var i=0; i<allTables.length; i++) {
+        if($(allTables[i]).hasClassName("sortable")){
+            sortableTables.push(allTables[i]);
+        }
+    }
+    return sortableTables.indexOf(table);
+}
+function ts_getStorageKey(table){
+    var uri = document.location;
+    var tableIndex = ts_getIndexOfSortableTable(table);
+    return "ts_direction::" + uri + "::" + tableIndex;
+}
+function ts_saveDirection(table, columnIndex, direction){
+    var key = ts_getStorageKey(table);
+    ts_Storage.setItem(key, columnIndex + ":" + direction.id);
+}
+function ts_loadDirection(table){
+    var key = ts_getStorageKey(table);
+    if(ts_Storage.hasKey(key)){
+        var val = ts_Storage.getItem(key);
+        if(val){
+            var vals = val.split(":");
+            if(vals.length == 2) {
+                var colIndex = parseInt(vals[0]);
+                var direction = arrowTable[vals[1]];
+                var col = table.rows[0].cells[colIndex];
+                var anchor = col.firstChild;
+                var arrow = anchor.lastChild;
+                arrow.sortdir = direction;
+                ts_resortTable(anchor);
+            }
+        }
+    }
+}
+
+var ts_Storage;
+try {
+    ts_Storage = YAHOO.util.StorageManager.get(
+        YAHOO.util.StorageEngineHTML5.ENGINE_NAME,
+        YAHOO.util.StorageManager.LOCATION_SESSION,
+        {
+            order: [
+                YAHOO.util.StorageEngineGears
+            ]
+        }
+    );
+} catch(e) {
+    // no storage available
+    ts_Storage = {
+        setItem : function() {},
+        getItem : function() { return null; },
+        hasKey : function() { return false; }
+    };
 }
