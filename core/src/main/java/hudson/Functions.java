@@ -53,7 +53,6 @@ import hudson.util.Iterators;
 import hudson.scm.SCM;
 import hudson.scm.SCMDescriptor;
 import hudson.util.Secret;
-import hudson.util.cloudbees.DescriptorFilter;
 import hudson.views.MyViewsTabBar;
 import hudson.views.ViewsTabBar;
 import hudson.widgets.RenderOnDemandClosure;
