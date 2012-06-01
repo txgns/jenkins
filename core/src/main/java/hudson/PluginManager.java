@@ -32,6 +32,8 @@ import hudson.model.Descriptor;
 import hudson.model.Failure;
 import hudson.model.UpdateCenter;
 import hudson.model.UpdateSite;
+import hudson.security.Permission;
+import hudson.security.PermissionScope;
 import hudson.util.CyclicGraphDetector;
 import hudson.util.CyclicGraphDetector.CycleDetectedException;
 import hudson.util.FormValidation;
@@ -660,7 +662,7 @@ public abstract class PluginManager extends AbstractModelObject {
             };
         }
         try {
-            Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+            Jenkins.getInstance().checkPermission(UPLOAD_PLUGINS);
 
             ServletFileUpload upload = new ServletFileUpload(new DiskFileItemFactory());
 
@@ -801,7 +803,9 @@ public abstract class PluginManager extends AbstractModelObject {
     private static final Logger LOGGER = Logger.getLogger(PluginManager.class.getName());
 
     public static boolean FAST_LOOKUP = !Boolean.getBoolean(PluginManager.class.getName()+".noFastLookup");
-
+    
+    public static final Permission UPLOAD_PLUGINS = new Permission(Jenkins.PERMISSIONS, "UploadPlugins", Messages._PluginManager_UploadPluginsPermission_Description(),Jenkins.ADMINISTER,PermissionScope.JENKINS);
+    
     /**
      * Remembers why a plugin failed to deploy.
      */
