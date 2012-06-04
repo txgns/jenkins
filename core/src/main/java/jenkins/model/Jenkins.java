@@ -160,6 +160,7 @@ import hudson.tasks.BuildWrapper;
 import hudson.tasks.Builder;
 import hudson.tasks.Mailer;
 import hudson.tasks.Publisher;
+import hudson.triggers.SafeTimerTask;
 import hudson.triggers.Trigger;
 import hudson.triggers.TriggerDescriptor;
 import hudson.util.AdministrativeError;
@@ -181,6 +182,7 @@ import hudson.util.RemotingDiagnostics;
 import hudson.util.RemotingDiagnostics.HeapDump;
 import hudson.util.StreamTaskListener;
 import hudson.util.TextFile;
+import hudson.util.TimeUnit2;
 import hudson.util.VersionNumber;
 import hudson.util.XStream2;
 import hudson.views.DefaultMyViewsTabBar;
@@ -784,6 +786,13 @@ public class Jenkins extends AbstractCIBase implements ModifiableItemGroup<TopLe
                 LOGGER.log(Level.WARNING, "Faild to broadcast over UDP",e);
             }
             dnsMultiCast = new DNSMultiCast(this);
+
+            Trigger.timer.scheduleAtFixedRate(new SafeTimerTask() {
+                @Override
+                protected void doRun() throws Exception {
+                    trimLabels();
+                }
+            }, TimeUnit2.MINUTES.toMillis(5), TimeUnit2.MINUTES.toMillis(5));
 
             updateComputerList();
 
@@ -1625,6 +1634,9 @@ public class Jenkins extends AbstractCIBase implements ModifiableItemGroup<TopLe
 
     /**
      * Resets all labels and remove invalid ones.
+     *
+     * This should be called when the assumptions behind label cache computation changes,
+     * but we also call this periodically to self-heal any data out-of-sync issue.
      */
     private void trimLabels() {
         for (Iterator<Label> itr = labels.values().iterator(); itr.hasNext();) {
