@@ -501,7 +501,7 @@ THE SOFTWARE.
         <version>2.2.2</version>
         <configuration>
           <!-- enable release profile during the release, create IPS package, and sign bits. -->
-          <prepareVerifyArgs>-P release,sign</prepareVerifyArgs>
+          <arguments>-Pcloudbees-internal-release,release,sign</arguments>
           <preparationGoals>-DskipTests clean verify animal-sniffer:check </preparationGoals>
           <goals>-DskipTests deploy</goals>
           <pushChanges>true</pushChanges>
