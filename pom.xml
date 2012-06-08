@@ -57,7 +57,7 @@ THE SOFTWARE.
 
   <scm>
     <connection>scm:git:git://github.com/cloudbees/hudson.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com:cloudbees/hudson.git</developerConnection>
+    <developerConnection>scm:git:ssh://git@github.com/cloudbees/hudson.git</developerConnection>
     <url>https://github.com/cloudbees/hudson</url>
   </scm>
 
