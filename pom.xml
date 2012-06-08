@@ -56,9 +56,9 @@ THE SOFTWARE.
   </modules>
 
   <scm>
-    <connection>scm:git:git://github.com/jenkinsci/jenkins.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com/jenkinsci/jenkins.git</developerConnection>
-    <url>https://github.com/jenkinsci/jenkins</url>
+    <connection>scm:git:git://github.com/cloudbees/hudson.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com:cloudbees/hudson.git</developerConnection>
+    <url>https://github.com/cloudbees/hudson</url>
   </scm>
 
   <issueManagement>
@@ -502,12 +502,11 @@ THE SOFTWARE.
         <configuration>
           <!-- enable release profile during the release, create IPS package, and sign bits. -->
           <prepareVerifyArgs>-P release,sign</prepareVerifyArgs>
-          <!-- work around for a bug in javadoc plugin that causes the release to fail. see MRELEASE-271 -->
-          <preparationGoals>clean install</preparationGoals>
-          <goals>-DskipTests javadoc:javadoc animal-sniffer:check deploy javadoc:aggregate</goals>
-          <pushChanges>false</pushChanges>
+          <preparationGoals>-DskipTests clean verify</preparationGoals>
+          <goals>-DskipTests javadoc:javadoc animal-sniffer:check deploy</goals>
+          <pushChanges>true</pushChanges>
           <localCheckout>true</localCheckout>
-          <tagNameFormat>jenkins-@{project.version}</tagNameFormat>
+          <tagNameFormat>dev-at-cloud-@{project.version}</tagNameFormat>
         </configuration>
       </plugin>
       <plugin>
