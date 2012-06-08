@@ -507,6 +507,7 @@ THE SOFTWARE.
           <pushChanges>true</pushChanges>
           <localCheckout>true</localCheckout>
           <tagNameFormat>dev-at-cloud-@{project.version}</tagNameFormat>
+          <autoVersionSubmodules>true</autoVersionSubmodules>
         </configuration>
       </plugin>
       <plugin>
