@@ -502,8 +502,8 @@ THE SOFTWARE.
         <configuration>
           <!-- enable release profile during the release, create IPS package, and sign bits. -->
           <prepareVerifyArgs>-P release,sign</prepareVerifyArgs>
-          <preparationGoals>-DskipTests clean verify</preparationGoals>
-          <goals>-DskipTests javadoc:javadoc animal-sniffer:check deploy</goals>
+          <preparationGoals>-DskipTests clean verify animal-sniffer:check </preparationGoals>
+          <goals>-DskipTests deploy</goals>
           <pushChanges>true</pushChanges>
           <localCheckout>true</localCheckout>
           <tagNameFormat>dev-at-cloud-@{project.version}</tagNameFormat>
