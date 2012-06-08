@@ -367,6 +367,7 @@ THE SOFTWARE.
             <alias>${hudson.sign.alias}</alias>
             <storepass>${hudson.sign.storepass}</storepass>
             <keystore>${hudson.sign.keystore}</keystore>
+            <keypass>${hudson.sign.keypass}</keypass>
           </configuration>
         </plugin>
         <plugin>
