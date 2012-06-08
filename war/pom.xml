@@ -26,7 +26,7 @@ THE SOFTWARE.
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>org.jenkins-ci.main</groupId>
+    <groupId>com.cloudbees.dev-at-cloud.main</groupId>
     <artifactId>pom</artifactId>
     <version>1.447.1-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
@@ -56,7 +56,7 @@ THE SOFTWARE.
     </dependency>
 
     <dependency>
-      <groupId>org.jenkins-ci.main</groupId>
+      <groupId>com.cloudbees.dev-at-cloud.main</groupId>
       <artifactId>jenkins-core</artifactId>
       <version>${project.version}</version>
       <exclusions>
@@ -82,7 +82,7 @@ THE SOFTWARE.
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>${project.groupId}</groupId>
+      <groupId>org.jenkins-ci.main</groupId>
       <artifactId>remoting</artifactId>
       <!-- specified in the parent -->
     </dependency>    
@@ -212,13 +212,13 @@ THE SOFTWARE.
               <artifactItems>
                 <!-- dependencies that goes to unusual locations -->
                 <artifactItem>
-                  <groupId>${project.groupId}</groupId>
+                  <groupId>org.jenkins-ci.main</groupId>
                   <artifactId>remoting</artifactId>
                   <outputDirectory>${project.build.directory}/${project.build.finalName}/WEB-INF</outputDirectory>
                   <destFileName>remoting.jar</destFileName>
                 </artifactItem>
                 <artifactItem>
-                  <groupId>${project.groupId}</groupId>
+                  <groupId>org.jenkins-ci.main</groupId>
                   <artifactId>remoting</artifactId>
                   <outputDirectory>${project.build.directory}/${project.build.finalName}/WEB-INF</outputDirectory>
                   <destFileName>slave.jar</destFileName>
