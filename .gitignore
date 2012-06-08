@@ -1,6 +1,7 @@
 *~
 target
 work
+overlays
 
 # IntelliJ project files 
 *.iml
