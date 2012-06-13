@@ -2551,9 +2551,6 @@ public class Jenkins extends AbstractCIBase implements ModifiableItemGroup<TopLe
 
             systemMessage = Util.nullify(req.getParameter("system_message"));
 
-            jdks.clear();
-            jdks.addAll(req.bindJSONToList(JDK.class,json.get("jdks")));
-
             boolean result = true;
             for( Descriptor<?> d : Functions.getSortedDescriptorsForGlobalConfig() )
                 result &= configureDescriptor(req,json,d);
