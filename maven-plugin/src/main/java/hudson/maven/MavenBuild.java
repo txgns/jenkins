@@ -516,11 +516,11 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
          * Before we touch I/O streams, we need to make sure all the remote I/O operations are locally completed,
          * or else we end up switching the log traffic at unaligned moments.
          */
-        private void sync() throws IOException {
+        private void sync() {
             try {
                 Channel ch = Channel.current();
                 if (ch!=null)
-                    listener.synchronizeOnMark(ch);
+                    ch.syncLocalIO();
             } catch (InterruptedException e) {
                 // our signature doesn't allow us to throw InterruptedException, so we process it later
                 Thread.currentThread().interrupt();

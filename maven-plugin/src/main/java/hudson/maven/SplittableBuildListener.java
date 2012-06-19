@@ -28,8 +28,6 @@ import hudson.model.BuildListener;
 import hudson.model.Cause;
 import hudson.model.Result;
 import hudson.model.StreamBuildListener;
-import hudson.remoting.Callable;
-import hudson.remoting.Channel;
 import hudson.util.AbstractTaskListener;
 import jenkins.util.MarkFindingOutputStream;
 import org.apache.commons.io.output.ByteArrayOutputStream;
@@ -128,21 +126,23 @@ final class SplittableBuildListener extends AbstractTaskListener implements Buil
      * a synchronization needs to happen when we switch the side OutputStream.
      *
      * <p>
-     * This method does that synchronization.
+     * This method is a part of the protocol to do that. First,
+     * To ensure that the output is split
+     * at the right moment,
      */
-    public void synchronizeOnMark(Channel ch) throws IOException, InterruptedException {
+    public int byMyMark() {
         synchronized (markCountLock) {
-            int start = markCount;
-            
-            // have the remote send us a mark
-            ch.call(new SendMark());
-            
-            // and block until we receive a mark
-            while (markCount==start)
-                wait();
+            return markCount;
         }
     }
     
+    public void waitForMark(int n) throws InterruptedException {
+         synchronized (markCountLock) {
+             while (markCount==n)
+                 wait();
+         }
+    }
+
     public void setSideOutputStream(OutputStream os) throws IOException {
         synchronized (lock()) {
             if(os==null) {
@@ -215,15 +215,6 @@ final class SplittableBuildListener extends AbstractTaskListener implements Buil
             return s.getBytes("UTF-8");
         } catch (UnsupportedEncodingException e) {
             throw new AssertionError(e);
-        }
-    }
-
-    private static class SendMark implements Callable<Void, IOException> {
-        public Void call() throws IOException {
-            // write a mark
-            System.out.write(MARK);
-            System.out.flush();
-            return null;
         }
     }
 }
