@@ -33,9 +33,7 @@ import hudson.remoting.Channel;
 import hudson.util.AbstractTaskListener;
 import jenkins.util.MarkFindingOutputStream;
 import org.apache.commons.io.output.ByteArrayOutputStream;
-import org.apache.commons.io.output.DeferredFileOutputStream;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -60,11 +58,8 @@ final class SplittableBuildListener extends AbstractTaskListener implements Buil
     /**
      * Used to accumulate data when no one is claiming the {@link #side},
      * so that the next one who set the {@link #side} can claim all the data.
-     * 
-     * {@link DeferredFileOutputStream} is used so that even if we get out of sync with Maven
-     * and end up accumulating a lot of data, we still won't kill the JVM.
      */
-    private DeferredFileOutputStream unclaimed = newLog();
+    private ByteArrayOutputStream unclaimed = new ByteArrayOutputStream();
 
     private volatile OutputStream side = unclaimed;
 
@@ -153,21 +148,13 @@ final class SplittableBuildListener extends AbstractTaskListener implements Buil
             if(os==null) {
                 os = unclaimed;
             } else {
-                unclaimed.close();
                 unclaimed.writeTo(os);
-                File f = unclaimed.getFile();
-                if (f!=null)    f.delete();
-
-                unclaimed = newLog();
+                unclaimed = new ByteArrayOutputStream(); // BAOS internally keeps the old buffer, but we don't want to keep around a big buffer
             }
             this.side = os;
         }
     }
 
-    private DeferredFileOutputStream newLog() {
-        return new DeferredFileOutputStream(10*1024,"maven-build","log",null);
-    }
-    
     /**
      * We need to be able to atomically write the buffered bits and then create a fresh {@link ByteArrayOutputStream},
      * when another thread (pipe I/O thread) is calling log.write().
