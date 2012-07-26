@@ -28,10 +28,12 @@ package hudson.model;
 import com.trilead.ssh2.crypto.Base64;
 import hudson.PluginManager;
 import hudson.PluginWrapper;
+import hudson.ProxyConfiguration;
 import hudson.lifecycle.Lifecycle;
 import hudson.model.UpdateCenter.UpdateCenterJob;
 import hudson.util.FormValidation;
 import hudson.util.FormValidation.Kind;
+import hudson.util.DaemonThreadFactory;
 import hudson.util.HttpResponses;
 import hudson.util.IOUtils;
 import hudson.util.TextFile;
@@ -58,6 +60,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.net.URL;
+import java.net.URLConnection;
 import java.security.DigestOutputStream;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
@@ -75,7 +79,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -144,10 +152,29 @@ public class UpdateSite {
     }
 
     /**
+     * Update the json file from the given URL if the file
+     * does not exist, or is otherwise due for update.
+     * 
+     * @return null if no updates are necessary, or the future result
+     */
+    public Future<FormValidation> updateDirectly() {
+        if (! getDataFile().exists() || isDue()) {
+            return Jenkins.getInstance().getUpdateCenter().updateService.submit(new Callable<FormValidation>() {
+                
+                public FormValidation call() throws Exception {
+                    URL src = new URL(getUrl());
+                    URLConnection conn = ProxyConfiguration.open(src);
+                    return updateData(conn.getInputStream());
+                }
+            });
+        }
+            return null;
+    }
+    
+    /**
      * This is the endpoint that receives the update center data file from the browser.
      */
     public FormValidation doPostBack(StaplerRequest req) throws IOException, GeneralSecurityException {
-        dataTimestamp = System.currentTimeMillis();
 
         //avoid imports to reduce merges
         java.io.InputStream is;
@@ -157,6 +184,14 @@ public class UpdateSite {
         }else{
             is = req.getInputStream();
         }
+
+        return updateData(is);
+    }
+
+    private FormValidation updateData(java.io.InputStream is)
+            throws IOException {
+
+        dataTimestamp = System.currentTimeMillis();
 
         byte[] data = org.apache.commons.io.IOUtils.toByteArray(is);
 
@@ -186,7 +221,6 @@ public class UpdateSite {
                 return e;
             }
         }
-
         LOGGER.info("Obtained the latest update center data file for UpdateSource " + id);
         getDataFile().write(json);
         return FormValidation.ok();
@@ -323,7 +357,7 @@ public class UpdateSite {
     /**
      * Loads the update center data, if any.
      *
-     * @return  null if no data is available.
+     * @return  null if no data is available.   
      */
     public Data getData() {
         JSONObject o = getJSONObject();
