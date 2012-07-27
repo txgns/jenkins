@@ -29,8 +29,12 @@ public class FileUtils {
 
 
     public static File toAbsolutePathOnMaster(File fromAbsolutePath) {
-        File relativePath = FileUtils.relativeTo(fromAbsolutePath,
-                new File(MasterConfig.getSlaveRootOnSlave()));
+        String slaveRoot = MasterConfig.getSlaveRootOnSlave();
+        if (fromAbsolutePath.getPath().startsWith("/scratch/hudson")) {
+            slaveRoot = "/scratch/hudson";
+        } 
+        
+        File relativePath = FileUtils.relativeTo(fromAbsolutePath, new File(slaveRoot));
         File absolutePathOnMaster = new File(MasterConfig.getSlaveRootOnMaster(), relativePath.getPath());
         return absolutePathOnMaster;
     }

@@ -31,6 +31,16 @@ public class FileUtilsTest extends TestCase {
         assertEquals(new File(masterWorkspace,"project1"), FileUtils.toAbsolutePathOnMaster(new File(slaveWorkspace,"project1")));
         assertEquals(new File(masterWorkspace,"matrix/blue/workspace"), FileUtils.toAbsolutePathOnMaster(new File(slaveWorkspace,"matrix/blue/workspace")));
     }
+    
+    public void testPathTranslationOfLegacyHudsonPathsFromSlaveToMaster() {
+        System.setProperty("slave.fs.root.on.master","/tmp/slave");
+        File masterWorkspace = new File(MasterConfig.getSlaveRootOnMaster(),"./workspace");
+        File slaveWorkspace = new File("/scratch/hudson","workspace");
+        
+        assertEquals(new File(masterWorkspace,"project1"), FileUtils.toAbsolutePathOnMaster(new File(slaveWorkspace,"project1")));
+        assertEquals(new File(masterWorkspace,"matrix/blue/workspace"), FileUtils.toAbsolutePathOnMaster(new File(slaveWorkspace,"matrix/blue/workspace")));
+    }
+
 
     private void assertRelative(String fromAbsolutePath, String relativeToRoot,
             String expected) {

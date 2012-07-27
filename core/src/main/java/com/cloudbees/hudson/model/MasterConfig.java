@@ -17,7 +17,7 @@ public class MasterConfig {
     }
     
     public static String getSlaveRootOnSlave() {
-        return System.getProperty("slave.fs.root","/scratch/hudson");
+        return System.getProperty("slave.fs.root","/scratch/jenkins");
     }
 
     public static File getMasterWorkspaceRoot() {
