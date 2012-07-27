@@ -58,6 +58,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.net.URL;
@@ -163,8 +164,15 @@ public class UpdateSite {
                 
                 public FormValidation call() throws Exception {
                     URL src = new URL(getUrl());
+                    InputStream is = null;
                     URLConnection conn = ProxyConfiguration.open(src);
-                    return updateData(conn.getInputStream());
+                    is = conn.getInputStream();
+                    try {
+                        return updateData(is);
+                    } finally {
+                        if (is != null)
+                            is.close();
+                    }
                 }
             });
         }
