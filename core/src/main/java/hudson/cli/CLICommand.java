@@ -192,6 +192,7 @@ public abstract class CLICommand implements ExtensionPoint, Cloneable {
         Authentication old = sc.getAuthentication();
 
         CliAuthenticator authenticator = Jenkins.getInstance().getSecurityRealm().createCliAuthenticator(this);
+        sc.setAuthentication(getTransportAuthentication());
         new ClassParser().parse(authenticator,p);
 
         try {
