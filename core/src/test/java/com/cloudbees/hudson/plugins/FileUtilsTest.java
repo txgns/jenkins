@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 
 import com.cloudbees.hudson.model.FileUtils;
+import com.cloudbees.hudson.model.FileUtils.NonMatchingPathException;
 import com.cloudbees.hudson.model.MasterConfig;
 
 import junit.framework.Assert;
@@ -55,7 +56,11 @@ public class FileUtilsTest extends TestCase {
 
     private void assertRelative(String fromAbsolutePath, String relativeToRoot,
             String expected) {
-        Assert.assertEquals(new File(expected), 
-               FileUtils.relativeTo(new File(fromAbsolutePath), new File(relativeToRoot)));
+        try {
+            Assert.assertEquals(new File(expected), 
+                   FileUtils.relativeTo(new File(fromAbsolutePath), new File(relativeToRoot)));
+        } catch (NonMatchingPathException e) {
+            Assert.fail("Unexpected exception");
+        }
     }
 }
