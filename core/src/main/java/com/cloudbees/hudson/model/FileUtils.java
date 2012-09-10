@@ -2,8 +2,6 @@ package com.cloudbees.hudson.model;
 
 import java.io.File;
 
-import com.cloudbees.hudson.plugins.FileUtilsTest;
-
 public class FileUtils {
 
     /**
