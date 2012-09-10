@@ -18,6 +18,17 @@ public class FileUtilsTest extends TestCase {
         assertRelative("/scratch/hudson/workspace/foo/bar", "/scratch/hudson/", "./workspace/foo/bar");
     }
     
+    /**
+     * 
+     */
+    public void testNonMatchingPathOnSlaveShouldReturnNull() {
+        System.setProperty("slave.fs.root.on.master","/tmp/slave");
+        File masterWorkspace = new File(MasterConfig.getSlaveRootOnMaster(),"./workspace");
+        File slaveWorkspace = new File("/someworkspace","workspace");
+        
+        assertNull(FileUtils.toAbsolutePathOnMaster(new File(slaveWorkspace,"project1")));
+    }
+    
     public void testCurrentDir() throws IOException {
         File absolute = new File("/tmp", "./workspace/foo");
         Assert.assertEquals("/tmp/workspace/foo", absolute.getCanonicalPath());

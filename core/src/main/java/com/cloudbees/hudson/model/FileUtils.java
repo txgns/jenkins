@@ -34,9 +34,13 @@ public class FileUtils {
             slaveRoot = "/scratch/hudson";
         } 
         
-        File relativePath = FileUtils.relativeTo(fromAbsolutePath, new File(slaveRoot));
-        File absolutePathOnMaster = new File(MasterConfig.getSlaveRootOnMaster(), relativePath.getPath());
-        return absolutePathOnMaster;
+        try {
+            File relativePath = FileUtils.relativeTo(fromAbsolutePath, new File(slaveRoot));
+            File absolutePathOnMaster = new File(MasterConfig.getSlaveRootOnMaster(), relativePath.getPath());
+            return absolutePathOnMaster;
+        } catch (NullPointerException npe) {
+            return null;
+        }
     }
     
 
