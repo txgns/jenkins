@@ -232,6 +232,19 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <!-- make sure our code doesn't have 1.6 dependencies except where we know it -->
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>animal-sniffer-maven-plugin</artifactId>
+        <version>1.7</version>
+        <configuration>
+          <signature>
+            <groupId>org.codehaus.mojo.signature</groupId>
+            <artifactId>java15</artifactId>
+            <version>1.0</version>
+          </signature>
+        </configuration>
+      </plugin>
     </plugins>
     <pluginManagement>
       <plugins>
@@ -281,9 +294,13 @@
   </pluginRepositories>
 
   <distributionManagement>
+    <repository>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>dav:https://repository-cloudbees.forge.cloudbees.com/private-release/</url>
+    </repository>
     <snapshotRepository>
-      <id>maven.jenkins-ci.org</id>
-      <url>http://maven.jenkins-ci.org:8081/content/repositories/snapshots</url>
+      <id>repository-cloudbees.forge.cloudbees.com</id>
+      <url>dav:https://repository-cloudbees.forge.cloudbees.com/private-snapshot/</url>
     </snapshotRepository>
   </distributionManagement>
 </project>
