@@ -24,6 +24,7 @@
 package hudson.model;
 
 import hudson.util.IOException2;
+import jenkins.model.Jenkins;
 import org.dom4j.CharacterData;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -80,6 +81,8 @@ public class Api extends AbstractModelObject {
                       @QueryParameter String xpath,
                       @QueryParameter String wrapper,
                       @QueryParameter int depth) throws IOException, ServletException {
+        setHeaders(rsp);
+
         String[] excludes = req.getParameterValues("exclude");
 
         if(xpath==null && excludes==null) {
@@ -168,6 +171,7 @@ public class Api extends AbstractModelObject {
      * Generate schema.
      */
     public void doSchema(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
+        setHeaders(rsp);
         rsp.setContentType("application/xml");
         StreamResult r = new StreamResult(rsp.getOutputStream());
         new SchemaGenerator(new ModelBuilder().get(bean.getClass())).generateSchema(r);
@@ -178,6 +182,7 @@ public class Api extends AbstractModelObject {
      * Exposes the bean as JSON.
      */
     public void doJson(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
+        setHeaders(rsp);
         rsp.serveExposedBean(req,bean, Flavor.JSON);
     }
 
@@ -185,8 +190,15 @@ public class Api extends AbstractModelObject {
      * Exposes the bean as Python literal.
      */
     public void doPython(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
+        setHeaders(rsp);
         rsp.serveExposedBean(req,bean, Flavor.PYTHON);
     }
 
+    private void setHeaders(StaplerResponse rsp) {
+        rsp.setHeader("X-Jenkins", Jenkins.VERSION);
+        rsp.setHeader("X-Jenkins-Session", Jenkins.SESSION_HASH);
+    }
+
+    private static final Logger LOGGER = Logger.getLogger(Api.class.getName());
     private static final ModelBuilder MODEL_BUILDER = new ModelBuilder();
 }
