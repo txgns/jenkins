@@ -1,7 +1,7 @@
 /*
  * The MIT License
  * 
- * Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Erik Ramfelt, 
+ * Copyright (c) 2004-2011, Sun Microsystems, Inc., Kohsuke Kawaguchi, Erik Ramfelt, 
  * Yahoo! Inc., Tom Huybrechts, Olivier Lamy
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,6 +25,7 @@
 package org.jvnet.hudson.test;
 
 import com.gargoylesoftware.htmlunit.html.HtmlImage;
+import com.google.inject.Injector;
 import hudson.ClassicPluginStrategy;
 import hudson.CloseProofOutputStream;
 import hudson.DNSMultiCast;
@@ -130,6 +131,7 @@ import net.sourceforge.htmlunit.corejs.javascript.ContextFactory.Listener;
 import org.acegisecurity.AuthenticationException;
 import org.acegisecurity.BadCredentialsException;
 import org.acegisecurity.GrantedAuthority;
+import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
 import org.acegisecurity.userdetails.UserDetails;
 import org.acegisecurity.userdetails.UsernameNotFoundException;
@@ -262,6 +264,11 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
 
     public ComputerConnectorTester computerConnectorTester = new ComputerConnectorTester(this);
 
+    /**
+     * The directory where a war file gets exploded.
+     */
+    protected File explodedWarDir;
+
     protected HudsonTestCase(String name) {
         super(name);
     }
@@ -306,6 +313,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         hudson.servletContext.setAttribute("app",hudson);
         hudson.servletContext.setAttribute("version","?");
         WebAppMain.installExpressionFactory(new ServletContextEvent(hudson.servletContext));
+        Mailer.descriptor().setHudsonUrl(getURL().toExternalForm());
 
         // set a default JDK to be the one that the harness is using.
         hudson.getJDKs().add(new JDK("default",System.getProperty("java.home")));
@@ -323,6 +331,9 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         if (desc != null) Mailer.descriptor().setHudsonUrl(null);
         for( Descriptor d : hudson.getExtensionList(Descriptor.class) )
             d.load();
+
+        // allow the test class to inject Jenkins components
+        jenkins.lookup(Injector.class).injectMembers(this);
     }
 
 
@@ -354,11 +365,13 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
             }
             clients.clear();
 
-            for (Channel c : channels)
-                c.close();
-            for (Channel c : channels)
-                c.join();
-            channels.clear();
+            synchronized(channels) {
+                for (Channel c : channels)
+                    c.close();
+                for (Channel c : channels)
+                    c.join();
+                channels.clear();
+            }
 
         } finally {
             server.stop();
@@ -382,7 +395,7 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     protected void runTest() throws Throwable {
         System.out.println("=== Starting "+ getClass().getSimpleName() + "." + getName());
         // so that test code has all the access to the system
-        SecurityContextHolder.getContext().setAuthentication(ACL.SYSTEM);
+        ACL.impersonate(ACL.SYSTEM);
 
         try {
             super.runTest();
@@ -449,11 +462,17 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
     protected ServletContext createWebServer() throws Exception {
         server = new Server();
 
-        WebAppContext context = new WebAppContext(WarExploder.getExplodedDir().getPath(), contextPath);
+        explodedWarDir = WarExploder.getExplodedDir();
+        WebAppContext context = new WebAppContext(explodedWarDir.getPath(), contextPath);
         context.setClassLoader(getClass().getClassLoader());
         context.setConfigurations(new Configuration[]{new WebXmlConfiguration(), new NoListenerConfiguration()});
         server.setHandler(context);
         context.setMimeTypes(MIME_TYPES);
+        if(Functions.isWindows()) {
+            // this is only needed on Windows because of the file
+            // locking issue as described in JENKINS-12647
+            context.setCopyWebDir(true);
+        }
 
         SocketConnector connector = new SocketConnector();
         connector.setHeaderBufferSize(12*1024); // use a bigger buffer as Stapler traces can get pretty large on deeply nested URL
@@ -497,11 +516,16 @@ public abstract class HudsonTestCase extends TestCase implements RootAction {
         public void onOnline(Computer c, TaskListener listener) throws IOException, InterruptedException {
             VirtualChannel ch = c.getChannel();
             if (ch instanceof Channel)
-            TestEnvironment.get().testCase.channels.add((Channel)ch);
+            TestEnvironment.get().testCase.addChannel((Channel)ch);
         }
     }
 
-
+    private void addChannel(Channel ch) {
+        synchronized (channels) {
+            channels.add(ch);
+        }
+    }
+    
 //    /**
 //     * Sets guest credentials to access java.net Subversion repo.
 //     */

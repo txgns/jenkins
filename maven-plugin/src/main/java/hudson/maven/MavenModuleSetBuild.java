@@ -34,8 +34,7 @@ import hudson.maven.MavenBuild.ProxyImpl2;
 import hudson.maven.reporters.MavenAggregatedArtifactRecord;
 import hudson.maven.reporters.MavenFingerprinter;
 import hudson.maven.reporters.MavenMailer;
-import hudson.maven.settings.GlobalMavenSettingsProvider;
-import hudson.maven.settings.MavenSettingsProvider;
+import hudson.maven.settings.SettingConfig;
 import hudson.maven.settings.SettingsProviderUtils;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
@@ -92,7 +91,6 @@ import org.apache.maven.model.building.ModelBuildingRequest;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuildingException;
 import org.codehaus.plexus.util.PathTool;
-import org.jenkinsci.lib.configprovider.model.Config;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
@@ -171,9 +169,7 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
             Node node = computer.getNode();
             if (node != null) {
                 mvn = mvn.forNode(node, log);
-                
-                envs.put("M2_HOME", mvn.getHome());
-                envs.put("PATH+MAVEN", mvn.getHome() + "/bin");
+                mvn.buildEnvVars(envs);
             }
         }
         
@@ -624,7 +620,7 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
 
                         String settingsConfigId = project.getSettingConfigId();
                         if (StringUtils.isNotBlank(settingsConfigId)) {
-                            Config settingsConfig = SettingsProviderUtils.findConfig( settingsConfigId, MavenSettingsProvider.class, org.jenkinsci.lib.configprovider.maven.MavenSettingsProvider.class );
+                            SettingConfig settingsConfig = SettingsProviderUtils.findSettings(settingsConfigId);
                             if (settingsConfig == null) {
                                 logger.println(" your Apache Maven build is setup to use a config with id " + settingsConfigId
                                                    + " but cannot find the config");
@@ -639,7 +635,7 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
 
                         String globalSettingsConfigId = project.getGlobalSettingConfigId();
                         if (StringUtils.isNotBlank(globalSettingsConfigId)) {
-                            Config settingsConfig = SettingsProviderUtils.findConfig( globalSettingsConfigId, GlobalMavenSettingsProvider.class, org.jenkinsci.lib.configprovider.maven.GlobalMavenSettingsProvider.class );
+                            SettingConfig settingsConfig = SettingsProviderUtils.findSettings(globalSettingsConfigId);
                             if (settingsConfig == null) {
                                 logger.println(" your Apache Maven build is setup to use a global settings config with id " + globalSettingsConfigId
                                                    + " but cannot find the config");
@@ -719,8 +715,9 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
                                                                                            pom.getParent() ) );
                         }
                         ArgumentListBuilder margs = new ArgumentListBuilder().add("-B").add("-f", pom.getRemote());
-                        if(project.usesPrivateRepository())
-                            margs.add("-Dmaven.repo.local="+getWorkspace().child(".repository"));
+                        FilePath localRepo = project.getLocalRepository().locate(MavenModuleSetBuild.this);
+                        if(localRepo!=null)
+                            margs.add("-Dmaven.repo.local="+localRepo.getRemote());
 
                         if (project.globalSettingConfigPath != null)
                             margs.add("-gs" , project.globalSettingConfigPath);
@@ -910,7 +907,7 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
 
             List<PomInfo> poms;
             try {
-                poms = getModuleRoot().act(new PomParser(listener, mvn, project, mavenVersion, envVars, getWorkspace()));
+                poms = getModuleRoot().act(new PomParser(listener, mvn, mavenVersion, envVars, MavenModuleSetBuild.this));
             } catch (IOException e) {
                 if (project.isIncrementalBuild()) {
                     // If POM parsing failed we should do a full build next time.
@@ -1076,8 +1073,9 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
         
         String rootPOMRelPrefix;
         
-        public PomParser(BuildListener listener, MavenInstallation mavenHome, MavenModuleSet project, String mavenVersion, EnvVars envVars, FilePath workspace) {
+        public PomParser(BuildListener listener, MavenInstallation mavenHome, String mavenVersion, EnvVars envVars, MavenModuleSetBuild build) {
             // project cannot be shipped to the remote JVM, so all the relevant properties need to be captured now.
+            MavenModuleSet project = build.getProject();
             this.listener = listener;
             this.mavenHome = mavenHome;
             this.rootPOM = project.getRootPOM();
@@ -1103,10 +1101,11 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
             
             this.nonRecursive = project.isNonRecursive();
 
-            this.workspaceProper = workspace.getRemote();
+            this.workspaceProper = build.getWorkspace().getRemote();
             LOGGER.fine("Workspace is " + workspaceProper);
-            if (project.usesPrivateRepository()) {
-                this.privateRepository = workspace.child(".repository").getRemote();
+            FilePath localRepo = project.getLocalRepository().locate(build);
+            if (localRepo!=null) {
+                this.privateRepository = localRepo.getRemote();
             } else {
                 this.privateRepository = null;
             }
@@ -1118,7 +1117,7 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
             this.processPlugins = project.isProcessPlugins();
             
             this.moduleRootPath = 
-                project.getScm().getModuleRoot( workspace, project.getLastBuild() ).getRemote();
+                project.getScm().getModuleRoot( build.getWorkspace(), project.getLastBuild() ).getRemote();
             
             this.mavenValidationLevel = project.getMavenValidationLevel();
             this.globalSetings = project.globalSettingConfigPath;

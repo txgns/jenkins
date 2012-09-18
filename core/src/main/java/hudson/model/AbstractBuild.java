@@ -24,6 +24,7 @@
 package hudson.model;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSortedSet;
 import hudson.AbortException;
 import hudson.EnvVars;
 import hudson.Functions;
@@ -73,6 +74,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.StringWriter;
+import java.lang.ref.Reference;
+import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 import java.text.MessageFormat;
 import java.util.AbstractSet;
@@ -86,6 +89,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Vector;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -294,7 +299,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
     public FilePath[] getModuleRoots() {
         FilePath ws = getWorkspace();
         if (ws==null)    return null;
-        return getParent().getScm().getModuleRoots(ws,this);
+        return getParent().getScm().getModuleRoots(ws, this);
     }
 
     /**
@@ -364,8 +369,13 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
      */
     public boolean hasParticipant(User user) {
         for (ChangeLogSet.Entry e : getChangeSet())
-            if (e.getAuthor()==user)
-                return true;
+            try{
+                if (e.getAuthor()==user)
+                    return true;
+            } catch (RuntimeException re) {
+                // no-op, just remove exception thrown e.g. from git plugin. 
+                // It there's some problem to determine committer, user probably doesn't participate in the build.
+            }
         return false;
     }
 
@@ -456,13 +466,16 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
 
             launcher = createLauncher(listener);
             if (!Jenkins.getInstance().getNodes().isEmpty())
-                listener.getLogger().println(node instanceof Jenkins ? Messages.AbstractBuild_BuildingOnMaster() : 
+                listener.getLogger().print(node instanceof Jenkins ? Messages.AbstractBuild_BuildingOnMaster() : 
                     Messages.AbstractBuild_BuildingRemotely(HyperlinkNote.encodeTo("/computer/"+ builtOn, builtOn)));
+            else
+            	listener.getLogger().print(Messages.AbstractBuild_Building());
             
             final Lease lease = decideWorkspace(node,Computer.currentComputer().getWorkspaceList());
 
             try {
                 workspace = lease.path.getRemote();
+                listener.getLogger().println(Messages.AbstractBuild_BuildingInWorkspace(workspace));
                 node.getFileSystemProvisioner().prepareWorkspace(AbstractBuild.this,lease.path,listener);
                 
                 for (WorkspaceListener wl : WorkspaceListener.all()) {
@@ -577,7 +590,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
                     // for historical reasons, null in the scm field means CVS, so we need to explicitly set this to something
                     // in case check out fails and leaves a broken changelog.xml behind.
                     // see http://www.nabble.com/CVSChangeLogSet.parse-yields-SAXParseExceptions-when-parsing-bad-*AccuRev*-changelog.xml-files-td22213663.html
-                    AbstractBuild.this.scm = new NullChangeLogParser();
+                    AbstractBuild.this.scm = NullChangeLogParser.INSTANCE;
 
                     try {
                         if (project.checkout(AbstractBuild.this,launcher,listener,new File(getRootDir(),"changelog.xml"))) {
@@ -638,7 +651,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
                 HashSet<String> r = new HashSet<String>();
                 for (User u : getCulprits())
                     r.add(u.getId());
-                culprits = r;
+                culprits = ImmutableSortedSet.copyOf(r);
                 CheckPoint.CULPRITS_DETERMINED.report();
             }
         }
@@ -757,6 +770,11 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
         return Collections.<Fingerprint>emptyList();
     }
 
+	/*
+     * No need to to lock the entire AbstractBuild on change set calculcation
+     */
+    private transient Object changeSetLock = new Object();
+    
     /**
      * Gets the changes incorporated into this build.
      *
@@ -764,20 +782,22 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
      */
     @Exported
     public ChangeLogSet<? extends Entry> getChangeSet() {
-        if (scm==null) {
-            // for historical reason, null means CVS.
-            try {
-                Class<?> c = Jenkins.getInstance().getPluginManager().uberClassLoader.loadClass("hudson.scm.CVSChangeLogParser");
-                scm = (ChangeLogParser)c.newInstance();
-            } catch (ClassNotFoundException e) {
-                // if CVS isn't available, fall back to something non-null.
-                scm = new NullChangeLogParser();
-            } catch (InstantiationException e) {
-                scm = new NullChangeLogParser();
-                throw (Error)new InstantiationError().initCause(e);
-            } catch (IllegalAccessException e) {
-                scm = new NullChangeLogParser();
-                throw (Error)new IllegalAccessError().initCause(e);
+        synchronized (changeSetLock) {
+            if (scm==null) {
+                // for historical reason, null means CVS.
+                try {
+                    Class<?> c = Jenkins.getInstance().getPluginManager().uberClassLoader.loadClass("hudson.scm.CVSChangeLogParser");
+                    scm = (ChangeLogParser)c.newInstance();
+                } catch (ClassNotFoundException e) {
+                    // if CVS isn't available, fall back to something non-null.
+                    scm = NullChangeLogParser.INSTANCE;
+                } catch (InstantiationException e) {
+                    scm = NullChangeLogParser.INSTANCE;
+                    throw (Error)new InstantiationError().initCause(e);
+                } catch (IllegalAccessException e) {
+                    scm = NullChangeLogParser.INSTANCE;
+                    throw (Error)new IllegalAccessError().initCause(e);
+                }
             }
         }
 
@@ -878,6 +898,10 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
 
     public Calendar due() {
         return getTimestamp();
+    }
+      
+    public List<Action> getPersistentActions(){
+        return super.getActions();
     }
 
     /**

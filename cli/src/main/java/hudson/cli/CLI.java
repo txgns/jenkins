@@ -50,10 +50,7 @@ import java.io.PrintStream;
 import java.io.StringReader;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
-import java.net.Proxy;
-import java.net.ProxySelector;
 import java.net.Socket;
-import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.security.GeneralSecurityException;
@@ -70,9 +67,9 @@ import java.util.Locale;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.io.Console;
 
 import static java.util.logging.Level.*;
 
@@ -88,28 +85,39 @@ public class CLI {
     private final boolean ownsPool;
     private final List<Closeable> closables = new ArrayList<Closeable>(); // stuff to close in the close method
     private final String httpsProxyTunnel;
+    private final String authorization;
 
     public CLI(URL jenkins) throws IOException, InterruptedException {
         this(jenkins,null);
     }
 
+    /**
+     * @deprecated
+     *      Use {@link CLIConnectionFactory} to create {@link CLI}
+     */
     public CLI(URL jenkins, ExecutorService exec) throws IOException, InterruptedException {
         this(jenkins,exec,null);
     }
 
     /**
-     *
-     * @param httpsProxyTunnel
-     *      Configures the HTTP proxy that we use for making a plain TCP/IP connection.
-     *      "host:port" that points to an HTTP proxy or null.
+     * @deprecated 
+     *      Use {@link CLIConnectionFactory} to create {@link CLI}
      */
     public CLI(URL jenkins, ExecutorService exec, String httpsProxyTunnel) throws IOException, InterruptedException {
+        this(new CLIConnectionFactory().url(jenkins).executorService(exec).httpsProxyTunnel(httpsProxyTunnel));
+    }
+    
+    /*package*/ CLI(CLIConnectionFactory factory) throws IOException, InterruptedException {
+        URL jenkins = factory.jenkins;
+        this.httpsProxyTunnel = factory.httpsProxyTunnel;
+        this.authorization = factory.authorization;
+        ExecutorService exec = factory.exec;
+        
         String url = jenkins.toExternalForm();
         if(!url.endsWith("/"))  url+='/';
 
         ownsPool = exec==null;
         pool = exec!=null ? exec : Executors.newCachedThreadPool();
-        this.httpsProxyTunnel = httpsProxyTunnel;
 
         Channel channel = null;
         InetSocketAddress clip = getCliTcpPort(url);
@@ -139,10 +147,12 @@ public class CLI {
         url+="cli";
         URL jenkins = new URL(url);
 
-        FullDuplexHttpStream con = new FullDuplexHttpStream(jenkins);
+        FullDuplexHttpStream con = new FullDuplexHttpStream(jenkins,authorization);
         Channel ch = new Channel("Chunked connection to "+jenkins,
                 pool,con.getInputStream(),con.getOutputStream());
-        new PingThread(ch,15*1000) {
+        final long interval = 15*1000;
+        final long timeout = (interval * 3) / 4;
+        new PingThread(ch,timeout,interval) {
             protected void onDead() {
                 // noop. the point of ping is to keep the connection alive
                 // as most HTTP servers have a rather short read time out
@@ -176,11 +186,6 @@ public class CLI {
             // HTTP proxies (at least the one I tried --- squid) doesn't seem to do half-close very well.
             // So instead of relying on it, we'll just send the close command and then let the server
             // cut their side, then close the socket after the join.
-            closables.add(new Closeable() {
-                public void close() throws IOException {
-                    s.close();
-                }
-            });
             out = new SocketOutputStream(s) {
                 @Override
                 public void close() throws IOException {
@@ -188,9 +193,16 @@ public class CLI {
                 }
             };
         } else {
-            s = new Socket(endpoint.getHostName(),endpoint.getPort());
+            s = new Socket();
+            s.connect(endpoint,3000);
             out = new SocketOutputStream(s);
         }
+
+        closables.add(new Closeable() {
+            public void close() throws IOException {
+                s.close();
+            }
+        });
 
         DataOutputStream dos = new DataOutputStream(s.getOutputStream());
         dos.writeUTF("Protocol:CLI-connect");
@@ -204,7 +216,11 @@ public class CLI {
      * If the server advertises CLI endpoint, returns its location.
      */
     private InetSocketAddress getCliTcpPort(String url) throws IOException {
-        URLConnection head = new URL(url).openConnection();
+        URL _url = new URL(url);
+        if (_url.getHost()==null || _url.getHost().length()==0) {
+            throw new IOException("Invalid URL: "+url);
+        }
+        URLConnection head = _url.openConnection();
         try {
             head.connect();
         } catch (IOException e) {
@@ -342,13 +358,17 @@ public class CLI {
                     printUsage(Messages.CLI_NoSuchFileExists(f));
                     return -1;
                 }
+                KeyPair kp = null;
                 try {
-                    candidateKeys.add(loadKey(f));
+                    kp = loadKey(f);
                 } catch (IOException e) {
-                    throw new Exception("Failed to load key: "+f,e);
+                    //if the PEM file is encrypted, IOException is thrown
+                    kp = tryEncryptedFile(f);                    
                 } catch (GeneralSecurityException e) {
                     throw new Exception("Failed to load key: "+f,e);
                 }
+                if(kp != null)
+                    candidateKeys.add(kp);
                 args = args.subList(2,args.size());
                 sshAuthRequestedExplicitly = true;
                 continue;
@@ -423,19 +443,27 @@ public class CLI {
     /**
      * Loads RSA/DSA private key in a PEM format into {@link KeyPair}.
      */
+    public static KeyPair loadKey(File f, String passwd) throws IOException, GeneralSecurityException {
+        return loadKey(readPemFile(f), passwd);
+    }
+
     public static KeyPair loadKey(File f) throws IOException, GeneralSecurityException {
+    	return loadKey(f, null);
+    }
+    
+    private static String readPemFile(File f) throws IOException{
         DataInputStream dis = new DataInputStream(new FileInputStream(f));
         byte[] bytes = new byte[(int) f.length()];
         dis.readFully(bytes);
         dis.close();
-        return loadKey(new String(bytes));
+        return new String(bytes);
     }
-
+    
     /**
      * Loads RSA/DSA private key in a PEM format into {@link KeyPair}.
      */
-    public static KeyPair loadKey(String pemString) throws IOException, GeneralSecurityException {
-        Object key = PEMDecoder.decode(pemString.toCharArray(), null);
+    public static KeyPair loadKey(String pemString, String passwd) throws IOException, GeneralSecurityException {
+        Object key = PEMDecoder.decode(pemString.toCharArray(), passwd);
         if (key instanceof com.trilead.ssh2.signature.RSAPrivateKey) {
             com.trilead.ssh2.signature.RSAPrivateKey x = (com.trilead.ssh2.signature.RSAPrivateKey)key;
 //            System.out.println("ssh-rsa " + new String(Base64.encode(RSASHA1Verify.encodeSSHRSAPublicKey(x.getPublicKey()))));
@@ -455,6 +483,41 @@ public class CLI {
         throw new UnsupportedOperationException("Unrecognizable key format: "+key);
     }
 
+    public static KeyPair loadKey(String pemString) throws IOException, GeneralSecurityException {
+    	return loadKey(pemString, null);
+    }
+    
+    private static KeyPair tryEncryptedFile(File f) throws IOException, GeneralSecurityException{
+        KeyPair kp = null;
+        if(isPemEncrypted(f)){
+            String passwd = askForPasswd(f.getCanonicalPath());
+            kp = loadKey(f,passwd);
+        }
+        return kp;
+    }
+    
+    private static boolean isPemEncrypted(File f) throws IOException{
+        String pemString = readPemFile(f);
+        //simple check if the file is encrypted
+        if(pemString.contains("4,ENCRYPTED"))
+            return true;
+        return false;
+    }
+    
+    private static String askForPasswd(String filePath){
+        try {
+            Console cons = System.console();
+            String passwd = null;
+            if (cons != null){
+                char[] p = cons.readPassword("%s", "Enter passphrase for "+filePath+":");
+                passwd = String.valueOf(p);
+            }
+            return passwd;
+        } catch (LinkageError e) {
+            throw new Error("Your private key is encrypted, but we need Java6 to ask you password safely",e);
+        }
+    }
+    
     /**
      * try all the default key locations
      */

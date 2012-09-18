@@ -29,7 +29,7 @@ THE SOFTWARE.
   <parent>
     <groupId>com.cloudbees.dev-at-cloud.main</groupId>
     <artifactId>pom</artifactId>
-    <version>1.447.2.5-SNAPSHOT</version>
+    <version>1.466.2.1-SNAPSHOT</version>
   </parent>
 
   <artifactId>maven-plugin</artifactId>
@@ -42,9 +42,9 @@ THE SOFTWARE.
 
   <properties>
     <mavenInterceptorsVersion>1.2</mavenInterceptorsVersion>
-    <mavenVersion>3.0.3</mavenVersion>
+    <mavenVersion>3.0.4</mavenVersion>
     <maven.version>${mavenVersion}</maven.version>
-    <aetherVersion>1.13</aetherVersion>
+    <aetherVersion>1.13.1</aetherVersion>
     <sisuInjectVersion>2.3.0</sisuInjectVersion>
     <wagonVersion>2.2</wagonVersion>
   </properties>
@@ -114,19 +114,13 @@ THE SOFTWARE.
       <artifactId>maven3-interceptor</artifactId>
       <version>${mavenInterceptorsVersion}</version>
     </dependency>
-
     <dependency>
-      <groupId>org.jenkins-ci.lib</groupId>
-      <artifactId>config-provider-model</artifactId>
-      <version>1.1</version>
+      <!-- this plugin is optional and is used to provide settigns.xml from a central UI -->
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>config-file-provider</artifactId>
+      <version>1.9.1</version>
+      <optional>true</optional>
     </dependency>
-    <!-- the dependency between config-file-provider and maven-plugin should be in the other direction  -->
-<!--     <dependency> -->
-<!-- 	  <groupId>org.jenkins-ci.plugins</groupId> -->
-<!-- 	  <artifactId>config-file-provider</artifactId> -->
-<!-- 	  <version>1.2-SNAPSHOT</version> -->
-<!-- 	  <optional>true</optional> -->
-<!--     </dependency> -->
     <dependency>
       <groupId>org.apache.ant</groupId>
       <artifactId>ant</artifactId>
@@ -195,6 +189,17 @@ THE SOFTWARE.
     <dependency>
       <groupId>org.sonatype.sisu</groupId>
       <artifactId>sisu-guice</artifactId>
+      <exclusions>
+        <exclusion>
+          <!--
+             sisu-guice wants a patched version of guava, which is old.
+             but from what I can tell from changes, it's GWT related
+             and we don't care. So let's stick to the proper guava
+          -->
+          <groupId>org.sonatype.sisu</groupId>
+          <artifactId>sisu-guava</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>

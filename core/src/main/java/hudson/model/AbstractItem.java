@@ -1,8 +1,8 @@
 /*
  * The MIT License
  * 
- * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi,
- * Daniel Dyer, Tom Huybrechts
+ * Copyright (c) 2004-2011, Sun Microsystems, Inc., Kohsuke Kawaguchi,
+ * Daniel Dyer, Tom Huybrechts, Yahoo!, Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,7 @@ import hudson.cli.declarative.CLIMethod;
 import hudson.cli.declarative.CLIResolver;
 import hudson.model.listeners.ItemListener;
 import hudson.model.listeners.SaveableListener;
+import hudson.search.SearchIndexBuilder;
 import hudson.security.AccessControlled;
 import hudson.security.Permission;
 import hudson.security.ACL;
@@ -61,8 +62,10 @@ import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.HttpDeletable;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.CmdLineException;
+import org.kohsuke.stapler.interceptor.RequirePOST;
 
 import javax.servlet.ServletException;
+import javax.xml.transform.Source;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
@@ -91,6 +94,8 @@ public abstract class AbstractItem extends Actionable implements Item, HttpDelet
     protected volatile String description;
 
     private transient ItemGroup parent;
+    
+    protected String displayName;
 
     protected AbstractItem(ItemGroup parent, String name) {
         this.parent = parent;
@@ -115,10 +120,45 @@ public abstract class AbstractItem extends Actionable implements Item, HttpDelet
     }
 
     @Exported
+    /**
+     * @return The display name of this object, or if it is not set, the name
+     * of the object.
+     */
     public String getDisplayName() {
+        if(null!=displayName) {
+            return displayName;
+        }
+        // if the displayName is not set, then return the name as we use to do
         return getName();
     }
-
+    
+    @Exported
+    /**
+     * This is intended to be used by the Job configuration pages where
+     * we want to return null if the display name is not set.
+     * @return The display name of this object or null if the display name is not
+     * set
+     */
+    public String getDisplayNameOrNull() {
+        return displayName;
+    }
+    
+    /**
+     * This method exists so that the Job configuration pages can use 
+     * getDisplayNameOrNull so that nothing is shown in the display name text
+     * box if the display name is not set.
+     * @param displayName
+     * @throws IOException
+     */
+    public void setDisplayNameOrNull(String displayName) throws IOException {
+        setDisplayName(displayName);
+    }
+    
+    public void setDisplayName(String displayName) throws IOException {
+        this.displayName = Util.fixEmpty(displayName);
+        save();
+    }
+             
     public File getRootDir() {
         return parent.getRootDirFor(this);
     }
@@ -440,8 +480,8 @@ public abstract class AbstractItem extends Actionable implements Item, HttpDelet
      * Deletes this item.
      */
     @CLIMethod(name="delete-job")
+    @RequirePOST
     public void doDoDelete( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, InterruptedException {
-        requirePOST();
         delete();
         if (rsp != null) // null for CLI
             rsp.sendRedirect2(req.getContextPath()+"/"+getParent().getUrl());
@@ -507,7 +547,7 @@ public abstract class AbstractItem extends Actionable implements Item, HttpDelet
         }
         if (req.getMethod().equals("POST")) {
             // submission
-            updateByXml(new StreamSource(req.getReader()));
+            updateByXml((Source)new StreamSource(req.getReader()));
             return;
         }
 
@@ -516,9 +556,17 @@ public abstract class AbstractItem extends Actionable implements Item, HttpDelet
     }
 
     /**
-     * Updates Job by its XML definition.
+     * @deprecated as of 1.473
+     *      Use {@link #updateByXml(Source)}
      */
     public void updateByXml(StreamSource source) throws IOException {
+        updateByXml((Source)source);
+    }
+
+    /**
+     * Updates Job by its XML definition.
+     */
+    public void updateByXml(Source source) throws IOException {
         checkPermission(CONFIGURE);
         XmlFile configXmlFile = getConfigFile();
         AtomicFileWriter out = new AtomicFileWriter(configXmlFile.getFile());
@@ -547,6 +595,18 @@ public abstract class AbstractItem extends Actionable implements Item, HttpDelet
         } finally {
             out.abort(); // don't leave anything behind
         }
+    }
+    
+
+    /* (non-Javadoc)
+     * @see hudson.model.AbstractModelObject#getSearchName()
+     */
+    @Override
+    public String getSearchName() {
+        // the search name of abstract items should be the name and not display name.
+        // this will make suggestions use the names and not the display name
+        // so that the links will 302 directly to the thing the user was finding
+        return getName();
     }
 
     public String toString() {

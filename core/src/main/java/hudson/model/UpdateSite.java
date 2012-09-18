@@ -36,6 +36,7 @@ import hudson.util.DaemonThreadFactory;
 import hudson.util.HttpResponses;
 import hudson.util.IOUtils;
 import hudson.util.TextFile;
+import hudson.util.TimeUnit2;
 import hudson.util.VersionNumber;
 import jenkins.model.Jenkins;
 import jenkins.util.JSONSignatureValidator;
@@ -104,6 +105,22 @@ public class UpdateSite {
      * all at once.
      */
     private transient volatile long lastAttempt = -1;
+
+    /**
+     * If the attempt to fetch data fails, we progressively use longer time out before retrying,
+     * to avoid overloading the server.
+     */
+    private transient volatile long retryWindow;
+
+    /**
+     * lastModified time of the data file when it was last read.
+     */
+    private transient long dataLastReadFromFile;
+
+    /**
+     * Latest data as read from the data file.
+     */
+    private Data data;
 
     /**
      * ID string for this update source.
@@ -217,6 +234,7 @@ public class UpdateSite {
             }
         }
         LOGGER.info("Obtained the latest update center data file for UpdateSource " + id);
+        retryWindow = 0;
         getDataFile().write(json);
         return FormValidation.ok();
     }
@@ -240,8 +258,14 @@ public class UpdateSite {
         if(dataTimestamp==-1)
             dataTimestamp = getDataFile().file.lastModified();
         long now = System.currentTimeMillis();
-        boolean due = now - dataTimestamp > DAY && now - lastAttempt > 15000;
-        if(due)     lastAttempt = now;
+        
+        retryWindow = Math.max(retryWindow,SECONDS.toMillis(15));
+        
+        boolean due = now - dataTimestamp > DAY && now - lastAttempt > retryWindow;
+        if(due) {
+            lastAttempt = now;
+            retryWindow = Math.min(retryWindow*2, HOURS.toMillis(1)); // exponential back off but at most 1 hour
+        }
         return due;
     }
 
@@ -257,14 +281,22 @@ public class UpdateSite {
     }
 
     /**
-     * Loads the update center data, if any.
+     * Loads the update center data, if any and if modified since last read.
      *
      * @return  null if no data is available.   
      */
     public Data getData() {
-        JSONObject o = getJSONObject();
-        if (o!=null)    return new Data(o);
-        return null;
+        TextFile df = getDataFile();
+        if (df.exists() && dataLastReadFromFile != df.file.lastModified()) {
+            JSONObject o = getJSONObject();
+            if (o!=null) {
+                data = new Data(o);
+                dataLastReadFromFile = df.file.lastModified();
+            } else {
+                data = null;
+            }
+        }
+        return data;
     }
 
     /**

@@ -24,11 +24,14 @@
 package hudson.model;
 
 import hudson.DescriptorExtensionList;
+import hudson.PluginWrapper;
 import hudson.RelativePath;
 import hudson.XmlFile;
 import hudson.BulkChange;
 import hudson.Util;
 import hudson.model.listeners.SaveableListener;
+import hudson.util.FormApply;
+import hudson.util.QuotedStringTokenizer;
 import hudson.util.ReflectionUtils;
 import hudson.util.ReflectionUtils.Parameter;
 import hudson.views.ListViewColumn;
@@ -43,6 +46,7 @@ import org.jvnet.tiger_types.Types;
 import org.apache.commons.io.IOUtils;
 
 import static hudson.Functions.*;
+import static hudson.util.QuotedStringTokenizer.*;
 import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
 import javax.servlet.ServletException;
 import javax.servlet.RequestDispatcher;
@@ -273,6 +277,9 @@ public abstract class Descriptor<T extends Describable<T>> implements Saveable {
      * Historically {@link #clazz} is assumed to be unique, so this method uses that as the default,
      * but if you are adding {@link Descriptor}s programmatically for the same type, you can change
      * this to disambiguate them.
+     *
+     * <p>
+     * To look up {@link Descriptor} from ID, use {@link Jenkins#getDescriptor(String)}.
      *
      * @return
      *      Stick to valid Java identifier character, plus '.', which had to be allowed for historical reasons.
@@ -781,6 +788,16 @@ public abstract class Descriptor<T extends Describable<T>> implements Saveable {
     }
 
     /**
+     * Returns the plugin in which this descriptor is defined.
+     *
+     * @return
+     *      null to indicate that this descriptor came from the core.
+     */
+    protected PluginWrapper getPlugin() {
+        return Jenkins.getInstance().getPluginManager().whichPlugin(clazz);
+    }
+
+    /**
      * Serves <tt>help.html</tt> from the resource of {@link #clazz}.
      */
     public void doHelp(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
@@ -788,6 +805,14 @@ public abstract class Descriptor<T extends Describable<T>> implements Saveable {
         if(path.contains("..")) throw new ServletException("Illegal path: "+path);
 
         path = path.replace('/','-');
+
+        PluginWrapper pw = getPlugin();
+        if (pw!=null) {
+            rsp.setHeader("X-Plugin-Short-Name",pw.getShortName());
+            rsp.setHeader("X-Plugin-Long-Name",pw.getLongName());
+            rsp.setHeader("X-Plugin-From", Messages.Descriptor_From(
+                    pw.getLongName().replace("Hudson","Jenkins").replace("hudson","jenkins"), pw.getUrl()));
+        }
 
         for (Klass<?> c= getKlass(); c!=null; c=c.getSuperClass()) {
             RequestDispatcher rd = Stapler.getCurrentRequest().getView(c, "help"+path);
@@ -939,8 +964,13 @@ public abstract class Descriptor<T extends Describable<T>> implements Saveable {
         }
 
         public void generateResponse(StaplerRequest req, StaplerResponse rsp, Object node) throws IOException, ServletException {
-            // for now, we can't really use the field name that caused the problem.
-            new Failure(getMessage()).generateResponse(req,rsp,node);
+            if (FormApply.isApply(req)) {
+                FormApply.applyResponse("notificationBar.show(" + quote(getMessage())+ ",notificationBar.defaultOptions.ERROR)")
+                        .generateResponse(req, rsp, node);
+            } else {
+                // for now, we can't really use the field name that caused the problem.
+                new Failure(getMessage()).generateResponse(req,rsp,node);
+            }
         }
     }
 

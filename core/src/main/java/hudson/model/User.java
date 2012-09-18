@@ -53,6 +53,7 @@ import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
+import org.kohsuke.stapler.interceptor.RequirePOST;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
@@ -62,12 +63,15 @@ import java.io.FileFilter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -294,16 +298,16 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
                                 .replace('>','_');  // 4 replace() still faster than regex
         if (Functions.isWindows()) id = id.replace(':','_');
 
-        synchronized(byName) {
-            User u = byName.get(id);
-            if(u==null) {
-                User tmp = new User(id, idOrFullName);
-                if (create || tmp.getConfigFile().exists()) {
-                    byName.put(id,u=tmp);
-                }
-            }
-            return u;
+        String idkey = id.toLowerCase(Locale.ENGLISH);
+
+        User u = byName.get(idkey);
+        if(u==null && (create || getConfigFileFor(id).exists())) {
+            User tmp = new User(id, idOrFullName);
+            User prev = byName.putIfAbsent(idkey, u = tmp);
+            if (prev!=null)
+                u = prev;   // if somehas already put a value in the map, use it
         }
+        return u;
     }
 
     /**
@@ -348,17 +352,20 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
             lastScanned = System.currentTimeMillis();
         }
 
-        synchronized (byName) {
-            return new ArrayList<User>(byName.values());
-        }
+        ArrayList<User> r = new ArrayList<User>(byName.values());
+        Collections.sort(r,new Comparator<User>() {
+            public int compare(User o1, User o2) {
+                return o1.getId().compareToIgnoreCase(o2.getId());
+            }
+        });
+        return r;
     }
 
     /**
      * Reloads the configuration from disk.
      */
     public static void reload() {
-        // iterate over an array to be concurrency-safe
-        for( User u : byName.values().toArray(new User[0]) )
+        for( User u : byName.values() )
             u.load();
     }
 
@@ -386,7 +393,7 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
     public RunList getBuilds() {
         List<AbstractBuild> r = new ArrayList<AbstractBuild>();
         for (AbstractProject<?,?> p : Jenkins.getInstance().getAllItems(AbstractProject.class))
-            for (AbstractBuild<?,?> b : p.getBuilds())
+            for (AbstractBuild<?,?> b : p.getBuilds().newBuilds())
                 if(b.hasParticipant(this))
                     r.add(b);
         return RunList.fromRuns(r);
@@ -412,7 +419,11 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
      * The file we save our configuration.
      */
     protected final XmlFile getConfigFile() {
-        return new XmlFile(XSTREAM,new File(getRootDir(),id +"/config.xml"));
+        return new XmlFile(XSTREAM,getConfigFileFor(id));
+    }
+
+    private static final File getConfigFileFor(String id) {
+        return new File(getRootDir(),id +"/config.xml");
     }
 
     /**
@@ -438,10 +449,8 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
      *      if we fail to delete.
      */
     public synchronized void delete() throws IOException {
-        synchronized (byName) {
-            byName.remove(id);
-            Util.deleteRecursive(new File(getRootDir(), id));
-        }
+        byName.remove(id.toLowerCase(Locale.ENGLISH));
+        Util.deleteRecursive(new File(getRootDir(), id));
     }
 
     /**
@@ -454,9 +463,9 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
     /**
      * Accepts submission from the configuration page.
      */
+    @RequirePOST
     public void doConfigSubmit( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, FormException {
         checkPermission(Jenkins.ADMINISTER);
-        requirePOST();
 
         fullName = req.getParameter("fullName");
         description = req.getParameter("description");
@@ -491,8 +500,8 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
     /**
      * Deletes this user from Hudson.
      */
+    @RequirePOST
     public void doDoDelete(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
-        requirePOST();
         checkPermission(Jenkins.ADMINISTER);
         if (id.equals(Jenkins.getAuthentication().getName())) {
             rsp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Cannot delete self");
@@ -536,8 +545,10 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
     /**
      * Keyed by {@link User#id}. This map is used to ensure
      * singleton-per-id semantics of {@link User} objects.
+     *
+     * The key needs to be lower cased for case insensitivity.
      */
-    private static final Map<String,User> byName = new TreeMap<String,User>(String.CASE_INSENSITIVE_ORDER);
+    private static final ConcurrentMap<String,User> byName = new ConcurrentHashMap<String, User>();
 
     /**
      * Used to load/save user configuration.

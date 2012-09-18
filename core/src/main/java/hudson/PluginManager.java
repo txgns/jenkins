@@ -38,7 +38,6 @@ import hudson.security.Permission;
 import hudson.security.PermissionScope;
 import hudson.util.CyclicGraphDetector;
 import hudson.util.CyclicGraphDetector.CycleDetectedException;
-import hudson.util.FormValidation;
 import hudson.util.IOException2;
 import hudson.util.PersistedList;
 import hudson.util.Service;
@@ -254,6 +253,18 @@ public abstract class PluginManager extends AbstractModelObject {
                                                         r.add(p);
                                                 }
                                             }
+                                            
+                                            @Override
+                                            protected void reactOnCycle(PluginWrapper q, List<PluginWrapper> cycle)
+                                                    throws hudson.util.CyclicGraphDetector.CycleDetectedException {
+                                                
+                                                LOGGER.log(Level.SEVERE, "found cycle in plugin dependencies: (root="+q+", deactivating all involved) "+Util.join(cycle," -> "));
+                                                for (PluginWrapper pluginWrapper : cycle) {
+                                                    pluginWrapper.setHasCycleDependency(true);
+                                                    failedPlugins.add(new FailedPlugin(pluginWrapper.getShortName(), new CycleDetectedException(cycle)));
+                                                }
+                                            }
+                                            
                                         };
                                         cgd.run(getPlugins());
 
@@ -573,12 +584,16 @@ public abstract class PluginManager extends AbstractModelObject {
      * @since 1.402.
      */
     public PluginWrapper whichPlugin(Class c) {
+        PluginWrapper oneAndOnly = null;
         ClassLoader cl = c.getClassLoader();
         for (PluginWrapper p : activePlugins) {
-            if (p.classLoader==cl)
-                return p;
+            if (p.classLoader==cl) {
+                if (oneAndOnly!=null)
+                    return null;    // ambigious
+                oneAndOnly = p;
+            }
         }
-        return null;
+        return oneAndOnly;
     }
 
     /**
@@ -843,5 +858,33 @@ public abstract class PluginManager extends AbstractModelObject {
      */
     /*package*/ static final class PluginInstanceStore {
         final Map<PluginWrapper,Plugin> store = new Hashtable<PluginWrapper,Plugin>();
+    }
+    
+    /**
+     * {@link AdministrativeMonitor} that checks if there are any plugins with cycle dependencies.
+     */
+    @Extension
+    public static final class PluginCycleDependenciesMonitor extends AdministrativeMonitor {
+        
+        private transient volatile boolean isActive = false;
+        
+        private transient volatile List<String> pluginsWithCycle; 
+        
+        public boolean isActivated() {
+            if(pluginsWithCycle == null){
+                pluginsWithCycle = new ArrayList<String>();
+                for (PluginWrapper p : Jenkins.getInstance().getPluginManager().getPlugins()) {
+                    if(p.hasCycleDependency()){
+                        pluginsWithCycle.add(p.getShortName());
+                        isActive = true;
+                    }
+                }
+            }
+            return isActive;
+        }
+
+        public List<String> getPluginsWithCycle() {
+            return pluginsWithCycle;
+        }
     }
 }

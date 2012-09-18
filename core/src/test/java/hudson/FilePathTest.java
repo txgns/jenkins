@@ -23,6 +23,8 @@
  */
 package hudson;
 
+import hudson.FilePath.TarCompression;
+import hudson.model.TaskListener;
 import hudson.remoting.LocalChannel;
 import hudson.remoting.VirtualChannel;
 import hudson.util.IOException2;
@@ -299,7 +301,23 @@ public class FilePathTest extends ChannelTestCase {
             Util.deleteRecursive(baseDir);
         }
     }
-    
+
+    public void testListWithDefaultExcludes() throws Exception {
+        File baseDir = Util.createTempDir();
+        try {
+            final Set<FilePath> expected = new HashSet<FilePath>();
+            expected.add(createFilePath(baseDir, "top", "sub", "backup~"));
+            expected.add(createFilePath(baseDir, "top", "CVS", "somefile,v"));
+            expected.add(createFilePath(baseDir, "top", ".git", "config"));
+            // none of the files are included by default (default includes true)
+            assertEquals(0, new FilePath(baseDir).list("**", "").length);
+            final FilePath[] result = new FilePath(baseDir).list("**", "", false);
+            assertEquals(expected, new HashSet<FilePath>(Arrays.asList(result)));
+        } finally {
+            Util.deleteRecursive(baseDir);
+        }
+    }
+
     @Bug(11073)
     public void testIsUnix() {
         FilePath winPath = new FilePath(new LocalChannel(null),
@@ -353,6 +371,28 @@ public class FilePathTest extends ChannelTestCase {
             }
         } finally {
             Util.deleteRecursive(tmp);
+        }
+    }
+
+    public void testSymlinkInTar() throws Exception {
+        if (Functions.isWindows())  return; // can't test on Windows
+
+        FilePath tmp = new FilePath(Util.createTempDir());
+        try {
+            FilePath in = tmp.child("in");
+            in.mkdirs();
+            in.child("c").touch(0);
+            in.child("b").symlinkTo("c", TaskListener.NULL);
+                        
+            FilePath tar = tmp.child("test.tar");
+            in.tar(tar.write(), "**/*");
+
+            FilePath dst = in.child("dst");
+            tar.untar(dst, TarCompression.NONE);
+
+            assertEquals("c",dst.child("b").readLink());
+        } finally {
+            tmp.deleteRecursive();
         }
     }
 

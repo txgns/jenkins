@@ -25,6 +25,7 @@ package hudson.maven;
 
 import hudson.EnvVars;
 import hudson.FilePath;
+import hudson.maven.local_repo.LocalRepositoryLocator;
 import hudson.maven.reporters.MavenArtifactRecord;
 import hudson.maven.reporters.SurefireArchiver;
 import hudson.slaves.WorkspaceList;
@@ -214,8 +215,7 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
         if (mvn == null)
             throw new hudson.AbortException(Messages.MavenModuleSetBuild_NoMavenConfigured());
         mvn = mvn.forEnvironment(envs).forNode(Computer.currentComputer().getNode(), log);
-        envs.put("M2_HOME", mvn.getHome());
-        envs.put("PATH+MAVEN", mvn.getHome() + "/bin");
+        mvn.buildEnvVars(envs);
         return envs;
     }
 
@@ -516,11 +516,11 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
          * Before we touch I/O streams, we need to make sure all the remote I/O operations are locally completed,
          * or else we end up switching the log traffic at unaligned moments.
          */
-        private void sync() {
+        private void sync() throws IOException {
             try {
                 Channel ch = Channel.current();
                 if (ch!=null)
-                    ch.syncLocalIO();
+                    listener.synchronizeOnMark(ch);
             } catch (InterruptedException e) {
                 // our signature doesn't allow us to throw InterruptedException, so we process it later
                 Thread.currentThread().interrupt();
@@ -687,10 +687,10 @@ public class MavenBuild extends AbstractMavenBuild<MavenModule,MavenBuild> {
                         getParent().getParent(), launcher, envVars, getMavenOpts(listener, envVars), null ));
 
             ArgumentListBuilder margs = new ArgumentListBuilder("-N","-B");
-            if(mms.usesPrivateRepository())
-                // use the per-project repository. should it be per-module? But that would cost too much in terms of disk
+            FilePath localRepo = mms.getLocalRepository().locate(MavenBuild.this);
+            if(localRepo!=null)
                 // the workspace must be on this node, so getRemote() is safe.
-                margs.add("-Dmaven.repo.local="+getWorkspace().child(".repository").getRemote());
+                margs.add("-Dmaven.repo.local="+localRepo.getRemote());
 
             if (mms.getAlternateSettings() != null) {
                 if (IOUtils.isAbsolute(mms.getAlternateSettings())) {
