@@ -88,9 +88,9 @@ var Behaviour = {
 		if (typeof window.onload != 'function') {
 			window.onload = func;
 		} else {
-			window.onload = function() {
-				oldonload();
-				func();
+			window.onload = function(e) {
+				oldonload(e);
+				func(e);
 			}
 		}
 	}
