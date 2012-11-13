@@ -53,22 +53,25 @@ THE SOFTWARE.
     <module>war</module>
     <module>test</module>
     <module>cli</module>
+    <module>plugins</module>
   </modules>
 
   <scm>
-    <connection>scm:git:git://github.com/jenkinsci/jenkins.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com/jenkinsci/jenkins.git</developerConnection>
-    <url>https://github.com/jenkinsci/jenkins</url>
+    <connection>scm:git:ssh://git@git.cloudbees.com/cloudbees/hudson.git</connection>
+    <developerConnection>scm:git:ssh://git@git.cloudbees.com/cloudbees/hudson.git</developerConnection>
   </scm>
+
   <distributionManagement>
-    <site>
-      <id>hudson-www</id>
-      <url>scp://jenkins-ci.org/home/kohsuke/www/hudson-labs.org/maven-site/</url>
-    </site>
     <snapshotRepository>
-      <id>maven.jenkins-ci.org</id>
-      <url>http://maven.jenkins-ci.org:8081/content/repositories/snapshots</url>
+      <id>cloudbees-internal-snapshots</id>
+      <name>CloudBees Internal Snapshots</name>
+      <url>https://cloudbees_jfrog.artifactoryonline.com/cloudbees_jfrog/snapshots</url>
     </snapshotRepository>
+    <repository>
+      <id>cloudbees-internal-staging</id>
+      <name>CloudBees Internal Release Repository</name>
+      <url>https://cloudbees_jfrog.artifactoryonline.com/cloudbees_jfrog/releases</url>
+    </repository>
   </distributionManagement>
 
   <issueManagement>
