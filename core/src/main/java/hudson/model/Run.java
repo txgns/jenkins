@@ -97,7 +97,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 
 import jenkins.model.Jenkins;
-import jenkins.util.io.OnMaster;
 
 import net.sf.json.JSONObject;
 import org.apache.commons.io.input.NullInputStream;
