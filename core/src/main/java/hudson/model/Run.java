@@ -97,6 +97,8 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 
 import jenkins.model.Jenkins;
+import jenkins.util.io.OnMaster;
+
 import net.sf.json.JSONObject;
 import org.apache.commons.io.input.NullInputStream;
 import org.apache.commons.io.IOUtils;
@@ -243,11 +245,14 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
      */
     private volatile transient Runner runner;
 
+    private static final SimpleDateFormat CANONICAL_ID_FORMATTER = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
     protected static final ThreadLocal<SimpleDateFormat> ID_FORMATTER =
             new ThreadLocal<SimpleDateFormat>() {
                 @Override
                 protected SimpleDateFormat initialValue() {
-                    return new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
+                    synchronized (CANONICAL_ID_FORMATTER) {
+                        return (SimpleDateFormat) CANONICAL_ID_FORMATTER.clone();
+                    }
                 }
             };
 
