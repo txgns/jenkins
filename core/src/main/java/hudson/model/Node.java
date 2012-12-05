@@ -57,6 +57,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.List;
 import java.util.logging.Logger;
+import javax.annotation.CheckForNull;
 
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
@@ -158,7 +159,7 @@ public abstract class Node extends AbstractModelObject implements Reconfigurable
      *      this method can return null if there's no {@link Computer} object for this node,
      *      such as when this node has no executors at all.
      */
-    public /*final*/ Computer toComputer() {
+    public final @CheckForNull Computer toComputer() {
         AbstractCIBase ciBase = Jenkins.getInstance();
         return ciBase.getComputer(this);
     }
@@ -168,7 +169,7 @@ public abstract class Node extends AbstractModelObject implements Reconfigurable
      *
      * This is just a convenience method for {@link Computer#getChannel()} with null check. 
      */
-    public final VirtualChannel getChannel() {
+    public final @CheckForNull VirtualChannel getChannel() {
         Computer c = toComputer();
         return c==null ? null : c.getChannel();
     }
@@ -352,7 +353,7 @@ public abstract class Node extends AbstractModelObject implements Reconfigurable
     /**
      * Gets the {@link FilePath} on this node.
      */
-    public FilePath createPath(String absolutePath) {
+    public @CheckForNull FilePath createPath(String absolutePath) {
         VirtualChannel ch = getChannel();
         if(ch==null)    return null;    // offline
         return new FilePath(ch,absolutePath);
