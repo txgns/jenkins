@@ -55,6 +55,25 @@ Upcoming changes</a>
 <!-- Record your changes in the trunk here. -->
 <div id="trunk" style="display:none"><!--=TRUNK-BEGIN=-->
 <ul class=image>
+  <li class=bug>
+    Using file parameters could cause build records to not load.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-13536">issue 13536</a>)
+  <li class=bug>
+    Possible race condition in RemoteClassLoader renders slave unusable.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-6604">issue 6604</a>)
+  <li class=bug>
+    If the CLI client is aborted during "build -s", abort the build.
+  <li class=bug>
+    WARNING: Caught exception evaluating: descriptor.getHelpFile(attrs.field). Reason: java.lang.NullPointerException. 
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-15940">issue 15940</a>)
+  <li class=rfe>
+    Allows to disable triggering of downstream jobs (for a maven job)
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-1295">issue 1295</a>)
+  <li class=bug>
+    Context menu and tooltip of the queue items were colliding with each other
+    <li class=bug>
+    Fix combobox ui component
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-16069">issue 16069</a>)
 </ul>
 </div><!--=TRUNK-END=-->
 
