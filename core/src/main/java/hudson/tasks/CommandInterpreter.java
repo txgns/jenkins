@@ -29,6 +29,7 @@ import hudson.Util;
 import hudson.EnvVars;
 import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
+import hudson.model.Node;
 import hudson.model.TaskListener;
 
 import java.io.IOException;
@@ -60,6 +61,13 @@ public abstract class CommandInterpreter extends Builder {
 
     public boolean perform(AbstractBuild<?,?> build, Launcher launcher, TaskListener listener) throws InterruptedException {
         FilePath ws = build.getWorkspace();
+        if (ws == null) {
+            Node node = build.getBuiltOn();
+            if (node == null) {
+                throw new NullPointerException("no such build node: " + build.getBuiltOnStr());
+            }
+            throw new NullPointerException("no workspace from node " + node + " which is computer " + node.toComputer() + " and has channel " + node.getChannel());
+        }
         FilePath script=null;
         try {
             try {
