@@ -29,12 +29,10 @@ import hudson.Util;
 import hudson.EnvVars;
 import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
-import hudson.model.Node;
 import hudson.model.TaskListener;
 
 import java.io.IOException;
 import java.util.Map;
-import javax.annotation.Nonnull;
 
 /**
  * Common part between {@link Shell} and {@link BatchFile}.
@@ -62,13 +60,6 @@ public abstract class CommandInterpreter extends Builder {
 
     public boolean perform(AbstractBuild<?,?> build, Launcher launcher, TaskListener listener) throws InterruptedException {
         FilePath ws = build.getWorkspace();
-        if (ws == null) {
-            Node node = build.getBuiltOn();
-            if (node == null) {
-                throw new NullPointerException("no such build node: " + build.getBuiltOnStr());
-            }
-            throw new NullPointerException("no workspace from node " + node + " which is computer " + node.toComputer() + " and has channel " + node.getChannel());
-        }
         FilePath script=null;
         try {
             try {
@@ -109,7 +100,7 @@ public abstract class CommandInterpreter extends Builder {
     /**
      * Creates a script file in a temporary name in the specified directory.
      */
-    public FilePath createScriptFile(@Nonnull FilePath dir) throws IOException, InterruptedException {
+    public FilePath createScriptFile(FilePath dir) throws IOException, InterruptedException {
         return dir.createTextTempFile("hudson", getFileExtension(), getContents(), false);
     }
 

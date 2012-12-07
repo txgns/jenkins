@@ -1608,7 +1608,7 @@ public class Jenkins extends AbstractCIBase implements ModifiableItemGroup<TopLe
     /**
      * Gets the slave node of the give name, hooked under this Hudson.
      */
-    public @CheckForNull Node getNode(String name) {
+    public Node getNode(String name) {
         return slaves.getNode(name);
     }
 

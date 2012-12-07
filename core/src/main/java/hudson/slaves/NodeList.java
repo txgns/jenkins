@@ -39,7 +39,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
-import javax.annotation.CheckForNull;
 
 /**
  * {@link CopyOnWriteArrayList} for {@link Node} that has special serialization semantics
@@ -68,7 +67,7 @@ public final class NodeList extends ArrayList<Node> {
         this(Arrays.asList(toCopyIn));
     }
     
-    public @CheckForNull Node getNode(String nodeName) {
+    public Node getNode(String nodeName) {
         return map.get(nodeName);
     }
 
