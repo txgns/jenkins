@@ -27,8 +27,8 @@ public class DNSMultiCast implements Closeable {
 
             Map<String,String> props = new HashMap<String, String>();
             String rootURL = hudson.getRootUrl();
-            if (rootURL!=null)
-                props.put("url", rootURL);
+            if (rootURL==null)  return;
+
             try {
                 props.put("version",String.valueOf(Jenkins.getVersion()));
             } catch (IllegalArgumentException e) {
@@ -39,7 +39,7 @@ public class DNSMultiCast implements Closeable {
             if (tal!=null)
                 props.put("slave-port",String.valueOf(tal.getPort()));
 
-            props.put("server-id", Util.getDigestOf(hudson.getSecretKey()));
+            props.put("server-id", hudson.getLegacyInstanceId());
 
             jmdns.registerService(ServiceInfo.create("_hudson._tcp.local.","hudson",
                     80,0,0,props));	// for backward compatibility
