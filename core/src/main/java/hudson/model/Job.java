@@ -58,7 +58,6 @@ import hudson.widgets.HistoryWidget;
 import hudson.widgets.HistoryWidget.Adapter;
 import hudson.widgets.Widget;
 import jenkins.model.Jenkins;
-import jenkins.model.ProjectNamingStrategy;
 import jenkins.security.HexStringConfidentialKey;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;

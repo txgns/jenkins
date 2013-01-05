@@ -31,6 +31,7 @@ public class RekeySecretAdminMonitorTest extends HudsonTestCase {
     protected void setUp() throws Exception {
         SecretHelper.set(TEST_KEY);
         super.setUp();
+        jenkins.getInstance().getInjector().injectMembers(this);
         monitor.setNeeded();
     }
 

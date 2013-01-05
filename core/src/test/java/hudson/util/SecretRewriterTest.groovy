@@ -2,6 +2,7 @@ package hudson.util
 
 import com.trilead.ssh2.crypto.Base64
 import hudson.FilePath
+import hudson.Util
 import jenkins.security.ConfidentialStoreRule
 import org.junit.Rule
 import org.junit.Test
@@ -96,9 +97,9 @@ class SecretRewriterTest {
         new File(t2,"foo.xml").text = payload
 
         // some recursions as well as valid symlinks
-        new FilePath(t).child("c/symlink").symlinkTo("..",st)
-        new FilePath(t).child("b/symlink").symlinkTo(".",st)
-        new FilePath(t).child("a/symlink").symlinkTo(t2.absolutePath,st)
+        symlink(new File(t,"c/symlink"),"..",st)
+        symlink(new File(t,"b/symlink"),".",st)
+        symlink(new File(t,"a/symlink"),t2.absolutePath,st)
 
         assert 6==sw.rewriteRecursive(t, st)
 
@@ -111,4 +112,7 @@ class SecretRewriterTest {
         assert new File(t2,"foo.xml").text.trim()==answer.trim();
     }
 
+    def symlink(File f, String target, listener) {
+        Util.createSymlink(f.parentFile,target, f.name,listener)
+    }
 }
