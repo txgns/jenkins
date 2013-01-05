@@ -99,12 +99,7 @@ public class RekeySecretAdminMonitor extends AdministrativeMonitor implements St
     @RequirePOST
     public HttpResponse doScan(StaplerRequest req) throws IOException, GeneralSecurityException {
         if(req.hasParameter("background")) {
-            synchronized (this) {
-                if (!isRewriterActive()) {
-                    rekeyThread = new RekeyThread();
-                    rekeyThread.start();
-                }
-            }
+            startBackground();
         } else
         if(req.hasParameter("schedule")) {
             scanOnBoot.on();
@@ -115,6 +110,15 @@ public class RekeySecretAdminMonitor extends AdministrativeMonitor implements St
             throw HttpResponses.error(400,"Invalid request submission");
 
         return HttpResponses.redirectViaContextPath("/manage");
+    }
+
+    public void startBackground() throws GeneralSecurityException {
+        synchronized (this) {
+            if (!isRewriterActive()) {
+                rekeyThread = new RekeyThread();
+                rekeyThread.start();
+            }
+        }
     }
 
     /**
