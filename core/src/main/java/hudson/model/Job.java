@@ -60,6 +60,7 @@ import hudson.widgets.HistoryWidget.Adapter;
 import hudson.widgets.Widget;
 import jenkins.model.Jenkins;
 import jenkins.model.ProjectNamingStrategy;
+import jenkins.security.HexStringConfidentialKey;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import org.jfree.chart.ChartFactory;
@@ -1255,4 +1256,6 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
     public BuildTimelineWidget getTimeline() {
         return new BuildTimelineWidget(getBuilds());
     }
+
+    /*package*/ final static HexStringConfidentialKey SERVER_COOKIE = new HexStringConfidentialKey(Job.class,"serverCookie",16);
 }

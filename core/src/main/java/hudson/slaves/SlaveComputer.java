@@ -23,6 +23,7 @@
  */
 package hudson.slaves;
 
+import hudson.TcpSlaveAgentListener;
 import hudson.model.*;
 import hudson.util.IOUtils;
 import hudson.util.io.ReopenableRotatingFileOutputStream;
@@ -127,6 +128,10 @@ public class SlaveComputer extends Computer {
     @Override
     public boolean isAcceptingTasks() {
         return acceptingTasks;
+    }
+
+    public String getJnlpMac() {
+        return TcpSlaveAgentListener.SLAVE_SECRET.mac(getName());
     }
 
     /**

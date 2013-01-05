@@ -50,7 +50,6 @@ import jenkins.InitReactorRunner;
 import jenkins.RestartRequiredException;
 import jenkins.YesNoMaybe;
 import jenkins.model.Jenkins;
-import jenkins.util.io.OnMaster;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 import org.apache.commons.fileupload.FileItem;

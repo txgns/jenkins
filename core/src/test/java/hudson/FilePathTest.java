@@ -458,5 +458,4 @@ public class FilePathTest extends ChannelTestCase {
             Util.deleteRecursive(tmp);
         }
     }
-
 }

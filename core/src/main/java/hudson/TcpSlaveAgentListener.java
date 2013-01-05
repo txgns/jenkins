@@ -36,6 +36,7 @@ import hudson.remoting.Channel.Mode;
 import hudson.cli.CliManagerImpl;
 import hudson.cli.CliEntryPoint;
 import hudson.util.IOException2;
+import jenkins.security.HMACConfidentialKey;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -225,12 +226,14 @@ public final class TcpSlaveAgentListener extends Thread {
          * Handles JNLP slave agent connection request.
          */
         private void runJnlpConnect(DataInputStream in, PrintWriter out) throws IOException, InterruptedException {
-            if(!getSecretKey().equals(in.readUTF())) {
+            final String secret = in.readUTF();
+            final String nodeName = in.readUTF();
+
+            if(!SLAVE_SECRET.mac(nodeName).equals(secret)) {
                 error(out, "Unauthorized access");
                 return;
             }
 
-            final String nodeName = in.readUTF();
             SlaveComputer computer = (SlaveComputer) Jenkins.getInstance().getComputer(nodeName);
             if(computer==null) {
                 error(out, "No such slave: "+nodeName);
@@ -254,12 +257,13 @@ public final class TcpSlaveAgentListener extends Thread {
             Properties request = new Properties();
             request.load(new ByteArrayInputStream(in.readUTF().getBytes("UTF-8")));
 
-            if(!getSecretKey().equals(request.getProperty("Secret-Key"))) {
+            final String nodeName = request.getProperty("Node-Name");
+
+            if(!SLAVE_SECRET.mac(nodeName).equals(request.getProperty("Secret-Key"))) {
                 error(out, "Unauthorized access");
                 return;
             }
 
-            final String nodeName = request.getProperty("Node-Name");
             SlaveComputer computer = (SlaveComputer) Jenkins.getInstance().getComputer(nodeName);
             if(computer==null) {
                 error(out, "No such slave: "+nodeName);
@@ -373,6 +377,13 @@ public final class TcpSlaveAgentListener extends Thread {
      * TODO: think about how to expose this (including whether this needs to be exposed at all.)
      */
     public static String CLI_HOST_NAME = System.getProperty(TcpSlaveAgentListener.class.getName()+".hostName");
+
+    /**
+     * This secret value is used as a seed for slaves.
+     */
+    public static final HMACConfidentialKey SLAVE_SECRET = new HMACConfidentialKey(
+            // this name is modified to match the change in the trunk
+            "jenkins.slaves.JnlpSlaveAgentProtocol.secret");
 }
 
 /*

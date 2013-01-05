@@ -10,7 +10,7 @@
   <groupId>org.jenkins-ci.plugins</groupId>
   <artifactId>plugin</artifactId>
   <name>Jenkins plugin POM</name>
-  <version>1.466-SNAPSHOT</version>
+  <version>1.466.11-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <!--
@@ -33,7 +33,7 @@
       <dependency><!-- if a plugin wants to depend on the maven plugin, choose the right version automatically -->
         <groupId>com.cloudbees.dev-at-cloud.main</groupId>
         <artifactId>maven-plugin</artifactId>
-        <version>1.466-SNAPSHOT</version>
+        <version>1.466.11-SNAPSHOT</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -43,25 +43,25 @@
       <groupId>com.cloudbees.dev-at-cloud.main</groupId>
       <artifactId>jenkins-war</artifactId>
       <type>war</type>
-      <version>1.466-SNAPSHOT</version>
+      <version>1.466.11-SNAPSHOT</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.cloudbees.dev-at-cloud.main</groupId>
       <artifactId>jenkins-core</artifactId>
-      <version>1.466-SNAPSHOT</version>
+      <version>1.466.11-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>com.cloudbees.dev-at-cloud.main</groupId>
       <artifactId>jenkins-test-harness</artifactId>
-      <version>1.466-SNAPSHOT</version>
+      <version>1.466.11-SNAPSHOT</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.cloudbees.dev-at-cloud.main</groupId>
       <artifactId>ui-samples-plugin</artifactId>
-      <version>1.466-SNAPSHOT</version>
+      <version>1.466.11-SNAPSHOT</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -234,6 +234,19 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <!-- make sure our code doesn't have 1.6 dependencies except where we know it -->
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>animal-sniffer-maven-plugin</artifactId>
+        <version>1.7</version>
+        <configuration>
+          <signature>
+            <groupId>org.codehaus.mojo.signature</groupId>
+            <artifactId>java15</artifactId>
+            <version>1.0</version>
+          </signature>
+        </configuration>
+      </plugin>
     </plugins>
     <pluginManagement>
       <plugins>
@@ -284,8 +297,14 @@
 
   <distributionManagement>
     <snapshotRepository>
-      <id>maven.jenkins-ci.org</id>
-      <url>http://maven.jenkins-ci.org:8081/content/repositories/snapshots</url>
+      <id>cloudbees-internal-snapshots</id>
+      <name>CloudBees Internal Snapshots</name>
+      <url>https://cloudbees_jfrog.artifactoryonline.com/cloudbees_jfrog/snapshots</url>
     </snapshotRepository>
+    <repository>
+      <id>cloudbees-internal-staging</id>
+      <name>CloudBees Internal Release Repository</name>
+      <url>https://cloudbees_jfrog.artifactoryonline.com/cloudbees_jfrog/releases</url>
+    </repository>
   </distributionManagement>
 </project>
