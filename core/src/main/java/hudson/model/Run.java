@@ -97,18 +97,14 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 
 import jenkins.model.Jenkins;
-
+import jenkins.util.io.OnMaster;
 import net.sf.json.JSONObject;
 import org.apache.commons.io.input.NullInputStream;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.jelly.XMLOutput;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
-import org.kohsuke.stapler.HttpResponse;
-import org.kohsuke.stapler.HttpResponses;
-import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.*;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 
@@ -133,7 +129,7 @@ import static java.util.logging.Level.*;
  */
 @ExportedBean
 public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,RunT>>
-        extends Actionable implements ExtensionPoint, Comparable<RunT>, AccessControlled, PersistenceRoot, DescriptorByNameOwner {
+        extends Actionable implements ExtensionPoint, Comparable<RunT>, AccessControlled, PersistenceRoot, DescriptorByNameOwner, OnMaster {
 
     protected transient final JobT project;
 
@@ -239,10 +235,10 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
     private boolean keepLog;
 
     /**
-     * If the build is in progress, remember {@link Runner} that's running it.
+     * If the build is in progress, remember {@link RunExecution} that's running it.
      * This field is not persisted.
      */
-    private volatile transient Runner runner;
+    private volatile transient RunExecution runner;
 
     private static final SimpleDateFormat CANONICAL_ID_FORMATTER = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
     protected static final ThreadLocal<SimpleDateFormat> ID_FORMATTER = new IDFormatterProvider();
@@ -429,6 +425,7 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
      * an executor holds on to {@lnk Run} some more time even after the build is finished (for example to
      * perform {@linkplain State#POST_PRODUCTION post-production processing}.)
      */
+    @Exported 
     public Executor getExecutor() {
         for( Computer c : Jenkins.getInstance().getComputers() ) {
             for (Executor e : c.getExecutors()) {
@@ -829,6 +826,19 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
     // I really messed this up. I'm hoping to fix this some time
     // it shouldn't have trailing '/', and instead it should have leading '/'
     public String getUrl() {
+
+        // RUN may be accessed using permalinks, as "/lastSuccessful" or other, so try to retrieve this base URL
+        // looking for "this" in the current request ancestors
+        // @see also {@link AbstractItem#getUrl}
+        StaplerRequest req = Stapler.getCurrentRequest();
+        if (req != null) {
+            String seed = Functions.getNearestAncestorUrl(req,this);
+            if(seed!=null) {
+                // trim off the context path portion and leading '/', but add trailing '/'
+                return seed.substring(req.getContextPath().length()+1)+'/';
+            }
+        }
+
         return project.getUrl()+getNumber()+'/';
     }
 
@@ -1121,6 +1131,10 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
         public String getLength() {
             return length;
         }
+        
+        public long getFileSize(){
+            return Long.decode(length);
+        }
 
         public String getTreeNodeId() {
             return treeNodeId;
@@ -1185,6 +1199,21 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
 				IOUtils.closeQuietly(input);
 			}
 		}
+    }
+
+    /**
+     * Writes the complete log from the start to finish to the {@link OutputStream}.
+     *
+     * If someone is still writing to the log, this method will not return until the whole log
+     * file gets written out.
+     */
+    public void writeWholeLogTo(OutputStream out) throws IOException, InterruptedException {
+        long pos = 0;
+        AnnotatedLargeText logText;
+        do {
+            logText = getLogText();
+            pos = logText.writeLogTo(pos, out);
+        } while (!logText.isComplete());
     }
 
     /**
@@ -1286,7 +1315,7 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
         while(true) {
             Run b = RunnerStack.INSTANCE.peek().getBuild().getPreviousBuildInProgress();
             if(b==null)     return; // no pending earlier build
-            Run.Runner runner = b.runner;
+            Run.RunExecution runner = b.runner;
             if(runner==null) {
                 // polled at the wrong moment. try again.
                 Thread.sleep(0);
@@ -1299,14 +1328,24 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
         }
     }
 
-    protected abstract class Runner {
+    /**
+     * @deprecated as of 1.467
+     *      Please use {@link RunExecution}
+     */
+    protected abstract class Runner extends RunExecution {}
+
+    /**
+     * Object that lives while the build is executed, to keep track of things that
+     * are needed only during the build.
+     */
+    public abstract class RunExecution {
         /**
          * Keeps track of the check points attained by a build, and abstracts away the synchronization needed to 
          * maintain this data structure.
          */
         private final class CheckpointSet {
             /**
-             * Stages of the builds that this runner has completed. This is used for concurrent {@link Runner}s to
+             * Stages of the builds that this runner has completed. This is used for concurrent {@link RunExecution}s to
              * coordinate and serialize their executions where necessary.
              */
             private final Set<CheckPoint> checkpoints = new HashSet<CheckPoint>();
@@ -1342,6 +1381,8 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
 
         private final CheckpointSet checkpoints = new CheckpointSet();
 
+        private final Map<Object,Object> attributes = new HashMap<Object, Object>();
+
         /**
          * Performs the main build and returns the status code.
          *
@@ -1374,13 +1415,27 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
          */
         public abstract void cleanUp(BuildListener listener) throws Exception;
 
-        protected final RunT getBuild() {
+        public RunT getBuild() {
             return _this();
+        }
+
+        public JobT getProject() {
+            return _this().getParent();
+        }
+
+        /**
+         * Bag of stuff to allow plugins to store state for the duration of a build
+         * without persisting it.
+         *
+         * @since 1.473
+         */
+        public Map<Object,Object> getAttributes() {
+            return attributes;
         }
     }
 
     /**
-     * Used in {@link Runner#run} to indicates that a fatal error in a build
+     * Used in {@link RunExecution#run} to indicates that a fatal error in a build
      * is reported to {@link BuildListener} and the build should be simply aborted
      * without further recording a stack trace.
      */
@@ -1388,7 +1443,15 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
         private static final long serialVersionUID = 1L;
     }
 
+    /**
+     * @deprecated as of 1.467
+     *      Use {@link #execute(RunExecution)}
+     */
     protected final void run(Runner job) {
+        execute(job);
+    }
+
+    protected final void execute(RunExecution job) {
         if(result!=null)
             return;     // already built.
 
@@ -1886,35 +1949,9 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
      */
     public EnvVars getEnvironment(TaskListener log) throws IOException, InterruptedException {
         EnvVars env = getCharacteristicEnvVars();
-        Computer c = Computer.currentComputer();
-        if (c!=null)
-            env = c.getEnvironment().overrideAll(env);
-        String rootUrl = Jenkins.getInstance().getRootUrl();
-        if(rootUrl!=null) {
-            env.put("JENKINS_URL", rootUrl);
-            env.put("HUDSON_URL", rootUrl); // Legacy compatibility
-            env.put("BUILD_URL", rootUrl+getUrl());
-            env.put("JOB_URL", rootUrl+getParent().getUrl());
-        }
-        
-        env.put("JENKINS_HOME", Jenkins.getInstance().getRootDir().getPath() );
-        env.put("HUDSON_HOME", Jenkins.getInstance().getRootDir().getPath() );   // legacy compatibility
 
-        Thread t = Thread.currentThread();
-        if (t instanceof Executor) {
-            Executor e = (Executor) t;
-            env.put("EXECUTOR_NUMBER",String.valueOf(e.getNumber()));
-	    if(e.getOwner() instanceof MasterComputer) {
-		env.put("NODE_NAME", "master");
-	    } else {
-	    	env.put("NODE_NAME",e.getOwner().getName());
-	    }
-            Node n = e.getOwner().getNode();
-            if (n!=null)
-                env.put("NODE_LABELS",Util.join(n.getAssignedLabels()," "));
-        }
-
-        for (EnvironmentContributor ec : EnvironmentContributor.all())
+        // apply them in a reverse order so that higher ordinal ones can modify values added by lower ordinal ones
+        for (EnvironmentContributor ec : EnvironmentContributor.all().reverseView())
             ec.buildEnvironmentFor(this,env,log);
 
         return env;

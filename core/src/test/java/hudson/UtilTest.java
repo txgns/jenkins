@@ -24,8 +24,6 @@
  */
 package hudson;
 
-import junit.framework.TestCase;
-
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Locale;
@@ -33,7 +31,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 
+import static org.junit.Assert.*;
 import org.junit.Assume;
+import org.junit.Test;
 import org.jvnet.hudson.test.Bug;
 
 import hudson.util.StreamTaskListener;
@@ -41,7 +41,8 @@ import hudson.util.StreamTaskListener;
 /**
  * @author Kohsuke Kawaguchi
  */
-public class UtilTest extends TestCase {
+public class UtilTest {
+    @Test
     public void testReplaceMacro() {
         Map<String,String> m = new HashMap<String,String>();
         m.put("A","a");
@@ -71,7 +72,7 @@ public class UtilTest extends TestCase {
         assertEquals("$$aa$Ba${A}$it", Util.replaceMacro("$$$DOLLAR${AA}$$B${ENCLOSED}$it",m));
     }
 
-
+    @Test
     public void testTimeSpanString() {
         // Check that amounts less than 365 days are not rounded up to a whole year.
         // In the previous implementation there were 360 days in a year.
@@ -115,6 +116,7 @@ public class UtilTest extends TestCase {
     /**
      * Test that Strings that contain spaces are correctly URL encoded.
      */
+    @Test
     public void testEncodeSpaces() {
         final String urlWithSpaces = "http://hudson/job/Hudson Job";
         String encoded = Util.encode(urlWithSpaces);
@@ -122,13 +124,24 @@ public class UtilTest extends TestCase {
     }
     
     /**
+     * Test that Strings that contain ampersand are correctly URL encoded.
+     */
+    @Test
+    public void testEncodeAmpersand() {
+        final String urlWithAmpersand = "http://hudson/job/Hudson-job/label1&&label2";
+        String encoded = Util.encode(urlWithAmpersand);
+        assertEquals(encoded, "http://hudson/job/Hudson-job/label1%26%26label2");
+    }
+    
+    /**
      * Test the rawEncode() method.
      */
+    @Test
     public void testRawEncode() {
         String[] data = {  // Alternating raw,encoded
             "abcdefghijklmnopqrstuvwxyz", "abcdefghijklmnopqrstuvwxyz",
             "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-            "01234567890!@$&*()-_=+',.", "01234567890!@$&*()-_=+',.",
+            "01234567890!@$*()-_=+',.", "01234567890!@$*()-_=+',.",
             " \"#%/:;<>?", "%20%22%23%25%2F%3A%3B%3C%3E%3F",
             "[\\]^`{|}~", "%5B%5C%5D%5E%60%7B%7C%7D%7E",
             "d\u00E9velopp\u00E9s", "d%C3%A9velopp%C3%A9s",
@@ -141,6 +154,7 @@ public class UtilTest extends TestCase {
     /**
      * Test the tryParseNumber() method.
      */
+    @Test
     public void testTryParseNumber() {
         assertEquals("Successful parse did not return the parsed value", 20, Util.tryParseNumber("20", 10).intValue());
         assertEquals("Failed parse did not return the default value", 10, Util.tryParseNumber("ss", 10).intValue());
@@ -148,8 +162,9 @@ public class UtilTest extends TestCase {
         assertEquals("Parsing null string did not return the default value", 10, Util.tryParseNumber(null, 10).intValue());
     }
 
+    @Test
     public void testSymlink() throws Exception {
-        if (Functions.isWindows())     return;
+        Assume.assumeTrue(!Functions.isWindows());
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         StreamTaskListener l = new StreamTaskListener(baos);
@@ -186,6 +201,7 @@ public class UtilTest extends TestCase {
         }
     }
     
+    @Test
     public void testIsSymlink() throws IOException, InterruptedException {
         Assume.assumeTrue(!Functions.isWindows());
         
@@ -215,10 +231,11 @@ public class UtilTest extends TestCase {
         }
     }
 
-    public void TestEscape() {
+    @Test
+    public void testHtmlEscape() {
         assertEquals("<br>", Util.escape("\n"));
         assertEquals("&lt;a>", Util.escape("<a>"));
-        assertEquals("&quot;&#039;", Util.escape("'\""));
+        assertEquals("&#039;&quot;", Util.escape("'\""));
         assertEquals("&nbsp; ", Util.escape("  "));
     }
     
@@ -227,6 +244,7 @@ public class UtilTest extends TestCase {
      * to another digest.
      */
     @Bug(10346)
+    @Test
     public void testDigestThreadSafety() throws InterruptedException {
     	String a = "abcdefgh";
     	String b = "123456789";

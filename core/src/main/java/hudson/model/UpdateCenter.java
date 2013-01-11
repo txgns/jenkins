@@ -48,6 +48,7 @@ import hudson.util.PersistedList;
 import hudson.util.XStream2;
 import jenkins.RestartRequiredException;
 import jenkins.model.Jenkins;
+import jenkins.util.io.OnMaster;
 import org.acegisecurity.Authentication;
 import org.acegisecurity.context.SecurityContext;
 import org.apache.commons.io.input.CountingInputStream;
@@ -70,7 +71,9 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.Vector;
@@ -84,6 +87,7 @@ import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.annotation.CheckForNull;
 import org.acegisecurity.context.SecurityContextHolder;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
@@ -106,7 +110,7 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
  * @since 1.220
  */
 @ExportedBean
-public class UpdateCenter extends AbstractModelObject implements Saveable {
+public class UpdateCenter extends AbstractModelObject implements Saveable, OnMaster {
 	
     private static final String UPDATE_CENTER_URL = System.getProperty(UpdateCenter.class.getName()+".updateCenterUrl","http://updates.jenkins-ci.org/");
 	
@@ -226,9 +230,16 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
      * @return
      *      can be empty but never null.
      */
-    @Exported
     public PersistedList<UpdateSite> getSites() {
         return sites;
+    }
+
+    /**
+     * The same as {@link #getSites()} but for REST API.
+     */
+    @Exported(name="sites")
+    public List<UpdateSite> getSiteList() {
+        return sites.toList();
     }
 
     public UpdateSite getSite(String id) {
@@ -295,7 +306,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
     /**
      * Gets the plugin with the given name from the first {@link UpdateSite} to contain it.
      */
-    public Plugin getPlugin(String artifactId) {
+    public @CheckForNull Plugin getPlugin(String artifactId) {
         for (UpdateSite s : sites) {
             Plugin p = s.getPlugin(artifactId);
             if (p!=null) return p;
@@ -498,13 +509,24 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
     }
 
     public List<Plugin> getAvailables() {
-        List<Plugin> plugins = new ArrayList<Plugin>();
-
-        for (UpdateSite s : sites) {
-            plugins.addAll(s.getAvailables());
+        Map<String,Plugin> pluginMap = new LinkedHashMap<String, Plugin>();
+        for (UpdateSite site : sites) {
+            for (Plugin plugin: site.getAvailables()) {
+                final Plugin existing = pluginMap.get(plugin.name);
+                if (existing == null) {
+                    pluginMap.put(plugin.name, plugin);
+                } else if (!existing.version.equals(plugin.version)) {
+                    // allow secondary update centers to publish different versions
+                    // TODO refactor to consolidate multiple versions of the same plugin within the one row
+                    final String altKey = plugin.name + ":" + plugin.version;
+                    if (!pluginMap.containsKey(altKey)) {
+                        pluginMap.put(altKey, plugin);
+                    }
+                }
+            }
         }
 
-        return plugins;
+        return new ArrayList<Plugin>(pluginMap.values());
     }
 
     /**
@@ -535,13 +557,24 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
     }
 
     public List<Plugin> getUpdates() {
-        List<Plugin> plugins = new ArrayList<Plugin>();
-
-        for (UpdateSite s : sites) {
-            plugins.addAll(s.getUpdates());
+        Map<String,Plugin> pluginMap = new LinkedHashMap<String, Plugin>();
+        for (UpdateSite site : sites) {
+            for (Plugin plugin: site.getUpdates()) {
+                final Plugin existing = pluginMap.get(plugin.name);
+                if (existing == null) {
+                    pluginMap.put(plugin.name, plugin);
+                } else if (!existing.version.equals(plugin.version)) {
+                    // allow secondary update centers to publish different versions
+                    // TODO refactor to consolidate multiple versions of the same plugin within the one row
+                    final String altKey = plugin.name + ":" + plugin.version;
+                    if (!pluginMap.containsKey(altKey)) {
+                        pluginMap.put(altKey, plugin);
+                    }
+                }
+            }
         }
 
-        return plugins;
+        return new ArrayList<Plugin>(pluginMap.values());
     }
     
     /**
@@ -1009,7 +1042,6 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
         /**
          * Get the user that initiated this job
          */
-        @Exported
         public Authentication getUser() {
             return this.authentication;
         }
@@ -1069,6 +1101,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
          * <p>
          * Instances of this class is immutable.
          */
+        @ExportedBean
         public abstract class InstallationStatus extends Throwable {
             public final int id = iota.incrementAndGet();
             @Exported

@@ -102,6 +102,7 @@ import org.kohsuke.stapler.export.ExportedBean;
 
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.converters.basic.AbstractSingleValueConverter;
+import org.kohsuke.stapler.QueryParameter;
 
 /**
  * Build queue.
@@ -568,6 +569,17 @@ public class Queue extends ResourceController implements Saveable {
         if(r)
             item.onCancelled();
         return r;
+    }
+
+    /**
+     * Called from {@code queue.jelly} and {@code entries.jelly}.
+     */
+    public HttpResponse doCancelItem(@QueryParameter int id) throws IOException, ServletException {
+        Item item = getItem(id);
+        if (item != null) {
+            cancel(item);
+        } // else too late, ignore (JENKINS-14813)
+        return HttpResponses.forwardToPreviousPage();
     }
 
     public synchronized boolean isEmpty() {
@@ -1362,9 +1374,8 @@ public class Queue extends ResourceController implements Saveable {
 			return null;
 		}
 
-        /**
-         * Called from queue.jelly.
-         */
+        /** @deprecated Use {@link #doCancelItem} instead. */
+        @Deprecated
         public HttpResponse doCancelQueue() throws IOException, ServletException {
         	Jenkins.getInstance().getQueue().cancel(this);
             return HttpResponses.forwardToPreviousPage();
@@ -1642,6 +1653,26 @@ public class Queue extends ResourceController implements Saveable {
 			public String toString(Object object) {
 				Run<?,?> run = (Run<?,?>) object;
 				return run.getParent().getFullName() + "#" + run.getNumber();
+			}
+        });
+
+        /**
+         * Reconnect every reference to {@link Queue} by the singleton.
+         */
+        XSTREAM.registerConverter(new AbstractSingleValueConverter() {
+			@Override
+			public boolean canConvert(Class klazz) {
+				return Queue.class.isAssignableFrom(klazz);
+			}
+
+			@Override
+			public Object fromString(String string) {
+                return Jenkins.getInstance().getQueue();
+			}
+
+			@Override
+			public String toString(Object item) {
+                return "queue";
 			}
         });
     }

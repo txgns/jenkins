@@ -27,36 +27,37 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSortedSet;
 import hudson.AbortException;
 import hudson.EnvVars;
+import hudson.FilePath;
 import hudson.Functions;
 import hudson.Launcher;
 import hudson.Util;
-import hudson.FilePath;
 import hudson.console.AnnotatedLargeText;
-import hudson.console.HyperlinkNote;
 import hudson.console.ExpandableDetailsNote;
-import hudson.model.listeners.RunListener;
-import hudson.slaves.WorkspaceList;
-import hudson.slaves.NodeProperty;
-import hudson.slaves.WorkspaceList.Lease;
+import hudson.console.ModelHyperlinkNote;
 import hudson.matrix.MatrixConfiguration;
 import hudson.model.Fingerprint.BuildPtr;
 import hudson.model.Fingerprint.RangeSet;
+import hudson.model.listeners.RunListener;
 import hudson.model.listeners.SCMListener;
 import hudson.scm.ChangeLogParser;
 import hudson.scm.ChangeLogSet;
 import hudson.scm.ChangeLogSet.Entry;
-import hudson.scm.SCM;
 import hudson.scm.NullChangeLogParser;
+import hudson.scm.SCM;
+import hudson.slaves.NodeProperty;
+import hudson.slaves.WorkspaceList;
+import hudson.slaves.WorkspaceList.Lease;
 import hudson.tasks.BuildStep;
+import hudson.tasks.BuildStepMonitor;
+import hudson.tasks.BuildTrigger;
 import hudson.tasks.BuildWrapper;
 import hudson.tasks.Builder;
 import hudson.tasks.Fingerprinter.FingerprintAction;
 import hudson.tasks.Publisher;
-import hudson.tasks.BuildStepMonitor;
-import hudson.tasks.BuildTrigger;
 import hudson.tasks.test.AbstractTestResultAction;
 import hudson.tasks.test.AggregatedTestResultAction;
 import hudson.util.AdaptedIterator;
+import hudson.util.IOException2;
 import hudson.util.Iterators;
 import hudson.util.LogTaskListener;
 import hudson.util.VariableResolver;
@@ -74,8 +75,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.StringWriter;
-import java.lang.ref.Reference;
-import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 import java.text.MessageFormat;
 import java.util.AbstractSet;
@@ -89,10 +88,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Vector;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.annotation.CheckForNull;
 
 /**
  * Base implementation of {@link Run}s that build software.
@@ -254,7 +252,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
      *
      * <p>
      * Note to implementors: to control where the workspace is created, override
-     * {@link AbstractRunner#decideWorkspace(Node,WorkspaceList)}.
+     * {@link AbstractBuildExecution#decideWorkspace(Node,WorkspaceList)}.
      *
      * @return
      *      null if the workspace is on a slave that's not connected. Note that once the build is completed,
@@ -262,7 +260,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
      *      no longer show a workspace as it was used for this build.
      * @since 1.319
      */
-    public final FilePath getWorkspace() {
+    public final @CheckForNull FilePath getWorkspace() {
         if (workspace==null) return null;
         Node n = getBuiltOn();
         if (n==null) return null;
@@ -270,7 +268,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
     }
 
     /**
-     * Normally, a workspace is assigned by {@link Runner}, but this lets you set the workspace in case
+     * Normally, a workspace is assigned by {@link RunExecution}, but this lets you set the workspace in case
      * {@link AbstractBuild} is created without a build.
      */
     protected void setWorkspace(FilePath ws) {
@@ -372,9 +370,8 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
             try{
                 if (e.getAuthor()==user)
                     return true;
-            } catch (RuntimeException re) {
-                // no-op, just remove exception thrown e.g. from git plugin. 
-                // It there's some problem to determine committer, user probably doesn't participate in the build.
+            } catch (RuntimeException re) { 
+                LOGGER.log(Level.INFO, "Failed to determine author of changelog " + e.getCommitId() + "for " + getParent().getDisplayName() + ", " + getDisplayName(), re);
             }
         return false;
     }
@@ -420,7 +417,20 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
         Util.createSymlink(getProject().getBuildDir(),"builds/"+getId(),"../"+name,listener);
     }
 
-    protected abstract class AbstractRunner extends Runner {
+    /**
+     * @deprecated as of 1.467
+     *      Please use {@link RunExecution}
+     */
+    public abstract class AbstractRunner extends AbstractBuildExecution {
+
+    }
+
+    public abstract class AbstractBuildExecution extends Runner {
+        /*
+            Some plugins might depend on this instance castable to Runner, so we need to use
+            deprecated class here.
+         */
+
         /**
          * Since configuration can be changed while a build is in progress,
          * create a launcher once and stick to it for the entire build duration.
@@ -433,10 +443,18 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
         protected BuildListener listener;
 
         /**
-         * Returns the current {@link Node} on which we are buildling.
+         * Returns the current {@link Node} on which we are building.
          */
         protected final Node getCurrentNode() {
             return Executor.currentExecutor().getOwner().getNode();
+        }
+
+        public Launcher getLauncher() {
+            return launcher;
+        }
+
+        public BuildListener getListener() {
+            return listener;
         }
 
         /**
@@ -454,7 +472,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
                 return Lease.createDummyLease(n.getRootPath().child(getEnvironment(listener).expand(customWorkspace)));
             }
             // TODO: this cast is indicative of abstraction problem
-            return wsl.allocate(n.getWorkspaceFor((TopLevelItem)getProject()));
+            return wsl.allocate(n.getWorkspaceFor((TopLevelItem)getProject()), getBuild());
         }
 
         public Result run(BuildListener listener) throws Exception {
@@ -467,7 +485,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
             launcher = createLauncher(listener);
             if (!Jenkins.getInstance().getNodes().isEmpty())
                 listener.getLogger().print(node instanceof Jenkins ? Messages.AbstractBuild_BuildingOnMaster() : 
-                    Messages.AbstractBuild_BuildingRemotely(HyperlinkNote.encodeTo("/computer/"+ builtOn, builtOn)));
+                    Messages.AbstractBuild_BuildingRemotely(ModelHyperlinkNote.encodeTo("/computer/" + builtOn, builtOn)));
             else
             	listener.getLogger().print(Messages.AbstractBuild_Building());
             
@@ -481,8 +499,9 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
                 for (WorkspaceListener wl : WorkspaceListener.all()) {
                     wl.beforeUse(AbstractBuild.this, lease.path, listener);
                 }
-                preCheckout(launcher,listener);
-                checkout(listener);
+
+                getProject().getScmCheckoutStrategy().preCheckout(AbstractBuild.this, launcher, this.listener);
+                getProject().getScmCheckoutStrategy().checkout(this);
 
                 if (!preBuild(listener,project.getProperties()))
                     return Result.FAILURE;
@@ -566,59 +585,47 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
             return l;
         }
 
-        
-        /**
-         * Run preCheckout on {@link BuildWrapper}s
-         * 
-         * @param launcher
-         * 		The launcher, never null.
-         * @param listener
-         * 		Never null, connected to the main build output.
-         * @throws IOException
-         * @throws InterruptedException
-         */
-        private void preCheckout(Launcher launcher, BuildListener listener) throws IOException, InterruptedException{
-        	if (project instanceof BuildableItemWithBuildWrappers) {
-                BuildableItemWithBuildWrappers biwbw = (BuildableItemWithBuildWrappers) project;
-                for (BuildWrapper bw : biwbw.getBuildWrappersList())
-                    bw.preCheckout(AbstractBuild.this,launcher,listener);
-            }
-        }
-        
-        private void checkout(BuildListener listener) throws Exception {
-                for (int retryCount=project.getScmCheckoutRetryCount(); ; retryCount--) {
-                    // for historical reasons, null in the scm field means CVS, so we need to explicitly set this to something
-                    // in case check out fails and leaves a broken changelog.xml behind.
-                    // see http://www.nabble.com/CVSChangeLogSet.parse-yields-SAXParseExceptions-when-parsing-bad-*AccuRev*-changelog.xml-files-td22213663.html
-                    AbstractBuild.this.scm = NullChangeLogParser.INSTANCE;
+        public void defaultCheckout() throws IOException, InterruptedException {
+            AbstractBuild<?,?> build = AbstractBuild.this;
+            AbstractProject<?, ?> project = build.getProject();
 
-                    try {
-                        if (project.checkout(AbstractBuild.this,launcher,listener,new File(getRootDir(),"changelog.xml"))) {
-                            // check out succeeded
-                            SCM scm = project.getScm();
+            for (int retryCount=project.getScmCheckoutRetryCount(); ; retryCount--) {
+                // for historical reasons, null in the scm field means CVS, so we need to explicitly set this to something
+                // in case check out fails and leaves a broken changelog.xml behind.
+                // see http://www.nabble.com/CVSChangeLogSet.parse-yields-SAXParseExceptions-when-parsing-bad-*AccuRev*-changelog.xml-files-td22213663.html
+                build.scm = NullChangeLogParser.INSTANCE;
 
-                            AbstractBuild.this.scm = scm.createChangeLogParser();
-                            AbstractBuild.this.changeSet = new WeakReference<ChangeLogSet<? extends Entry>>(AbstractBuild.this.calcChangeSet());
+                try {
+                    if (project.checkout(build,launcher,listener,new File(build.getRootDir(),"changelog.xml"))) {
+                        // check out succeeded
+                        SCM scm = project.getScm();
 
-                            for (SCMListener l : Jenkins.getInstance().getSCMListeners())
-                                l.onChangeLogParsed(AbstractBuild.this,listener,getChangeSet());
-                            return;
-                        }
-                    } catch (AbortException e) {
-                        listener.error(e.getMessage());
-                    } catch (InterruptedIOException e) {
-                        throw (InterruptedException)new InterruptedException().initCause(e);
-                    } catch (IOException e) {
-                        // checkout error not yet reported
-                        e.printStackTrace(listener.getLogger());
+                        build.scm = scm.createChangeLogParser();
+                        build.changeSet = new WeakReference<ChangeLogSet<? extends Entry>>(build.calcChangeSet());
+
+                        for (SCMListener l : Jenkins.getInstance().getSCMListeners())
+                            try {
+                                l.onChangeLogParsed(build,listener,build.getChangeSet());
+                            } catch (Exception e) {
+                                throw new IOException2("Failed to parse changelog",e);
+                            }
+                        return;
                     }
-
-                    if (retryCount == 0)   // all attempts failed
-                        throw new RunnerAbortedException();
-
-                    listener.getLogger().println("Retrying after 10 seconds");
-                    Thread.sleep(10000);
+                } catch (AbortException e) {
+                    listener.error(e.getMessage());
+                } catch (InterruptedIOException e) {
+                    throw (InterruptedException)new InterruptedException().initCause(e);
+                } catch (IOException e) {
+                    // checkout error not yet reported
+                    e.printStackTrace(listener.getLogger());
                 }
+
+                if (retryCount == 0)   // all attempts failed
+                    throw new RunnerAbortedException();
+
+                listener.getLogger().println("Retrying after 10 seconds");
+                Thread.sleep(10000);
+            }
         }
 
         /**
@@ -940,7 +947,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
      * <p>
      * This mechanism is used by {@link MatrixConfiguration} to pass
      * the configuration values to the current build. It is up to
-     * {@link Builder}s to decide whether it wants to recognize the values
+     * {@link Builder}s to decide whether they want to recognize the values
      * or how to use them.
      *
      * <p>

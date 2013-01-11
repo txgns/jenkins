@@ -228,6 +228,9 @@ public final class FilePath implements Serializable {
         }
     }
 
+    /**
+     * Is the given path name an absolute path?
+     */
     private static boolean isAbsolute(String rel) {
         return rel.startsWith("/") || DRIVE_PATTERN.matcher(rel).matches();
     }
@@ -970,11 +973,11 @@ public final class FilePath implements Serializable {
 
     /**
      * The same as {@link FilePath#FilePath(FilePath,String)} but more OO.
-     * @param rel a relative or absolute path
+     * @param relOrAbsolute a relative or absolute path
      * @return a file on the same channel
      */
-    public FilePath child(String rel) {
-        return new FilePath(this,rel);
+    public FilePath child(String relOrAbsolute) {
+        return new FilePath(this,relOrAbsolute);
     }
 
     /**
@@ -1230,6 +1233,10 @@ public final class FilePath implements Serializable {
      * @param mask
      *      File permission mask. To simplify the permission copying,
      *      if the parameter is -1, this method becomes no-op.
+     *      <p>
+     *      please note mask is expected to be an octal if you use <a href="http://en.wikipedia.org/wiki/Chmod">chmod command line values</a>,
+     *      so preceded by a '0' in java notation, ie <code>chmod(0644)</code>
+     *
      * @since 1.303
      * @see #mode()
      */

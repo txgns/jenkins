@@ -53,6 +53,7 @@ import hudson.model.Queue.WaitingItem;
 import hudson.model.RunMap.Constructor;
 import hudson.model.labels.LabelAtom;
 import hudson.model.labels.LabelExpression;
+import hudson.model.listeners.SCMPollListener;
 import hudson.model.queue.CauseOfBlockage;
 import hudson.model.queue.SubTaskContributor;
 import hudson.scm.ChangeLogSet;
@@ -82,6 +83,9 @@ import hudson.util.FormValidation;
 import hudson.widgets.BuildHistoryWidget;
 import hudson.widgets.HistoryWidget;
 import jenkins.model.Jenkins;
+import jenkins.scm.DefaultSCMCheckoutStrategyImpl;
+import jenkins.scm.SCMCheckoutStrategy;
+import jenkins.scm.SCMCheckoutStrategyDescriptor;
 import net.sf.json.JSONObject;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -138,6 +142,11 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
      * access to this variable should always go through {@link #getScm()}.
      */
     private volatile SCM scm = new NullSCM();
+
+    /**
+     * Controls how the checkout is done.
+     */
+    private volatile SCMCheckoutStrategy scmCheckoutStrategy;
 
     /**
      * State returned from {@link SCM#poll(AbstractProject, Launcher, FilePath, TaskListener, SCMRevisionState)}.
@@ -520,7 +529,17 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
     public int getQuietPeriod() {
         return quietPeriod!=null ? quietPeriod : Jenkins.getInstance().getQuietPeriod();
     }
-    
+
+    public SCMCheckoutStrategy getScmCheckoutStrategy() {
+        return scmCheckoutStrategy == null ? new DefaultSCMCheckoutStrategyImpl() : scmCheckoutStrategy;
+    }
+
+    public void setScmCheckoutStrategy(SCMCheckoutStrategy scmCheckoutStrategy) throws IOException {
+        this.scmCheckoutStrategy = scmCheckoutStrategy;
+        save();
+    }
+
+
     public int getScmCheckoutRetryCount() {
         return scmCheckoutRetryCount !=null ? scmCheckoutRetryCount : Jenkins.getInstance().getScmCheckoutRetryCount();
     }
@@ -599,6 +618,17 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         if(b)
             Jenkins.getInstance().getQueue().cancel(this);
         save();
+    }
+
+    /**
+     * Specifies whether this project may be disabled by the user.
+     * By default, it can be only if this is a {@link TopLevelItem};
+     * would be false for matrix configurations, etc.
+     * @return true if the GUI should allow {@link #doDisable} and the like
+     * @since 1.475
+     */
+    public boolean supportsMakeDisabled() {
+        return this instanceof TopLevelItem;
     }
 
     public void disable() throws IOException {
@@ -1301,74 +1331,93 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         }
 
         try {
-            if (scm.requiresWorkspaceForPolling()) {
-                // lock the workspace of the last build
-                FilePath ws=lb.getWorkspace();
-
-                if (workspaceOffline(lb)) {
-                    // workspace offline. build now, or nothing will ever be built
-                    Label label = getAssignedLabel();
-                    if (label != null && label.isSelfLabel()) {
-                        // if the build is fixed on a node, then attempting a build will do us
-                        // no good. We should just wait for the slave to come back.
-                        listener.getLogger().println(Messages.AbstractProject_NoWorkspace());
-                        return NO_CHANGES;
-                    }
-                    listener.getLogger().println( ws==null
-                        ? Messages.AbstractProject_WorkspaceOffline()
-                        : Messages.AbstractProject_NoWorkspace());
-                    if (isInQueue()) {
-                        listener.getLogger().println(Messages.AbstractProject_AwaitingBuildForWorkspace());
-                        return NO_CHANGES;
-                    } else {
-                        listener.getLogger().println(Messages.AbstractProject_NewBuildForWorkspace());
-                        return BUILD_NOW;
-                    }
-                } else {
-                    WorkspaceList l = lb.getBuiltOn().toComputer().getWorkspaceList();
-                    // if doing non-concurrent build, acquire a workspace in a way that causes builds to block for this workspace.
-                    // this prevents multiple workspaces of the same job --- the behavior of Hudson < 1.319.
-                    //
-                    // OTOH, if a concurrent build is chosen, the user is willing to create a multiple workspace,
-                    // so better throughput is achieved over time (modulo the initial cost of creating that many workspaces)
-                    // by having multiple workspaces
-                    WorkspaceList.Lease lease = l.acquire(ws, !concurrentBuild);
-                    Launcher launcher = ws.createLauncher(listener);
-                    try {
-                        LOGGER.fine("Polling SCM changes of " + getName());
-                        if (pollingBaseline==null) // see NOTE-NO-BASELINE above
-                            calcPollingBaseline(lb,launcher,listener);
-                        PollingResult r = scm.poll(this, launcher, ws, listener, pollingBaseline);
-                        pollingBaseline = r.remote;
-                        return r;
-                    } finally {
-                        lease.release();
-                    }
-                }
-            } else {
-                // polling without workspace
-                LOGGER.fine("Polling SCM changes of " + getName());
-
-                if (pollingBaseline==null) // see NOTE-NO-BASELINE above
-                    calcPollingBaseline(lb,null,listener);
-                PollingResult r = scm.poll(this, null, null, listener, pollingBaseline);
-                pollingBaseline = r.remote;
-                return r;
-            }
+            SCMPollListener.fireBeforePolling(this, listener);
+            PollingResult r = _poll(listener, scm, lb);
+            SCMPollListener.firePollingSuccess(this,listener, r);
+            return r;
         } catch (AbortException e) {
             listener.getLogger().println(e.getMessage());
             listener.fatalError(Messages.AbstractProject_Aborted());
             LOGGER.log(Level.FINE, "Polling "+this+" aborted",e);
+            SCMPollListener.firePollingFailed(this, listener,e);
             return NO_CHANGES;
         } catch (IOException e) {
             e.printStackTrace(listener.fatalError(e.getMessage()));
+            SCMPollListener.firePollingFailed(this, listener,e);
             return NO_CHANGES;
         } catch (InterruptedException e) {
             e.printStackTrace(listener.fatalError(Messages.AbstractProject_PollingABorted()));
+            SCMPollListener.firePollingFailed(this, listener,e);
             return NO_CHANGES;
+        } catch (RuntimeException e) {
+            SCMPollListener.firePollingFailed(this, listener,e);
+            throw e;
+        } catch (Error e) {
+            SCMPollListener.firePollingFailed(this, listener,e);
+            throw e;
         }
     }
-    
+
+    /**
+     * {@link #poll(TaskListener)} method without the try/catch block that does listener notification and .
+     */
+    private PollingResult _poll(TaskListener listener, SCM scm, R lb) throws IOException, InterruptedException {
+        if (scm.requiresWorkspaceForPolling()) {
+            // lock the workspace of the last build
+            FilePath ws=lb.getWorkspace();
+
+            if (workspaceOffline(lb)) {
+                // workspace offline. build now, or nothing will ever be built
+                Label label = getAssignedLabel();
+                if (label != null && label.isSelfLabel()) {
+                    // if the build is fixed on a node, then attempting a build will do us
+                    // no good. We should just wait for the slave to come back.
+                    listener.getLogger().println(Messages.AbstractProject_NoWorkspace());
+                    return NO_CHANGES;
+                }
+                listener.getLogger().println( ws==null
+                    ? Messages.AbstractProject_WorkspaceOffline()
+                    : Messages.AbstractProject_NoWorkspace());
+                if (isInQueue()) {
+                    listener.getLogger().println(Messages.AbstractProject_AwaitingBuildForWorkspace());
+                    return NO_CHANGES;
+                } else {
+                    listener.getLogger().println(Messages.AbstractProject_NewBuildForWorkspace());
+                    return BUILD_NOW;
+                }
+            } else {
+                WorkspaceList l = lb.getBuiltOn().toComputer().getWorkspaceList();
+                // if doing non-concurrent build, acquire a workspace in a way that causes builds to block for this workspace.
+                // this prevents multiple workspaces of the same job --- the behavior of Hudson < 1.319.
+                //
+                // OTOH, if a concurrent build is chosen, the user is willing to create a multiple workspace,
+                // so better throughput is achieved over time (modulo the initial cost of creating that many workspaces)
+                // by having multiple workspaces
+                WorkspaceList.Lease lease = l.acquire(ws, !concurrentBuild);
+                Launcher launcher = ws.createLauncher(listener);
+                try {
+                    LOGGER.fine("Polling SCM changes of " + getName());
+                    if (pollingBaseline==null) // see NOTE-NO-BASELINE above
+                        calcPollingBaseline(lb,launcher,listener);
+                    PollingResult r = scm.poll(this, launcher, ws, listener, pollingBaseline);
+                    pollingBaseline = r.remote;
+                    return r;
+                } finally {
+                    lease.release();
+                }
+            }
+        } else {
+            // polling without workspace
+            LOGGER.fine("Polling SCM changes of " + getName());
+
+            if (pollingBaseline==null) // see NOTE-NO-BASELINE above
+                calcPollingBaseline(lb,null,listener);
+            PollingResult r = scm.poll(this, null, null, listener, pollingBaseline);
+            pollingBaseline = r.remote;
+            return r;
+        }
+    }
+
     private boolean workspaceOffline(R build) throws IOException, InterruptedException {
         FilePath ws = build.getWorkspace();
         if (ws==null || !ws.exists()) {
@@ -1696,6 +1745,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
     @Override
     protected void submit(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, FormException {
         super.submit(req,rsp);
+        JSONObject json = req.getSubmittedForm();
 
         makeDisabled(req.getParameter("disable")!=null);
 
@@ -1715,11 +1765,16 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
 
         if(req.hasParameter("customWorkspace")) {
             customWorkspace = Util.fixEmptyAndTrim(req.getParameter("customWorkspace.directory"));
-            if(customWorkspace==null)
-            	throw new FormException("Custom workspace is empty", "customWorkspace");
         } else {
             customWorkspace = null;
         }
+
+        if (json.has("scmCheckoutStrategy"))
+            scmCheckoutStrategy = req.bindJSON(SCMCheckoutStrategy.class,
+                json.getJSONObject("scmCheckoutStrategy"));
+        else
+            scmCheckoutStrategy = null;
+
         
         if(req.getParameter("hasSlaveAffinity")!=null) {
             assignedNode = Util.fixEmptyAndTrim(req.getParameter("_.assignedLabelString"));
@@ -1933,7 +1988,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
 
         public FormValidation doCheckCustomWorkspace(@QueryParameter(value="customWorkspace.directory") String customWorkspace){
         	if(Util.fixEmptyAndTrim(customWorkspace)==null)
-        		return FormValidation.error("Custom workspace is empty");
+        		return FormValidation.error(Messages.AbstractProject_CustomWorkspaceEmpty());
         	else
         		return FormValidation.ok();
         }
@@ -1964,6 +2019,10 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
                 }
             }
             return c;
+        }
+
+        public List<SCMCheckoutStrategyDescriptor> getApplicableSCMCheckoutStrategyDescriptors(AbstractProject p) {
+            return SCMCheckoutStrategyDescriptor._for(p);
         }
 
         /**

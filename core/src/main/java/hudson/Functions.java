@@ -58,6 +58,7 @@ import hudson.views.ViewsTabBar;
 import hudson.widgets.RenderOnDemandClosure;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
+import jenkins.model.ModelObjectWithContextMenu;
 import org.acegisecurity.providers.anonymous.AnonymousAuthenticationToken;
 import org.apache.commons.jelly.JellyContext;
 import org.apache.commons.jelly.JellyTagException;
@@ -93,6 +94,7 @@ import java.lang.reflect.ParameterizedType;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLDecoder;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -143,6 +145,10 @@ public class Functions {
 
     public static boolean isModel(Object o) {
         return o instanceof ModelObject;
+    }
+
+    public static boolean isModelWithContextMenu(Object o) {
+        return o instanceof ModelObjectWithContextMenu;
     }
 
     public static String xsDate(Calendar cal) {
@@ -1493,5 +1499,31 @@ public class Functions {
      */
     public String getUserAvatar(User user, String avatarSize) {
         return getAvatar(user,avatarSize);
+    }
+    
+    
+    /**
+     * Returns human readable information about file size
+     * 
+     * @param file size in bytes
+     * @return file size in appropriate unit
+     */
+    public static String humanReadableByteSize(long size){
+        String measure = "B";
+        Double number = new Double(size);
+        if(number>=1024){
+            number = number/1024;
+            measure = "KB";
+            if(number>=1024){
+                number = number/1024;
+                measure = "MB";
+                if(number>=1024){
+                    number=number/1024;
+                    measure = "GB";
+                }
+            }
+        }
+        DecimalFormat format = new DecimalFormat("##.00");
+        return format.format(number) + " " + measure;
     }
 }

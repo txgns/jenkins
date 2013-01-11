@@ -39,12 +39,16 @@ import hudson.util.IOException2;
 import jenkins.security.HMACConfidentialKey;
 
 import java.io.ByteArrayInputStream;
+import hudson.slaves.OfflineCause;
+import jenkins.AgentProtocol;
+
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.BindException;
@@ -60,29 +64,18 @@ import java.util.logging.Logger;
 /**
  * Listens to incoming TCP connections from JNLP slave agents and CLI.
  *
- * <h2>Security</h2>
  * <p>
- * Once connected, remote slave agents can send in commands to be
- * executed on the master, so in a way this is like an rsh service.
- * Therefore, it is important that we reject connections from
- * unauthorized remote slaves.
+ * Aside from the HTTP endpoint, Jenkins runs {@link TcpSlaveAgentListener} that listens on a TCP socket.
+ * Historically  this was used for inbound connection from slave agents (hence the name), but over time
+ * it was extended and made generic, so that multiple protocols of different purposes can co-exist on the
+ * same socket.
  *
  * <p>
- * The approach here is to have {@link jenkins.model.Jenkins#getSecretKey() a secret key} on the master.
- * This key is sent to the slave inside the <tt>.jnlp</tt> file
- * (this file itself is protected by HTTP form-based authentication that
- * we use everywhere else in Hudson), and the slave sends this
- * token back when it connects to the master.
- * Unauthorized slaves can't access the protected <tt>.jnlp</tt> file,
- * so it can't impersonate a valid slave.
- *
- * <p>
- * We don't want to force the JNLP slave agents to be restarted
- * whenever the server restarts, so right now this secret master key
- * is generated once and used forever, which makes this whole scheme
- * less secure.
+ * This class accepts the socket, then after a short handshaking, it dispatches to appropriate
+ * {@link AgentProtocol}s.
  *
  * @author Kohsuke Kawaguchi
+ * @see AgentProtocol
  */
 public final class TcpSlaveAgentListener extends Thread {
 
@@ -114,10 +107,6 @@ public final class TcpSlaveAgentListener extends Thread {
      */
     public int getPort() {
         return serverSocket.getLocalPort();
-    }
-
-    private String getSecretKey() {
-        return Jenkins.getInstance().getSecretKey();
     }
 
     @Override
@@ -174,21 +163,17 @@ public final class TcpSlaveAgentListener extends Thread {
                 LOGGER.info("Accepted connection #"+id+" from "+s.getRemoteSocketAddress());
 
                 DataInputStream in = new DataInputStream(s.getInputStream());
-                PrintWriter out = new PrintWriter(s.getOutputStream(),true);
+                PrintWriter out = new PrintWriter(s.getOutputStream(),true); // DEPRECATED: newer protocol shouldn't use PrintWriter but should use DataOutputStream
 
                 String s = in.readUTF();
 
                 if(s.startsWith("Protocol:")) {
                     String protocol = s.substring(9);
-                    if(protocol.equals("JNLP-connect")) {
-                        runJnlpConnect(in, out);
-                    } else if(protocol.equals("JNLP2-connect")) {
-                        runJnlp2Connect(in, out);
-                    } else if(protocol.equals("CLI-connect")) {
-                        runCliConnect(in, out);
-                    } else {
+                    AgentProtocol p = AgentProtocol.of(protocol);
+                    if (p!=null)
+                        p.handle(this.s);
+                    else
                         error(out, "Unknown protocol:" + s);
-                    }
                 } else {
                     error(out, "Unrecognized protocol: "+s);
                 }

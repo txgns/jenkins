@@ -34,22 +34,10 @@ public class DownloadServiceTest extends HudsonTestCase {
 
     @Bug(5536)
     public void testPost() throws Exception {
-        // initially it should fail because the data doesn't have a signature
         assertNull(job.getData());
         createWebClient().goTo("/self/testPost");
-        assertNull(job.getData());
-
-        // and now it should work
-        DownloadService.signatureCheck = false;
-        try {
-            createWebClient().goTo("/self/testPost");
-            JSONObject d = job.getData();
-            assertEquals(hashCode(),d.getInt("hello"));
-        } finally {
-            DownloadService.signatureCheck = true;
-        }
-
-        // TODO: test with a signature
+        JSONObject d = job.getData();
+        assertEquals(hashCode(),d.getInt("hello"));
     }
 
     /**

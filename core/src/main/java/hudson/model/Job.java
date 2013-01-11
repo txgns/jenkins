@@ -26,6 +26,7 @@ package hudson.model;
 import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
 import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
+import hudson.EnvVars;
 import hudson.Extension;
 import hudson.ExtensionPoint;
 import hudson.PermalinkList;
@@ -61,6 +62,7 @@ import hudson.widgets.Widget;
 import jenkins.model.Jenkins;
 import jenkins.model.ProjectNamingStrategy;
 import jenkins.security.HexStringConfidentialKey;
+import jenkins.util.io.OnMaster;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import org.jfree.chart.ChartFactory;
@@ -103,7 +105,7 @@ import static javax.servlet.http.HttpServletResponse.*;
  * @author Kohsuke Kawaguchi
  */
 public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, RunT>>
-        extends AbstractItem implements ExtensionPoint, StaplerOverridable {
+        extends AbstractItem implements ExtensionPoint, StaplerOverridable, OnMaster {
 
     /**
      * Next build number. Kept in a separate file because this is the only
@@ -1207,9 +1209,12 @@ public abstract class Job<JobT extends Job<JobT, RunT>, RunT extends Run<JobT, R
     public/* not synchronized. see renameTo() */void doDoRename(
             StaplerRequest req, StaplerResponse rsp) throws IOException,
             ServletException {
-        // rename is essentially delete followed by a create
-        checkPermission(CREATE);
-        checkPermission(DELETE);
+
+        if (!hasPermission(CONFIGURE)) {
+            // rename is essentially delete followed by a create
+            checkPermission(CREATE);
+            checkPermission(DELETE);
+        }
 
         String newName = req.getParameter("newName");
         Jenkins.checkGoodName(newName);
