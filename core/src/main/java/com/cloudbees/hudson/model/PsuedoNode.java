@@ -108,7 +108,7 @@ public class PsuedoNode extends Node {
 
     @Override
     public FilePath getRootPath() {
-        throw new UnsupportedOperationException();
+        return null;
     }
 
     @Override
