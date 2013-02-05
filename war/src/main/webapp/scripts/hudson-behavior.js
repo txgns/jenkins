@@ -1983,12 +1983,6 @@ var downloadService = {
         var tag = {id:id,postBack:postBack,completionHandler:completionHandler,received:false};
         this.continuations[id] = tag;
 
-        //Handle the case where the updatecenter might be on the local FS. In that case send the post request with no data
-        if(url.indexOf("file:/") == 0){
-            downloadService.post(id, id)
-            return;
-        }
-
         // use JSONP to download the data
         function fallback() {
             loadScript(url+"?id="+id+'&'+Hash.toQueryString(info));

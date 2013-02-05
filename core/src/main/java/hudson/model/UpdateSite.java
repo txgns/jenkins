@@ -70,6 +70,7 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.CertificateNotYetValidException;
 import java.security.cert.TrustAnchor;
 import java.security.cert.X509Certificate;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -200,17 +201,7 @@ public class UpdateSite {
      * This is the endpoint that receives the update center data file from the browser.
      */
     public FormValidation doPostBack(StaplerRequest req) throws IOException, GeneralSecurityException {
-
-        //avoid imports to reduce merges
-        java.io.InputStream is;
-        //check if you can get from the local file system
-        if(url.startsWith("file:/")){
-            is = new java.net.URL(url).openConnection().getInputStream();
-        }else{
-            is = req.getInputStream();
-        }
-
-        return updateData(is);
+        return updateData(req.getInputStream());
     }
 
     private FormValidation updateData(java.io.InputStream is)
@@ -218,21 +209,7 @@ public class UpdateSite {
 
         dataTimestamp = System.currentTimeMillis();
 
-        byte[] data = org.apache.commons.io.IOUtils.toByteArray(is);
-
-        //skip new line
-        int i = 0;
-        while (i < data.length) {
-            if (data[i] == '\n') {
-                break;
-            }
-            i++;
-        }
-        if (i >= data.length) {
-            throw new RuntimeException("Invalid input.");
-        }
-        
-        String json = new String(data, i + 1, data.length - i - 2);
+        String json = IOUtils.toString(is,"UTF-8");
         JSONObject o = JSONObject.fromObject(json);
 
         int v = o.getInt("updateCenterVersion");
@@ -584,13 +561,9 @@ public class UpdateSite {
         Data(JSONObject o) {
             this.sourceId = (String)o.get("id");
             if (sourceId.equals("default")) {
-                JSONObject jo = o.getJSONObject("core");
-                if(jo.containsKey("name")){
-                    core = new Entry(sourceId, jo);
-                }else{
-                    core = null;
-                }
-            }else { 
+                core = new Entry(sourceId, o.getJSONObject("core"));
+            }
+            else {
                 core = null;
             }
             for(Map.Entry<String,JSONObject> e : (Set<Map.Entry<String,JSONObject>>)o.getJSONObject("plugins").entrySet()) {
