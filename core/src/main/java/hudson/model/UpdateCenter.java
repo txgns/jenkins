@@ -584,6 +584,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable, OnMas
      * @return a list of {@link FormValidation} for each updated Update Site
      * @throws ExecutionException 
      * @throws InterruptedException 
+     * @since 1.501
      * 
      */
     public List<FormValidation> updateAllSites() throws InterruptedException, ExecutionException {

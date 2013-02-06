@@ -47,12 +47,14 @@ import org.jvnet.hudson.crypto.CertificateUtil;
 import org.jvnet.hudson.crypto.SignatureOutputStream;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.HttpResponse;
+import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
 import java.io.ByteArrayInputStream;
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -80,8 +82,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
 import java.util.logging.Level;
@@ -175,6 +175,7 @@ public class UpdateSite {
      * does not exist, or is otherwise due for update.
      * 
      * @return null if no updates are necessary, or the future result
+     * @since 1.501
      */
     public Future<FormValidation> updateDirectly() {
         if (! getDataFile().exists() || isDue()) {
@@ -182,10 +183,16 @@ public class UpdateSite {
                 
                 public FormValidation call() throws Exception {
                     URL src = new URL(getUrl());
-                    InputStream is = null;
+
                     URLConnection conn = ProxyConfiguration.open(src);
-                    is = conn.getInputStream();
+                    BufferedInputStream is = new BufferedInputStream(conn.getInputStream());
                     try {
+                        // remove non-json characters from update center
+                        is.mark(1);
+                        for (int r = is.read(); r > 0 && (char)r != '{'; r = is.read()) {
+                            is.mark(1);
+                        }
+                        is.reset();
                         return updateData(is);
                     } finally {
                         if (is != null)
@@ -218,7 +225,7 @@ public class UpdateSite {
 
         if (signatureCheck) {
             FormValidation e = verifySignature(o);
-            if (e.kind!=Kind.OK) {
+            if (e.kind!=Kind.OK && Stapler.getCurrentRequest() != null) {
                 LOGGER.severe(e.renderHtml());
                 return e;
             }
