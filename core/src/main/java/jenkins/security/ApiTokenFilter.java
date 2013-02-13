@@ -49,6 +49,7 @@ public class ApiTokenFilter implements Filter {
                     // as the user might be passing in a real password.
                     SecurityContextHolder.getContext().setAuthentication(u.impersonate());
                     try {
+                        request.setAttribute(ApiTokenProperty.class.getName(), u);
                         chain.doFilter(request,response);
                         return;
                     } finally {
