@@ -59,6 +59,7 @@ import java.lang.reflect.Method;
 import static hudson.model.queue.Executables.*;
 import static java.util.Arrays.asList;
 import static java.util.logging.Level.FINE;
+import org.kohsuke.stapler.interceptor.RequirePOST;
 
 
 /**
@@ -469,6 +470,7 @@ public class Executor extends Thread implements ModelObject {
     /**
      * Stops the current build.
      */
+    @RequirePOST
     public void doStop( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
         Queue.Executable e = executable;
         if(e!=null) {
