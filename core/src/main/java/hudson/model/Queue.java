@@ -102,6 +102,8 @@ import org.kohsuke.stapler.export.ExportedBean;
 
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.converters.basic.AbstractSingleValueConverter;
+import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.interceptor.RequirePOST;
 
 /**
  * Build queue.
@@ -568,6 +570,18 @@ public class Queue extends ResourceController implements Saveable {
         if(r)
             item.onCancelled();
         return r;
+    }
+
+    /**
+     * Called from {@code queue.jelly} and {@code entries.jelly}.
+     */
+    @RequirePOST
+    public HttpResponse doCancelItem(@QueryParameter int id) throws IOException, ServletException {
+        Item item = getItem(id);
+        if (item != null) {
+            cancel(item);
+        } // else too late, ignore (JENKINS-14813)
+        return HttpResponses.forwardToPreviousPage();
     }
 
     public synchronized boolean isEmpty() {
@@ -1347,9 +1361,9 @@ public class Queue extends ResourceController implements Saveable {
 			return null;
 		}
 
-        /**
-         * Called from queue.jelly.
-         */
+        /** @deprecated Use {@link #doCancelItem} instead. */
+        @Deprecated
+        @RequirePOST
         public HttpResponse doCancelQueue() throws IOException, ServletException {
         	Jenkins.getInstance().getQueue().cancel(this);
             return HttpResponses.forwardToPreviousPage();

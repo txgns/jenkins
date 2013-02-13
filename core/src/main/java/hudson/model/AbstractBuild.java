@@ -91,6 +91,8 @@ import java.util.Vector;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.annotation.CheckForNull;
+import org.kohsuke.stapler.interceptor.RequirePOST;
 
 /**
  * Base implementation of {@link Run}s that build software.
@@ -1255,6 +1257,7 @@ public abstract class AbstractBuild<P extends AbstractProject<P,R>,R extends Abs
      * If we use this/executor/stop URL, it causes 404 if the build is already killed,
      * as {@link #getExecutor()} returns null.
      */
+    @RequirePOST
     public synchronized void doStop(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
         Executor e = getExecutor();
         if (e==null)
