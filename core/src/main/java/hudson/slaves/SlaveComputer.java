@@ -81,6 +81,7 @@ import org.kohsuke.stapler.HttpRedirect;
 
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
 import org.kohsuke.stapler.ResponseImpl;
 import org.kohsuke.stapler.WebMethod;
