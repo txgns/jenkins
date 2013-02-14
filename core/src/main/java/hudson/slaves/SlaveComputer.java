@@ -80,6 +80,7 @@ import org.kohsuke.stapler.HttpRedirect;
 
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
 import org.kohsuke.stapler.ResponseImpl;
 import org.kohsuke.stapler.WebMethod;
@@ -519,7 +520,7 @@ public class SlaveComputer extends Computer {
             byte[] iv = new byte[128/8];
             new SecureRandom().nextBytes(iv);
 
-            byte[] jnlpMac = JnlpSlaveAgentProtocol.SLAVE_SECRET.mac(getName().getBytes("UTF-8"));
+            byte[] jnlpMac = TcpSlaveAgentListener.SLAVE_SECRET.mac(getName().getBytes("UTF-8"));
             SecretKey key = new SecretKeySpec(jnlpMac, 0, /* export restrictions */ 128 / 8, "AES");
             byte[] encrypted;
             try {

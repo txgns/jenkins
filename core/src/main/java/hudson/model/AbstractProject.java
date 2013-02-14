@@ -1747,7 +1747,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
         for (Trigger t : triggers)
             t.start(this,true);
 
-        for (Publisher _t : Descriptor.newInstancesFromHeteroList(req, json, "publisher", Jenkins.getInstance().getExtensionList(BuildTrigger.DescriptorImpl.class))) {
+        for (Publisher _t : Descriptor.newInstancesFromHeteroList(req, req.getSubmittedForm(), "publisher", Jenkins.getInstance().getExtensionList(BuildTrigger.DescriptorImpl.class))) {
             BuildTrigger t = (BuildTrigger) _t;
             for (AbstractProject downstream : t.getChildProjects(this)) {
                 downstream.checkPermission(BUILD);
