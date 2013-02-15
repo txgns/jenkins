@@ -29,12 +29,7 @@ public class FileUtilsTest extends TestCase {
         
         assertNull(FileUtils.toAbsolutePathOnMaster(new File(slaveWorkspace,"project1")));
     }
-    
-    public void testCurrentDir() throws IOException {
-        File absolute = new File("/tmp", "./workspace/foo");
-        Assert.assertEquals("/tmp/workspace/foo", absolute.getCanonicalPath());
-    }
-    
+        
     public void testPathTranslationFromSlaveToMaster() {
         System.setProperty("slave.fs.root.on.master","/tmp/slave");
         File masterWorkspace = new File(MasterConfig.getSlaveRootOnMaster(),"./workspace");
