@@ -25,6 +25,8 @@ package hudson.model;
 
 import hudson.util.IOException2;
 import jenkins.model.Jenkins;
+import jenkins.security.SecureRequester;
+
 import org.dom4j.CharacterData;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -188,8 +190,17 @@ public class Api extends AbstractModelObject {
      * Exposes the bean as JSON.
      */
     public void doJson(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
-        if (INSECURE || req.getParameter("jsonp") == null) {
-        setHeaders(rsp);
+        boolean permitted = req.getParameter("jsonp") == null || INSECURE;
+        if (!permitted) {
+            for (SecureRequester r : Jenkins.getInstance().getExtensionList(SecureRequester.class)) {
+                if (r.permit(req, bean)) {
+                    permitted = true;
+                    break;
+                }
+            }
+        }
+        if (permitted) {
+            setHeaders(rsp);
             rsp.serveExposedBean(req,bean, Flavor.JSON);
         } else {
             rsp.sendError(HttpURLConnection.HTTP_FORBIDDEN, "jsonp forbidden; can use -Dhudson.model.Api.INSECURE=true if you run without security");
