@@ -43,41 +43,25 @@
       <groupId>com.cloudbees.dev-at-cloud.main</groupId>
       <artifactId>jenkins-war</artifactId>
       <type>war</type>
-<<<<<<< HEAD
-      <version>1.466.11-SNAPSHOT</version>
-=======
       <version>1.480-SNAPSHOT</version>
->>>>>>> jenkins-1.480.2
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.cloudbees.dev-at-cloud.main</groupId>
       <artifactId>jenkins-core</artifactId>
-<<<<<<< HEAD
-      <version>1.466.11-SNAPSHOT</version>
-=======
       <version>1.480-SNAPSHOT</version>
->>>>>>> jenkins-1.480.2
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>com.cloudbees.dev-at-cloud.main</groupId>
       <artifactId>jenkins-test-harness</artifactId>
-<<<<<<< HEAD
-      <version>1.466.11-SNAPSHOT</version>
-=======
       <version>1.480-SNAPSHOT</version>
->>>>>>> jenkins-1.480.2
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.cloudbees.dev-at-cloud.main</groupId>
       <artifactId>ui-samples-plugin</artifactId>
-<<<<<<< HEAD
-      <version>1.466.11-SNAPSHOT</version>
-=======
       <version>1.480-SNAPSHOT</version>
->>>>>>> jenkins-1.480.2
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -111,18 +95,6 @@
       <optional>true</optional><!-- no need to have this at runtime -->
     </dependency>
   </dependencies>
-<<<<<<< HEAD
-  <!--dependencyManagement>
-       <dependencies>
-       <dependency>
-       <groupId>com.cloudbees.dev-at-cloud.main</groupId>
-       <artifactId>maven-plugin</artifactId>
-       <version>1.395</version>
-       </dependency>
-       </dependencies>
-       </dependencyManagement-->
-=======
->>>>>>> jenkins-1.480.2
 
   <build>
     <!--
@@ -391,12 +363,12 @@
     <snapshotRepository>
       <id>cloudbees-internal-snapshots</id>
       <name>CloudBees Internal Snapshots</name>
-      <url>https://cloudbees_jfrog.artifactoryonline.com/cloudbees_jfrog/snapshots</url>
+      <url>https://cloudbees-jfrog.artifactoryonline.com/cloudbees_jfrog/snapshots</url>
     </snapshotRepository>
     <repository>
       <id>cloudbees-internal-staging</id>
       <name>CloudBees Internal Release Repository</name>
-      <url>https://cloudbees_jfrog.artifactoryonline.com/cloudbees_jfrog/releases</url>
+      <url>https://cloudbees-jfrog.artifactoryonline.com/cloudbees_jfrog/releases</url>
     </repository>
   </distributionManagement>
 </project>
