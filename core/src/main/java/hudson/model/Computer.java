@@ -46,8 +46,6 @@ import hudson.slaves.RetentionStrategy;
 import hudson.slaves.WorkspaceList;
 import hudson.slaves.OfflineCause;
 import hudson.slaves.OfflineCause.ByCLI;
-import hudson.tasks.BuildWrapper;
-import hudson.tasks.Publisher;
 import hudson.util.DaemonThreadFactory;
 import hudson.util.EditDistance;
 import hudson.util.ExceptionCatchingThreadFactory;
@@ -1045,21 +1043,7 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
     }
 
     protected void _doScript( StaplerRequest req, StaplerResponse rsp, String view) throws IOException, ServletException {
-        // ability to run arbitrary script is dangerous,
-        // so tie it to the admin access
-        checkPermission(Jenkins.ADMINISTER);
-
-        String text = req.getParameter("script");
-        if(text!=null) {
-            try {
-                req.setAttribute("output",
-                RemotingDiagnostics.executeGroovy(text,getChannel()));
-            } catch (InterruptedException e) {
-                throw new ServletException(e);
-            }
-        }
-
-        req.getView(this,view).forward(req, rsp);
+        Jenkins._doScript(req, rsp, req.getView(this, view), getChannel(), getACL());
     }
 
     /**
