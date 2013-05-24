@@ -28,6 +28,9 @@ import jenkins.model.Jenkins;
 import org.junit.Assert;
 import org.junit.Test;
 import org.jvnet.hudson.test.HudsonTestCase;
+import org.jvnet.hudson.test.Bug;
+import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.MockFolder;
 
 /**
  * @author kingfai
@@ -87,4 +90,16 @@ public class DisplayNameTest extends HudsonTestCase {
         Assert.assertEquals(newProjectName, newProject.getDisplayName());
         
     }
+
+    @Bug(18074)
+    @Test public void copyJobWithDisplayNameToDifferentFolder() throws Exception {
+        MockFolder d1 = j.createFolder("d1");
+        FreeStyleProject job = d1.createProject(FreeStyleProject.class, "job");
+        job.setDisplayName("My Job");
+        MockFolder d2 = j.jenkins.copy(d1, "d2");
+        FreeStyleProject j2 = (FreeStyleProject) d2.getItem("job");
+        Assert.assertNotNull(j2);
+        Assert.assertEquals("My Job", j2.getDisplayName());
+    }
+
 }
