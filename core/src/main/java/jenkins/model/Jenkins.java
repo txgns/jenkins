@@ -2746,9 +2746,6 @@ public class Jenkins extends AbstractCIBase implements ModifiableTopLevelItemGro
 
             JSONObject json = req.getSubmittedForm();
 
-            workspaceDir = json.getString("rawWorkspaceDir");
-            buildsDir = json.getString("rawBuildsDir");
-
             systemMessage = Util.nullify(req.getParameter("system_message"));
 
             jdks.clear();
