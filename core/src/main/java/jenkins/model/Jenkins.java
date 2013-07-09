@@ -1652,7 +1652,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
     public Set<Label> getLabels() {
         Set<Label> r = new TreeSet<Label>();
         for (Label l : labels.values()) {
-            if(!l.isEmpty())
+            if(!l.isEmpty() && ! l.isSelfLabel())
                 r.add(l);
         }
         return r;
