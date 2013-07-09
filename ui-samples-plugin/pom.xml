@@ -27,7 +27,7 @@ THE SOFTWARE.
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>org.jenkins-ci.main</groupId>
+    <groupId>com.cloudbees.dev-at-cloud.main</groupId>
     <artifactId>pom</artifactId>
     <version>1.532.2</version>
   </parent>
@@ -39,20 +39,20 @@ THE SOFTWARE.
 
   <dependencies>
     <dependency>
-      <groupId>org.jenkins-ci.main</groupId>
+      <groupId>com.cloudbees.dev-at-cloud.main</groupId>
       <artifactId>jenkins-core</artifactId>
       <version>${project.version}</version>
       <scope>provided</scope>
     </dependency>
     <!-- UI-samples plugin is also used as a test bed for automatic test injection -->
     <dependency>
-      <groupId>org.jenkins-ci.main</groupId>
+      <groupId>com.cloudbees.dev-at-cloud.main</groupId>
       <artifactId>jenkins-test-harness</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.jenkins-ci.main</groupId>
+      <groupId>com.cloudbees.dev-at-cloud.main</groupId>
       <artifactId>jenkins-war</artifactId>
       <type>war</type>
       <version>${project.version}</version>
@@ -88,6 +88,8 @@ THE SOFTWARE.
         <!-- version specified in grandparent pom -->
         <extensions>true</extensions>
         <configuration>
+          <jenkinsCoreId>com.cloudbees.dev-at-cloud.main:jenkins-core</jenkinsCoreId>
+          <jenkinsWarId>com.cloudbees.dev-at-cloud.main:jenkins-war</jenkinsWarId>
           <showDeprecation>true</showDeprecation>
         </configuration>
       </plugin>

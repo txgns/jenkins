@@ -4,7 +4,7 @@
 
   <parent>
     <artifactId>pom</artifactId>
-    <groupId>org.jenkins-ci.main</groupId>
+    <groupId>com.cloudbees.dev-at-cloud.main</groupId>
     <version>1.532.2</version>
   </parent>
 
@@ -19,7 +19,7 @@
       <version>1.4</version>
     </dependency>
     <dependency>
-      <groupId>${project.groupId}</groupId>
+      <groupId>org.jenkins-ci.main</groupId>
       <artifactId>remoting</artifactId>
       <!-- specified in the parent -->
     </dependency>
