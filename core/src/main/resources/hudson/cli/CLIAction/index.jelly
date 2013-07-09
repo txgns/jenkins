@@ -34,6 +34,11 @@ THE SOFTWARE.
       <p>
         ${%blurb(rootURL)}
       </p>
+      <p>
+      <b>NOTE:</b> You must use your CloudBees-registered private key to authenticate your CLI to Jenkins. 
+      Please follow <a href="http://wiki.cloudbees.com/bin/view/DEV/How+to+set+your+Public+Key+for+Git+Access">this guide</a>
+      for how to register your public key with your CloudBees account. See "java -jar jenkins-cli.jar --help" for more.
+      </p>
       <j:set var="commandArgs" value="help"/>
       <st:include page="example.jelly"/>
 
