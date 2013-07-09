@@ -2874,9 +2874,6 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
 
             JSONObject json = req.getSubmittedForm();
 
-            workspaceDir = json.getString("rawWorkspaceDir");
-            buildsDir = json.getString("rawBuildsDir");
-
             systemMessage = Util.nullify(req.getParameter("system_message"));
 
             setJDKs(req.bindJSONToList(JDK.class, json.get("jdks")));
