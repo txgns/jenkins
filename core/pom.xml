@@ -27,7 +27,7 @@ THE SOFTWARE.
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>org.jenkins-ci.main</groupId>
+    <groupId>com.cloudbees.dev-at-cloud.main</groupId>
     <artifactId>pom</artifactId>
     <version>1.554.2</version>
     <relativePath>../pom.xml</relativePath>
@@ -49,7 +49,7 @@ THE SOFTWARE.
 
   <dependencies>
     <dependency>
-      <groupId>${project.groupId}</groupId>
+      <groupId>org.jenkins-ci.main</groupId>
       <artifactId>remoting</artifactId>
       <!-- specified in the parent -->
     </dependency>
