@@ -173,7 +173,7 @@ public abstract class Node extends AbstractModelObject implements Reconfigurable
      *      this method can return null if there's no {@link Computer} object for this node,
      *      such as when this node has no executors at all.
      */
-    public final @CheckForNull Computer toComputer() {
+    public /*final*/ @CheckForNull Computer toComputer() {
         AbstractCIBase ciBase = Jenkins.getInstance();
         return ciBase.getComputer(this);
     }
