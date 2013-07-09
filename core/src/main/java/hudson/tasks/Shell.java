@@ -181,11 +181,7 @@ public class Shell extends CommandInterpreter {
 
         @Override
         public boolean configure(StaplerRequest req, JSONObject data) {
-            // Do we need to enable it for any user user?
-//            setShell(req.getParameter("shell"));
-//            return true;
-
-            //Return true so that hudson thinks everything is ok with configuration
+            setShell(req.getParameter("shell"));
             return true;
         }
 

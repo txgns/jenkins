@@ -134,7 +134,6 @@ public abstract class Descriptor<T extends Describable<T>> implements Saveable {
      */
     private transient volatile Map<String, PropertyType> propertyTypes,globalPropertyTypes;
 
-
     /**
      * Represents a readable property on {@link Describable}.
      */

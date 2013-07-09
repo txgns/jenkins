@@ -1508,7 +1508,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable, OnMas
             Lifecycle.get().rewriteHudsonWar(src);
         }
     }
-    
+
     public static final class PluginEntry implements Comparable<PluginEntry> {
         public Plugin plugin;
         public String category;

@@ -64,6 +64,7 @@ public class UpdateSiteTest {
     @Test public void updateDirectlyWithHtml() throws Exception {
         UpdateSite us = new UpdateSite("default", UpdateSiteTest.class.getResource("update-center.json.html").toExternalForm());
         assertNull(us.getPlugin("AdaptivePlugin"));
+        assertEquals(FormValidation.ok(), us.updateDirectly(true).get());
         assertNotNull(us.getPlugin("AdaptivePlugin"));
     }
 }

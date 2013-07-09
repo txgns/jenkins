@@ -32,7 +32,6 @@ import hudson.lifecycle.Lifecycle;
 import hudson.model.UpdateCenter.UpdateCenterJob;
 import hudson.util.FormValidation;
 import hudson.util.FormValidation.Kind;
-import hudson.util.DaemonThreadFactory;
 import hudson.util.HttpResponses;
 import hudson.util.IOUtils;
 import hudson.util.TextFile;
@@ -65,7 +64,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadFactory;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -217,6 +215,7 @@ public class UpdateSite {
                 return e;
             }
         }
+
         LOGGER.info("Obtained the latest update center data file for UpdateSource " + id);
         retryWindow = 0;
         getDataFile().write(json);
@@ -268,7 +267,7 @@ public class UpdateSite {
     /**
      * Loads the update center data, if any and if modified since last read.
      *
-     * @return  null if no data is available.   
+     * @return  null if no data is available.
      */
     public Data getData() {
         TextFile df = getDataFile();
