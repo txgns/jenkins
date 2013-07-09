@@ -1,16 +1,14 @@
-*~
 target
 work
-overlays
 
 # IntelliJ project files 
 *.iml
+*.iws
 *.ipr
 .idea
 out
 
 # eclipse project file
-.metadata
 .settings
 .classpath
 .project
