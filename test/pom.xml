@@ -28,10 +28,10 @@ THE SOFTWARE.
 
   <parent>
     <artifactId>pom</artifactId>
-    <groupId>org.jenkins-ci.main</groupId>
+    <groupId>com.cloudbees.dev-at-cloud.main</groupId>
     <version>1.554.4-SNAPSHOT</version>
   </parent>
-  <groupId>org.jenkins-ci.main</groupId>
+  <groupId>com.cloudbees.dev-at-cloud.main</groupId>
   <artifactId>jenkins-test-harness</artifactId>
 
   <name>Test harness for Jenkins and plugins</name>
@@ -63,7 +63,7 @@ THE SOFTWARE.
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>${project.groupId}</groupId>
+      <groupId>${jenkins.groupId}</groupId>
       <artifactId>maven-plugin</artifactId>
       <version>${maven-plugin.version}</version>
     </dependency>
