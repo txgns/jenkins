@@ -97,7 +97,7 @@ public class RobustReflectionConverter implements Converter {
         }
 
         OwnerContext oc = OwnerContext.find(context);
-        oc.startVisiting(writer, classOwnership == null ? null : classOwnership.ownerOf(original.getClass()));
+        oc.startVisiting(writer, classOwnership.ownerOf(original.getClass()));
         try {
             doMarshal(source, writer, context);
         } finally {

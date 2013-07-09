@@ -26,8 +26,6 @@
  */
 package jenkins.model;
 
-
-import hudson.model.LoadStatistics;
 import com.google.common.collect.Lists;
 import com.google.inject.Injector;
 import hudson.ExtensionComponent;
@@ -2726,6 +2724,9 @@ public class Jenkins extends AbstractCIBase implements ModifiableTopLevelItemGro
             JSONObject json = req.getSubmittedForm();
 
             systemMessage = Util.nullify(req.getParameter("system_message"));
+
+            jdks.clear();
+            jdks.addAll(req.bindJSONToList(JDK.class,json.get("jdks")));
 
             boolean result = true;
             for (Descriptor<?> d : Functions.getSortedDescriptorsForGlobalConfigUnclassified())

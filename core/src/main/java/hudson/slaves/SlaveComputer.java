@@ -23,7 +23,6 @@
  */
 package hudson.slaves;
 
-import hudson.TcpSlaveAgentListener;
 import hudson.model.*;
 import hudson.util.IOException2;
 import hudson.util.IOUtils;
