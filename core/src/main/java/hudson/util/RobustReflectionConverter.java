@@ -28,7 +28,7 @@ import com.thoughtworks.xstream.converters.Converter;
 import com.thoughtworks.xstream.converters.MarshallingContext;
 import com.thoughtworks.xstream.converters.SingleValueConverter;
 import com.thoughtworks.xstream.converters.UnmarshallingContext;
-import com.thoughtworks.xstream.converters.reflection.NonExistentFieldException;
+import com.thoughtworks.xstream.converters.reflection.MissingFieldException;
 import com.thoughtworks.xstream.converters.reflection.ObjectAccessException;
 import com.thoughtworks.xstream.converters.reflection.PureJavaReflectionProvider;
 import com.thoughtworks.xstream.converters.reflection.ReflectionConverter;
@@ -53,6 +53,7 @@ import java.util.Map;
 import java.util.Set;
 import static java.util.logging.Level.WARNING;
 import java.util.logging.Logger;
+import javax.annotation.Nonnull;
 
 /**
  * Custom {@link ReflectionConverter} that handle errors more gracefully.
@@ -71,10 +72,10 @@ public class RobustReflectionConverter implements Converter {
     protected final Mapper mapper;
     protected transient SerializationMethodInvoker serializationMethodInvoker;
     private transient ReflectionProvider pureJavaReflectionProvider;
-    private final XStream2.ClassOwnership classOwnership;
+    private final @Nonnull XStream2.ClassOwnership classOwnership;
 
     public RobustReflectionConverter(Mapper mapper, ReflectionProvider reflectionProvider) {
-        this(mapper, reflectionProvider, null);
+        this(mapper, reflectionProvider, new XStream2().new PluginClassOwnership());
     }
     RobustReflectionConverter(Mapper mapper, ReflectionProvider reflectionProvider, XStream2.ClassOwnership classOwnership) {
         this.mapper = mapper;
@@ -292,7 +293,7 @@ public class RobustReflectionConverter implements Converter {
                         implicitCollectionsForCurrentObject = writeValueToImplicitCollection(context, value, implicitCollectionsForCurrentObject, result, fieldName);
                     }
                 }
-            } catch (NonExistentFieldException e) {
+            } catch (MissingFieldException e) {
                 LOGGER.log(WARNING,"Skipping a non-existent field "+e.getFieldName(),e);
                 addErrorInContext(context, e);
             } catch (CannotResolveClassException e) {

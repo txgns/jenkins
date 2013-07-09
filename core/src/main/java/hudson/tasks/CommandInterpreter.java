@@ -34,6 +34,7 @@ import hudson.model.TaskListener;
 
 import java.io.IOException;
 import java.util.Map;
+import javax.annotation.Nonnull;
 
 /**
  * Common part between {@link Shell} and {@link BatchFile}.
@@ -101,6 +102,8 @@ public abstract class CommandInterpreter extends Builder {
             } catch (IOException e) {
                 Util.displayIOException(e,listener);
                 e.printStackTrace( listener.fatalError(Messages.CommandInterpreter_UnableToDelete(script)) );
+            } catch (Exception e) {
+                e.printStackTrace( listener.fatalError(Messages.CommandInterpreter_UnableToDelete(script)) );
             }
         }
     }
@@ -108,7 +111,7 @@ public abstract class CommandInterpreter extends Builder {
     /**
      * Creates a script file in a temporary name in the specified directory.
      */
-    public FilePath createScriptFile(FilePath dir) throws IOException, InterruptedException {
+    public FilePath createScriptFile(@Nonnull FilePath dir) throws IOException, InterruptedException {
         return dir.createTextTempFile("hudson", getFileExtension(), getContents(), false);
     }
 

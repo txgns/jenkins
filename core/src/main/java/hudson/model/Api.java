@@ -26,7 +26,6 @@ package hudson.model;
 import hudson.util.IOException2;
 import jenkins.model.Jenkins;
 import jenkins.security.SecureRequester;
-
 import org.dom4j.CharacterData;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;

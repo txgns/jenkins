@@ -25,6 +25,7 @@ package hudson.model
 
 import org.jvnet.hudson.test.HudsonTestCase
 import hudson.model.UpdateCenter.DownloadJob.Success
+import hudson.model.UpdateSite
 
 /**
  *
@@ -35,7 +36,6 @@ public class UpdateCenter2Test extends HudsonTestCase {
     /**
      * Makes sure a plugin installs fine.
      */
-/* DOES NOT WORK ON DEV@CLOUD BECAUSE IT USES JSONP FILE AS AN INPUT, NOT JSON FILE - KOHSUKE
     void testInstall() {
         UpdateSite.neverUpdate = false;
         createWebClient().goTo("/") // load the metadata
@@ -43,7 +43,11 @@ public class UpdateCenter2Test extends HudsonTestCase {
         println job.status;
         assertTrue(job.status instanceof Success)
     }
-*/
 
-    void testDummy() {} // To make Maven happy. It wants at least one test.
+    void testGetLastUpdatedString() {
+        UpdateSite.neverUpdate = false
+        assertTrue(jenkins.updateCenter.getById("default").due)
+        assertEquals(hudson.model.Messages.UpdateCenter_n_a(), jenkins.updateCenter.lastUpdatedString)
+    }
+
 }

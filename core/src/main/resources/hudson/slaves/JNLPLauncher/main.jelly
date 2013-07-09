@@ -32,7 +32,7 @@ THE SOFTWARE.
       </div>
     </j:when>
     <j:when test="${it.offline and !it.temporarilyOffline}">
-      <l:isAdmin><!-- TODO: we need a permission to launch a slave -->
+      <j:if test="${h.hasPermission(it, it.CONNECT)}">
         <p>
           ${%Connect slave to Jenkins one of these ways:}
         </p>
@@ -78,7 +78,7 @@ THE SOFTWARE.
           </a>
         </p>
         -->
-      </l:isAdmin>
+      </j:if>
     </j:when>
     <j:otherwise>
       <p>

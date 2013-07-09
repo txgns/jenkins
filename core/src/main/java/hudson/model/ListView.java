@@ -42,7 +42,6 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
 
 import javax.annotation.concurrent.GuardedBy;
 import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -155,11 +154,11 @@ public class ListView extends View implements Saveable {
 
         Boolean statusFilter = this.statusFilter; // capture the value to isolate us from concurrent update
         List<TopLevelItem> items = new ArrayList<TopLevelItem>(names.size());
-        for (String n : names) {
-            TopLevelItem item = getOwnerItemGroup().getItem(n);
+        for (TopLevelItem item : getOwnerItemGroup().getItems()) {
+            if (!names.contains(item.getName())) continue;
             // Add if no status filter or filter matches enabled/disabled status:
-            if(item!=null && (statusFilter == null || !(item instanceof AbstractProject)
-                              || ((AbstractProject)item).isDisabled() ^ statusFilter))
+            if(statusFilter == null || !(item instanceof AbstractProject)
+                              || ((AbstractProject)item).isDisabled() ^ statusFilter)
                 items.add(item);
         }
 
@@ -292,7 +291,7 @@ public class ListView extends View implements Saveable {
     }
 
     @Extension
-    public static final class DescriptorImpl extends ViewDescriptor {
+    public static class DescriptorImpl extends ViewDescriptor {
         public String getDisplayName() {
             return Messages.ListView_DisplayName();
         }

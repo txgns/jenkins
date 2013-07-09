@@ -32,10 +32,7 @@ import hudson.ExtensionPoint;
 import hudson.Functions;
 import hudson.Indenter;
 import hudson.Util;
-import hudson.XmlFile;
 import hudson.model.Descriptor.FormException;
-import hudson.model.Node.Mode;
-import hudson.model.labels.LabelAtom;
 import hudson.model.labels.LabelAtomPropertyDescriptor;
 import hudson.scm.ChangeLogSet;
 import hudson.scm.ChangeLogSet.Entry;
@@ -49,11 +46,10 @@ import hudson.security.PermissionScope;
 import hudson.tasks.UserAvatarResolver;
 import hudson.util.AlternativeUiTextProvider;
 import hudson.util.AlternativeUiTextProvider.Message;
-import hudson.util.AtomicFileWriter;
 import hudson.util.DescribableList;
 import hudson.util.DescriptorList;
+import hudson.util.FormApply;
 import hudson.util.IOException2;
-import hudson.util.IOUtils;
 import hudson.util.RunList;
 import hudson.util.XStream2;
 import hudson.views.ListViewColumn;
@@ -83,7 +79,6 @@ import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
@@ -433,14 +428,14 @@ public abstract class View extends AbstractModelObject implements AccessControll
         return true;
     }
 
-    public List<Queue.Item> getQueueItems() {
+    private List<Queue.Item> filterQueue(List<Queue.Item> base) {
         if (!isFilterQueue()) {
-            return Arrays.asList(Jenkins.getInstance().getQueue().getItems());
+            return base;
         }
 
         Collection<TopLevelItem> items = getItems();
         List<Queue.Item> result = new ArrayList<Queue.Item>();
-        for (Queue.Item qi : Jenkins.getInstance().getQueue().getItems()) {
+        for (Queue.Item qi : base) {
             if (items.contains(qi.task)) {
                 result.add(qi);
             } else
@@ -452,6 +447,14 @@ public abstract class View extends AbstractModelObject implements AccessControll
             }
         }
         return result;
+    }
+
+    public List<Queue.Item> getQueueItems() {
+        return filterQueue(Arrays.asList(Jenkins.getInstance().getQueue().getItems()));
+    }
+
+    public List<Queue.Item> getApproximateQueueItemsQuickly() {
+        return filterQueue(Jenkins.getInstance().getQueue().getApproximateItemsQuickly());
     }
 
     /**
@@ -630,6 +633,7 @@ public abstract class View extends AbstractModelObject implements AccessControll
 
     /**
      * Does this {@link View} has any associated user information recorded?
+     * @deprecated Potentially very expensive call; do not use from Jelly views.
      */
     public boolean hasPeople() {
         return People.isApplicable(getItems());
@@ -654,7 +658,7 @@ public abstract class View extends AbstractModelObject implements AccessControll
         @Exported
         public final List<UserInfo> users;
 
-        public final Object parent;
+        public final ModelObject parent;
 
         public People(Jenkins parent) {
             this.parent = parent;
@@ -711,6 +715,9 @@ public abstract class View extends AbstractModelObject implements AccessControll
             return new Api(this);
         }
 
+        /**
+         * @deprecated Potentially very expensive call; do not use from Jelly views.
+         */
         public static boolean isApplicable(Collection<? extends Item> items) {
             for (Item item : items) {
                 for (Job job : item.getAllJobs()) {
@@ -792,6 +799,7 @@ public abstract class View extends AbstractModelObject implements AccessControll
                                     }
                                 }
                             }
+                            // XXX consider also adding the user of the UserCause when applicable
                             buildCount++;
                             progress((itemCount + 1.0 * buildCount / builds.size()) / (items.size() + 1));
                         }
@@ -925,7 +933,7 @@ public abstract class View extends AbstractModelObject implements AccessControll
 
         save();
 
-        rsp.sendRedirect2("../"+name);
+        FormApply.success("../"+name).generateResponse(req,rsp,this);
     }
 
     /**
@@ -1008,8 +1016,7 @@ public abstract class View extends AbstractModelObject implements AccessControll
                     // pity we don't have a handy way to clone Jenkins.XSTREAM to temp add the omit Field
                     XStream2 xStream2 = new XStream2();
                     xStream2.omitField(View.class, "owner");
-                    rsp.getOutputStream().write("<?xml version='1.0' encoding='UTF-8'?>\n".getBytes("UTF-8"));
-                    xStream2.toXML(this,  rsp.getOutputStream());
+                    xStream2.toXMLUTF8(this,  rsp.getOutputStream());
                 }
             };
         }

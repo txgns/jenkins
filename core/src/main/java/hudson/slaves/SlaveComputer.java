@@ -37,7 +37,6 @@ import hudson.util.NullStream;
 import hudson.util.RingBufferLogHandler;
 import hudson.util.Futures;
 import hudson.FilePath;
-import hudson.lifecycle.WindowsSlaveInstaller;
 import hudson.Util;
 import hudson.AbortException;
 import hudson.remoting.Launcher;
@@ -81,7 +80,6 @@ import org.kohsuke.stapler.HttpRedirect;
 
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
 import org.kohsuke.stapler.ResponseImpl;
 import org.kohsuke.stapler.WebMethod;
@@ -343,6 +341,60 @@ public class SlaveComputer extends Computer {
     }
 
     /**
+     * Shows {@link Channel#classLoadingCount}.
+     * @since 1.495
+     */
+    public int getClassLoadingCount() throws IOException, InterruptedException {
+        return channel.call(new LoadingCount(false));
+    }
+
+    /**
+     * Shows {@link Channel#resourceLoadingCount}.
+     * @since 1.495
+     */
+    public int getResourceLoadingCount() throws IOException, InterruptedException {
+        return channel.call(new LoadingCount(true));
+    }
+
+    /**
+     * Shows {@link Channel#classLoadingTime}.
+     * @since 1.495
+     */
+    public long getClassLoadingTime() throws IOException, InterruptedException {
+        return channel.call(new LoadingTime(false));
+    }
+
+    /**
+     * Shows {@link Channel#resourceLoadingTime}.
+     * @since 1.495
+     */
+    public long getResourceLoadingTime() throws IOException, InterruptedException {
+        return channel.call(new LoadingTime(true));
+    }
+
+    static class LoadingCount implements Callable<Integer,RuntimeException> {
+        private final boolean resource;
+        LoadingCount(boolean resource) {
+            this.resource = resource;
+        }
+        @Override public Integer call() {
+            Channel c = Channel.current();
+            return resource ? c.resourceLoadingCount.get() : c.classLoadingCount.get();
+        }
+    }
+
+    static class LoadingTime implements Callable<Long,RuntimeException> {
+        private final boolean resource;
+        LoadingTime(boolean resource) {
+            this.resource = resource;
+        }
+        @Override public Long call() {
+            Channel c = Channel.current();
+            return resource ? c.resourceLoadingTime.get() : c.classLoadingTime.get();
+        }
+    }
+
+    /**
      * Sets up the connection through an exsting channel.
      *
      * @since 1.444
@@ -390,7 +442,6 @@ public class SlaveComputer extends Computer {
         channel.pinClassLoader(getClass().getClassLoader());
 
         channel.call(new SlaveInitializer());
-//        channel.call(new WindowsSlaveInstaller(remoteFs));
         for (ComputerListener cl : ComputerListener.all())
             cl.preOnline(this,channel,root,taskListener);
 
@@ -436,11 +487,7 @@ public class SlaveComputer extends Computer {
         if(channel==null)
             return Collections.emptyList();
         else
-            return channel.call(new Callable<List<LogRecord>,RuntimeException>() {
-                public List<LogRecord> call() {
-                    return new ArrayList<LogRecord>(SLAVE_LOG_HANDLER.getView());
-                }
-            });
+            return channel.call(new SlaveLogFetcher());
     }
 
     public HttpResponse doDoDisconnect(@QueryParameter String offlineMessage) throws IOException, ServletException {
@@ -472,7 +519,7 @@ public class SlaveComputer extends Computer {
 
     public void doLaunchSlaveAgent(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
         if(channel!=null) {
-            rsp.sendError(HttpServletResponse.SC_NOT_FOUND);
+            req.getView(this,"already-launched.jelly").forward(req, rsp);
             return;
         }
 
@@ -693,5 +740,11 @@ public class SlaveComputer extends Computer {
             return c;
 
         return null;
+    }
+
+    private static class SlaveLogFetcher implements Callable<List<LogRecord>,RuntimeException> {
+        public List<LogRecord> call() {
+            return new ArrayList<LogRecord>(SLAVE_LOG_HANDLER.getView());
+        }
     }
 }

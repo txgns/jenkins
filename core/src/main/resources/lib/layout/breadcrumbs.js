@@ -73,7 +73,21 @@ var breadcrumbs = (function() {
         }
     }
 
+    function requireConfirmation(action, event, cfg) {
+        if (confirm(cfg.displayName + ': are you sure?')) { // XXX I18N
+            var form = document.createElement('form');
+            form.setAttribute('method', cfg.post ? 'POST' : 'GET');
+            form.setAttribute('action', cfg.url);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
     /**
+     * Called when the mouse cursor comes into the context menu hot spot.
+     *
+     * If the mouse stays there for a while, a context menu gets displayed.
+     *
      * @param {HTMLElement} e
      *      anchor tag
      * @param {Number} delay
@@ -94,6 +108,7 @@ var breadcrumbs = (function() {
                     menu.addItems(items);
                     menu.render("breadcrumb-menu-target");
                     menu.show();
+                    $(menu.getItem(0).element).addClassName("yui-menuitem-tooltip")
                 }
                 menuDelay = null;
             },delay);
@@ -113,12 +128,22 @@ var breadcrumbs = (function() {
                         e.text = makeMenuHtml(e.icon, e.displayName);
                         if (e.subMenu!=null)
                             e.subMenu = {id:"submenu"+(iota++), itemdata:e.subMenu.items.each(fillMenuItem)};
-                        if (e.post) {
+                        if (e.requiresConfirmation) {
+                            e.onclick = {fn: requireConfirmation, obj: {url: e.url, displayName: e.displayName, post: e.post}};
+                            delete e.url;
+                        } else if (e.post) {
                             e.onclick = {fn: postRequest, obj: e.url};
                             delete e.url;
                         }
                     }
                     a.each(fillMenuItem);
+
+                    var tooltip = e.getAttribute('tooltip');
+                    if (tooltip) {
+                        // join the tooltip into the context menu. color #000 to cancel out the text effect on disabled menu items
+                        a.unshift({text:"<div class='yui-menu-tooltip'>"+tooltip+"</div>", disabled:true})
+                    }
+
                     e.items = function() { return a };
                     showMenu(a);
                 }
