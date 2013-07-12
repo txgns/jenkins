@@ -55,7 +55,7 @@ import org.kohsuke.stapler.StaplerResponse;
  *
  * @author Kohsuke Kawaguchi
  */
-@Extension(ordinal = Integer.MAX_VALUE - 210)
+//@Extension(ordinal = Integer.MAX_VALUE - 210)
 public class GlobalSecurityConfiguration extends ManagementLink implements Describable<GlobalSecurityConfiguration> {
     
     private static final Logger LOGGER = Logger.getLogger(GlobalSecurityConfiguration.class.getName());
