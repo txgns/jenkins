@@ -273,6 +273,12 @@ THE SOFTWARE.
 		  <version>1.4.0</version>
 		  <type>hpi</type>
 		</artifactItem>
+		<artifactItem>
+		  <groupId>org.jenkins-ci.plugins</groupId>
+		  <artifactId>git-client</artifactId>
+		  <version>1.0.7</version>
+		  <type>hpi</type>
+		</artifactItem>
 	      <!-- end DEV at cloud plugins -->
                 <artifactItem>
                   <groupId>org.jenkins-ci.plugins</groupId>
