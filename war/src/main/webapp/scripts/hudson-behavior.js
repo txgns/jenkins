@@ -1209,11 +1209,20 @@ var jenkinsRules = {
             shadow.style.height = sticker.offsetHeight + "px";
 
             var viewport = DOM.getClientRegion();
+            
+            // CB patch
+            var topSpace = 0;
+            var cbtb = $('cloudbees_header');
+            if (cbtb) {
+                topSpace = cbtb.clientHeight;
+            }
+            // CB patch until here
+
             var pos = DOM.getRegion(shadow);
 
             sticker.style.position = "fixed";
             if(pos.top <= initialBreadcrumbPosition.top) {
-                sticker.style.top = Math.max(0, pos.top-viewport.top) + "px"
+		sticker.style.top = Math.max(topSpace, pos.top-viewport.top) + "px"
             }
             sticker.style.left = Math.max(0,pos.left-viewport.left) + "px"
         }
