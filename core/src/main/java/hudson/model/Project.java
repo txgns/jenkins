@@ -47,7 +47,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
  * Buildable software project.
@@ -60,23 +59,17 @@ public abstract class Project<P extends Project<P,B>,B extends Build<P,B>>
     /**
      * List of active {@link Builder}s configured for this project.
      */
-    private volatile DescribableList<Builder,Descriptor<Builder>> builders;
-    private static final AtomicReferenceFieldUpdater<Project,DescribableList> buildersSetter
-            = AtomicReferenceFieldUpdater.newUpdater(Project.class,DescribableList.class,"builders");
+    private DescribableList<Builder,Descriptor<Builder>> builders;
 
     /**
      * List of active {@link Publisher}s configured for this project.
      */
-    private volatile DescribableList<Publisher,Descriptor<Publisher>> publishers;
-    private static final AtomicReferenceFieldUpdater<Project,DescribableList> publishersSetter
-            = AtomicReferenceFieldUpdater.newUpdater(Project.class,DescribableList.class,"publishers");
+    private DescribableList<Publisher,Descriptor<Publisher>> publishers;
 
     /**
      * List of active {@link BuildWrapper}s configured for this project.
      */
-    private volatile DescribableList<BuildWrapper,Descriptor<BuildWrapper>> buildWrappers;
-    private static final AtomicReferenceFieldUpdater<Project,DescribableList> buildWrappersSetter
-            = AtomicReferenceFieldUpdater.newUpdater(Project.class,DescribableList.class,"buildWrappers");
+    private DescribableList<BuildWrapper,Descriptor<BuildWrapper>> buildWrappers;
 
     /**
      * Creates a new project.
@@ -110,16 +103,16 @@ public abstract class Project<P extends Project<P,B>,B extends Build<P,B>>
         return getPublishersList().toMap();
     }
 
-    public DescribableList<Builder,Descriptor<Builder>> getBuildersList() {
+    public synchronized DescribableList<Builder,Descriptor<Builder>> getBuildersList() {
         if (builders == null) {
-            buildersSetter.compareAndSet(this,null,new DescribableList<Builder,Descriptor<Builder>>(this));
+            builders = new DescribableList<Builder,Descriptor<Builder>>(this);
         }
         return builders;
     }
     
-    public DescribableList<Publisher,Descriptor<Publisher>> getPublishersList() {
+    public synchronized DescribableList<Publisher,Descriptor<Publisher>> getPublishersList() {
         if (publishers == null) {
-            publishersSetter.compareAndSet(this,null,new DescribableList<Publisher,Descriptor<Publisher>>(this));
+            publishers = new DescribableList<Publisher,Descriptor<Publisher>>(this);
         }
         return publishers;
     }
@@ -128,9 +121,9 @@ public abstract class Project<P extends Project<P,B>,B extends Build<P,B>>
         return getBuildWrappersList().toMap();
     }
 
-    public DescribableList<BuildWrapper, Descriptor<BuildWrapper>> getBuildWrappersList() {
+    public synchronized DescribableList<BuildWrapper, Descriptor<BuildWrapper>> getBuildWrappersList() {
         if (buildWrappers == null) {
-            buildWrappersSetter.compareAndSet(this,null,new DescribableList<BuildWrapper,Descriptor<BuildWrapper>>(this));
+            buildWrappers = new DescribableList<BuildWrapper,Descriptor<BuildWrapper>>(this);
         }
         return buildWrappers;
     }
@@ -218,7 +211,7 @@ public abstract class Project<P extends Project<P,B>,B extends Build<P,B>>
             r.addAll(step.getProjectActions(this));
         for (BuildWrapper step : getBuildWrappers().values())
             r.addAll(step.getProjectActions(this));
-        for (Trigger trigger : triggers())
+        for (Trigger trigger : getTriggers().values())
             r.addAll(trigger.getProjectActions());
 
         return r;

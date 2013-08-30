@@ -26,7 +26,6 @@ import java.net.URL;
 public abstract class DownloadFromUrlInstaller extends ToolInstaller {
     public final String id;
 
-    @DataBoundConstructor
     protected DownloadFromUrlInstaller(String id) {
         // this installer implementation is designed for platform independent binary,
         // and as such we don't provide the label support
