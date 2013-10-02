@@ -39,6 +39,7 @@ import hudson.FilePath;
 import hudson.Util;
 import hudson.AbortException;
 import hudson.remoting.Launcher;
+import hudson.security.ACL;
 import static hudson.slaves.SlaveComputer.LogHolder.SLAVE_LOG_HANDLER;
 import hudson.slaves.OfflineCause.ChannelTermination;
 import hudson.util.Secret;
