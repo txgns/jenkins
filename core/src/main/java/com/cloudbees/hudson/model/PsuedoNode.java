@@ -115,7 +115,7 @@ public class PsuedoNode extends Node {
 
     @Override
     public FilePath getRootPath() {
-        return null;
+        return Jenkins.getInstance().getRootPath();
     }
 
     @Override
