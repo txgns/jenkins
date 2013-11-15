@@ -50,7 +50,6 @@ import hudson.model.Failure;
 import hudson.model.Fingerprint;
 import hudson.model.FingerprintCleanupThread;
 import hudson.model.FingerprintMap;
-import hudson.model.FullDuplexHttpChannel;
 import hudson.model.Hudson;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
@@ -115,9 +114,6 @@ import static hudson.Util.fixEmpty;
 import static hudson.Util.fixNull;
 import hudson.WebAppMain;
 import hudson.XmlFile;
-import hudson.cli.CLICommand;
-import hudson.cli.CliEntryPoint;
-import hudson.cli.CliManagerImpl;
 import hudson.cli.declarative.CLIMethod;
 import hudson.cli.declarative.CLIResolver;
 import hudson.init.InitMilestone;
@@ -127,7 +123,6 @@ import hudson.logging.LogRecorderManager;
 import hudson.lifecycle.RestartNotSupportedException;
 import hudson.markup.RawHtmlMarkupFormatter;
 import hudson.remoting.Callable;
-import hudson.remoting.Channel;
 import hudson.remoting.LocalChannel;
 import hudson.remoting.VirtualChannel;
 import hudson.scm.RepositoryBrowser;
@@ -255,6 +250,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import static hudson.init.InitMilestone.*;
 import hudson.security.BasicAuthenticationFilter;
+import hudson.util.NamingThreadFactory;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
 import java.io.File;
@@ -285,7 +281,6 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.StringTokenizer;
 import java.util.TreeSet;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
@@ -3896,7 +3891,7 @@ public class Jenkins extends AbstractCIBase implements ModifiableTopLevelItemGro
      */
     /*package*/ transient final ExecutorService threadPoolForLoad = new ThreadPoolExecutor(
         TWICE_CPU_NUM, TWICE_CPU_NUM,
-        5L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new DaemonThreadFactory());
+        5L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamingThreadFactory(new DaemonThreadFactory(), "Jenkins load"));
 
 
     private static void computeVersion(ServletContext context) {

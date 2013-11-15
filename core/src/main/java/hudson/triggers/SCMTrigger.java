@@ -38,6 +38,7 @@ import hudson.model.SCMedItem;
 import hudson.model.AdministrativeMonitor;
 import hudson.util.FlushProofOutputStream;
 import hudson.util.FormValidation;
+import hudson.util.NamingThreadFactory;
 import hudson.util.StreamTaskListener;
 import hudson.util.TimeUnit2;
 import hudson.util.SequentialExecutionQueue;
@@ -60,6 +61,7 @@ import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.text.DateFormat;
+import java.util.concurrent.ThreadFactory;
 
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.QueryParameter;
@@ -149,6 +151,11 @@ public class SCMTrigger extends Trigger<SCMedItem> {
 
     @Extension
     public static class DescriptorImpl extends TriggerDescriptor {
+
+        private static ThreadFactory threadFactory() {
+            return new NamingThreadFactory(Executors.defaultThreadFactory(), "SCMTrigger");
+        }
+
         /**
          * Used to control the execution of the polling tasks.
          * <p>
@@ -157,7 +164,7 @@ public class SCMTrigger extends Trigger<SCMedItem> {
          * of a potential workspace lock between a build and a polling, we may end up using executor threads unwisely --- they
          * may block.
          */
-        private transient final SequentialExecutionQueue queue = new SequentialExecutionQueue(Executors.newSingleThreadExecutor());
+        private transient final SequentialExecutionQueue queue = new SequentialExecutionQueue(Executors.newSingleThreadExecutor(threadFactory()));
 
         /**
          * Whether the projects should be polled all in one go in the order of dependencies. The default behavior is
@@ -250,7 +257,7 @@ public class SCMTrigger extends Trigger<SCMedItem> {
          */
         /*package*/ synchronized void resizeThreadPool() {
             queue.setExecutors(
-                    (maximumThreads==0 ? Executors.newCachedThreadPool() : Executors.newFixedThreadPool(maximumThreads)));
+                    (maximumThreads==0 ? Executors.newCachedThreadPool(threadFactory()) : Executors.newFixedThreadPool(maximumThreads, threadFactory())));
         }
 
         @Override
