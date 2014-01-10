@@ -49,6 +49,19 @@ import hudson.util.DescribableList;
 
 import java.util.Collections;
 
+import jenkins.model.Jenkins;
+import jenkins.mvn.DefaultGlobalSettingsProvider;
+import jenkins.mvn.DefaultSettingsProvider;
+import jenkins.mvn.FilePathGlobalSettingsProvider;
+import jenkins.mvn.FilePathSettingsProvider;
+import jenkins.mvn.GlobalMavenConfig;
+import junit.framework.Assert;
+
+import org.jvnet.hudson.test.ExtractResourceSCM;
+import org.apache.maven.settings.building.FileSettingsSource;
+import org.jvnet.hudson.test.HudsonTestCase;
+
+import com.gargoylesoftware.htmlunit.html.HtmlButton;
 import com.gargoylesoftware.htmlunit.html.HtmlForm;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.html.HtmlButton;
