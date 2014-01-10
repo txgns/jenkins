@@ -301,7 +301,7 @@ THE SOFTWARE.
                 <artifactItem>
                   <groupId>org.jenkins-ci.plugins</groupId>
                   <artifactId>subversion</artifactId>
-                  <version>1.45</version>
+                  <version>1.51</version>
                   <type>hpi</type>
                 </artifactItem>
                 <artifactItem>
