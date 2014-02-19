@@ -51,7 +51,6 @@ THE SOFTWARE.
     <module>war</module>
     <module>test</module>
     <module>cli</module>
-    <module>plugins</module>
   </modules>
 
   <scm>
