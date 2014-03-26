@@ -752,7 +752,7 @@ public abstract class Launcher {
      */
     public static class LocalLauncher extends Launcher {
         public LocalLauncher(TaskListener listener) {
-            this(listener, Jenkins.MasterComputer.localChannel);
+            this(listener, FilePath.localChannel);
         }
 
         public LocalLauncher(TaskListener listener, VirtualChannel channel) {
