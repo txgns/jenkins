@@ -5,7 +5,7 @@
   <parent>
     <artifactId>pom</artifactId>
     <groupId>com.cloudbees.dev-at-cloud.main</groupId>
-    <version>1.532.2.5-SNAPSHOT</version>
+    <version>1.532.2.5</version>
   </parent>
 
   <artifactId>cli</artifactId>
