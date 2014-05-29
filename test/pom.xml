@@ -29,7 +29,7 @@ THE SOFTWARE.
   <parent>
     <artifactId>pom</artifactId>
     <groupId>com.cloudbees.dev-at-cloud.main</groupId>
-    <version>1.532.2.6-SNAPSHOT</version>
+    <version>1.532.2.6</version>
   </parent>
   <groupId>com.cloudbees.dev-at-cloud.main</groupId>
   <artifactId>jenkins-test-harness</artifactId>
