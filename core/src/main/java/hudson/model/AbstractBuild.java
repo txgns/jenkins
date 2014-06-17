@@ -94,8 +94,6 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
 
 import static java.util.logging.Level.WARNING;
 import javax.annotation.Nonnull;
-import jenkins.model.lazy.BuildReference;
-import jenkins.model.lazy.LazyBuildMixIn;
 
 /**
  * Base implementation of {@link Run}s that build software.
