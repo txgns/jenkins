@@ -32,6 +32,7 @@ import com.infradna.tool.bridge_method_injector.WithBridgeMethods;
 import hudson.AbortException;
 import hudson.CopyOnWrite;
 import hudson.EnvVars;
+import hudson.ExtensionList;
 import hudson.ExtensionPoint;
 import hudson.FeedAdapter;
 import hudson.FilePath;
@@ -547,7 +548,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
     public final @CheckForNull FilePath getSomeWorkspace() {
         R b = getSomeBuildWithWorkspace();
         if (b!=null) return b.getWorkspace();
-        for (WorkspaceBrowser browser : Jenkins.getInstance().getExtensionList(WorkspaceBrowser.class)) {
+        for (WorkspaceBrowser browser : ExtensionList.lookup(WorkspaceBrowser.class)) {
             FilePath f = browser.getWorkspace(this);
             if (f != null) return f;
         }
@@ -1369,7 +1370,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
             WorkspaceOfflineReason workspaceOfflineReason = workspaceOffline( b );
             if ( workspaceOfflineReason != null ) {
                 // workspace offline
-                for (WorkspaceBrowser browser : Jenkins.getInstance().getExtensionList(WorkspaceBrowser.class)) {
+                for (WorkspaceBrowser browser : ExtensionList.lookup(WorkspaceBrowser.class)) {
                     ws = browser.getWorkspace(this);
                     if (ws != null) {
                         return pollWithWorkspace(listener, scm, b, ws, browser.getWorkspaceList());
@@ -2038,7 +2039,6 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
                 return FormValidation.error(e,
                         Messages.AbstractProject_AssignedLabelString_InvalidBooleanExpression(e.getMessage()));
             }
-            Jenkins j = Jenkins.getInstance();
             Label l = j.getLabel(value);
             if (l.isEmpty()) {
                 for (LabelAtom a : l.listAtoms()) {
@@ -2050,8 +2050,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
                 return FormValidation.warning(Messages.AbstractProject_AssignedLabelString_NoMatch());
             }
             if (project != null) {
-                for (AbstractProject.LabelValidator v : j
-                        .getExtensionList(AbstractProject.LabelValidator.class)) {
+                for (AbstractProject.LabelValidator v : ExtensionList.lookup(AbstractProject.LabelValidator.class)) {
                     FormValidation result = v.check(project, l);
                     if (!FormValidation.Kind.OK.equals(result.kind)) {
                         return result;
@@ -2059,7 +2058,7 @@ public abstract class AbstractProject<P extends AbstractProject<P,R>,R extends A
                 }
             }
             return FormValidation.okWithMarkup(Messages.AbstractProject_LabelLink(
-                    j.getRootUrl(), l.getUrl(), l.getNodes().size() + l.getClouds().size()
+                    Jenkins.getInstance().getRootUrl(), l.getUrl(), l.getNodes().size() + l.getClouds().size()
             ));
         }
 
