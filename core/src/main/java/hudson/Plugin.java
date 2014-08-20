@@ -215,7 +215,7 @@ public abstract class Plugin implements Saveable {
         try {
             rsp.serveLocalizedFile(req, wrapper.baseResourceURL.toURI().resolve(new URI(null, '.' + path, null)).toURL(), expires);
         } catch (URISyntaxException x) {
-            throw new IOException(x);
+            throw new IOException(x.toString());
         }
     }
 
