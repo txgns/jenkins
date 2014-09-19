@@ -177,6 +177,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.SocketTimeoutException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -542,7 +543,11 @@ public class JenkinsRule implements TestRule, MethodRule, RootAction {
         File home = homeLoader.allocate();
         for (JenkinsRecipe.Runner r : recipes)
             r.decorateHome(this,home);
-        return new Hudson(home, webServer, getPluginManager());
+        try {
+            return new Hudson(home, webServer, getPluginManager());
+        } catch (InterruptedException x) {
+            throw new AssumptionViolatedException("Jenkins startup interrupted", x);
+        }
     }
 
     public PluginManager getPluginManager() {
@@ -1965,8 +1970,11 @@ public class JenkinsRule implements TestRule, MethodRule, RootAction {
             try {
                 p = super.getPage(getContextPath() + relative);
             } catch (IOException x) {
-                if (x.getCause() != null) {
-                    x.getCause().printStackTrace();
+                Throwable cause = x.getCause();
+                if (cause instanceof SocketTimeoutException) {
+                    throw new AssumptionViolatedException("failed to get " + relative + " due to read timeout", cause);
+                } else if (cause != null) {
+                    cause.printStackTrace(); // SUREFIRE-1067 workaround
                 }
                 throw x;
             }
