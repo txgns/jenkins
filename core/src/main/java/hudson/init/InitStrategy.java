@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -48,7 +49,15 @@ public class InitStrategy {
         // the ordering makes sure that during the debugging we get proper precedence among duplicates.
         // for example, while doing "mvn jpi:run" or "mvn hpi:run" on a plugin that's bundled with Jenkins, we want to the
         // *.jpl file to override the bundled jpi/hpi file.
-        getBundledPluginsFromProperty(r);
+        getBundledPluginsFromProperty(pm);
+        Iterator<File> it = r.iterator();
+        while (it.hasNext()) {
+            if (new File(pm.rootDir, it.next().getName().replace(".hpi", ".jpi") + ".pinned").isFile()) {
+                // Cf. PluginManager.copyBundledPlugin, which is not called in this case.
+                LOGGER.log(Level.INFO, "ignoring {0} since this plugin is pinned", f);
+                it.remove();
+            }
+        }
 
         // similarly, we prefer *.jpi over *.hpi
         listPluginFiles(pm, ".jpl", r); // linked plugin. for debugging.
