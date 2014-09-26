@@ -25,7 +25,6 @@ package hudson.model;
 
 import hudson.Util;
 import hudson.model.listeners.ItemListener;
-import hudson.remoting.Callable;
 import hudson.security.AccessControlled;
 import hudson.util.CopyOnWriteMap;
 import hudson.util.Function1;
@@ -43,6 +42,7 @@ import java.io.InputStream;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import jenkins.security.NotReallyRoleSensitiveCallable;
 
 /**
  * Defines a bunch of static methods to be used as a "mix-in" for {@link ItemGroup}
@@ -215,7 +215,7 @@ public abstract class ItemGroupMixIn {
 
         // reload from the new config
         final File rootDir = result.getRootDir();
-        result = Items.whileUpdatingByXml(new Callable<T,IOException>() {
+        result = Items.whileUpdatingByXml(new NotReallyRoleSensitiveCallable<T,IOException>() {
             @Override public T call() throws IOException {
                 return (T) Items.load(parent, rootDir);
             }
@@ -246,7 +246,7 @@ public abstract class ItemGroupMixIn {
             IOUtils.copy(xml,configXml);
 
             // load it
-            TopLevelItem result = Items.whileUpdatingByXml(new Callable<TopLevelItem,IOException>() {
+            TopLevelItem result = Items.whileUpdatingByXml(new NotReallyRoleSensitiveCallable<TopLevelItem,IOException>() {
                 @Override public TopLevelItem call() throws IOException {
                     return (TopLevelItem) Items.load(parent, dir);
                 }

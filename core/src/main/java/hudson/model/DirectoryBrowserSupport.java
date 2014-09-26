@@ -25,7 +25,6 @@ package hudson.model;
 
 import hudson.FilePath;
 import hudson.Util;
-import hudson.remoting.Callable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -45,6 +44,7 @@ import java.util.zip.ZipOutputStream;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 import jenkins.model.Jenkins;
+import jenkins.security.MasterToSlaveCallable;
 import jenkins.util.VirtualFile;
 import org.apache.commons.io.IOUtils;
 import org.kohsuke.stapler.HttpResponse;
@@ -453,7 +453,7 @@ public final class DirectoryBrowserSupport implements HttpResponse {
         }
     }
 
-    private static final class BuildChildPaths implements Callable<List<List<Path>>,IOException> {
+    private static final class BuildChildPaths extends MasterToSlaveCallable<List<List<Path>>,IOException> {
         private final VirtualFile cur;
         private final Locale locale;
         BuildChildPaths(VirtualFile cur, Locale locale) {
