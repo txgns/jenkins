@@ -27,7 +27,7 @@ import com.google.common.collect.ImmutableMap;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.FilePath;
-import hudson.FilePath.FileCallable;
+import jenkins.MasterToSlaveFileCallable;
 import hudson.Launcher;
 import hudson.Util;
 import hudson.matrix.MatrixConfiguration;
@@ -224,7 +224,7 @@ public class Fingerprinter extends Recorder implements Serializable, DependencyD
             return;
         }
 
-        List<Record> records = ws.act(new FileCallable<List<Record>>() {
+        List<Record> records = ws.act(new MasterToSlaveFileCallable<List<Record>>() {
             public List<Record> invoke(File baseDir, VirtualChannel channel) throws IOException {
                 List<Record> results = new ArrayList<Record>();
 
