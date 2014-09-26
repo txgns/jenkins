@@ -58,6 +58,7 @@ import javax.servlet.ServletException;
 
 import hudson.util.TimeUnit2;
 import jenkins.model.Jenkins;
+import jenkins.security.MasterToSlaveCallable;
 import jenkins.slaves.WorkspaceLocator;
 
 import org.apache.commons.io.IOUtils;
@@ -438,7 +439,7 @@ public abstract class Slave extends Node implements Serializable {
      *     <li>When it's read on this side as a return value, it morphs itself into {@link ClockDifference}.
      * </ol>
      */
-    private static final class GetClockDifference1 implements Callable<ClockDifference,IOException> {
+    private static final class GetClockDifference1 extends MasterToSlaveCallable<ClockDifference,IOException> {
         public ClockDifference call() {
             // this method must be being invoked locally, which means the clock is in sync
             return new ClockDifference(0);
@@ -451,7 +452,7 @@ public abstract class Slave extends Node implements Serializable {
         private static final long serialVersionUID = 1L;
     }
 
-    private static final class GetClockDifference2 implements Callable<GetClockDifference3,IOException> {
+    private static final class GetClockDifference2 extends MasterToSlaveCallable<GetClockDifference3,IOException> {
         /**
          * Capture the time on the master when this object is sent to remote, which is when
          * {@link GetClockDifference1#writeReplace()} is run.

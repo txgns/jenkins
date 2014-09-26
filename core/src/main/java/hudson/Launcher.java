@@ -38,6 +38,7 @@ import hudson.remoting.VirtualChannel;
 import hudson.util.StreamCopyThread;
 import hudson.util.ArgumentListBuilder;
 import hudson.util.ProcessTree;
+import jenkins.security.MasterToSlaveCallable;
 import org.apache.commons.io.input.NullInputStream;
 
 import java.io.BufferedOutputStream;
@@ -816,7 +817,7 @@ public abstract class Launcher {
                  * Kill the process when the channel is severed.
                  */
                 @Override
-                protected synchronized void terminate(IOException e) {
+                public synchronized void terminate(IOException e) {
                     super.terminate(e);
                     ProcessTree pt = ProcessTree.get();
                     try {
@@ -887,7 +888,7 @@ public abstract class Launcher {
             getChannel().call(new KillTask(modelEnvVars));
         }
 
-        private static final class KillTask implements Callable<Void,RuntimeException> {
+        private static final class KillTask extends MasterToSlaveCallable<Void,RuntimeException> {
             private final Map<String, String> modelEnvVars;
 
             public KillTask(Map<String, String> modelEnvVars) {
@@ -962,7 +963,7 @@ public abstract class Launcher {
         IOTriplet getIOtriplet();
     }
 
-    private static class RemoteLaunchCallable implements Callable<RemoteProcess,IOException> {
+    private static class RemoteLaunchCallable extends MasterToSlaveCallable<RemoteProcess,IOException> {
         private final List<String> cmd;
         private final boolean[] masks;
         private final String[] env;
@@ -1032,7 +1033,7 @@ public abstract class Launcher {
         private static final long serialVersionUID = 1L;
     }
 
-    private static class RemoteChannelLaunchCallable implements Callable<OutputStream,IOException> {
+    private static class RemoteChannelLaunchCallable extends MasterToSlaveCallable<OutputStream,IOException> {
         private final String[] cmd;
         private final Pipe out;
         private final String workDir;
