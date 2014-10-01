@@ -293,12 +293,12 @@
     <snapshotRepository>
       <id>cloudbees-internal-snapshots</id>
       <name>CloudBees Internal Snapshots</name>
-      <url>https://cloudbees_jfrog.artifactoryonline.com/cloudbees_jfrog/snapshots</url>
+      <url>https://cloudbees-jfrog.artifactoryonline.com/cloudbees_jfrog/snapshots</url>
     </snapshotRepository>
     <repository>
       <id>cloudbees-internal-staging</id>
       <name>CloudBees Internal Release Repository</name>
-      <url>https://cloudbees_jfrog.artifactoryonline.com/cloudbees_jfrog/releases</url>
+      <url>https://cloudbees-jfrog.artifactoryonline.com/cloudbees_jfrog/releases</url>
     </repository>
   </distributionManagement>
 </project>
