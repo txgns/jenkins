@@ -177,6 +177,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.SocketTimeoutException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -218,6 +219,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.*;
+import org.junit.internal.AssumptionViolatedException;
 import static org.junit.matchers.JUnitMatchers.containsString;
 
 import org.junit.rules.TemporaryFolder;
@@ -521,7 +523,11 @@ public class JenkinsRule implements TestRule, MethodRule, RootAction {
         File home = homeLoader.allocate();
         for (JenkinsRecipe.Runner r : recipes)
             r.decorateHome(this,home);
-        return new Hudson(home, webServer, getPluginManager());
+        try {
+            return new Hudson(home, webServer, getPluginManager());
+        } catch (InterruptedException x) {
+            throw new AssumptionViolatedException("Jenkins startup interrupted", x);
+        }
     }
 
     public PluginManager getPluginManager() {
@@ -1909,7 +1915,18 @@ public class JenkinsRule implements TestRule, MethodRule, RootAction {
          */
         public Page goTo(String relative, @CheckForNull String expectedContentType) throws IOException, SAXException {
             assert !relative.startsWith("/");
-            Page p = super.getPage(getContextPath() + relative);
+            Page p;
+            try {
+                p = super.getPage(getContextPath() + relative);
+            } catch (IOException x) {
+                Throwable cause = x.getCause();
+                if (cause instanceof SocketTimeoutException) {
+                    throw new AssumptionViolatedException("failed to get " + relative + " due to read timeout", cause);
+                } else if (cause != null) {
+                    cause.printStackTrace(); // SUREFIRE-1067 workaround
+                }
+                throw x;
+            }
             if (expectedContentType != null) {
                 assertThat(p.getWebResponse().getContentType(), is(expectedContentType));
             }
