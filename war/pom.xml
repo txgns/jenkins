@@ -28,7 +28,7 @@ THE SOFTWARE.
   <parent>
     <groupId>com.cloudbees.dev-at-cloud.main</groupId>
     <artifactId>pom</artifactId>
-    <version>1.554.4.2.2</version>
+    <version>1.554.4.2.3-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
