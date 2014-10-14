@@ -164,7 +164,7 @@ THE SOFTWARE.
       <dependency>
         <groupId>org.jenkins-ci.main</groupId>
         <artifactId>remoting</artifactId>
-        <version>2.47-cloudbees-2f67a72a</version><!-- SECURITY-144 branch -->
+        <version>2.47-cloudbees-5e5a1708</version><!-- SECURITY-144 branch -->
       </dependency>
 
       <dependency>
