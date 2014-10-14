@@ -33,7 +33,7 @@ THE SOFTWARE.
 
   <groupId>com.cloudbees.dev-at-cloud.main</groupId>
   <artifactId>pom</artifactId>
-  <version>1.554.4.2.3-SNAPSHOT</version>
+  <version>1.554.4.2.3</version>
   <packaging>pom</packaging>
 
   <name>Jenkins main module</name>
@@ -57,7 +57,7 @@ THE SOFTWARE.
     <connection>scm:git:git://github.com/cloudbees/hudson.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/cloudbees/hudson.git</developerConnection>
     <url>https://github.com/cloudbees/hudson</url>
-    <tag>HEAD</tag>
+    <tag>dev-at-cloud-1.554.4.2.3</tag>
   </scm>
 
   <issueManagement>
