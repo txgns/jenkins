@@ -37,6 +37,7 @@ import hudson.remoting.DelegatingCallable;
 import hudson.remoting.Future;
 import hudson.remoting.Pipe;
 import hudson.remoting.RemoteInputStream;
+import hudson.remoting.RemoteInputStream.Flag;
 import hudson.remoting.RemoteOutputStream;
 import hudson.remoting.VirtualChannel;
 import hudson.remoting.Which;
@@ -466,17 +467,29 @@ public final class FilePath implements Serializable {
      * @see #unzipFrom(InputStream)
      */
     public void unzip(final FilePath target) throws IOException, InterruptedException {
-        target.act(new SecureFileCallable<Void>() {
+        // TODO: post release, re-unite two branches by introducing FileStreamCallable that resolves InputStream
+        if (this.channel!=target.channel) {// local -> remote or remote->local
+            final RemoteInputStream in = new RemoteInputStream(read(), Flag.GREEDY);
+            target.act(new SecureFileCallable<Void>() {
+                public Void invoke(File dir, VirtualChannel channel) throws IOException, InterruptedException {
+                    unzip(dir, in);
+                    return null;
+                }
 
-            public Void invoke(File dir, VirtualChannel channel) throws IOException, InterruptedException {
-                if (FilePath.this.isRemote())
-                    unzip(dir, FilePath.this.read()); // use streams
-                else
+                private static final long serialVersionUID = 1L;
+            });
+        } else {// local -> local or remote->remote
+            target.act(new SecureFileCallable<Void>() {
+
+                public Void invoke(File dir, VirtualChannel channel) throws IOException, InterruptedException {
+                    assert !FilePath.this.isRemote();       // this.channel==target.channel above
                     unzip(dir, reading(new File(FilePath.this.getRemote()))); // shortcut to local file
-                return null;
-            }
-            private static final long serialVersionUID = 1L;
-        });
+                    return null;
+                }
+
+                private static final long serialVersionUID = 1L;
+            });
+        }
     }
 
     /**
@@ -490,13 +503,26 @@ public final class FilePath implements Serializable {
      * @see #untarFrom(InputStream, TarCompression)
      */
     public void untar(final FilePath target, final TarCompression compression) throws IOException, InterruptedException {
-        target.act(new SecureFileCallable<Void>() {
-            public Void invoke(File dir, VirtualChannel channel) throws IOException, InterruptedException {
-                readFromTar(FilePath.this.getName(),dir,compression.extract(FilePath.this.read()));
-                return null;
-            }
-            private static final long serialVersionUID = 1L;
-        });
+        // TODO: post release, re-unite two branches by introducing FileStreamCallable that resolves InputStream
+        if (this.channel!=target.channel) {// local -> remote or remote->local
+            final RemoteInputStream in = new RemoteInputStream(read(), Flag.GREEDY);
+            target.act(new SecureFileCallable<Void>() {
+                public Void invoke(File dir, VirtualChannel channel) throws IOException, InterruptedException {
+                    readFromTar(FilePath.this.getName(),dir,compression.extract(in));
+                    return null;
+                }
+
+                private static final long serialVersionUID = 1L;
+            });
+        } else {// local -> local or remote->remote
+            target.act(new SecureFileCallable<Void>() {
+                public Void invoke(File dir, VirtualChannel channel) throws IOException, InterruptedException {
+                    readFromTar(FilePath.this.getName(),dir,compression.extract(FilePath.this.read()));
+                    return null;
+                }
+                private static final long serialVersionUID = 1L;
+            });
+        }
     }
 
     /**
@@ -943,7 +969,7 @@ public final class FilePath implements Serializable {
                 throw e;    // pass through so that the caller can catch it as AbortException
             } catch (IOException e) {
                 // wrap it into a new IOException so that we get the caller's stack trace as well.
-                throw new IOException("remote file operation failed: "+remote+" at "+channel,e);
+                throw new IOException("remote file operation failed: " + remote + " at " + channel + ": " + e, e);
             }
         } else {
             // the file is on the local machine.
@@ -1705,11 +1731,13 @@ public final class FilePath implements Serializable {
                 try {
                     fis = new FileInputStream(reading(f));
                     Util.copyStream(fis, p.getOut());
-                    return null;
+                } catch (Exception x) {
+                    p.error(x);
                 } finally {
                     org.apache.commons.io.IOUtils.closeQuietly(fis);
                     org.apache.commons.io.IOUtils.closeQuietly(p.getOut());
                 }
+                return null;
             }
         });
 
