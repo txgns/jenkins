@@ -4,8 +4,8 @@ import groovy.lang.Binding;
 import hudson.FilePath;
 import hudson.cli.CLICommand;
 import jenkins.model.Jenkins;
-import hudson.remoting.Callable;
 import hudson.util.spring.BeanBuilder;
+import jenkins.security.MasterToSlaveCallable;
 import org.acegisecurity.Authentication;
 import org.acegisecurity.AuthenticationException;
 import org.acegisecurity.AuthenticationManager;
@@ -140,7 +140,7 @@ public abstract class AbstractPasswordBasedSecurityRealm extends SecurityRealm i
     /**
      * Asks for the password.
      */
-    private static class InteractivelyAskForPassword implements Callable<String,IOException> {
+    private static class InteractivelyAskForPassword extends MasterToSlaveCallable<String,IOException> {
         @IgnoreJRERequirement
         public String call() throws IOException {
             Console console = System.console();
