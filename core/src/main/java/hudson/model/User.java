@@ -35,6 +35,7 @@ import hudson.security.Permission;
 import hudson.security.SecurityRealm;
 import hudson.security.UserMayOrMayNotExistException;
 import hudson.util.FormApply;
+import hudson.util.FormValidation;
 import hudson.util.RunList;
 import hudson.util.XStream2;
 import jenkins.model.Jenkins;
@@ -49,6 +50,8 @@ import org.acegisecurity.providers.UsernamePasswordAuthenticationToken;
 import org.acegisecurity.providers.anonymous.AnonymousAuthenticationToken;
 import org.acegisecurity.userdetails.UserDetails;
 import org.acegisecurity.userdetails.UsernameNotFoundException;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.springframework.dao.DataAccessException;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
@@ -105,7 +108,18 @@ import javax.annotation.Nonnull;
  */
 @ExportedBean
 public class User extends AbstractModelObject implements AccessControlled, DescriptorByNameOwner, Saveable, Comparable<User>, ModelObjectWithContextMenu {
-    
+
+    /**
+     * The username of the 'unknown' user used to avoid null user references.
+     */
+    private static final String UKNOWN_USERNAME = "unknown";
+
+    /**
+     * These usernames should not be used by real users logging into Jenkins. Therefore, we prevent
+     * users with these names from being saved.
+     */
+    private static final String[] ILLEGAL_PERSISTED_USERNAMES = new String[]{ACL.ANONYMOUS_USERNAME,
+            ACL.SYSTEM_USERNAME, UKNOWN_USERNAME};
     private transient final String id;
 
     private volatile String fullName;
@@ -298,7 +312,7 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
      * This is used to avoid null {@link User} instance.
      */
     public static @Nonnull User getUnknown() {
-        return get("unknown");
+        return get(UKNOWN_USERNAME);
     }
 
     /**
@@ -519,9 +533,35 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
     }
 
     /**
+     * Is the ID allowed? Some are prohibited for security reasons. See SECURITY-166.
+     * <p/>
+     * Note that this is only enforced when saving. These users are often created
+     * via the constructor (and even listed on /asynchPeople), but our goal is to
+     * prevent anyone from logging in as these users. Therefore, we prevent
+     * saving a User with one of these ids.
+     *
+     * @return true if the username or fullname is valid
+     */
+    //TODO: Remove Restricted and add @since when merging to stable-rc
+    @Restricted(NoExternalUse.class)
+    public static boolean isIdOrFullnameAllowed(String id) {
+        for (String invalidId : ILLEGAL_PERSISTED_USERNAMES) {
+            if (id.equalsIgnoreCase(invalidId))
+                return false;
+        }
+        return true;
+    }
+
+    /**
      * Save the settings to a file.
      */
-    public synchronized void save() throws IOException {
+    public synchronized void save() throws IOException, FormValidation {
+        if (! isIdOrFullnameAllowed(id)) {
+            throw FormValidation.error(Messages.User_IllegalUsername(id));
+        }
+        if (! isIdOrFullnameAllowed(fullName)) {
+            throw FormValidation.error(Messages.User_IllegalFullname(fullName));
+        }
         if(BulkChange.contains(this))   return;
         getConfigFile().write(this);
         SaveableListener.fireOnChange(this, getConfigFile());
