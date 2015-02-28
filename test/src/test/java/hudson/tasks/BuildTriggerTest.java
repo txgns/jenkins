@@ -146,7 +146,7 @@ public class BuildTriggerTest extends HudsonTestCase {
     }
 
     @RandomlyFails("ClassCastException: net.sf.json.JSONArray cannot be cast to java.lang.Boolean from AuthorizationMatrixProperty$DescriptorImpl.newInstance")
-    public void testConfigureDownstreamProjectSecurity() throws Exception {
+    public void _estConfigureDownstreamProjectSecurity() throws Exception {
         jenkins.setSecurityRealm(new LegacySecurityRealm());
         ProjectMatrixAuthorizationStrategy auth = new ProjectMatrixAuthorizationStrategy();
         auth.add(Jenkins.READ, "alice");
