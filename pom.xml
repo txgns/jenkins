@@ -26,14 +26,14 @@ THE SOFTWARE.
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>org.jenkins-ci</groupId>
-    <artifactId>jenkins</artifactId>
-    <version>1.35</version>
+    <groupId>com.cloudbees</groupId>
+    <artifactId>cloudbees-internal-parent</artifactId>
+    <version>10</version>
   </parent>
 
-  <groupId>org.jenkins-ci.main</groupId>
+  <groupId>com.cloudbees.dev-at-cloud.main</groupId>
   <artifactId>pom</artifactId>
-  <version>1.642.2</version>
+  <version>1.642.2.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Jenkins main module</name>
@@ -63,14 +63,16 @@ THE SOFTWARE.
   </scm>
 
   <distributionManagement>
-    <site>
-      <id>github-pages</id>
-      <url>gitsite:git@github.com/jenkinsci/maven-site.git:core</url>
-    </site>
     <snapshotRepository>
-      <id>maven.jenkins-ci.org</id>
-      <url>http://maven.jenkins-ci.org:8081/content/repositories/snapshots</url>
+      <id>cloudbees-internal-snapshots</id>
+      <name>CloudBees Internal Snapshots</name>
+      <url>https://cloudbees-jfrog.artifactoryonline.com/cloudbees_jfrog/snapshots</url>
     </snapshotRepository>
+    <repository>
+      <id>cloudbees-internal-staging</id>
+      <name>CloudBees Internal Release Repository</name>
+      <url>https://cloudbees-jfrog.artifactoryonline.com/cloudbees_jfrog/releases</url>
+    </repository>
   </distributionManagement>
 
   <issueManagement>
@@ -84,6 +86,9 @@ THE SOFTWARE.
   </ciManagement>
 
   <properties>
+    <!-- since we override the project.groupId for jaas, we must sometimes reference the original one -->
+    <jenkins.groupId>org.jenkins-ci.main</jenkins.groupId>
+
     <!-- *.html files are in UTF-8, and *.properties are in iso-8859-1, so this configuration is acturally incorrect,
     but this suppresses a warning from Maven, and as long as we don't do filtering we should be OK. -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -159,7 +164,7 @@ THE SOFTWARE.
         <artifactId>mockito-core</artifactId>
         <version>1.10.19</version>
       </dependency>
-      
+
       <dependency>
         <groupId>org.powermock</groupId>
         <artifactId>powermock-module-junit4</artifactId>
@@ -585,11 +590,12 @@ THE SOFTWARE.
           <!-- enable release profile during the release, create IPS package, and sign bits. -->
           <prepareVerifyArgs>-P release,sign</prepareVerifyArgs>
           <!-- work around for a bug in javadoc plugin that causes the release to fail. see MRELEASE-271 -->
-          <preparationGoals>clean install</preparationGoals>
+          <preparationGoals>-DskipTests clean install</preparationGoals>
           <goals>-DskipTests -Danimal.sniffer.skip=false javadoc:javadoc deploy javadoc:aggregate</goals>
           <pushChanges>false</pushChanges>
           <localCheckout>true</localCheckout>
-          <tagNameFormat>jenkins-@{project.version}</tagNameFormat>
+          <tagNameFormat>dev-at-cloud-@{project.version}</tagNameFormat>
+          <autoVersionSubmodules>true</autoVersionSubmodules>
         </configuration>
       </plugin>
       <plugin>
@@ -631,7 +637,7 @@ THE SOFTWARE.
         <configuration>
           <source>1.${java.level}</source>
           <target>1.${java.level}</target>
-          <!-- default reuseCreated is more performant 
+          <!-- default reuseCreated is more performant
           feel free to uncomment if you have any issues on your platform
           <compilerReuseStrategy>alwaysNew</compilerReuseStrategy>
           -->
@@ -789,6 +795,9 @@ THE SOFTWARE.
       </reporting>
     </profile>
     <profile>
+      <id>sign</id>
+    </profile>
+    <profile>
       <id>debug</id>
       <activation>
         <activeByDefault>true</activeByDefault>
@@ -815,43 +824,6 @@ THE SOFTWARE.
           <plugin>
             <groupId>org.jvnet.sorcerer</groupId>
             <artifactId>maven-sorcerer-plugin</artifactId>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-    <profile>
-      <id>release</id>
-      <build>
-        <plugins>
-          <plugin>
-            <artifactId>maven-assembly-plugin</artifactId>
-            <inherited>false</inherited>
-            <executions>
-              <execution>
-                <goals>
-                  <goal>attached</goal>
-                </goals>
-                <phase>package</phase>
-                <configuration>
-                  <finalName>jenkins-${project.version}</finalName>
-                  <descriptors>
-                    <descriptor>assembly-src.xml</descriptor>
-                  </descriptors>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <artifactId>maven-gpg-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>sign-artifacts</id>
-                <phase>verify</phase>
-                <goals>
-                  <goal>sign</goal>
-                </goals>
-              </execution>
-            </executions>
           </plugin>
         </plugins>
       </build>

@@ -3,9 +3,9 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>org.jenkins-ci.main</groupId>
+    <groupId>com.cloudbees.dev-at-cloud.main</groupId>
     <artifactId>pom</artifactId>
-    <version>1.642.2</version>
+    <version>1.642.2.1-SNAPSHOT</version>
   </parent>
 
   <artifactId>cli</artifactId>
@@ -30,7 +30,7 @@
       <version>1.4</version>
     </dependency>
     <dependency>
-      <groupId>${project.groupId}</groupId>
+      <groupId>org.jenkins-ci.main</groupId>
       <artifactId>remoting</artifactId>
       <!-- specified in the parent -->
     </dependency>

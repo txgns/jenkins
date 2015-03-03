@@ -12,7 +12,7 @@
   <groupId>org.jenkins-ci.plugins</groupId>
   <artifactId>plugin</artifactId>
   <name>Jenkins plugin POM</name>
-  <version>1.642.2</version>
+  <version>1.642.2.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <!--
@@ -58,22 +58,22 @@
   </dependencyManagement>
   <dependencies>
     <dependency>
-      <groupId>org.jenkins-ci.main</groupId>
+      <groupId>com.cloudbees.dev-at-cloud.main</groupId>
       <artifactId>jenkins-war</artifactId>
       <type>war</type>
-      <version>1.642.2</version>
+      <version>1.642.2.1-SNAPSHOT</version>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.jenkins-ci.main</groupId>
+      <groupId>com.cloudbees.dev-at-cloud.main</groupId>
       <artifactId>jenkins-core</artifactId>
-      <version>1.642.2</version>
+      <version>1.642.2.1-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.jenkins-ci.main</groupId>
+      <groupId>com.cloudbees.dev-at-cloud.main</groupId>
       <artifactId>jenkins-test-harness</artifactId>
-      <version>1.642.2</version>
+      <version>1.642.2.1-SNAPSHOT</version>
       <scope>test</scope>
     </dependency>
     <!--
@@ -166,6 +166,8 @@
         <artifactId>maven-hpi-plugin</artifactId>
         <extensions>true</extensions>
         <configuration>
+          <jenkinsCoreId>com.cloudbees.dev-at-cloud.main:jenkins-core</jenkinsCoreId>
+          <jenkinsWarId>com.cloudbees.dev-at-cloud.main:jenkins-war</jenkinsWarId>
           <showDeprecation>true</showDeprecation>
           <contextPath>/jenkins</contextPath>
         </configuration>
@@ -255,17 +257,17 @@
               <inlineScript><![CDATA[
                 filter {
                     def plugins = [] as Set
-                    
+
                     // collect all Jenkins plugins
                     models.entrySet().each { e ->
                         if (e.value.packaging=="hpi")
                             plugins.add(e.key.id)
                     }
-                    
+
                     // filter out dependencies that don't belong to this plugin
                     models.entrySet().removeAll(models.entrySet().findAll { e ->
                         def a = e.key;
-                        
+
                         if (a.dependencyTrail.size()>0 && plugins.contains(a.dependencyTrail[1]))
                             return true; // ignore transitive dependencies through other plugins
 
@@ -274,10 +276,10 @@
                         // dependencies into the artifact list.
                         if (a.dependencyTrail.find { trail -> trail.contains(":hudson-core:") || trail.contains(":jenkins-core:") })
                             return true;
-                            
+
                         return false;
                     })
-                }              
+                }
               ]]></inlineScript>
             </configuration>
           </execution>
@@ -304,7 +306,7 @@
         <!--
             This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.
             the plugins mention here are the ones we do not have direct control over, but are used for a jenkins plugin - all other
-            will be changed to in there source to support eclipse soon (hpi, license, localizer, access-modifier). 
+            will be changed to in there source to support eclipse soon (hpi, license, localizer, access-modifier).
             see also: http://wiki.eclipse.org/M2E_compatible_maven_plugins
         -->
         <plugin>
@@ -344,7 +346,7 @@
                     </pluginExecutions>
                 </lifecycleMappingMetadata>
             </configuration>
-        </plugin>        
+        </plugin>
         <plugin>
           <!-- make sure our code doesn't have 1.6 dependencies except where we know it -->
           <groupId>org.codehaus.mojo</groupId>
@@ -410,9 +412,15 @@
       <url>gitsite:git@github.com/jenkinsci/maven-site.git:plugin-parent</url>
     </site>
     <snapshotRepository>
-      <id>maven.jenkins-ci.org</id>
-      <url>http://maven.jenkins-ci.org:8081/content/repositories/snapshots</url>
+      <id>cloudbees-internal-snapshots</id>
+      <name>CloudBees Internal Snapshots</name>
+      <url>https://cloudbees-jfrog.artifactoryonline.com/cloudbees_jfrog/snapshots</url>
     </snapshotRepository>
+    <repository>
+      <id>cloudbees-internal-staging</id>
+      <name>CloudBees Internal Release Repository</name>
+      <url>https://cloudbees-jfrog.artifactoryonline.com/cloudbees_jfrog/releases</url>
+    </repository>
   </distributionManagement>
 
   <profiles>
@@ -427,7 +435,7 @@
         <maven.test.redirectTestOutputToFile>true</maven.test.redirectTestOutputToFile>
       </properties>
     </profile>
-    
+
     <profile>
       <id>node-classifier-linux</id>
       <activation>
