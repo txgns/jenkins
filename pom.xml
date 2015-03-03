@@ -26,14 +26,14 @@ THE SOFTWARE.
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>org.jenkins-ci</groupId>
-    <artifactId>jenkins</artifactId>
-    <version>1.35</version>
+    <groupId>com.cloudbees</groupId>
+    <artifactId>cloudbees-internal-parent</artifactId>
+    <version>18</version>
   </parent>
 
-  <groupId>org.jenkins-ci.main</groupId>
+  <groupId>com.cloudbees.dev-at-cloud.main</groupId>
   <artifactId>pom</artifactId>
-  <version>1.651.2-SNAPSHOT</version>
+  <version>1.651.2.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Jenkins main module</name>
@@ -62,14 +62,16 @@ THE SOFTWARE.
   </scm>
 
   <distributionManagement>
-    <site>
-      <id>github-pages</id>
-      <url>gitsite:git@github.com/jenkinsci/maven-site.git:core</url>
-    </site>
     <snapshotRepository>
-      <id>maven.jenkins-ci.org</id>
-      <url>http://maven.jenkins-ci.org:8081/content/repositories/snapshots</url>
+      <id>cloudbees-internal-snapshots</id>
+      <name>CloudBees Internal Snapshots</name>
+      <url>https://nexus-internal.cloudbees.com/content/repositories/snapshots</url>
     </snapshotRepository>
+    <repository>
+      <id>cloudbees-internal-staging</id>
+      <name>CloudBees Internal Release Repository</name>
+      <url>https://nexus-internal.cloudbees.com/service/local/staging/deploy/maven2</url>
+    </repository>
   </distributionManagement>
 
   <issueManagement>
@@ -83,6 +85,12 @@ THE SOFTWARE.
   </ciManagement>
 
   <properties>
+    <!-- since we override the project.groupId for jaas, we must sometimes reference the original one -->
+    <jenkins.groupId>org.jenkins-ci.main</jenkins.groupId>
+
+    <!-- CloudBees parent enforces FindBugs which fails the build -->
+    <findbugs.failOnError>false</findbugs.failOnError>
+
     <!-- *.html files are in UTF-8, and *.properties are in iso-8859-1, so this configuration is acturally incorrect,
     but this suppresses a warning from Maven, and as long as we don't do filtering we should be OK. -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -106,32 +114,6 @@ THE SOFTWARE.
 
     <changelog.url>https://jenkins-ci.org/changelog</changelog.url>
   </properties>
-
-  <repositories>
-    <repository>
-      <id>repo.jenkins-ci.org</id>
-      <url>http://repo.jenkins-ci.org/public/</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </repository>
-  </repositories>
-
-  <pluginRepositories>
-    <pluginRepository>
-      <id>repo.jenkins-ci.org</id>
-      <url>http://repo.jenkins-ci.org/public/</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </pluginRepository>
-  </pluginRepositories>
 
   <dependencyManagement>
     <dependencies>
@@ -422,7 +404,7 @@ THE SOFTWARE.
           -->
           <groupId>org.kohsuke.stapler</groupId>
           <artifactId>maven-stapler-plugin</artifactId>
-          <!-- version specified in grandparent pom -->
+          <version>1.17</version>
           <extensions>true</extensions>
           <dependencies>
             <dependency>
@@ -569,6 +551,10 @@ THE SOFTWARE.
 	        <artifactId>animal-sniffer-maven-plugin</artifactId>
 	        <version>1.9</version>
         </plugin>
+        <plugin>
+          <artifactId>maven-remote-resources-plugin</artifactId>
+          <version>1.2.1</version>
+        </plugin>
       </plugins>
     </pluginManagement>
 
@@ -584,11 +570,12 @@ THE SOFTWARE.
           <!-- enable release profile during the release, create IPS package, and sign bits. -->
           <prepareVerifyArgs>-P release,sign</prepareVerifyArgs>
           <!-- work around for a bug in javadoc plugin that causes the release to fail. see MRELEASE-271 -->
-          <preparationGoals>clean install</preparationGoals>
+          <preparationGoals>-DskipTests clean install</preparationGoals>
           <goals>-DskipTests -Danimal.sniffer.skip=false javadoc:javadoc deploy javadoc:aggregate</goals>
           <pushChanges>false</pushChanges>
           <localCheckout>true</localCheckout>
-          <tagNameFormat>jenkins-@{project.version}</tagNameFormat>
+          <tagNameFormat>dev-at-cloud-@{project.version}</tagNameFormat>
+          <autoVersionSubmodules>true</autoVersionSubmodules>
         </configuration>
       </plugin>
       <plugin>
@@ -814,43 +801,6 @@ THE SOFTWARE.
           <plugin>
             <groupId>org.jvnet.sorcerer</groupId>
             <artifactId>maven-sorcerer-plugin</artifactId>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-    <profile>
-      <id>release</id>
-      <build>
-        <plugins>
-          <plugin>
-            <artifactId>maven-assembly-plugin</artifactId>
-            <inherited>false</inherited>
-            <executions>
-              <execution>
-                <goals>
-                  <goal>attached</goal>
-                </goals>
-                <phase>package</phase>
-                <configuration>
-                  <finalName>jenkins-${project.version}</finalName>
-                  <descriptors>
-                    <descriptor>assembly-src.xml</descriptor>
-                  </descriptors>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <artifactId>maven-gpg-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>sign-artifacts</id>
-                <phase>verify</phase>
-                <goals>
-                  <goal>sign</goal>
-                </goals>
-              </execution>
-            </executions>
           </plugin>
         </plugins>
       </build>

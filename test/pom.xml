@@ -26,9 +26,9 @@ THE SOFTWARE.
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>org.jenkins-ci.main</groupId>
+    <groupId>com.cloudbees.dev-at-cloud.main</groupId>
     <artifactId>pom</artifactId>
-    <version>1.651.2-SNAPSHOT</version>
+    <version>1.651.2.1-SNAPSHOT</version>
   </parent>
 
   <artifactId>test</artifactId>
@@ -60,19 +60,25 @@ THE SOFTWARE.
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>${project.groupId}</groupId>
+      <groupId>${jenkins.groupId}</groupId>
       <artifactId>jenkins-test-harness</artifactId>
       <version>2.5</version>
       <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>${jenkins.groupId}</groupId>
+          <artifactId>jenkins-war</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
-      <groupId>${project.groupId}</groupId>
+      <groupId>${jenkins.groupId}</groupId>
       <artifactId>jenkins-test-harness-tools</artifactId>
       <version>2.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>${project.groupId}</groupId>
+      <groupId>${jenkins.groupId}</groupId>
       <artifactId>maven-plugin</artifactId>
       <version>${maven-plugin.version}</version>
       <exclusions>
@@ -292,7 +298,7 @@ THE SOFTWARE.
           </plugin>
         </plugins>
       </build>
-    </profile>    
+    </profile>
     <profile>
       <id>jacoco</id>
       <build>

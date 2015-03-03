@@ -26,9 +26,9 @@ THE SOFTWARE.
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>org.jenkins-ci.main</groupId>
+    <groupId>com.cloudbees.dev-at-cloud.main</groupId>
     <artifactId>pom</artifactId>
-    <version>1.651.2-SNAPSHOT</version>
+    <version>1.651.2.1-SNAPSHOT</version>
   </parent>
 
   <artifactId>jenkins-war</artifactId>
@@ -51,7 +51,7 @@ THE SOFTWARE.
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.jenkins-ci.main</groupId>
+      <groupId>com.cloudbees.dev-at-cloud.main</groupId>
       <artifactId>jenkins-core</artifactId>
       <version>${project.version}</version>
       <exclusions>
@@ -73,11 +73,18 @@ THE SOFTWARE.
         </exclusion>
       </exclusions>
     </dependency>
+    <!-- declare this in reactors, so i can use now directly : mvn install -pl war -am to get the war  -->
     <dependency>
-      <groupId>${project.groupId}</groupId>
+      <groupId>${jenkins.groupId}</groupId>
+      <artifactId>maven-plugin</artifactId>
+      <version>${maven-plugin.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.main</groupId>
       <artifactId>remoting</artifactId>
       <!-- specified in the parent -->
-    </dependency>    
+    </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>cli</artifactId>
@@ -228,13 +235,13 @@ THE SOFTWARE.
               <artifactItems>
                 <!-- dependencies that goes to unusual locations -->
                 <artifactItem>
-                  <groupId>${project.groupId}</groupId>
+                  <groupId>org.jenkins-ci.main</groupId>
                   <artifactId>remoting</artifactId>
                   <outputDirectory>${project.build.directory}/${project.build.finalName}/WEB-INF</outputDirectory>
                   <destFileName>remoting.jar</destFileName>
                 </artifactItem>
                 <artifactItem>
-                  <groupId>${project.groupId}</groupId>
+                  <groupId>org.jenkins-ci.main</groupId>
                   <artifactId>remoting</artifactId>
                   <outputDirectory>${project.build.directory}/${project.build.finalName}/WEB-INF</outputDirectory>
                   <destFileName>slave.jar</destFileName>
@@ -254,7 +261,7 @@ THE SOFTWARE.
                 </artifactItem>
                 <!-- bundled plugins -->
                 <artifactItem>
-                  <groupId>${project.groupId}</groupId>
+                  <groupId>${jenkins.groupId}</groupId>
                   <artifactId>maven-plugin</artifactId>
                   <version>${maven-plugin.version}</version>
                   <type>hpi</type>
@@ -437,7 +444,7 @@ THE SOFTWARE.
           <additionalClassesDirectories>
             <!-- load resoures straight from source -->
             <additionalClassesDirectory>../core/src/main/resources</additionalClassesDirectory>
-            
+
             <!--
               read directly from core module's output directory,
               so that changes are picked up right away without running mvn.
