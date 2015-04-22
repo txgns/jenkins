@@ -338,6 +338,27 @@ public class FilePathTest {
         checkTarUntarRoundTrip("compressTarUntarRoundTrip_small", 100); 
         checkTarUntarRoundTrip("compressTarUntarRoundTrip_medium", 50000); 
     }
+    
+    @Issue("JENKINS-28012")
+    @Test public void corruptedTarOnPom() throws Exception {
+        final String filePrefix="JENKINS-28012";
+        final File tmpDir = temp.newFolder("JENKINS-28012");
+        final File srcFile =  new File("/Users/nenashev/Downloads/pom.xml");        
+        final File tarFile = new File(tmpDir, filePrefix + ".tar");
+
+        // Compress archive
+        final FilePath tmpDirPath = new FilePath(tmpDir);
+        FileUtils.copyFile(srcFile, new File(tmpDir, srcFile.getName()));
+        int tar = tmpDirPath.tar(new FileOutputStream(tarFile), srcFile.getName());
+        assertEquals("One file should have been compressed", 1, tar);
+
+        // Decompress
+        FilePath outDir = new FilePath(temp.newFolder(filePrefix + "_out"));
+        final FilePath outFile = outDir.child(srcFile.getName());
+        tmpDirPath.child( filePrefix + ".tar").untar(outDir, TarCompression.NONE);
+        assertEquals("Result file after the roundtrip differs from the initial file",
+                new FilePath(srcFile).digest(), outFile.digest());
+    }
             
     /**
      * Checks that big files (>8GB) can be archived and then unpacked.
