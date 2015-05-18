@@ -32,6 +32,7 @@ import hudson.model.Queue;
 import hudson.model.Queue.Task;
 import hudson.model.queue.SubTask;
 import hudson.model.queue.Tasks;
+import hudson.util.Iterators;
 
 import java.util.Iterator;
 import java.util.List;
@@ -83,16 +84,7 @@ public class UnlabeledLoadStatistics extends LoadStatistics {
         if (j == null) { // Consider queue as empty when Jenkins is inactive
             return 0;
         }
-        
-        int result = 0;
-        final List<Queue.BuildableItem> buildableItems = j.getQueue().getBuildableItems();
-        for (Queue.BuildableItem item : buildableItems) {
-            for (SubTask st : Tasks.getSubTasksOf(item.task)) {
-                    if (item.getAssignedLabelFor(st) == null)
-                        result++;
-            }
-        }
-        return result; 
+        return j.getQueue().strictCountBuildableItemsFor(null); 
     }
 
     @Override
