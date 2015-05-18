@@ -1023,14 +1023,13 @@ public class Queue extends ResourceController implements Saveable {
      * @return Number of {@link BuildableItem}s for the specified label.
      * @since 1.615
      */
-    public @Nonnegative int strictCountBuildableItemsFor(@CheckForNull Label l) {
-        Snapshot _snapshot = this.snapshot;
+    public synchronized @Nonnegative int strictCountBuildableItemsFor(@CheckForNull Label l) {
         int r = 0;
-        for (BuildableItem bi : _snapshot.buildables)
+        for (BuildableItem bi : buildables)
             for (SubTask st : bi.task.getSubTasks())
                 if (bi.getAssignedLabelFor(st) == l)
                     r++;
-        for (BuildableItem bi : _snapshot.pendings)
+        for (BuildableItem bi : pendings)
             for (SubTask st : bi.task.getSubTasks())
                 if (bi.getAssignedLabelFor(st) == l)
                     r++;
