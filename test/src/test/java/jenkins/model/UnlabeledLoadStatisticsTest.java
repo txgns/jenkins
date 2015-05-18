@@ -87,6 +87,7 @@ public class UnlabeledLoadStatisticsTest {
         
         // Allow executions of unlabeled builds on master, all unlabeled builds should pass
         j.jenkins.setNumExecutors(1);
+        slave.setMode(Node.Mode.NORMAL);
         j.buildAndAssertSuccess(unlabeledProject);
         queue.maintain();
         assertEquals("Queue must contain the labeled project build", 1, queue.getBuildableItems().size());
