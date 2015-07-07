@@ -41,6 +41,10 @@ import org.kohsuke.stapler.StaplerResponse;
 
 import java.io.IOException;
 import java.security.SecureRandom;
+import javax.annotation.Nonnull;
+import jenkins.model.IdStrategy;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 
 /**
  * Remembers the API token for this user, that can be used like a password to login.
@@ -53,6 +57,15 @@ import java.security.SecureRandom;
 public class ApiTokenProperty extends UserProperty {
     private volatile Secret apiToken;
 
+    /**
+     * Enables hiding API tokens from Jenkins admins.
+     * Disabled by default in order to retain the behavior.
+     * @since TODO
+     */
+    private static boolean HIDE_TOKEN_FROM_ADMINS = 
+            Boolean.getBoolean(ApiTokenProperty.class.getName() + ".hideTokenFromAdmins");
+    
+    
     @DataBoundConstructor
     public ApiTokenProperty() {
         _changeApiToken();
@@ -66,6 +79,21 @@ public class ApiTokenProperty extends UserProperty {
         apiToken = Secret.fromString(seed);
     }
 
+    /**
+     * Gets the API token (secured implementation).
+     * @return API token or &quot;hidden&quot; if it cannot be retrieved due to any reason.
+     */
+    @Restricted(NoExternalUse.class)
+    public @Nonnull String getSecuredApiToken() {
+        return hasPermissionToSeeToken() ? getApiToken() : Messages.ApiTokenProperty_ChangeToken_TokenIsHidden();
+    }
+    
+    /**
+     * Gets the API token.
+     * Warning! this method does not check for permissions. Anyone can use it 
+     * from any Jenkins plugin or Groovy script
+     * @return API Token. Never null
+     */
     public String getApiToken() {
         String p = apiToken.getPlainText();
         if (p.equals(Util.getDigestOf(Jenkins.getInstance().getSecretKey()+":"+user.getId()))) {
@@ -78,6 +106,27 @@ public class ApiTokenProperty extends UserProperty {
 
     public boolean matchesPassword(String password) {
         return getApiToken().equals(password);
+    }
+    
+    @Restricted(NoExternalUse.class)
+    public boolean hasPermissionToSeeToken() {
+        final Jenkins jenkins = Jenkins.getInstance();
+        if (jenkins == null) {
+            return false; // Should not happen - we don't display UIs in this stage
+        }
+        
+        // Administrators can do whatever they want
+        if (!HIDE_TOKEN_FROM_ADMINS && jenkins.hasPermission(Jenkins.ADMINISTER)) {
+            return true;
+        }
+        
+        final User current = User.current();
+        if (current == null) {
+            return false;
+        }
+             
+        // TODO: If impersonated as System?
+        return User.idStrategy().equals(user.getId(), current.getId());
     }
 
     public void changeApiToken() throws IOException {
@@ -124,8 +173,10 @@ public class ApiTokenProperty extends UserProperty {
             } else {
                 p.changeApiToken();
             }
-            rsp.setHeader("script","document.getElementById('apiToken').value='"+p.getApiToken()+"'");
-            return HttpResponses.html(Messages.ApiTokenProperty_ChangeToken_Success());
+            rsp.setHeader("script","document.getElementById('apiToken').value='"+p.getSecuredApiToken()+"'");
+            return HttpResponses.html(p.hasPermissionToSeeToken() 
+                    ? Messages.ApiTokenProperty_ChangeToken_Success() 
+                    : Messages.ApiTokenProperty_ChangeToken_SuccessHidden());
         }
     }
 
