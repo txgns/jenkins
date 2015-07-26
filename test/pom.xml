@@ -30,7 +30,6 @@ THE SOFTWARE.
     <artifactId>pom</artifactId>
     <version>1.609.1.2-SNAPSHOT</version>
   </parent>
-  <groupId>org.jenkins-ci.main</groupId>
   <artifactId>jenkins-test-harness</artifactId>
 
   <name>Test harness for Jenkins and plugins</name>
