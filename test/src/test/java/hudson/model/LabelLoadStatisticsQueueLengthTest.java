@@ -57,7 +57,7 @@ public class LabelLoadStatisticsQueueLengthTest {
         // Node with this test's labels is required in order for the labels to
         // be considered valid.
         DumbSlave node = new DumbSlave(
-                LabelLoadStatisticsQueueLengthTest.class.getSimpleName()+".notTheLabel", "",
+                LabelLoadStatisticsQueueLengthTest.class.getSimpleName()+"other", "",
                 "", "1", Mode.NORMAL, LABEL_STRING + " " + ALT_LABEL_STRING,
                 null, RetentionStrategy.NOOP,
                 Collections.<NodeProperty<?>> emptyList());
