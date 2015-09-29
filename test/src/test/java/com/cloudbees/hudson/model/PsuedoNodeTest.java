@@ -17,23 +17,27 @@ import hudson.slaves.OfflineCause;
 import org.jvnet.hudson.test.HudsonTestCase;
 
 public class PsuedoNodeTest extends HudsonTestCase {
-
+    private String temp;
     public void setUp() throws Exception {
         super.setUp();
-        System.setProperty("slave.fs.root.on.master", "/tmp/");
+        temp = "/tmp/";
+        if (System.getProperty("os.name").toLowerCase().startsWith("mac")) {
+            temp = "/private/tmp/";
+        }
+        System.setProperty("slave.fs.root.on.master",temp);
     }
     
     public void testTranslatePath() throws Exception {
         PsuedoNode node = new PsuedoNode();
         FilePath actual = node.createPath(MasterConfig.getSlaveRootOnSlave() + "/workspace/foo");
-        assertEquals(new FilePath(new File("/tmp/workspace/foo")), actual);
+        assertEquals(new FilePath(new File(temp + "workspace/foo")), actual);
 
     }
 
     public void testTranslateSubDirectoryPath() throws Exception {
         PsuedoNode node = new PsuedoNode();
         FilePath actual = node.createPath(MasterConfig.getSlaveRootOnSlave() + "/workspace/foo/bar");
-        assertEquals(new FilePath(new File("/tmp/workspace/foo/bar")), actual);
+        assertEquals(new FilePath(new File(temp + "workspace/foo/bar")), actual);
 
     }
 
