@@ -303,7 +303,7 @@ public class AbstractProjectTest extends HudsonTestCase {
         assert job.lastBuild != null;
     }
     */
-
+    /* DEV@cloud doesnt have external build directory
     @Issue("JENKINS-17137")
     public void testExternalBuildDirectorySymlinks() {
         // TODO when using JUnit 4 add: Assume.assumeFalse(Functions.isWindows()); // symlinks may not be available
@@ -326,6 +326,7 @@ public class AbstractProjectTest extends HudsonTestCase {
         b1.delete();
         assert !link.exists();
     }
+    */
 
     private File resolveAll(File link) throws InterruptedException, IOException {
         while (true) {
@@ -334,6 +335,7 @@ public class AbstractProjectTest extends HudsonTestCase {
             link = f;
         }
     }
+    /* DEV@cloud doesnt have external build directory
 
     @Issue("JENKINS-17138")
     public void testExternalBuildDirectoryRenameDelete() {
@@ -354,7 +356,7 @@ public class AbstractProjectTest extends HudsonTestCase {
         p.delete();
         assert !b.rootDir.isDirectory();
     }
-
+    */
     @Issue("JENKINS-18678")
     public void testRenameJobLostBuilds() throws Exception {
         def p = createFreeStyleProject("initial");
