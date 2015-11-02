@@ -233,7 +233,8 @@ public class JenkinsTest {
             assertEquals(FormValidation.Kind.ERROR, v.kind);
         }
     }
-    
+
+    /* DEV@cloud doesnt have configurable build or workspace directory
     @Test @Issue("JENKINS-12251")
     public void testItemFullNameExpansion() throws Exception {
         HtmlForm f = j.createWebClient().goTo("configure").getFormByName("config");
@@ -250,7 +251,7 @@ public class JenkinsTest {
         assertTrue(b.getWorkspace().getRemote().contains("test12251_ws"));
         assertTrue(b.getRootDir().toString().contains("test12251_builds"));
     }
-
+    */
     /**
      * Makes sure access to "/foobar" for UnprotectedRootAction gets through.
      */
