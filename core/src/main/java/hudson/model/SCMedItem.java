@@ -25,13 +25,10 @@ package hudson.model;
 
 import hudson.scm.PollingResult;
 import hudson.scm.SCM;
-import hudson.triggers.SCMTrigger;
+import jenkins.triggers.SCMTriggerItem;
 
 /**
- * {@link Item}s that has associated SCM.
- *
- * @author Kohsuke Kawaguchi
- * @see SCMTrigger
+ * @deprecated Implement {@link SCMTriggerItem} instead.
  */
 public interface SCMedItem extends BuildableItem {
     /**
@@ -71,5 +68,5 @@ public interface SCMedItem extends BuildableItem {
      *
      * @since 1.345
      */
-    public PollingResult poll( TaskListener listener );
+    PollingResult poll(TaskListener listener);
 }

@@ -25,6 +25,7 @@ package hudson.cli;
 
 import hudson.Extension;
 import hudson.FilePath;
+import hudson.PluginManager;
 import jenkins.model.Jenkins;
 import hudson.model.UpdateSite;
 import hudson.model.UpdateSite.Data;
@@ -33,6 +34,7 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.net.MalformedURLException;
 import java.util.HashSet;
@@ -49,11 +51,11 @@ import java.util.Set;
 @Extension
 public class InstallPluginCommand extends CLICommand {
     public String getShortDescription() {
-        return "Installs a plugin either from a file, an URL, or from update center";
+        return Messages.InstallPluginCommand_ShortDescription();
     }
 
     @Argument(metaVar="SOURCE",required=true,usage="If this points to a local file, that file will be installed. " +
-            "If this is an URL, Hudson downloads the URL and installs that as a plugin." +
+            "If this is an URL, Jenkins downloads the URL and installs that as a plugin." +
             "Otherwise the name is assumed to be the short name of the plugin in the existing update center (like \"findbugs\")," +
             "and the plugin will be installed from the update center")
     public List<String> sources = new ArrayList<String>();
@@ -61,22 +63,30 @@ public class InstallPluginCommand extends CLICommand {
     @Option(name="-name",usage="If specified, the plugin will be installed as this short name (whereas normally the name is inferred from the source name automatically.)")
     public String name;
 
-    @Option(name="-restart",usage="Restart Hudson upon successful installation")
+    @Option(name="-restart",usage="Restart Jenkins upon successful installation")
     public boolean restart;
+
+    @Option(name="-deploy",usage="Deploy plugins right away without postponing them until the reboot.")
+    public boolean dynamicLoad;
 
     protected int run() throws Exception {
         Jenkins h = Jenkins.getInstance();
-        h.checkPermission(Jenkins.ADMINISTER);
+        h.checkPermission(PluginManager.UPLOAD_PLUGINS);
+        PluginManager pm = h.getPluginManager();
 
         for (String source : sources) {
             // is this a file?
-            FilePath f = new FilePath(channel, source);
-            if (f.exists()) {
-                stdout.println(Messages.InstallPluginCommand_InstallingPluginFromLocalFile(f));
-                if (name==null)
-                    name = f.getBaseName();
-                f.copyTo(getTargetFile());
-                continue;
+            if (channel!=null) {
+                FilePath f = new FilePath(channel, source);
+                if (f.exists()) {
+                    stdout.println(Messages.InstallPluginCommand_InstallingPluginFromLocalFile(f));
+                    if (name==null)
+                        name = f.getBaseName();
+                    f.copyTo(getTargetFilePath());
+                    if (dynamicLoad)
+                        pm.dynamicLoad(getTargetFile());
+                    continue;
+                }
             }
 
             // is this an URL?
@@ -85,12 +95,14 @@ public class InstallPluginCommand extends CLICommand {
                 stdout.println(Messages.InstallPluginCommand_InstallingPluginFromUrl(u));
                 if (name==null) {
                     name = u.getPath();
-                    name = name.substring(name.indexOf('/')+1);
-                    name = name.substring(name.indexOf('\\')+1);
+                    name = name.substring(name.lastIndexOf('/')+1);
+                    name = name.substring(name.lastIndexOf('\\')+1);
                     int idx = name.lastIndexOf('.');
                     if (idx>0)  name = name.substring(0,idx);
                 }
-                getTargetFile().copyFrom(u);
+                getTargetFilePath().copyFrom(u);
+                if (dynamicLoad)
+                    pm.dynamicLoad(getTargetFile());
                 continue;
             } catch (MalformedURLException e) {
                 // not an URL
@@ -100,7 +112,9 @@ public class InstallPluginCommand extends CLICommand {
             UpdateSite.Plugin p = h.getUpdateCenter().getPlugin(source);
             if (p!=null) {
                 stdout.println(Messages.InstallPluginCommand_InstallingFromUpdateCenter(source));
-                p.deploy().get();
+                Throwable e = p.deploy(dynamicLoad).get().getError();
+                if (e!=null)
+                    throw new IOException("Failed to install plugin "+source,e);
                 continue;
             }
 
@@ -127,11 +141,15 @@ public class InstallPluginCommand extends CLICommand {
         }
 
         if (restart)
-            h.restart();
+            h.safeRestart();
         return 0; // all success
     }
 
-    private FilePath getTargetFile() {
-        return new FilePath(new File(Jenkins.getInstance().getPluginManager().rootDir,name+".hpi"));
+    private FilePath getTargetFilePath() {
+        return new FilePath(getTargetFile());
+    }
+
+    private File getTargetFile() {
+        return new File(Jenkins.getInstance().getPluginManager().rootDir,name+".jpi");
     }
 }

@@ -24,10 +24,12 @@
 package hudson.scheduler;
 
 import antlr.ANTLRException;
-
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Vector;
+import javax.annotation.CheckForNull;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 
 /**
  * {@link CronTab} list (logically OR-ed).
@@ -70,6 +72,10 @@ public final class CronTabList {
     }
 
     public static CronTabList create(String format) throws ANTLRException {
+        return create(format,null);
+    }
+
+    public static CronTabList create(String format, Hash hash) throws ANTLRException {
         Vector<CronTab> r = new Vector<CronTab>();
         int lineNumber = 0;
         for (String line : format.split("\\r?\\n")) {
@@ -78,11 +84,36 @@ public final class CronTabList {
             if(line.length()==0 || line.startsWith("#"))
                 continue;   // ignorable line
             try {
-                r.add(new CronTab(line,lineNumber));
+                r.add(new CronTab(line,lineNumber,hash));
             } catch (ANTLRException e) {
                 throw new ANTLRException(Messages.CronTabList_InvalidInput(line,e.toString()),e);
             }
         }
         return new CronTabList(r);
     }
+
+    @Restricted(NoExternalUse.class) // just for form validation
+    public @CheckForNull Calendar previous() {
+        Calendar nearest = null;
+        for (CronTab tab : tabs) {
+            Calendar scheduled = tab.floor(Calendar.getInstance());
+            if (nearest == null || nearest.before(scheduled)) {
+                nearest = scheduled;
+            }
+        }
+        return nearest;
+    }
+
+    @Restricted(NoExternalUse.class) // just for form validation
+    public @CheckForNull Calendar next() {
+        Calendar nearest = null;
+        for (CronTab tab : tabs) {
+            Calendar scheduled = tab.ceil(Calendar.getInstance());
+            if (nearest == null || nearest.after(scheduled)) {
+                nearest = scheduled;
+            }
+        }
+        return nearest;
+    }
+
 }

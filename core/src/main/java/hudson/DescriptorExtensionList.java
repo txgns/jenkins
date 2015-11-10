@@ -26,6 +26,7 @@ package hudson;
 import hudson.model.Descriptor;
 import hudson.model.Describable;
 import hudson.model.Hudson;
+import jenkins.ExtensionComponentSet;
 import jenkins.model.Jenkins;
 import hudson.model.ViewDescriptor;
 import hudson.model.Descriptor.FormException;
@@ -34,14 +35,15 @@ import hudson.util.Memoizer;
 import hudson.util.Iterators.FlattenIterator;
 import hudson.slaves.NodeDescriptor;
 import hudson.tasks.Publisher;
-import hudson.tasks.Publisher.DescriptorExtensionListImpl;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.concurrent.CopyOnWriteArrayList;
+import javax.annotation.CheckForNull;
 
 import org.kohsuke.stapler.Stapler;
 import net.sf.json.JSONObject;
@@ -70,7 +72,7 @@ public class DescriptorExtensionList<T extends Describable<T>, D extends Descrip
     public static <T extends Describable<T>,D extends Descriptor<T>>
     DescriptorExtensionList<T,D> createDescriptorList(Jenkins jenkins, Class<T> describableType) {
         if (describableType == (Class) Publisher.class) {
-            return (DescriptorExtensionList) new DescriptorExtensionListImpl(jenkins);
+            return (DescriptorExtensionList) new Publisher.DescriptorExtensionListImpl(jenkins);
         }
         return new DescriptorExtensionList<T,D>(jenkins,describableType);
     }
@@ -81,7 +83,7 @@ public class DescriptorExtensionList<T extends Describable<T>, D extends Descrip
      */
     public static <T extends Describable<T>,D extends Descriptor<T>>
     DescriptorExtensionList<T,D> createDescriptorList(Hudson hudson, Class<T> describableType) {
-        return createDescriptorList((Jenkins)hudson,describableType);
+        return (DescriptorExtensionList)createDescriptorList((Jenkins)hudson,describableType);
     }
 
     /**
@@ -144,7 +146,7 @@ public class DescriptorExtensionList<T extends Describable<T>, D extends Descrip
      *
      * If none is found, null is returned.
      */
-    public D findByName(String id) {
+    public @CheckForNull D findByName(String id) {
         for (D d : this)
             if(d.getId().equals(id))
                 return d;
@@ -177,8 +179,17 @@ public class DescriptorExtensionList<T extends Describable<T>, D extends Descrip
      */
     @Override
     protected List<ExtensionComponent<D>> load() {
+        return _load(jenkins.getExtensionList(Descriptor.class).getComponents());
+    }
+
+    @Override
+    protected Collection<ExtensionComponent<D>> load(ExtensionComponentSet delta) {
+        return _load(delta.find(Descriptor.class));
+    }
+
+    private List<ExtensionComponent<D>> _load(Iterable<ExtensionComponent<Descriptor>> set) {
         List<ExtensionComponent<D>> r = new ArrayList<ExtensionComponent<D>>();
-        for( ExtensionComponent<Descriptor> c : hudson.getExtensionList(Descriptor.class).getComponents() ) {
+        for( ExtensionComponent<Descriptor> c : set ) {
             Descriptor d = c.getInstance();
             try {
                 if(d.getT()==describableType)

@@ -25,10 +25,14 @@ package hudson.markup;
 
 import hudson.ExtensionPoint;
 import hudson.model.AbstractDescribableImpl;
-
+import hudson.util.HttpResponses;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
+import org.kohsuke.stapler.HttpResponse;
+import org.kohsuke.stapler.QueryParameter;
 
 /**
  * Generalization of a function that takes text with some markup and converts that to HTML.
@@ -40,6 +44,11 @@ import java.io.Writer;
  * <p>
  * This is an extension point in Hudson, allowing plugins to implement different markup formatters.
  *
+ * <p>
+ * Implement the following methods to enable and control CodeMirror syntax highlighting
+ * public String getCodeMirrorMode() // return null to disable CodeMirror dynamically
+ * public String getCodeMirrorConfig()
+ *   
  * <h2>Views</h2>
  * <p>
  * This extension point must have a valid <tt>config.jelly</tt> that feeds the constructor.
@@ -60,9 +69,9 @@ public abstract class MarkupFormatter extends AbstractDescribableImpl<MarkupForm
      * @param output
      *      Formatted HTML should be sent to this output.
      */
-    public abstract void translate(String markup, Writer output) throws IOException;
+    public abstract void translate(@CheckForNull String markup, @Nonnull Writer output) throws IOException;
 
-    public final String translate(String markup) throws IOException {
+    public final @Nonnull String translate(@CheckForNull String markup) throws IOException {
         StringWriter w = new StringWriter();
         translate(markup,w);
         return w.toString();
@@ -85,5 +94,15 @@ public abstract class MarkupFormatter extends AbstractDescribableImpl<MarkupForm
     @Override
     public MarkupFormatterDescriptor getDescriptor() {
         return (MarkupFormatterDescriptor)super.getDescriptor();
+    }
+
+    /**
+     * Generate HTML for preview, using markup formatter.
+     * Can be called from other views.
+     */
+    public HttpResponse doPreviewDescription(@QueryParameter String text) throws IOException {
+        StringWriter w = new StringWriter();
+        translate(text, w);
+        return HttpResponses.html(w.toString());
     }
 }

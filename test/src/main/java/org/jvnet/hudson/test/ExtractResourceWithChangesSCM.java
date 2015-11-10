@@ -75,7 +75,7 @@ public class ExtractResourceWithChangesSCM extends NullSCM {
     }
     
     @Override
-    public boolean checkout(AbstractBuild build, Launcher launcher, FilePath workspace, BuildListener listener, File changeLogFile) throws IOException, InterruptedException {
+    public boolean checkout(AbstractBuild<?,?> build, Launcher launcher, FilePath workspace, BuildListener listener, File changeLogFile) throws IOException, InterruptedException {
         if (workspace.exists()) {
             listener.getLogger().println("Deleting existing workspace " + workspace.getRemote());
             workspace.deleteRecursive();
@@ -122,13 +122,13 @@ public class ExtractResourceWithChangesSCM extends NullSCM {
         stream.println("<extractChanges>");
         stream.println("<entry>");
         stream.println("<zipFile>" + escapeForXml(changeLog.getZipFile()) + "</zipFile>");
-        stream.println("<file>");
 
         for (String fileName : changeLog.getAffectedPaths()) {
+            stream.println("<file>");
             stream.println("<fileName>" + escapeForXml(fileName) + "</fileName>");
+            stream.println("</file>");
         }
 
-        stream.println("</file>");
         stream.println("</entry>");
         stream.println("</extractChanges>");
 

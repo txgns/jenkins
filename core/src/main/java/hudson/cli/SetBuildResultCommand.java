@@ -42,13 +42,13 @@ public class SetBuildResultCommand extends CommandDuringBuild {
 
     @Override
     public String getShortDescription() {
-        return "Sets the result of the current build. Works only if invoked from within a build.";
+        return Messages.SetBuildResultCommand_ShortDescription();
     }
 
     @Override
     protected int run() throws Exception {
         Run r = getCurrentlyBuilding();
-        r.getParent().checkPermission(Item.BUILD);
+        r.checkPermission(Run.UPDATE);
         r.setResult(result);
         return 0;
     }

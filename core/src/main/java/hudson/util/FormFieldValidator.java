@@ -28,7 +28,6 @@ import hudson.EnvVars;
 import hudson.FilePath;
 import hudson.ProxyConfiguration;
 import hudson.Util;
-import hudson.tasks.JavadocArchiver;
 import hudson.model.AbstractProject;
 import jenkins.model.Jenkins;
 import hudson.model.Item;
@@ -255,7 +254,7 @@ public abstract class FormFieldValidator {
         protected BufferedReader open(URL url) throws IOException {
             // use HTTP content type to find out the charset.
             URLConnection con = ProxyConfiguration.open(url);
-            if (con == null) { // XXX is this even permitted by URL.openConnection?
+            if (con == null) { // TODO is this even permitted by URL.openConnection?
                 throw new IOException(url.toExternalForm());
             }
             return new BufferedReader(
@@ -379,11 +378,11 @@ public abstract class FormFieldValidator {
                     return;
                 }
 
-                String msg = ws.validateAntFileMask(value);
+                String msg = ws.validateAntFileMask(value, FilePath.VALIDATE_ANT_FILE_MASK_BOUND);
                 if(errorIfNotExist)     error(msg);
                 else                    warning(msg);
             } catch (InterruptedException e) {
-                ok(); // coundn't check
+                ok(Messages.FormFieldValidator_did_not_manage_to_validate_may_be_too_sl(value));
             }
         }
 
@@ -400,7 +399,7 @@ public abstract class FormFieldValidator {
      * the current workspace.
      * @since 1.116
      * @deprecated as of 1.294. Use {@link FilePath#validateRelativeDirectory(String, boolean)}
-     *      (see {@link JavadocArchiver.DescriptorImpl#doCheck(AbstractProject, String)}
+     *      (see javadoc plugin for the example)
      */
     public static class WorkspaceDirectory extends WorkspaceFilePath {
         public WorkspaceDirectory(StaplerRequest request, StaplerResponse response, boolean errorIfNotExist) {

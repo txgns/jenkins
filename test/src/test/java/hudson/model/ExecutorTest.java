@@ -1,17 +1,41 @@
 package hudson.model;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.Assert.*;
+
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import jenkins.model.Jenkins;
-import org.jvnet.hudson.test.Bug;
-import org.jvnet.hudson.test.HudsonTestCase;
+
+import hudson.Launcher;
+import hudson.remoting.VirtualChannel;
+import hudson.slaves.DumbSlave;
+import hudson.slaves.OfflineCause;
+import hudson.util.OneShotEvent;
+import jenkins.model.CauseOfInterruption.UserInterruption;
+import jenkins.model.InterruptedBuildAction;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.jvnet.hudson.test.Issue;
+import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.TestBuilder;
+
+import java.io.IOException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 /**
  * @author Kohsuke Kawaguchi
  */
-public class ExecutorTest extends HudsonTestCase {
-    public void testYank() throws Exception {
-        Computer c = Jenkins.getInstance().toComputer();
-        Executor e = c.getExecutors().get(0);
+public class ExecutorTest {
+
+    @Rule
+    public JenkinsRule j = new JenkinsRule();
+
+    @Test
+    public void yank() throws Exception {
+        j.jenkins.setNumExecutors(1);
+        Computer c = j.jenkins.toComputer();
+        final Executor e = c.getExecutors().get(0);
 
         // kill an executor
         kill(e);
@@ -21,27 +45,29 @@ public class ExecutorTest extends HudsonTestCase {
         assertTrue(e.getCauseOfDeath()!=null);
 
         // test the UI
-        HtmlPage p = createWebClient().goTo("/");
+        HtmlPage p = j.createWebClient().goTo("");
         p = p.getAnchorByText("Dead (!)").click();
         assertTrue(p.getWebResponse().getContentAsString().contains(ThreadDeath.class.getName()));
-        submit(p.getFormByName("yank"));
+        j.submit(p.getFormByName("yank"));
 
         assertFalse(c.getExecutors().contains(e));
-        waitUntilExecutorSizeIs(c, 2);
+        waitUntilExecutorSizeIs(c, 1);
     }
 
-    @Bug(4756)
-    public void testWhenAnExecuterIsYankedANewExecuterTakesItsPlace() throws Exception {
-        Computer c = hudson.toComputer();
+    @Test
+    @Issue("JENKINS-4756")
+    public void whenAnExecutorIsYankedANewExecutorTakesItsPlace() throws Exception {
+        j.jenkins.setNumExecutors(1);
+
+        Computer c = j.jenkins.toComputer();
         Executor e = getExecutorByNumber(c, 0);
 
         kill(e);
         e.doYank();
 
-        waitUntilExecutorSizeIs(c, 2);
+        waitUntilExecutorSizeIs(c, 1);
 
         assertNotNull(getExecutorByNumber(c, 0));
-        assertNotNull(getExecutorByNumber(c, 1));
     }
 
     private void waitUntilExecutorSizeIs(Computer c, int executorCollectionSize) throws InterruptedException {
@@ -52,9 +78,11 @@ public class ExecutorTest extends HudsonTestCase {
         }
     }
 
-    private void kill(Executor e) throws InterruptedException {
+    private void kill(Executor e) throws InterruptedException, IOException {
         e.killHard();
-        while (e.isAlive())
+        // trigger a new build which causes the forced death of the executor
+        j.createFreeStyleProject().scheduleBuild2(0);
+        while (e.isActive())
             Thread.sleep(10);
     }
 
@@ -67,4 +95,85 @@ public class ExecutorTest extends HudsonTestCase {
         return null;
     }
 
+    /**
+     * Makes sure that the cause of interruption is properly recorded.
+     */
+    @Test
+    public void abortCause() throws Exception {
+        FreeStyleProject p = j.createFreeStyleProject();
+
+        Future<FreeStyleBuild> r = startBlockingBuild(p);
+
+        User johnny = User.get("Johnny");
+        p.getLastBuild().getExecutor().interrupt(Result.FAILURE,
+                new UserInterruption(johnny),   // test the merge semantics
+                new UserInterruption(johnny));
+
+        FreeStyleBuild b = r.get();
+
+        // make sure this information is recorded
+        assertEquals(b.getResult(), Result.FAILURE);
+        InterruptedBuildAction iba = b.getAction(InterruptedBuildAction.class);
+        assertEquals(1,iba.getCauses().size());
+        assertEquals(((UserInterruption) iba.getCauses().get(0)).getUser(), johnny);
+
+        // make sure it shows up in the log
+        assertTrue(b.getLog().contains(johnny.getId()));
+    }
+
+    @Test
+    public void disconnectCause() throws Exception {
+        DumbSlave slave = j.createOnlineSlave();
+        FreeStyleProject p = j.createFreeStyleProject();
+        p.setAssignedNode(slave);
+
+        Future<FreeStyleBuild> r = startBlockingBuild(p);
+        User johnny = User.get("Johnny");
+
+        p.getLastBuild().getBuiltOn().toComputer().disconnect(
+                new OfflineCause.UserCause(johnny, "Taking offline to break your build")
+        );
+
+        FreeStyleBuild b = r.get();
+
+        String log = b.getLog();
+        assertEquals(b.getResult(), Result.FAILURE);
+        assertThat(log, containsString("Finished: FAILURE"));
+        assertThat(log, containsString("Build step 'Bogus' marked build as failure"));
+        assertThat(log, containsString("Slave went offline during the build"));
+        assertThat(log, containsString("Disconnected by Johnny : Taking offline to break your buil"));
+    }
+
+    private Future<FreeStyleBuild> startBlockingBuild(FreeStyleProject p) throws Exception {
+        final OneShotEvent e = new OneShotEvent();
+
+        p.getBuildersList().add(new BlockingBuilder(e));
+
+        Future<FreeStyleBuild> r = p.scheduleBuild2(0);
+        e.block();  // wait until we are safe to interrupt
+        assertTrue(p.getLastBuild().isBuilding());
+
+        return r;
+    }
+
+    private static final class BlockingBuilder extends TestBuilder {
+        private final OneShotEvent e;
+
+        private BlockingBuilder(OneShotEvent e) {
+            this.e = e;
+        }
+
+        @Override
+        public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws InterruptedException, IOException {
+            VirtualChannel channel = launcher.getChannel();
+            Node node = build.getBuiltOn();
+
+            e.signal(); // we are safe to be interrupted
+            for (;;) {
+                // Keep using the channel
+                channel.call(node.getClockDifferenceCallable());
+                Thread.sleep(100);
+            }
+        }
+    }
 }
