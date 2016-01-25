@@ -33,6 +33,11 @@ public class PsuedoComputer extends Computer {
     }
 
     @Override
+    public Boolean isUnix() {
+        return true;
+    }
+
+    @Override
     public void doLaunchSlaveAgent(StaplerRequest req, StaplerResponse rsp) {
         throw new UnsupportedOperationException();
     }
