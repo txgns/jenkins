@@ -29,7 +29,7 @@ THE SOFTWARE.
   <parent>
     <groupId>com.cloudbees.dev-at-cloud.main</groupId>
     <artifactId>pom</artifactId>
-    <version>1.642.2.1-SNAPSHOT</version>
+    <version>1.642.2.1</version>
   </parent>
 
   <artifactId>jenkins-core</artifactId>
