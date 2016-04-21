@@ -10,10 +10,13 @@ import org.apache.commons.io.FileUtils;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.HttpResponse;
+import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.WebApp;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
 import javax.inject.Inject;
+import javax.servlet.http.HttpSession;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
@@ -40,6 +43,11 @@ public class UpgradeWizard extends PageDecorator {
      * Is this instance fully upgraded?
      */
     private volatile boolean upToDate;
+    
+    /**
+     * Whether to show the upgrade wizard
+     */
+    private static final String SHOW_UPGRADE_WIZARD_FLAG = UpgradeWizard.class.getName() + ".show";
 
     /**
      * File that captures the state of upgrade.
@@ -101,6 +109,38 @@ public class UpgradeWizard extends PageDecorator {
 
         return System.currentTimeMillis() > getStateFile().lastModified();
     }
+    
+    /**
+     * Whether to show the upgrade wizard
+     */
+    public boolean isShowUpgradeWizard() {
+        HttpSession session = Stapler.getCurrentRequest().getSession(false);
+        if(session != null) {
+            return Boolean.TRUE.equals(session.getAttribute(SHOW_UPGRADE_WIZARD_FLAG));
+        }
+        return false;
+    }
+    /**
+     * Call this to show the upgrade wizard
+     */
+    public HttpResponse doShowUpgradeWizard() throws Exception {
+        HttpSession session = Stapler.getCurrentRequest().getSession(true);
+        session.setAttribute(SHOW_UPGRADE_WIZARD_FLAG, true);
+        jenkins.setSetupWizard(new SetupWizard(jenkins, false));
+        return HttpResponses.redirectToContextRoot();
+    }
+    
+    /**
+     * Call this to hide the upgrade wizard
+     */
+    public HttpResponse doHideUpgradeWizard() {
+        HttpSession session = Stapler.getCurrentRequest().getSession(false);
+        if(session != null) {
+            session.removeAttribute(SHOW_UPGRADE_WIZARD_FLAG);
+        }
+        jenkins.setSetupWizard(null);
+        return HttpResponses.redirectToContextRoot();
+    }
 
     /**
      * Snooze the upgrade wizard notice.
@@ -155,6 +195,13 @@ public class UpgradeWizard extends PageDecorator {
 
     /*package*/ static final HttpResponse NOOP = HttpResponses.redirectToContextRoot();
 
+    @Extension(ordinal=1)
+    public static class WizardExtension extends SetupWizard.SetupWizardExtension {
+        @Override
+        public String getAdjunctPath() {
+            return UpgradeWizard.class.getName() + ".upgradeWizard";
+        }
+    }
 
     private static final Logger LOGGER = Logger.getLogger(UpgradeWizard.class.getName());
 }

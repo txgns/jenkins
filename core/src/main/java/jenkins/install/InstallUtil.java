@@ -74,7 +74,7 @@ public class InstallUtil {
      */
     public static InstallState getInstallState() {
         // Support a simple state override. Useful for testing.
-        String stateOverride = System.getenv("jenkins.install.state");
+        String stateOverride = System.getProperty("jenkins.install.state", System.getenv("jenkins.install.state"));
         if (stateOverride != null) {
             try {
                 return InstallState.valueOf(stateOverride.toUpperCase());

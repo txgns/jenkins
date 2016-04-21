@@ -184,9 +184,33 @@ exports.loadTranslations = function(bundleName, handler, onError) {
 			}
 			throw 'Unable to load localization data: ' + res.message;
 		}
+		
+		var translations = res.data;
+		
+		if(Proxy) {
+			translations = new Proxy(translations, {
+				get: function(target, property, receiver) {
+					console.log('lookup ' + property);
+					if(property in target) {
+						return target[property];
+					}
+					return property;
+				}
+			});
+		}
 
-		handler(res.data);
+		handler(translations);
 	});
+};
+
+/**
+ * Load a handlebars template from the server
+ */
+exports.loadTemplate = function(templateName, handler, onError) {
+	exports.get('/setupWizard/loadTemplate?templateName=' + templateName, function(template) {
+		var Handlebars = require('handlebars');
+		handler(Handlebars.compile(template));
+	}, { dataType: 'html', processData: false });
 };
 
 /**
@@ -224,9 +248,11 @@ exports.getWindow = function($form) {
 	$(top.document).find('iframe').each(function() {
 		var windowFrame = this.contentWindow;
 		var $f = $(this).contents().find('form');
-		if($f.length > 0 && $form[0] === $f[0]) {
-			wnd = windowFrame;
-		}
+		$f.each(function() {
+			if($form[0] === this) {
+				wnd = windowFrame;
+			}
+		});
 	});
 	return wnd;
 };

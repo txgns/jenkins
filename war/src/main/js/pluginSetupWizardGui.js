@@ -114,6 +114,7 @@ var createPluginSetupWizard = function(appendTarget) {
 	var setupCompletePanel = require('./templates/setupCompletePanel.hbs');
 	var proxyConfigPanel = require('./templates/proxyConfigPanel.hbs');
 	var firstUserPanel = require('./templates/firstUserPanel.hbs');
+	var securityPanel = require('./templates/securityPanel.hbs');
 	var offlinePanel = require('./templates/offlinePanel.hbs');
 	var pluginSetupWizard = require('./templates/pluginSetupWizard.hbs');
 	var incompleteInstallationPanel = require('./templates/incompleteInstallationPanel.hbs');
@@ -150,7 +151,10 @@ var createPluginSetupWizard = function(appendTarget) {
 	$wizard.appendTo(appendTarget);
 	var $container = $wizard.find('.modal-content');
 	var currentPanel;
-
+	
+	var pluginTemplates = {};
+	var self = this;
+	
 	// show tooltips; this is done here to work around a bootstrap/prototype incompatibility
 	$(document).on('mouseenter', '*[data-tooltip]', function() {
 		var $tip = $bs(this);
@@ -333,14 +337,38 @@ var createPluginSetupWizard = function(appendTarget) {
 			installPlugins(pluginManager.recommendedPluginNames());
 		});
 	};
+	
+	// indicates 
+	var transitionPanel = function(state) {
+		if(/CREATE_ADMIN_USER/.test(state)) {
+			setupFirstUser();
+			return true;
+		}
+		if(/CONFIGURE_SECURITY/.test(state)) {
+			setupSecurity();
+			return true;
+		}
+		if(/INITIAL_SETUP_COMPLETED/.test(state)) {
+			setPanel(setupCompletePanel);
+			return true;
+		}
+		if(/INITIAL_PLUGINS_INSTALLING/.test(state)) {
+			showInstallProgress();
+			return true;
+		}
+		return false;
+	};
+	
+	var checkStateAndNavigate = function() {
+		pluginManager.installStatus(handleGenericError(function(data) {
+			transitionPanel(data.state);
+		}));
+	};
 
 	// Define actions
 	var showInstallProgress = function(state) {
-		if(state) {
-			if(/CREATE_ADMIN_USER/.test(state)) {
-				setupFirstUser();
-				return;
-			}
+		if(state && transitionPanel(state)) {
+			return;
 		}
 
 		initInstallingPluginList();
@@ -440,7 +468,7 @@ var createPluginSetupWizard = function(appendTarget) {
 				else {
 					// mark complete
 					$('.progress-bar').css({width: '100%'});
-					setupFirstUser();
+					checkStateAndNavigate();
 				}
 			}));
 		};
@@ -698,33 +726,52 @@ var createPluginSetupWizard = function(appendTarget) {
 		setPanel(firstUserPanel, {}, enableButtonsAfterFrameLoad);
 	};
 	
+	var setupSecurity = function() {
+		setPanel(securityPanel, {}, enableButtonsAfterFrameLoad);
+	};
+	
+	var handleStaplerSubmit = function(data) {
+		if(data.status && data.status > 200) {
+			// Nothing we can really do here
+			setPanel(errorPanel, { errorMessage: data.statusText });
+			return;
+		}
+		
+		try {
+			if(JSON.parse(data).status == 'ok') {
+				checkStateAndNavigate();
+				return;
+			}
+		} catch(e) {
+			// ignore JSON parsing issues, this may be HTML
+		}
+		// we get 200 OK
+		var $page = $(data);
+		var $errors = $page.find('.error');
+		if($errors.length > 0) {
+			var $main = $page.find('#main-panel').detach();
+			if($main.length > 0) {
+				data = data.replace(/body([^>]*)[>](.|[\r\n])+[<][/]body/,'body$1>'+$main.html()+'</body');
+			}
+			var doc = $('iframe[src]').contents()[0];
+			doc.open();
+			doc.write(data);
+			doc.close();
+		}
+		else {
+			checkStateAndNavigate();
+		}
+	};
+	
 	// call to submit the firstuser
 	var saveFirstUser = function() {
 		$('button').prop({disabled:true});
-		var handleSubmit = function(data) {
-			if(data.status && data.status > 200) {
-				// Nothing we can really do here
-				setPanel(errorPanel, { errorMessage: data.statusText });
-				return;
-			}
-			// we get 200 OK
-			var $page = $(data);
-			var $errors = $page.find('.error');
-			if($errors.length > 0) {
-				var $main = $page.find('#main-panel').detach();
-				if($main.length > 0) {
-					data = data.replace(/body([^>]*)[>](.|[\r\n])+[<][/]body/,'body$1>'+$main.html()+'</body');
-				}
-				var doc = $('iframe[src]').contents()[0];
-				doc.open();
-				doc.write(data);
-				doc.close();
-			}
-			else {
-				setPanel(setupCompletePanel);
-			}
-		};
-		securityConfig.saveFirstUser($('iframe[src]').contents().find('form:not(.no-json)'), handleSubmit, handleSubmit);
+		securityConfig.saveFirstUser($('iframe[src]').contents().find('form:not(.no-json)'), handleStaplerSubmit, handleStaplerSubmit);
+	};
+
+	var saveSecurity = function() {
+		$('button').prop({disabled:true});
+		securityConfig.saveSecurity($('iframe[src]').contents().find('form[name=config]'), handleStaplerSubmit, handleStaplerSubmit);
 	};
 	
 	var skipFirstUser = function() {
@@ -743,6 +790,7 @@ var createPluginSetupWizard = function(appendTarget) {
 			jenkins.goTo('/'); // this will re-run connectivity test
 		});
 	};
+	
 	
 	// Call this to resume an installation after restart
 	var resumeInstallation = function() {
@@ -822,6 +870,7 @@ var createPluginSetupWizard = function(appendTarget) {
 		'.skip-first-user': skipFirstUser,
 		'.show-proxy-config': setupProxy,
 		'.save-proxy-config': saveProxyConfig,
+		'.save-security': saveSecurity,
 		'.skip-plugin-installs': function() { installPlugins([]); },
 		'.start-over': startOver
 	};
@@ -831,11 +880,39 @@ var createPluginSetupWizard = function(appendTarget) {
 
 	// do this so the page isn't blank while doing connectivity checks and other downloads
 	setPanel(loadingPanel);
-
+	
+	// Process extensions
+	$.each(setupWizardExtensions, function() {
+		this.call(self, { '$wizard': $wizard, pluginTemplates: pluginTemplates, setPanel: setPanel });
+	});
+	
 	// kick off to get resource bundle
 	jenkins.loadTranslations('jenkins.install.pluginSetupWizard', handleGenericError(function(localizations) {
 		translations = localizations;
+		
+		// check for a start page
+		var initialPanelName = $(appendTarget).attr('data-show-wizard');
+		if(initialPanelName) {
+			try {
+				if(pluginTemplates[initialPanelName]) {
+					setPanel(pluginTemplates[initialPanelName]);
+					return;
+				}
+				var panelToShow = require('./templates/'+initialPanelName+'.hbs');
+				setPanel(panelToShow);
+			} catch(e) {
+				setPanel(loadingPanel);
+				jenkins.loadTemplate(initialPanelName, function(panel) {
+					setPanel(panel);
+				});
+			}
+			return; // don't bother with connectivity checks and such here
+		}
 
+		showInitialSetupWizard();
+	}));
+	
+	var showInitialSetupWizard = function() {
 		// check for connectivity
 		jenkins.testConnectivity(handleGenericError(function(isConnected) {
 			if(!isConnected) {
@@ -925,7 +1002,7 @@ var createPluginSetupWizard = function(appendTarget) {
 				}));
 			}));
 		}));
-	}));
+	};
 };
 
 // export wizard creation method

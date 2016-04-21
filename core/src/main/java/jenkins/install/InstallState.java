@@ -25,63 +25,88 @@ package jenkins.install;
 
 import javax.annotation.CheckForNull;
 
-import org.kohsuke.accmod.Restricted;
-import org.kohsuke.accmod.restrictions.NoExternalUse;
+import hudson.Extension;
+import hudson.ExtensionList;
+import hudson.ExtensionPoint;
+import hudson.security.HudsonPrivateSecurityRealm;
+import jenkins.model.Jenkins;
 
 /**
  * Jenkins install state.
  *
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
-@Restricted(NoExternalUse.class)
-public enum InstallState {
+public class InstallState implements ExtensionPoint {
     /**
      * Need InstallState != NEW for tests by default
      */
-    UNKNOWN(true, null),
+    @Extension
+    public static final InstallState UNKNOWN = new InstallState("UNKNOWN", true, null);
     /**
      * The initial set up has been completed
      */
-    INITIAL_SETUP_COMPLETED(true, null),
+    @Extension
+    public static final InstallState INITIAL_SETUP_COMPLETED = new InstallState("INITIAL_SETUP_COMPLETED", true, null);
     /**
      * Creating an admin user for an initial Jenkins install.
      */
-    CREATE_ADMIN_USER(false, INITIAL_SETUP_COMPLETED),
+    @Extension
+    public static final InstallState CREATE_ADMIN_USER = new InstallState("CREATE_ADMIN_USER", false, INITIAL_SETUP_COMPLETED);
+    /**
+     * Configure security
+     */
+    @Extension
+    public static final InstallState CONFIGURE_SECURITY = new InstallState("CONFIGURE_SECURITY", false, CREATE_ADMIN_USER) {
+        @Override
+        public InstallState getNextState() {
+            if(Jenkins.getInstance().getSecurityRealm() instanceof HudsonPrivateSecurityRealm) {
+                return CREATE_ADMIN_USER;
+            }
+            return INITIAL_SETUP_COMPLETED;
+        }
+    };
     /**
      * New Jenkins install. The user has kicked off the process of installing an
      * initial set of plugins (via the install wizard).
      */
-    INITIAL_PLUGINS_INSTALLING(false, CREATE_ADMIN_USER),
+    @Extension
+    public static final InstallState INITIAL_PLUGINS_INSTALLING = new InstallState("INITIAL_PLUGINS_INSTALLING", false, CREATE_ADMIN_USER);
     /**
      * New Jenkins install.
      */
-    NEW(false, INITIAL_PLUGINS_INSTALLING),
+    @Extension
+    public static final InstallState NEW = new InstallState("NEW", false, INITIAL_PLUGINS_INSTALLING);
     /**
      * Restart of an existing Jenkins install.
      */
-    RESTART(true, INITIAL_SETUP_COMPLETED),
+    @Extension
+    public static final InstallState RESTART = new InstallState("RESTART", true, INITIAL_SETUP_COMPLETED);
     /**
      * Upgrade of an existing Jenkins install.
      */
-    UPGRADE(true, INITIAL_SETUP_COMPLETED),
+    @Extension
+    public static final InstallState UPGRADE = new InstallState("UPGRADE", true, INITIAL_SETUP_COMPLETED);
     /**
      * Downgrade of an existing Jenkins install.
      */
-    DOWNGRADE(true, INITIAL_SETUP_COMPLETED),
+    @Extension
+    public static final InstallState DOWNGRADE = new InstallState("DOWNGRADE", true, INITIAL_SETUP_COMPLETED);
     /**
      * Jenkins started in test mode (JenkinsRule).
      */
-    TEST(true, INITIAL_SETUP_COMPLETED),
+    public static final InstallState TEST = new InstallState("TEST", true, INITIAL_SETUP_COMPLETED);
     /**
      * Jenkins started in development mode: Bolean.getBoolean("hudson.Main.development").
      * Can be run normally with the -Djenkins.install.runSetupWizard=true
      */
-    DEVELOPMENT(true, INITIAL_SETUP_COMPLETED);
+    public static final InstallState DEVELOPMENT = new InstallState("DEVELOPMENT", true, INITIAL_SETUP_COMPLETED);
 
     private final boolean isSetupComplete;
     private final InstallState nextState;
+    private final String name;
 
-    private InstallState(boolean isSetupComplete, InstallState nextState) {
+    private InstallState(String name, boolean isSetupComplete, InstallState nextState) {
+        this.name = name;
         this.isSetupComplete = isSetupComplete;
         this.nextState = nextState;
     }
@@ -99,5 +124,23 @@ public enum InstallState {
     @CheckForNull
     public InstallState getNextState() {
         return nextState;
+    }
+    
+    public String name() {
+        return name;
+    }
+
+    /**
+     * Find an install state by name
+     * @param name
+     * @return
+     */
+    public static InstallState valueOf(String name) {
+        for(InstallState state : ExtensionList.lookup(InstallState.class)) {
+            if(name.equals(state.name)) {
+                return state;
+            }
+        }
+        return null;
     }
 }

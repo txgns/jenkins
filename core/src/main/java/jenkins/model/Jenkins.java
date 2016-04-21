@@ -46,6 +46,7 @@ import hudson.Launcher;
 import hudson.Launcher.LocalLauncher;
 import hudson.LocalPluginManager;
 import hudson.Lookup;
+import hudson.Main;
 import hudson.Plugin;
 import hudson.PluginManager;
 import hudson.PluginWrapper;
@@ -210,6 +211,7 @@ import jenkins.slaves.WorkspaceLocator;
 import jenkins.util.JenkinsJVM;
 import jenkins.util.Timer;
 import jenkins.util.io.FileBoolean;
+import jenkins.util.xml.XMLUtils;
 import net.jcip.annotations.GuardedBy;
 import net.sf.json.JSONObject;
 import org.acegisecurity.AccessDeniedException;
@@ -879,7 +881,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
             
             if(!installState.isSetupComplete()) {
                 // Start immediately with the setup wizard for new installs
-                setupWizard = new SetupWizard(this);
+                setupWizard = new SetupWizard(this, true);
             }
 
             launchTcpSlaveAgentListener();
@@ -973,15 +975,6 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
     @Restricted(NoExternalUse.class)
     public void setInstallState(@Nonnull InstallState newState) {
         installState = newState;
-    }
-
-    /**
-     * Get the URL path to the Install Wizard JavaScript.
-     * @return The URL path to the Install Wizard JavaScript.
-     */
-    @Restricted(NoExternalUse.class)
-    public String getInstallWizardPath() {
-        return servletContext.getInitParameter("install-wizard-path");
     }
 
     /**
@@ -4581,6 +4574,26 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
         }
         String ver = props.getProperty("version");
         if(ver==null)   ver = UNCOMPUTED_VERSION;
+        if(Main.isDevelopmentMode && "${build.version}".equals(ver)) {
+            // in dev mode, unable to get version (ahem Eclipse)
+            try {
+                File dir = new File(".").getAbsoluteFile();
+                while(dir != null) {
+                    File pom = new File(dir, "pom.xml");
+                    if (pom.exists() && "pom".equals(XMLUtils.getValue("/project/artifactId", pom))) {
+                        pom =  pom.getCanonicalFile();
+                        LOGGER.info("Reading version from: " + pom.getAbsolutePath());
+                        ver = XMLUtils.getValue("/project/version", pom);
+                        break;
+                    }
+                    dir = dir.getParentFile();
+                }
+                LOGGER.info("Jenkins is in dev mode, using version: " + ver);
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Unable to read Jenkins version: " + e.getMessage(), e);
+            }
+        }
+        
         VERSION = ver;
         context.setAttribute("version",ver);
 

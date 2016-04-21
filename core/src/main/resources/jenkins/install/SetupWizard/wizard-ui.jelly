@@ -1,0 +1,12 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form" xmlns:st="jelly:stapler">
+  <script type="text/javascript">
+    var setupWizardExtensions = [];
+    var setupWizardExtension = function(extension) {
+      setupWizardExtensions.push(extension);
+    };
+  </script>
+  <j:forEach var="clientScript" items="${app.setupWizard.clientScripts}">
+    <st:adjunct includes="${clientScript.adjunctPath}" />
+  </j:forEach>
+</j:jelly>
