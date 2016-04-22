@@ -210,7 +210,7 @@ var createPluginSetupWizard = function(appendTarget) {
 				decorate($container);
 				
 				var $modalHeader = $container.find('.modal-header');
-				if($modalHeader.length > 0) {
+				if($modalHeader.length > 0 && $modalHeader.is('.closeable')) {
 					$modalHeader.prepend(
 						'<button type="button" class="close" aria-label="Close"><span aria-hidden="true">&times;</span></button>');
 				}
@@ -862,7 +862,7 @@ var createPluginSetupWizard = function(appendTarget) {
 		'.plugin-select-recommended': function() { selectedPluginNames = pluginManager.recommendedPluginNames(); refreshPluginSelectionPanel(); },
 		'.plugin-show-selected': toggleSelectedSearch,
 		'.select-category': selectCategory,
-		'.close': closeInstaller,
+		'.close': skipFirstUser,
 		'.resume-installation': resumeInstallation,
 		'.install-done-restart': restartJenkins,
 		'.save-first-user:not([disabled])': saveFirstUser,
