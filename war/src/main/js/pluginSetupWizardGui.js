@@ -1,7 +1,6 @@
 /**
  * Jenkins first-run install wizard
  */
-
 // Require modules here, make sure they get browserify'd/bundled
 var jquery = require('jquery-detached');
 var bootstrap = require('bootstrap-detached');
@@ -882,35 +881,11 @@ var createPluginSetupWizard = function(appendTarget) {
 	setPanel(loadingPanel);
 	
 	// Process extensions
-	$.each(setupWizardExtensions, function() {
-		this.call(self, { '$wizard': $wizard, pluginTemplates: pluginTemplates, setPanel: setPanel });
-	});
-	
-	// kick off to get resource bundle
-	jenkins.loadTranslations('jenkins.install.pluginSetupWizard', handleGenericError(function(localizations) {
-		translations = localizations;
-		
-		// check for a start page
-		var initialPanelName = $(appendTarget).attr('data-show-wizard');
-		if(initialPanelName) {
-			try {
-				if(pluginTemplates[initialPanelName]) {
-					setPanel(pluginTemplates[initialPanelName]);
-					return;
-				}
-				var panelToShow = require('./templates/'+initialPanelName+'.hbs');
-				setPanel(panelToShow);
-			} catch(e) {
-				setPanel(loadingPanel);
-				jenkins.loadTemplate(initialPanelName, function(panel) {
-					setPanel(panel);
-				});
-			}
-			return; // don't bother with connectivity checks and such here
-		}
-
-		showInitialSetupWizard();
-	}));
+	if ('undefined' != typeof(setupWizardExtensions)) {
+		$.each(setupWizardExtensions, function() {
+			this.call(self, { '$wizard': $wizard, pluginTemplates: pluginTemplates, setPanel: setPanel });
+		});
+	}
 	
 	var showInitialSetupWizard = function() {
 		// check for connectivity
@@ -1003,6 +978,33 @@ var createPluginSetupWizard = function(appendTarget) {
 			}));
 		}));
 	};
+	
+	// kick off to get resource bundle
+	jenkins.loadTranslations('jenkins.install.pluginSetupWizard', handleGenericError(function(localizations) {
+		translations = localizations;
+		
+		// check for a start page
+		var initialPanelName = $(appendTarget).attr('data-show-wizard');
+		if(initialPanelName) {
+			try {
+				if(pluginTemplates[initialPanelName]) {
+					setPanel(pluginTemplates[initialPanelName]);
+					return;
+				}
+				var panelToShow = require('./templates/'+initialPanelName+'.hbs');
+				setPanel(panelToShow);
+			} catch(e) {
+				setPanel(loadingPanel);
+				jenkins.loadTemplate(initialPanelName, function(panel) {
+					setPanel(panel);
+				});
+			}
+			return; // don't bother with connectivity checks and such here
+		}
+
+		showInitialSetupWizard();
+	}));
+	
 };
 
 // export wizard creation method

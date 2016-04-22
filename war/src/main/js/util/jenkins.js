@@ -187,7 +187,7 @@ exports.loadTranslations = function(bundleName, handler, onError) {
 		
 		var translations = res.data;
 		
-		if(Proxy) {
+		if('undefined' !== typeof(Proxy)) {
 			translations = new Proxy(translations, {
 				get: function(target, property, receiver) {
 					console.log('lookup ' + property);
