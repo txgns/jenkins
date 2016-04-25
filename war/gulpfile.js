@@ -20,7 +20,7 @@ builder.bundle('src/main/js/pluginSetupWizard.js')
     .withExternalModuleMapping('bootstrap', 'core-assets/bootstrap:bootstrap3', {addDefaultCSS: true})
     .withExternalModuleMapping('handlebars', 'core-assets/handlebars:handlebars3')
     .less('src/main/less/pluginSetupWizard.less')
-    .inDir('target/generated-resources/frontend/jenkins/install/SetupWizard');
+    .inDir('src/main/webapp/jsbundles');
 
 //
 //Bundle the Upgrade Wizard.
@@ -29,7 +29,7 @@ builder.bundle('src/main/js/upgradeWizard.js')
  .withExternalModuleMapping('jquery-detached', 'core-assets/jquery-detached:jquery2')
  .withExternalModuleMapping('bootstrap', 'core-assets/bootstrap:bootstrap3', {addDefaultCSS: true})
  .withExternalModuleMapping('handlebars', 'core-assets/handlebars:handlebars3')
- .inDir('target/generated-resources/frontend/jenkins/install/UpgradeWizard');
+ .inDir('src/main/webapp/jsbundles');
 
 //
 // Bundle the Config Tab Bar.

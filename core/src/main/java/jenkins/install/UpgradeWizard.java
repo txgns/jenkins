@@ -195,11 +195,11 @@ public class UpgradeWizard extends PageDecorator {
 
     /*package*/ static final HttpResponse NOOP = HttpResponses.redirectToContextRoot();
 
-    @Extension(ordinal=1)
+    @Extension
     public static class WizardExtension extends SetupWizard.SetupWizardExtension {
         @Override
-        public String getAdjunctPath() {
-            return UpgradeWizard.class.getName() + ".upgradeWizard";
+        public Class<?> getExtensionType() {
+            return UpgradeWizard.class;
         }
     }
 

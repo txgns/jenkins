@@ -58,7 +58,7 @@
         </a>
         <div id="upgrade-notice">
           <j:whitespace>${%msg.before}</j:whitespace> 
-          <f:link href="${rootURL}/${it.url}/showUpgradeWizard" post="true">${%Upgrade Now}</f:link>
+          <f:link href="${rootURL}/${it.url}/showUpgradeWizard" post="true">${%msg.link}</f:link>
           <j:whitespace>${%msg.after}</j:whitespace>
         </div>
       </div>
@@ -70,11 +70,9 @@
         $('page-body').insert({ top: e });
       })();
     </script>
-    
     <j:if test="${it.showUpgradeWizard}">
-      <j:invokeStatic var="j" className="jenkins.model.Jenkins" method="getInstance" />
       <div class="plugin-setup-wizard-container" data-show-wizard="upgradeTo20Panel"></div>
-      <st:include it="${j.setupWizard}" page="wizard-ui" />
+      <st:include it="${app.setupWizard}" page="wizard-ui" />
     </j:if>
   </j:if>
 </j:jelly>

@@ -154,6 +154,8 @@ ${h.initPageVariables(context)}
         <st:include it="${pd}" page="header.jelly" optional="true" />
       </j:forEach>
     </j:if>
+    
+    <st:include it="${app.setupWizard}" page="client-scripts" optional="true"/>
 
     <j:if test="${isMSIE}">
       <script src="${resURL}/scripts/msie.js" type="text/javascript"/>

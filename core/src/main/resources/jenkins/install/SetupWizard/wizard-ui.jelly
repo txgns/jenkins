@@ -6,7 +6,8 @@
       setupWizardExtensions.push(extension);
     };
   </script>
-  <j:forEach var="clientScript" items="${app.setupWizard.clientScripts}">
-    <st:adjunct includes="${clientScript.adjunctPath}" />
+  <j:forEach var="setupExtension" items="${app.setupWizard.extensions}">
+    <st:include it="${setupExtension}" page="client-scripts" optional="true" />
   </j:forEach>
+  <st:include page="client-scripts" />
 </j:jelly>

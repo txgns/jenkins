@@ -338,21 +338,15 @@ var createPluginSetupWizard = function(appendTarget) {
 	};
 	
 	// indicates 
+	var transitions = {
+		CREATE_ADMIN_USER: setupFirstUser,
+		CONFIGURE_SECURITY: setupSecurity,
+		INITIAL_SETUP_COMPLETED: function() { setPanel(setupCompletePanel); },
+		INITIAL_PLUGINS_INSTALLING: showInstallProgress
+	};
 	var transitionPanel = function(state) {
-		if(/CREATE_ADMIN_USER/.test(state)) {
-			setupFirstUser();
-			return true;
-		}
-		if(/CONFIGURE_SECURITY/.test(state)) {
-			setupSecurity();
-			return true;
-		}
-		if(/INITIAL_SETUP_COMPLETED/.test(state)) {
-			setPanel(setupCompletePanel);
-			return true;
-		}
-		if(/INITIAL_PLUGINS_INSTALLING/.test(state)) {
-			showInstallProgress();
+		if(state in transitions) {
+			transitions[state]();
 			return true;
 		}
 		return false;
@@ -873,9 +867,6 @@ var createPluginSetupWizard = function(appendTarget) {
 		'.skip-plugin-installs': function() { installPlugins([]); },
 		'.start-over': startOver
 	};
-	for(var cls in actions) {
-		bindClickHandler(cls, actions[cls]);
-	}
 
 	// do this so the page isn't blank while doing connectivity checks and other downloads
 	setPanel(loadingPanel);
@@ -883,8 +874,18 @@ var createPluginSetupWizard = function(appendTarget) {
 	// Process extensions
 	if ('undefined' != typeof(setupWizardExtensions)) {
 		$.each(setupWizardExtensions, function() {
-			this.call(self, { '$wizard': $wizard, pluginTemplates: pluginTemplates, setPanel: setPanel });
+			this.call(self, {
+				'$wizard': $wizard,
+				pluginTemplates: pluginTemplates,
+				setPanel: setPanel,
+				actions: actions,
+				transitions: transitions
+			});
 		});
+	}
+	
+	for(var cls in actions) {
+		bindClickHandler(cls, actions[cls]);
 	}
 	
 	var showInitialSetupWizard = function() {

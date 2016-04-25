@@ -3,6 +3,7 @@ package jenkins.install;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -224,19 +225,22 @@ public class SetupWizard {
      * });
      * </pre>
      */
-    @Extension(ordinal=Double.MAX_VALUE)
-    public static class SetupWizardExtension implements ExtensionPoint {
+    public abstract static class SetupWizardExtension implements ExtensionPoint {
         public static List<SetupWizardExtension> all() {
             return ExtensionList.lookup(SetupWizardExtension.class);
         }
         
-        public String getAdjunctPath() {
-            return SetupWizard.class.getName() + ".pluginSetupWizard";
+        public Class<?> getExtensionType() {
+            return SetupWizard.class;
         }
     }
     
-    public List<SetupWizardExtension> getClientScripts() {
-        return SetupWizardExtension.all();
+    public List<Object> getExtensions() {
+        List<Object> out = new ArrayList<>();
+        for(SetupWizardExtension ext : SetupWizardExtension.all()) {
+            out.add(jenkins.getInjector().getInstance(ext.getExtensionType()));
+        }
+        return out;
     }
     
     private final String[] searchPrefixes = { "/", "/jsbundles/templates/" };
