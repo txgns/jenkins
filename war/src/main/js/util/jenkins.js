@@ -190,10 +190,10 @@ exports.loadTranslations = function(bundleName, handler, onError) {
 		if('undefined' !== typeof(Proxy)) {
 			translations = new Proxy(translations, {
 				get: function(target, property, receiver) {
-					console.log('lookup ' + property);
 					if(property in target) {
 						return target[property];
 					}
+					console.log('"' + property + '" not found in translation bundle.');
 					return property;
 				}
 			});

@@ -349,7 +349,21 @@ var createPluginSetupWizard = function(appendTarget) {
 		});
 	};
 	
-	// indicates 
+	var enableButtonsAfterFrameLoad = function() {
+		$('iframe[src]').load(function() {
+			$('button').prop({disabled:false});
+		});
+	};
+	
+	var setupFirstUser = function() {
+		setPanel(firstUserPanel, {}, enableButtonsAfterFrameLoad);
+	};
+	
+	var setupSecurity = function() {
+		setPanel(securityPanel, {}, enableButtonsAfterFrameLoad);
+	};
+	
+	// used to handle displays based on current Jenkins install state
 	var transitions = {
 		CREATE_ADMIN_USER: setupFirstUser,
 		CONFIGURE_SECURITY: setupSecurity,
@@ -727,20 +741,6 @@ var createPluginSetupWizard = function(appendTarget) {
 		else {
 			$c.slideDown();
 		}
-	};
-	
-	var enableButtonsAfterFrameLoad = function() {
-		$('iframe[src]').load(function() {
-			$('button').prop({disabled:false});
-		});
-	};
-	
-	var setupFirstUser = function() {
-		setPanel(firstUserPanel, {}, enableButtonsAfterFrameLoad);
-	};
-	
-	var setupSecurity = function() {
-		setPanel(securityPanel, {}, enableButtonsAfterFrameLoad);
 	};
 	
 	var handleStaplerSubmit = function(data) {
