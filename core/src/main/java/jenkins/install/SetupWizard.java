@@ -242,18 +242,6 @@ public class SetupWizard {
         return out;
     }
     
-    private final String[] searchPrefixes = { "/", "/jsbundles/templates/" };
-    /**
-     * Loads handlebars templates based classpath lookups ServletContext.getResource()
-     */
-    public HttpResponse doLoadTemplate(@QueryParameter String templateName) throws MalformedURLException {
-        for (String searchPrefix : searchPrefixes) {
-            URL resource = jenkins.servletContext.getResource(searchPrefix+templateName+".hbs");
-            return HttpResponses.staticResource(resource);
-        }
-        return HttpResponses.error(HttpServletResponse.SC_NOT_FOUND, "");
-    }
-
     /**
      * Remove the setupWizard filter, ensure all updates are written to disk, etc
      */

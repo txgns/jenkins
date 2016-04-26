@@ -204,16 +204,6 @@ exports.loadTranslations = function(bundleName, handler, onError) {
 };
 
 /**
- * Load a handlebars template from the server
- */
-exports.loadTemplate = function(templateName, handler, onError) {
-	exports.get('/setupWizard/loadTemplate?templateName=' + templateName, function(template) {
-		var Handlebars = require('handlebars');
-		handler(Handlebars.compile(template));
-	}, { dataType: 'html', processData: false });
-};
-
-/**
  * Runs a connectivity test, calls handler with a boolean whether there is sufficient connectivity to the internet
  */
 exports.testConnectivity = function(handler) {

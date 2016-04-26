@@ -365,10 +365,10 @@ var createPluginSetupWizard = function(appendTarget) {
 	
 	// used to handle displays based on current Jenkins install state
 	var transitions = {
-		CREATE_ADMIN_USER: setupFirstUser,
-		CONFIGURE_SECURITY: setupSecurity,
+		CREATE_ADMIN_USER: function() { setupFirstUser(); },
+		CONFIGURE_SECURITY: function() { setupSecurity(); },
 		INITIAL_SETUP_COMPLETED: function() { setPanel(setupCompletePanel); },
-		INITIAL_PLUGINS_INSTALLING: showInstallProgress
+		INITIAL_PLUGINS_INSTALLING: function() { showInstallProgress(); }
 	};
 	var transitionPanel = function(state) {
 		if(state in transitions) {
@@ -1036,17 +1036,13 @@ var createPluginSetupWizard = function(appendTarget) {
 				var panelToShow = require('./templates/'+initialPanelName+'.hbs');
 				setPanel(panelToShow);
 			} catch(e) {
-				setPanel(loadingPanel);
-				jenkins.loadTemplate(initialPanelName, function(panel) {
-					setPanel(panel);
-				});
+				setPanel(errorPanel, { errorMessage: 'Missing: ' + initialPanelName });
 			}
 			return; // don't bother with connectivity checks and such here
 		}
-
+		
 		showInitialSetupWizard();
 	}));
-	
 };
 
 // export wizard creation method
