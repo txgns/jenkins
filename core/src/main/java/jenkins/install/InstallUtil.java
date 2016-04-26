@@ -122,7 +122,7 @@ public class InstallUtil {
             // Edge case: used Jenkins 1 but did not save the system config page,
             // the version is not persisted and returns 1.0, so try to check if
             // they actually did anything
-            if (!j.getItemMap().isEmpty() || !mayBeJenkins2SecurityDefaults(j)) {
+            if (!j.getItemMap().isEmpty() || !mayBeJenkins2SecurityDefaults(j) || !j.getNodes().isEmpty()) {
                 return InstallState.UPGRADE;
             }
             return InstallState.NEW;
@@ -146,7 +146,8 @@ public class InstallUtil {
      * where someone installed 1.x and did not save global config or create any items...
      */
     private static boolean mayBeJenkins2SecurityDefaults(Jenkins j) {
-        if(j.getSecurityRealm() == SecurityRealm.NO_AUTHENTICATION) { // called before security set up first
+        // may be called before security set up first
+        if(j.getSecurityRealm() == SecurityRealm.NO_AUTHENTICATION && j.getCrumbIssuer() == null) { 
             return true;
         }
         if(j.getSecurityRealm() instanceof HudsonPrivateSecurityRealm) { // might be called after a restart, setup isn't complete

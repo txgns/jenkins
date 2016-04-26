@@ -31,7 +31,6 @@ import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
 import hudson.BulkChange;
-import hudson.Extension;
 import hudson.ExtensionList;
 import hudson.ExtensionPoint;
 import hudson.FilePath;
@@ -264,9 +263,10 @@ public class SetupWizard {
         return HttpResponses.okJSON();
     }
     
-    static void completeSetup(Jenkins jenkins) {
+    static void completeSetup(Jenkins jenkins) throws IOException {
         jenkins.setInstallState(InstallState.INITIAL_SETUP_COMPLETED);
         InstallUtil.saveLastExecVersion();
+        UpgradeWizard.completeUpgrade(jenkins);
         // Also, clean up the setup wizard if it's completed
         jenkins.setSetupWizard(null);
     }
