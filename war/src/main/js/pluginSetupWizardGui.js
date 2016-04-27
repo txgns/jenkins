@@ -114,7 +114,6 @@ var createPluginSetupWizard = function(appendTarget) {
 	var setupCompletePanel = require('./templates/setupCompletePanel.hbs');
 	var proxyConfigPanel = require('./templates/proxyConfigPanel.hbs');
 	var firstUserPanel = require('./templates/firstUserPanel.hbs');
-	var securityPanel = require('./templates/securityPanel.hbs');
 	var offlinePanel = require('./templates/offlinePanel.hbs');
 	var pluginSetupWizard = require('./templates/pluginSetupWizard.hbs');
 	var incompleteInstallationPanel = require('./templates/incompleteInstallationPanel.hbs');
@@ -359,14 +358,9 @@ var createPluginSetupWizard = function(appendTarget) {
 		setPanel(firstUserPanel, {}, enableButtonsAfterFrameLoad);
 	};
 	
-	var setupSecurity = function() {
-		setPanel(securityPanel, {}, enableButtonsAfterFrameLoad);
-	};
-	
 	// used to handle displays based on current Jenkins install state
 	var transitions = {
 		CREATE_ADMIN_USER: function() { setupFirstUser(); },
-		CONFIGURE_SECURITY: function() { setupSecurity(); },
 		INITIAL_SETUP_COMPLETED: function() { setPanel(setupCompletePanel); },
 		INITIAL_PLUGINS_INSTALLING: function() { showInstallProgress(); }
 	};
@@ -782,11 +776,6 @@ var createPluginSetupWizard = function(appendTarget) {
 		securityConfig.saveFirstUser($('iframe[src]').contents().find('form:not(.no-json)'), handleStaplerSubmit, handleStaplerSubmit);
 	};
 
-	var saveSecurity = function() {
-		$('button').prop({disabled:true});
-		securityConfig.saveSecurity($('iframe[src]').contents().find('form[name=config]'), handleStaplerSubmit, handleStaplerSubmit);
-	};
-	
 	var skipFirstUser = function() {
 		$('button').prop({disabled:true});
 		setPanel(setupCompletePanel, {message: translations.installWizard_firstUserSkippedMessage});
@@ -900,7 +889,6 @@ var createPluginSetupWizard = function(appendTarget) {
 		'.skip-first-user': skipFirstUser,
 		'.show-proxy-config': setupProxy,
 		'.save-proxy-config': saveProxyConfig,
-		'.save-security': saveSecurity,
 		'.skip-plugin-installs': function() { installPlugins([]); },
 		'.retry-failed-plugins': retryFailedPlugins,
 		'.continue-with-failed-plugins': continueWithFailedPlugins,

@@ -28,8 +28,6 @@ import javax.annotation.CheckForNull;
 import hudson.Extension;
 import hudson.ExtensionList;
 import hudson.ExtensionPoint;
-import hudson.security.HudsonPrivateSecurityRealm;
-import jenkins.model.Jenkins;
 
 /**
  * Jenkins install state.
@@ -52,19 +50,6 @@ public class InstallState implements ExtensionPoint {
      */
     @Extension
     public static final InstallState CREATE_ADMIN_USER = new InstallState("CREATE_ADMIN_USER", false, INITIAL_SETUP_COMPLETED);
-    /**
-     * Configure security
-     */
-    @Extension
-    public static final InstallState CONFIGURE_SECURITY = new InstallState("CONFIGURE_SECURITY", false, CREATE_ADMIN_USER) {
-        @Override
-        public InstallState getNextState() {
-            if(Jenkins.getInstance().getSecurityRealm() instanceof HudsonPrivateSecurityRealm) {
-                return CREATE_ADMIN_USER;
-            }
-            return INITIAL_SETUP_COMPLETED;
-        }
-    };
     /**
      * New Jenkins install. The user has kicked off the process of installing an
      * initial set of plugins (via the install wizard).

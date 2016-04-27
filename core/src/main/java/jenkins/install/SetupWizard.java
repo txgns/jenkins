@@ -1,8 +1,6 @@
 package jenkins.install;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -18,7 +16,6 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
-import javax.servlet.http.HttpServletResponse;
 
 import org.acegisecurity.Authentication;
 import org.acegisecurity.context.SecurityContextHolder;
@@ -26,7 +23,6 @@ import org.acegisecurity.providers.UsernamePasswordAuthenticationToken;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.HttpResponse;
-import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
@@ -34,11 +30,9 @@ import hudson.BulkChange;
 import hudson.ExtensionList;
 import hudson.ExtensionPoint;
 import hudson.FilePath;
-import hudson.model.Descriptor.FormException;
 import hudson.model.UpdateCenter;
 import hudson.model.User;
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
-import hudson.security.GlobalSecurityConfiguration;
 import hudson.security.HudsonPrivateSecurityRealm;
 import hudson.security.SecurityRealm;
 import hudson.security.csrf.DefaultCrumbIssuer;
@@ -258,22 +252,7 @@ public class SetupWizard {
         // Also, clean up the setup wizard if it's completed
         jenkins.setSetupWizard(null);
     }
-    
-    /**
-     * Handle security configuration
-     */
-    public HttpResponse doSaveSecurityConfig(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, FormException {
-        jenkins.checkPermission(Jenkins.ADMINISTER); // this is redundant, maybe
-        GlobalSecurityConfiguration securityConfig = (GlobalSecurityConfiguration)jenkins.getDynamic("configureSecurity");
-        boolean configureSuccess = securityConfig.configure(req, req.getSubmittedForm());
-        if(configureSuccess) {
-            jenkins.save();
-            jenkins.setInstallState(InstallState.CONFIGURE_SECURITY.getNextState());
-            return HttpResponses.okJSON();
-        }
-        return HttpResponses.errorJSON("Unable to configure security");
-    }
-    
+
     /**
      * This filter will validate that the security token is provided
      */
