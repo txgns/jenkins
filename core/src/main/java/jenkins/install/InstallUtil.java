@@ -49,6 +49,7 @@ import hudson.security.AuthorizationStrategy;
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
 import hudson.security.HudsonPrivateSecurityRealm;
 import hudson.security.SecurityRealm;
+import hudson.security.csrf.DefaultCrumbIssuer;
 import hudson.model.UpdateCenter.InstallationJob;
 import hudson.model.UpdateCenter.UpdateCenterJob;
 import hudson.util.VersionNumber;
@@ -147,7 +148,7 @@ public class InstallUtil {
      */
     private static boolean mayBeJenkins2SecurityDefaults(Jenkins j) {
         // may be called before security set up first
-        if(j.getSecurityRealm() == SecurityRealm.NO_AUTHENTICATION && j.getCrumbIssuer() == null) { 
+        if(j.getSecurityRealm() == SecurityRealm.NO_AUTHENTICATION && !(j.getCrumbIssuer() instanceof DefaultCrumbIssuer)) { 
             return true;
         }
         if(j.getSecurityRealm() instanceof HudsonPrivateSecurityRealm) { // might be called after a restart, setup isn't complete

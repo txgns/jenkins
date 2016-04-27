@@ -24,6 +24,7 @@
 package jenkins.install;
 
 import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
 
 import hudson.Extension;
 import hudson.ExtensionList;
@@ -90,7 +91,7 @@ public class InstallState implements ExtensionPoint {
     private final InstallState nextState;
     private final String name;
 
-    private InstallState(String name, boolean isSetupComplete, InstallState nextState) {
+    private InstallState(@Nonnull String name, boolean isSetupComplete, InstallState nextState) {
         this.name = name;
         this.isSetupComplete = isSetupComplete;
         this.nextState = nextState;
@@ -113,6 +114,24 @@ public class InstallState implements ExtensionPoint {
     
     public String name() {
         return name;
+    }
+    
+    @Override
+    public int hashCode() {
+        return name.hashCode();
+    }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if(obj instanceof InstallState) {
+            return name.equals(((InstallState)obj).name());
+        }
+        return false;
+    }
+    
+    @Override
+    public String toString() {
+        return "InstallState (" + name + ")";
     }
 
     /**
