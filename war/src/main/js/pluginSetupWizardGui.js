@@ -899,6 +899,7 @@ var createPluginSetupWizard = function(appendTarget) {
 	setPanel(loadingPanel);
 	
 	// Process extensions
+	var extensionTranslationOverrides = [];
 	if ('undefined' != typeof(setupWizardExtensions)) {
 		$.each(setupWizardExtensions, function() {
 			this.call(self, {
@@ -906,7 +907,12 @@ var createPluginSetupWizard = function(appendTarget) {
 				pluginTemplates: pluginTemplates,
 				setPanel: setPanel,
 				actions: actions,
-				transitions: transitions
+				transitions: transitions,
+				translationOverride: function(it) { extensionTranslationOverrides.push(it); },
+				setSelectedPluginNames: function(pluginNames) { selectedPluginNames = pluginNames.slice(0); },
+				showInstallProgress: showInstallProgress,
+				installPlugins: installPlugins,
+				loadPluginData: loadPluginData
 			});
 		});
 	}
@@ -1012,6 +1018,11 @@ var createPluginSetupWizard = function(appendTarget) {
 	// kick off to get resource bundle
 	jenkins.loadTranslations('jenkins.install.pluginSetupWizard', handleGenericError(function(localizations) {
 		translations = localizations;
+		
+		// process any translation overrides
+		$.each(extensionTranslationOverrides, function() {
+			this(translations);
+		});
 		
 		// check for a start page
 		var initialPanelName = $(appendTarget).attr('data-show-wizard');

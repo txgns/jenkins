@@ -71,7 +71,7 @@
       })();
     </script>
     <j:if test="${it.showUpgradeWizard}">
-      <div class="plugin-setup-wizard-container" data-show-wizard="upgradeTo20Panel"></div>
+      <div class="plugin-setup-wizard-container" data-show-wizard="upgradeTo20Panel" data-upgrade-url="/${it.url}"></div>
       <st:include it="${app.setupWizard}" page="wizard-ui" />
     </j:if>
   </j:if>

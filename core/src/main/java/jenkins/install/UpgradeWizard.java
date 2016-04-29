@@ -2,10 +2,11 @@ package jenkins.install;
 
 import hudson.Extension;
 import hudson.model.PageDecorator;
-import hudson.model.UpdateSite.Plugin;
 import hudson.util.HttpResponses;
 import hudson.util.VersionNumber;
 import jenkins.model.Jenkins;
+import net.sf.json.JSONArray;
+
 import org.apache.commons.io.FileUtils;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -20,6 +21,7 @@ import javax.servlet.http.HttpSession;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -124,6 +126,7 @@ public class UpgradeWizard extends PageDecorator {
      * Call this to show the upgrade wizard
      */
     public HttpResponse doShowUpgradeWizard() throws Exception {
+        jenkins.checkPermission(Jenkins.ADMINISTER);
         HttpSession session = Stapler.getCurrentRequest().getSession(true);
         session.setAttribute(SHOW_UPGRADE_WIZARD_FLAG, true);
         jenkins.setSetupWizard(new SetupWizard(jenkins, false));
@@ -134,6 +137,7 @@ public class UpgradeWizard extends PageDecorator {
      * Call this to hide the upgrade wizard
      */
     public HttpResponse doHideUpgradeWizard() {
+        jenkins.checkPermission(Jenkins.ADMINISTER);
         HttpSession session = Stapler.getCurrentRequest().getSession(false);
         if(session != null) {
             session.removeAttribute(SHOW_UPGRADE_WIZARD_FLAG);
@@ -166,20 +170,10 @@ public class UpgradeWizard extends PageDecorator {
                 // 1.0 -> 2.0 upgrade
                 LOGGER.log(WARNING, "Performing 1.0 to 2.0 upgrade");
 
-                for (String shortName : Arrays.asList("workflow-aggregator", "pipeline-stage-view", "github-organization-folder")) {
-                    Plugin p = jenkins.getUpdateCenter().getPlugin(shortName);
-                    if (p==null) {
-                        LOGGER.warning("Plugin not found in the update center: " + shortName);
-                    } else {
-                        p.deploy(true);
-                    }
-                }
-
-                // upgrade to 2.0 complete (if plugin installations fail, that's too bad)
-                FileUtils.writeStringToFile(getStateFile(),"2.0");
-
-                // send the user to the update center so that people can see the installation & restart if need be.
-                return HttpResponses.redirectViaContextPath("updateCenter/");
+                List<String> installing = Arrays.asList("workflow-aggregator", "pipeline-stage-view", "github-organization-folder");
+                jenkins.getPluginManager().install(installing, true);
+                // return the installing plugins
+                return HttpResponses.okJSON(JSONArray.fromObject(installing));
             }
 
 //      in the future...
