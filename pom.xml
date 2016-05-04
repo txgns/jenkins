@@ -65,12 +65,12 @@ THE SOFTWARE.
     <snapshotRepository>
       <id>cloudbees-internal-snapshots</id>
       <name>CloudBees Internal Snapshots</name>
-      <url>https://nexus-internal.cloudbees.com/content/repositories/snapshots</url>
+      <url>${cloudbeesInternalDistMgmtSnapshotsUrl}</url>
     </snapshotRepository>
     <repository>
       <id>cloudbees-internal-staging</id>
       <name>CloudBees Internal Release Repository</name>
-      <url>https://nexus-internal.cloudbees.com/service/local/staging/deploy/maven2</url>
+      <url>${cloudbeesInternalDistMgmtReleasesUrl}</url>
     </repository>
   </distributionManagement>
 
@@ -103,6 +103,8 @@ THE SOFTWARE.
     <animal.sniffer.skip>${skipTests}</animal.sniffer.skip>
 
     <java.level>6</java.level>
+    <cloudbeesInternalDistMgmtSnapshotsUrl>https://nexus-internal.cloudbees.com/content/repositories/snapshots</cloudbeesInternalDistMgmtSnapshotsUrl>
+    <cloudbeesInternalDistMgmtReleasesUrl>https://nexus-internal.cloudbees.com/service/local/staging/deploy/maven2</cloudbeesInternalDistMgmtReleasesUrl>
   </properties>
 
   <repositories>
