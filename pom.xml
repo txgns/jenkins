@@ -56,21 +56,21 @@ THE SOFTWARE.
   </modules>
 
   <scm>
-    <connection>scm:git:git://github.com/jenkinsci/jenkins.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com/jenkinsci/jenkins.git</developerConnection>
-    <url>https://github.com/jenkinsci/jenkins</url>
-    <tag>HEAD</tag>
+    <connection>scm:git:ssh://git@github.com/cloudbees/hudson.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/cloudbees/hudson.git</developerConnection>
   </scm>
 
   <distributionManagement>
-    <site>
-      <id>github-pages</id>
-      <url>gitsite:git@github.com/jenkinsci/maven-site.git:core</url>
-    </site>
     <snapshotRepository>
-      <id>maven.jenkins-ci.org</id>
-      <url>http://maven.jenkins-ci.org:8081/content/repositories/snapshots</url>
+      <id>cloudbees-internal-snapshots</id>
+      <name>CloudBees Internal Snapshots</name>
+      <url>https://nexus-internal.cloudbees.com/content/repositories/snapshots</url>
     </snapshotRepository>
+    <repository>
+      <id>cloudbees-internal-staging</id>
+      <name>CloudBees Internal Release Repository</name>
+      <url>https://nexus-internal.cloudbees.com/service/local/staging/deploy/maven2</url>
+    </repository>
   </distributionManagement>
 
   <issueManagement>
@@ -272,6 +272,21 @@ THE SOFTWARE.
     </resources>
     <pluginManagement>
       <plugins>
+        <plugin>
+          <groupId>org.sonatype.plugins</groupId>
+          <artifactId>nexus-staging-maven-plugin</artifactId>
+          <version>1.6.6</version>
+          <extensions>true</extensions>
+          <configuration>
+            <serverId>cloudbees-internal-staging</serverId>
+            <nexusUrl>https://nexus-internal.cloudbees.com/</nexusUrl>
+            <stagingProfileId>ac6439af20821</stagingProfileId>
+            <tags>
+              <localUsername>${env.USER}</localUsername>
+              <javaVersion>${java.version}</javaVersion>
+            </tags>
+          </configuration>
+        </plugin>
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>build-helper-maven-plugin</artifactId>
@@ -587,7 +602,6 @@ THE SOFTWARE.
           <!-- work around for a bug in javadoc plugin that causes the release to fail. see MRELEASE-271 -->
           <preparationGoals>clean install</preparationGoals>
           <goals>-DskipTests -Danimal.sniffer.skip=false javadoc:javadoc deploy javadoc:aggregate</goals>
-          <pushChanges>false</pushChanges>
           <localCheckout>true</localCheckout>
           <tagNameFormat>jenkins-@{project.version}</tagNameFormat>
         </configuration>
