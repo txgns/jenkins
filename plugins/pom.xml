@@ -34,6 +34,8 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <concurrency>2</concurrency> <!-- may use e.g. 2C for 2 × (number of cores) -->
+    <cloudbeesInternalDistMgmtSnapshotsUrl>https://nexus-internal.cloudbees.com/content/repositories/snapshots</cloudbeesInternalDistMgmtSnapshotsUrl>
+    <cloudbeesInternalDistMgmtReleasesUrl>https://nexus-internal.cloudbees.com/service/local/staging/deploy/maven2</cloudbeesInternalDistMgmtReleasesUrl>
   </properties>
 
   <dependencies>
@@ -318,32 +320,6 @@
       </extension>
     </extensions>
   </build>
-
-  <repositories>
-    <repository>
-      <id>repo.jenkins-ci.org</id>
-      <url>http://repo.jenkins-ci.org/public/</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </repository>
-  </repositories>
-
-  <pluginRepositories>
-    <pluginRepository>
-      <id>repo.jenkins-ci.org</id>
-      <url>http://repo.jenkins-ci.org/public/</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </pluginRepository>
-  </pluginRepositories>
 
   <distributionManagement>
     <site>
