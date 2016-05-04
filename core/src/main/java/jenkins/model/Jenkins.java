@@ -298,6 +298,7 @@ import static hudson.init.InitMilestone.*;
 import hudson.util.LogTaskListener;
 import static java.util.logging.Level.*;
 import static javax.servlet.http.HttpServletResponse.*;
+import org.kohsuke.stapler.WebMethod;
 
 /**
  * Root object of the system.
@@ -2459,8 +2460,8 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
     /**
      * Gets the user of the given name.
      *
-     * @return the user of the given name, if that person exists or the invoker {@link #hasPermission} on {@link #ADMINISTER}; else null
-     * @see User#get(String,boolean)
+     * @return the user of the given name (which may or may not be an id), if that person exists or the invoker {@link #hasPermission} on {@link #ADMINISTER}; else null
+     * @see User#get(String,boolean), {@link User#getById(String, boolean)}
      */
     public @CheckForNull User getUser(String name) {
         return User.get(name,hasPermission(ADMINISTER));
@@ -3994,6 +3995,12 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
         @Override
         public void doConfigSubmit(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, FormException {
             Jenkins.getInstance().doConfigExecutorsSubmit(req, rsp);
+        }
+
+        @WebMethod(name="config.xml")
+        @Override
+        public void doConfigDotXml(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
+            throw HttpResponses.status(SC_BAD_REQUEST);
         }
 
         @Override
