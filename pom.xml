@@ -33,7 +33,7 @@ THE SOFTWARE.
 
   <groupId>org.jenkins-ci.main</groupId>
   <artifactId>pom</artifactId>
-  <version>1.625.17</version>
+  <version>1.625.18-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Jenkins main module</name>
@@ -58,7 +58,7 @@ THE SOFTWARE.
   <scm>
     <connection>scm:git:ssh://git@github.com/cloudbees/hudson.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/cloudbees/hudson.git</developerConnection>
-    <tag>jenkins-1.625.17</tag>
+    <tag>HEAD</tag>
   </scm>
 
   <distributionManagement>
