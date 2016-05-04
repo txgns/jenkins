@@ -65,12 +65,12 @@ THE SOFTWARE.
     <snapshotRepository>
       <id>cloudbees-internal-snapshots</id>
       <name>CloudBees Internal Snapshots</name>
-      <url>https://cloudbees-jfrog.artifactoryonline.com/cloudbees_jfrog/snapshots</url>
+      <url>https://nexus-internal.cloudbees.com/content/repositories/snapshots</url>
     </snapshotRepository>
     <repository>
       <id>cloudbees-internal-staging</id>
       <name>CloudBees Internal Release Repository</name>
-      <url>https://cloudbees-jfrog.artifactoryonline.com/cloudbees_jfrog/releases</url>
+      <url>https://nexus-internal.cloudbees.com/service/local/staging/deploy/maven2</url>
     </repository>
   </distributionManagement>
 
@@ -265,6 +265,21 @@ THE SOFTWARE.
     </resources>
     <pluginManagement>
       <plugins>
+        <plugin>
+          <groupId>org.sonatype.plugins</groupId>
+          <artifactId>nexus-staging-maven-plugin</artifactId>
+          <version>1.6.6</version>
+          <extensions>true</extensions>
+          <configuration>
+            <serverId>cloudbees-internal-staging</serverId>
+            <nexusUrl>https://nexus-internal.cloudbees.com/</nexusUrl>
+            <stagingProfileId>ac6439af20821</stagingProfileId>
+            <tags>
+              <localUsername>${env.USER}</localUsername>
+              <javaVersion>${java.version}</javaVersion>
+            </tags>
+          </configuration>
+        </plugin>
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>build-helper-maven-plugin</artifactId>
