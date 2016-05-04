@@ -1,5 +1,0 @@
-The presence of this file indicates that this Jenkins is turned into Nectar.
-
-When we take OSS Jenkins and start our sustaining branches (aka Nectarize), a few changes need
-to be made to POM. The 'nectarize' branch keeps track of the changes we need. The idea
-is whenever we need to nectarize, we do so by merging this branch into it.
