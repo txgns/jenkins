@@ -1,18 +1,18 @@
 /*
  * The MIT License
- * 
- * Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi
- * 
+ *
+ * Copyright (c) 2016, CloudBees, Inc.
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -21,28 +21,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package hudson;
+package jenkins.util;
 
-import java.io.IOException;
+
+import hudson.ExtensionList;
+import hudson.ExtensionPoint;
+
+import javax.servlet.http.HttpSession;
+import javax.servlet.http.HttpSessionEvent;
 
 /**
- * Signals a failure where the error was anticipated and diagnosed.
- * When this exception is caught,
- * the stack trace will not be printed, and the build will be marked as a failure.
- *
- * @author Kohsuke Kawaguchi
-*/
-public class AbortException extends IOException {
-    public AbortException() {
+ * {@link javax.servlet.http.HttpSessionListener} {@link ExtensionPoint} for Jenkins.
+ * <p>
+ * Allows plugins to listen to {@link HttpSession} lifecycle events.
+ * 
+ * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
+ * @since TODO
+ */
+public abstract class HttpSessionListener implements ExtensionPoint, javax.servlet.http.HttpSessionListener {
+
+    /**
+     * Get all of the {@link HttpSessionListener} implementations.
+     * @return All of the {@link HttpSessionListener} implementations.
+     */
+    public static ExtensionList<HttpSessionListener> all() {
+        return ExtensionList.lookup(HttpSessionListener.class);
     }
 
     /**
-     * When this exception is caught, the specified message will be reported.
-     * @since 1.298
+     * {@inheritDoc}
      */
-    public AbortException(String message) {
-        super(message);
+    @Override
+    public void sessionCreated(HttpSessionEvent httpSessionEvent) {
     }
 
-    private static final long serialVersionUID = 1L;
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void sessionDestroyed(HttpSessionEvent httpSessionEvent) {
+    }
 }
