@@ -23,7 +23,7 @@ setupWizardExtension(function(wizard) {
 	wizard.actions['.close'] = function() {
 		jenkins.goTo(upgradeUrl + '/hideUpgradeWizard');
 	};
-	wizard.transitions['UPGRADE'] = function() {
+	wizard.transitions.UPGRADE = function() {
 		wizard.setPanel(wizard.pluginTemplates.upgradeSuccessPanel);
 	};
 	// overrides some install text
