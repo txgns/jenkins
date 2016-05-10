@@ -1,14 +1,4 @@
-//
-// TODO: Get all of this information from the Update Center via a REST API.
-//
-
-//
-// A Categorized list of the plugins offered for install in the wizard.
-// This is a community curated list.
-// Remember, the user ultimately has full control as they can easily customize
-// away from these.
-//
-exports.availablePlugins = [
+[
     {
         "category":"Organization and Administration",
         "plugins": [
@@ -112,4 +102,4 @@ exports.availablePlugins = [
             { "name": "ssh" }
         ]
     }
-];
+]

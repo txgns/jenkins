@@ -99,10 +99,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
+import java.net.HttpRetryException;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -1076,6 +1079,66 @@ public abstract class PluginManager extends AbstractModelObject implements OnMas
             }
         }
         return hudson.util.HttpResponses.okJSON(response);
+    }
+    
+    /**
+     * Gets the suggested plugin list from the update sites, falling back to a local version
+     */
+    @CheckForNull
+    public JSONArray getSuggestedPluginList() {
+        Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+        String initialPluginJson = null;
+        updateSiteList: for (UpdateSite updateSite : Jenkins.getInstance().getUpdateCenter().getSiteList()) {
+            String updateCenterJsonUrl = updateSite.getUrl();
+            String suggestedPluginUrl = updateCenterJsonUrl.replace("/update-center.json", "/initial-plugins.json");
+            try {
+                URLConnection connection = ProxyConfiguration.open(new URL(suggestedPluginUrl));
+                
+                try {
+                    if(connection instanceof HttpURLConnection) {
+                        int responseCode = ((HttpURLConnection)connection).getResponseCode();
+                        if(HttpURLConnection.HTTP_OK != responseCode) {
+                            throw new HttpRetryException("Invalid response code (" + responseCode + ") from URL: " + suggestedPluginUrl, responseCode);
+                        }
+                    }
+                    
+                    initialPluginJson = IOUtils.toString(connection.getInputStream(), "utf-8");
+                } catch(IOException e) {
+                    // probably not found
+                    LOGGER.log(Level.FINE, e.getMessage(), e);
+                    continue updateSiteList;
+                }
+                
+                break updateSiteList;
+            } catch(IOException e) {
+                LOGGER.log(Level.WARNING, e.getMessage(), e);
+            }
+        }
+        if (initialPluginJson == null) {
+            // fall back to local file
+            try {
+                URL localPluginData = Jenkins.getInstance().servletContext.getClassLoader().getResource("jenkins/install/initial-plugins.json");
+                initialPluginJson = IOUtils.toString(localPluginData, "utf-8");
+            } catch (IOException e) {
+                LOGGER.log(Level.SEVERE, e.getMessage(), e);
+            }
+        }
+        if(initialPluginJson != null) {
+            return JSONArray.fromObject(initialPluginJson);
+        }
+        return null;
+    }
+    
+    /**
+     * Returns the initial plugin list in JSON format
+     */
+    @Restricted(DoNotUse.class) // WebOnly
+    public HttpResponse doSuggestedPluginList() {
+        JSONArray initialPluginData = getSuggestedPluginList();
+        if(initialPluginData != null) {
+            return hudson.util.HttpResponses.okJSON(initialPluginData);
+        }
+        return hudson.util.HttpResponses.okJSON();
     }
 
     public HttpResponse doUpdateSources(StaplerRequest req) throws IOException {

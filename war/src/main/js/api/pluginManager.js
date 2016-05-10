@@ -11,14 +11,13 @@ var plugins;
 var pluginManagerErrorTimeoutMillis = 10 * 1000;
 
 exports.initialPluginList = function(handler) {
-	handler(require('./plugins.js').availablePlugins); if(true) return; // TODO REMOVE THIS READING THE FILE
-	jenkins.get('/pluginManager/initialPlugins', function(response) {
+	jenkins.get('/pluginManager/suggestedPluginList', function(response) {
 		if(response.status !== 'ok') {
 			handler.call({ isError: true, data: response.data });
 			return;
 		}
 
-		handler.call({ isError: false }, response.data.correlationId);
+		handler.call({ isError: false }, response.data);
 	}, {
 		timeout: pluginManagerErrorTimeoutMillis,
 		error: function(xhr, textStatus, errorThrown) {
