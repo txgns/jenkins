@@ -36,14 +36,16 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.HudsonTestCase;
 import org.jvnet.hudson.test.Issue;
+import org.jvnet.hudson.test.JenkinsRecipe;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.ThreadPoolImpl;
 import org.jvnet.hudson.test.recipes.WithPlugin;
-import org.jvnet.hudson.test.recipes.WithPluginManager;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletContextListener;
 import java.io.File;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -51,6 +53,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -58,9 +62,12 @@ import static org.junit.Assert.assertTrue;
  * Tests for the use of a custom plugin manager in custom wars.
  */
 public class CustomPluginManagerTest {
+    @Rule public final JenkinsRule r = new CustomPluginJenkinsRule();
 
     // TODO: to be greatly simplified when JENKINS-34701 is available.
-    @Rule public final JenkinsRule r = new JenkinsRule() {
+    private static final class CustomPluginJenkinsRule extends JenkinsRule {
+        ServletContext servletContext;
+
         private File exploded() {
             File d = new File(".").getAbsoluteFile();
             for( ; d!=null; d=d.getParentFile()) {
@@ -77,6 +84,9 @@ public class CustomPluginManagerTest {
         }
 
         protected ServletContext createWebServer() throws Exception {
+            if (System.getProperty(WebAppMain.CUSTOM_PLUGIN_MANAGER) != null) {
+                throw new AssumptionViolatedException("Testing Context Parameter, system property would override");
+            }
             final File exploded = exploded();
 
             server = new Server(new ThreadPoolImpl(new ThreadPoolExecutor(10, 10, 10L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(),new ThreadFactory() {
@@ -96,7 +106,7 @@ public class CustomPluginManagerTest {
             context.getSecurityHandler().setLoginService(configureUserRealm());
             context.setResourceBase(exploded.getPath());
 
-            context.setInitParameter(PluginManager.class.getName() + ".className", CustomPluginManager.class.getClass().getName());
+            context.setInitParameter(WebAppMain.CUSTOM_PLUGIN_MANAGER, CustomPluginManager.class.getName());
 
             ServerConnector connector = new ServerConnector(server);
             HttpConfiguration config = connector.getConnectionFactory(HttpConnectionFactory.class).getHttpConfiguration();
@@ -112,7 +122,8 @@ public class CustomPluginManagerTest {
             localPort = connector.getLocalPort();
             Logger.getLogger(HudsonTestCase.class.getName()).log(Level.INFO, "Running on {0}", getURL());
 
-            return context.getServletContext();
+            servletContext = context.getServletContext();
+            return servletContext;
         }
 
     };
@@ -139,19 +150,30 @@ public class CustomPluginManagerTest {
         }
     }
 
+    @JenkinsRecipe(hudson.CustomPluginManagerTest.WithCustomPluginManager.RuleRunnerImpl.class)
+    @Target(METHOD)
+    @Retention(RUNTIME)
+    public @interface WithCustomPluginManager {
+        class RuleRunnerImpl extends JenkinsRecipe.Runner<WithCustomPluginManager> {
+            @Override
+            public void decorateHome(JenkinsRule jenkinsRule, File home) throws Exception {
+                jenkinsRule.setPluginManager(WebAppMain.createPluginManager(((CustomPluginJenkinsRule)jenkinsRule).servletContext, home));
+            }
+        }
+    }
+
     @Issue("JENKINS-34681")
     @WithPlugin("tasks.jpi")
-    @WithPluginManager(CustomPluginManager.class)
+    @WithCustomPluginManager
     @Test public void customPluginManager() {
         assertTrue("Correct plugin manager installed", r.getPluginManager() instanceof CustomPluginManager);
         assertNotNull("Plugin tasks installed", r.jenkins.getPlugin("tasks"));
     }
 
     public static class CustomPluginManager extends LocalPluginManager {
-        public CustomPluginManager(File home) {
-            super(null, home);
+        public CustomPluginManager(ServletContext context, File home) {
+            super(context, home);
         }
     }
-
 
 }

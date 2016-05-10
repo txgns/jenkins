@@ -90,6 +90,9 @@ public class WebAppMain implements ServletContextListener {
     private boolean terminated;
     private Thread initThread;
 
+    /** Custom plugin manager system property or context param. */
+    static final String CUSTOM_PLUGIN_MANAGER = PluginManager.class.getName() + ".className";
+
     /**
      * Creates the sole instance of {@link jenkins.model.Jenkins} and register it to the {@link ServletContext}.
      */
@@ -268,25 +271,29 @@ public class WebAppMain implements ServletContextListener {
      * Creates the plugin manager to use, if customized.
      * @return The plugin manager to use or {@code null} to use the default one.
      */
-    private @CheckForNull PluginManager createPluginManager(ServletContext context, File rootDir) {
-        final String pmClassName = context.getInitParameter(PluginManager.class.getName() + ".className");
+    /* package for tests. */ static @CheckForNull LocalPluginManager createPluginManager(ServletContext context, File rootDir) {
+        String pmClassName = System.getProperty(CUSTOM_PLUGIN_MANAGER);
+        if (StringUtils.isBlank(pmClassName)) {
+            pmClassName = context.getInitParameter(CUSTOM_PLUGIN_MANAGER);
+        }
         if (StringUtils.isBlank(pmClassName)) {
             return null;
         }
+        LOGGER.log(FINE, String.format("Use of custom plugin manager [%s] requested.", pmClassName));
         try {
-            final Class<? extends PluginManager> klass = Class.forName(pmClassName).asSubclass(PluginManager.class);
-            final Constructor <? extends PluginManager> constructor = klass.getConstructor(ServletContext.class, File.class);
+            final Class<? extends LocalPluginManager> klass = Class.forName(pmClassName).asSubclass(LocalPluginManager.class);
+            final Constructor <? extends LocalPluginManager> constructor = klass.getConstructor(ServletContext.class, File.class);
             return constructor.newInstance(context, rootDir);
         } catch(NullPointerException e) {
             // Class.forName and Class.getConstructor are supposed to never return null though a broken ClassLoader
             // could break the contract. Just in case we introduce this specific catch to avoid polluting the logs with NPEs.
-            LOGGER.log(WARNING, String.format("Unable to instantiate custom plugin manager %s. Using default.", pmClassName));
+            LOGGER.log(WARNING, String.format("Unable to instantiate custom plugin manager [%s]. Using default.", pmClassName));
         } catch(ClassCastException e) {
-            LOGGER.log(WARNING, String.format("Provided class %s does not extend PluginManager. Using default.", pmClassName));
+            LOGGER.log(WARNING, String.format("Provided class [%s] does not extend LocalPluginManager. Using default.", pmClassName));
         } catch(NoSuchMethodException e) {
-            LOGGER.log(WARNING, String.format("Provided custom plugin manager %s does not provided (ServletContext, File) constructor. Using default.", pmClassName), e);
+            LOGGER.log(WARNING, String.format("Provided custom plugin manager [%s] does not provided (ServletContext, File) constructor. Using default.", pmClassName), e);
         } catch(Exception e) {
-            LOGGER.log(WARNING, String.format("Unable to instantiate custom plugin manager %s. Using default.", pmClassName), e);
+            LOGGER.log(WARNING, String.format("Unable to instantiate custom plugin manager [%s]. Using default.", pmClassName), e);
         }
         return null;
     }
