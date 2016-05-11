@@ -26,6 +26,7 @@ package hudson;
 import com.thoughtworks.xstream.converters.reflection.PureJavaReflectionProvider;
 import com.thoughtworks.xstream.core.JVM;
 import com.trilead.ssh2.util.IOUtils;
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.model.Hudson;
 import hudson.security.ACL;
 import hudson.util.BootFailure;
@@ -42,6 +43,7 @@ import hudson.util.HudsonFailedToLoad;
 import hudson.util.ChartUtil;
 import hudson.util.AWTProblem;
 import jenkins.util.JenkinsJVM;
+import org.apache.commons.lang.StringUtils;
 import org.jvnet.localizer.LocaleProvider;
 import org.kohsuke.stapler.jelly.JellyFacet;
 import org.apache.tools.ant.types.FileSet;
@@ -58,6 +60,7 @@ import javax.xml.transform.TransformerFactoryConfigurationError;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -86,6 +89,9 @@ public class WebAppMain implements ServletContextListener {
     private static final String APP = "app";
     private boolean terminated;
     private Thread initThread;
+
+    /** Custom plugin manager system property or context param. */
+    static final String CUSTOM_PLUGIN_MANAGER = PluginManager.class.getName() + ".className";
 
     /**
      * Creates the sole instance of {@link jenkins.model.Jenkins} and register it to the {@link ServletContext}.
@@ -223,7 +229,7 @@ public class WebAppMain implements ServletContextListener {
                 public void run() {
                     boolean success = false;
                     try {
-                        Jenkins instance = new Hudson(_home, context);
+                        Jenkins instance = new Hudson(_home, context, createPluginManager(context, _home));
 
                         // one last check to make sure everything is in order before we go live
                         if (Thread.interrupted())
@@ -259,6 +265,37 @@ public class WebAppMain implements ServletContextListener {
 
     public void joinInit() throws InterruptedException {
         initThread.join();
+    }
+
+    /**
+     * Creates the plugin manager to use, if customized.
+     * @return The plugin manager to use or {@code null} to use the default one.
+     */
+    /* package for tests. */ static @CheckForNull LocalPluginManager createPluginManager(ServletContext context, File rootDir) {
+        String pmClassName = System.getProperty(CUSTOM_PLUGIN_MANAGER);
+        if (StringUtils.isBlank(pmClassName)) {
+            pmClassName = context.getInitParameter(CUSTOM_PLUGIN_MANAGER);
+        }
+        if (StringUtils.isBlank(pmClassName)) {
+            return null;
+        }
+        LOGGER.log(FINE, String.format("Use of custom plugin manager [%s] requested.", pmClassName));
+        try {
+            final Class<? extends LocalPluginManager> klass = Class.forName(pmClassName).asSubclass(LocalPluginManager.class);
+            final Constructor <? extends LocalPluginManager> constructor = klass.getConstructor(ServletContext.class, File.class);
+            return constructor.newInstance(context, rootDir);
+        } catch(NullPointerException e) {
+            // Class.forName and Class.getConstructor are supposed to never return null though a broken ClassLoader
+            // could break the contract. Just in case we introduce this specific catch to avoid polluting the logs with NPEs.
+            LOGGER.log(WARNING, String.format("Unable to instantiate custom plugin manager [%s]. Using default.", pmClassName));
+        } catch(ClassCastException e) {
+            LOGGER.log(WARNING, String.format("Provided class [%s] does not extend LocalPluginManager. Using default.", pmClassName));
+        } catch(NoSuchMethodException e) {
+            LOGGER.log(WARNING, String.format("Provided custom plugin manager [%s] does not provided (ServletContext, File) constructor. Using default.", pmClassName), e);
+        } catch(Exception e) {
+            LOGGER.log(WARNING, String.format("Unable to instantiate custom plugin manager [%s]. Using default.", pmClassName), e);
+        }
+        return null;
     }
 
     /**
