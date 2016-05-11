@@ -52,6 +52,7 @@ import hudson.util.IOException2;
 import hudson.util.IOUtils;
 import hudson.util.PersistedList;
 import hudson.util.XStream2;
+import jenkins.MissingDependencyException;
 import jenkins.RestartRequiredException;
 import jenkins.install.InstallUtil;
 import jenkins.model.Jenkins;
@@ -77,6 +78,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.Constructor;
 import java.net.HttpRetryException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
@@ -127,7 +129,16 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
  * and plugins, and to use alternate strategies for downloading, installing
  * and updating components. See the Javadocs for {@link UpdateCenterConfiguration}
  * for more information.
- *
+ * <p>
+ * <b>Extending Update Centers</b>. The update center in {@code Jenkins} can be replaced by defining a
+ * System Property (<code>hudson.model.UpdateCenter.className</code>). See {@link #createUpdateCenter(hudson.model.UpdateCenter.UpdateCenterConfiguration)}.
+ * This className should be available on early startup, so it cannot come only from a library 
+ * (e.g. Jenkins module or Extra library dependency in the WAR file project).
+ * Plugins cannot be used for such purpose.
+ * In order to be correctly instantiated, the class definition must have two constructors: 
+ * {@link #UpdateCenter()} and {@link #UpdateCenter(hudson.model.UpdateCenter.UpdateCenterConfiguration)}.
+ * If the class does not comply with the requirements, a fallback to the default UpdateCenter will be performed.
+ * 
  * @author Kohsuke Kawaguchi
  * @since 1.220
  */
@@ -229,6 +240,51 @@ public class UpdateCenter extends AbstractModelObject implements Saveable, OnMas
 
     UpdateCenter(@Nonnull UpdateCenterConfiguration configuration) {
         configure(configuration);
+    }
+    
+    /**
+     * Creates an update center.
+     * @param config Requested configuration. May be {@code null} if defaults should be used
+     * @return Created Update center. {@link UpdateCenter} by default, but may be overridden
+     * @since TODO
+     */
+    @Nonnull
+    public static UpdateCenter createUpdateCenter(@CheckForNull UpdateCenterConfiguration config) {
+        String requiredClassName = System.getProperty(UpdateCenter.class.getName()+".className", null);
+        if (requiredClassName == null) {
+            // Use the defaul Update Center
+            LOGGER.log(Level.FINE, "Using the default Update Center implementation");
+            return createDefaultUpdateCenter(config);
+        }
+        
+        LOGGER.log(Level.INFO, "Using the custom update center: {0}", requiredClassName);
+        try {
+            final Class<?> clazz = Class.forName(requiredClassName).asSubclass(UpdateCenter.class);
+            if (!UpdateCenter.class.isAssignableFrom(clazz)) {
+                LOGGER.log(Level.SEVERE, "The specified custom Update Center {0} is not an instance of {1}. Falling back to default.",
+                        new Object[] {requiredClassName, UpdateCenter.class.getName()});
+                return createDefaultUpdateCenter(config);
+            }
+            final Class<? extends UpdateCenter> ucClazz = clazz.asSubclass(UpdateCenter.class);
+            final Constructor<? extends UpdateCenter> defaultConstructor = ucClazz.getConstructor();
+            final Constructor<? extends UpdateCenter> configConstructor = ucClazz.getConstructor(UpdateCenterConfiguration.class);
+            LOGGER.log(Level.FINE, "Using the constructor {0} Update Center configuration for {1}",
+                    new Object[] {config != null ? "with" : "without", requiredClassName});
+            return config != null ? configConstructor.newInstance(config) : defaultConstructor.newInstance();
+        } catch(ClassCastException e) {
+            // Should never happen
+            LOGGER.log(WARNING, "UpdateCenter class {0} does not extend hudson.model.UpdateCenter. Using default.", requiredClassName);
+        } catch(NoSuchMethodException e) {
+            LOGGER.log(WARNING, String.format("UpdateCenter class {0} does not define one of the required constructors. Using default", requiredClassName), e);
+        } catch(Exception e) {
+            LOGGER.log(WARNING, String.format("Unable to instantiate custom plugin manager [%s]. Using default.", requiredClassName), e);
+        }
+        return createDefaultUpdateCenter(config);
+    }
+    
+    @Nonnull
+    private static UpdateCenter createDefaultUpdateCenter(@CheckForNull UpdateCenterConfiguration config) {
+        return config != null ? new UpdateCenter(config) : new UpdateCenter();
     }
 
     public Api getApi() {
@@ -1541,6 +1597,10 @@ public class UpdateCenter extends AbstractModelObject implements Saveable, OnMas
                 status = e;
                 if (status.isSuccess()) onSuccess();
                 requiresRestart |= status.requiresRestart();
+            } catch (MissingDependencyException e) {
+                LOGGER.log(Level.SEVERE, "Failed to install {0}: {1}", new Object[] { getName(), e.getMessage() });
+                status = new Failure(e);
+                error = e;
             } catch (Throwable e) {
                 LOGGER.log(Level.SEVERE, "Failed to install "+getName(),e);
                 status = new Failure(e);

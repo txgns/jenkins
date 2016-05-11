@@ -754,10 +754,17 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
      * @throws IllegalStateException {@link Jenkins} has not been started, or was already shut down
      */
     @CLIResolver
-    @Nullable // TODO replace with non-null once Jenkins 2.0+
+    @Nonnull
     public static Jenkins getInstance() {
-        // TODO throw an IllegalStateException in Jenkins 2.0+
-        return HOLDER.getInstance();
+        Jenkins instance = HOLDER.getInstance();
+        if (instance == null) {
+            if(!Boolean.getBoolean(Jenkins.class.getName()+".disableExceptionOnNullInstance")) {
+                // TODO: remove that second block around 2.20 (that is: ~20 versions to battle test it)
+                // See https://github.com/jenkinsci/jenkins/pull/2297#issuecomment-216710150
+                throw new IllegalStateException("Jenkins has not been started, or was already shut down");
+            }
+        }
+        return instance;
     }
 
     /**
@@ -767,7 +774,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
      */
     private transient final String secretKey;
 
-    private transient final UpdateCenter updateCenter = new UpdateCenter();
+    private transient final UpdateCenter updateCenter = UpdateCenter.createUpdateCenter(null);
 
     /**
      * True if the user opted out from the statistics tracking. We'll never send anything if this is true.
@@ -3685,7 +3692,6 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
     /**
      * Reloads the configuration.
      */
-    @CLIMethod(name="reload-configuration")
     @RequirePOST
     public synchronized HttpResponse doReload() throws IOException {
         checkPermission(ADMINISTER);
