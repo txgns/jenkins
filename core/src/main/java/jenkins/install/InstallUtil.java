@@ -28,7 +28,9 @@ import static java.util.logging.Level.WARNING;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -37,9 +39,11 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.NotImplementedException;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 
+import com.google.common.base.Function;
 import com.thoughtworks.xstream.XStream;
 
 import hudson.Functions;
@@ -70,10 +74,65 @@ public class InstallUtil {
     private static final VersionNumber NEW_INSTALL_VERSION = new VersionNumber("1.0");
 
     /**
-     * Get the current installation state.
-     * @return The type of "startup" currently under way in Jenkins.
+     * Simple chain pattern using iterator.next()
+     */
+    private static class IteratorChain<T> implements Iterator<T> {
+        private final Iterator<Function<Iterator<T>,T>> functions;
+        public IteratorChain(Iterator<Function<Iterator<T>,T>> functions) {
+            this.functions = functions;
+        }
+        @Override
+        public boolean hasNext() {
+            return functions.hasNext();
+        }
+        @Override
+        public T next() {
+            return functions.next().apply(this);
+        }
+        @Override
+        public void remove() {
+            throw new NotImplementedException();
+        }
+    }
+    
+    /**
+     * Returns the next state during a transition from the current install state
      */
     public static InstallState getInstallState() {
+        return getInstallState(InstallState.UNKNOWN);
+    }
+    
+    /**
+     * Returns the next state during a transition from the current install state
+     */
+    public static InstallState getInstallState(final InstallState current) {
+        List<Function<Iterator<InstallState>,InstallState>> installStateFilterChain = new ArrayList<>();
+        for (final SetupWizardExtension setupExtension : SetupWizardExtension.all()) {
+            installStateFilterChain.add(new Function<Iterator<InstallState>, InstallState>() {
+                @Override
+                public InstallState apply(Iterator<InstallState> next) {
+                    return setupExtension.getInstallState(current, next);
+                }
+            });
+        }
+        // Terminal condition: getNextState() on the current install state
+        installStateFilterChain.add(new Function<Iterator<InstallState>, InstallState>() {
+            @Override
+            public InstallState apply(Iterator<InstallState> input) {
+                // Initially, install state is unknown and 
+                // needs to be determined
+                if (current == null || InstallState.UNKNOWN.equals(current)) {
+                    return getDefaultInstallState();
+                }
+                return null;
+            }
+        });
+        
+        IteratorChain<InstallState> chain = new IteratorChain<>(installStateFilterChain.iterator());
+        return chain.next();
+    }
+    
+    private static InstallState getDefaultInstallState() {
         // Support a simple state override. Useful for testing.
         String stateOverride = System.getProperty("jenkins.install.state", System.getenv("jenkins.install.state"));
         if (stateOverride != null) {
@@ -110,8 +169,7 @@ public class InstallUtil {
             // Allow for skipping
             if(shouldNotRun) {
                 try {
-                    SetupWizard.completeSetup(j);
-                    UpgradeWizard.completeUpgrade(j);
+                    InstallState.INITIAL_SETUP_COMPLETED.init();
                     return j.getInstallState();
                 } catch (RuntimeException e) {
                     throw e;

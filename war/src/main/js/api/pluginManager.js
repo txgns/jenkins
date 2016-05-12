@@ -11,7 +11,7 @@ var plugins;
 var pluginManagerErrorTimeoutMillis = 10 * 1000;
 
 exports.initialPluginList = function(handler) {
-	jenkins.get('/pluginManager/suggestedPluginList', function(response) {
+	jenkins.get('/setupWizard/platformPluginList', function(response) {
 		if(response.status !== 'ok') {
 			handler.call({ isError: true, data: response.data });
 			return;

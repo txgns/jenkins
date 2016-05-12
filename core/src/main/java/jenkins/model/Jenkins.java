@@ -882,15 +882,9 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
             if(KILL_AFTER_LOAD)
                 System.exit(0);
 
-            installState = InstallUtil.getInstallState();
-            if (installState == InstallState.RESTART || installState == InstallState.DOWNGRADE) {
-                InstallUtil.saveLastExecVersion();
-            }
-            
-            if(!installState.isSetupComplete()) {
-                // Start immediately with the setup wizard for new installs
-                setupWizard = new SetupWizard(this, true);
-            }
+            setupWizard = new SetupWizard();
+            installState = InstallUtil.getInstallState(installState);
+            installState.init();
 
             launchTcpSlaveAgentListener();
 
@@ -4274,16 +4268,6 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
         return setupWizard;
     }
     
-    /**
-     * Sets the setup wizard
-     *
-     * @since 2.0
-     */
-    @Restricted(NoExternalUse.class)
-    public void setSetupWizard(SetupWizard setupWizard) {
-        this.setupWizard = setupWizard;
-    }
-
     /**
      * Exposes the current user to <tt>/me</tt> URL.
      */
