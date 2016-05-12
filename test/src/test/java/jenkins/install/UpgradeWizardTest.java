@@ -1,15 +1,15 @@
 package jenkins.install;
 
-import hudson.util.VersionNumber;
+import jenkins.model.Jenkins;
+
 import org.apache.commons.io.FileUtils;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 
-import javax.inject.Inject;
-
-import java.io.IOException;
+import java.io.File;
 import java.util.concurrent.Callable;
 
 import static org.junit.Assert.*;
@@ -20,13 +20,14 @@ import static org.junit.Assert.*;
 public class UpgradeWizardTest {
     @Rule
     public final JenkinsRule j = new JenkinsRule();
-
-    @Inject
-    UpgradeWizard uw;
-
+    
+    @After
     @Before
-    public void setup() {
-        j.jenkins.getInjector().injectMembers(this);
+    public void rmStateFile() {
+        File f = j.jenkins.getSetupWizard().getUpdateStateFile();
+        if(f != null && f.exists()) {
+            f.delete();
+        }
     }
 
     @Test
@@ -34,6 +35,7 @@ public class UpgradeWizardTest {
         j.executeOnServer(new Callable<Void>() {
             @Override
             public Void call() throws Exception {
+                UpgradeWizard uw = newInstance();
                 assertTrue(uw.isDue());
                 uw.doSnooze();
                 assertFalse(uw.isDue());
@@ -53,7 +55,6 @@ public class UpgradeWizardTest {
             public Void call() throws Exception {
                 assertTrue(j.jenkins.getUpdateCenter().getJobs().size() == 0);
                 assertTrue(newInstance().isDue());
-                assertNotSame(UpgradeWizard.NOOP, uw.doUpgrade());
 
                 // can't really test this because UC metadata is empty
                 // assertTrue(j.jenkins.getUpdateCenter().getJobs().size() > 0);
@@ -68,9 +69,9 @@ public class UpgradeWizardTest {
      */
     @Test
     public void fullyUpgraded() throws Exception {
-        FileUtils.writeStringToFile(uw.getStateFile(), "2.0");
-        assertFalse(newInstance().isDue());
-        assertSame(UpgradeWizard.NOOP, uw.doUpgrade());
+        j.jenkins.getSetupWizard().setCurrentLevel(Jenkins.getVersion());
+        assertFalse(newInstance()
+                .isDue());
     }
 
     /**
@@ -78,9 +79,9 @@ public class UpgradeWizardTest {
      */
     @Test
     public void downgradeFromFuture() throws Exception {
-        FileUtils.writeStringToFile(uw.getStateFile(), "3.0");
-        assertFalse(newInstance().isDue());
-        assertSame(UpgradeWizard.NOOP, uw.doUpgrade());
+        FileUtils.writeStringToFile(j.jenkins.getSetupWizard().getUpdateStateFile(), "3.0");
+        UpgradeWizard uw = newInstance();
+        assertFalse(uw.isDue());
     }
 
     @Test
@@ -88,8 +89,9 @@ public class UpgradeWizardTest {
         j.executeOnServer(new Callable<Void>() {
             @Override
             public Void call() throws Exception {
+                UpgradeWizard uw = newInstance();
                 assertTrue(uw.isDue());
-                uw.setCurrentLevel(new VersionNumber("2.0"));
+                j.jenkins.getSetupWizard().setCurrentLevel(Jenkins.getVersion());
                 assertFalse(uw.isDue());
 
                 return null;
@@ -100,9 +102,14 @@ public class UpgradeWizardTest {
     /**
      * Fresh instance of {@link UpgradeWizard} to test its behavior.
      */
-    private UpgradeWizard newInstance() throws IOException {
-        UpgradeWizard uw2 = new UpgradeWizard();
-        j.jenkins.getInjector().injectMembers(uw2);
-        return uw2;
+    private UpgradeWizard newInstance() throws Exception {
+        try {
+            UpgradeWizard uw = new UpgradeWizard();
+            uw.init();
+            return uw;
+        } catch(Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
 }

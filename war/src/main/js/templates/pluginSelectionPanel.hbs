@@ -30,7 +30,7 @@
 			<h2 id="{{id @key}}" class="expanded">{{@key}} {{pluginCountForCategory @key}}</h2>
 			<div class="plugins-for-category">
 				{{#each this}}
-				<div class="plugin {{#inSelectedPlugins plugin.name}}selected{{/inSelectedPlugins}} {{#ifVisibleDependency plugin.name}}show-dependencies{{/ifVisibleDependency}}" id="row-{{plugin.name}}">
+				<div class="plugin {{id plugin.name}} {{#inSelectedPlugins plugin.name}}selected{{/inSelectedPlugins}} {{#ifVisibleDependency plugin.name}}show-dependencies{{/ifVisibleDependency}}" id="row-{{plugin.name}}">
 					{{#hasDependencies plugin.name}}
 						<div class="btn btn-link toggle-dependency-list" type="button" data-plugin-name="{{../plugin.name}}">
 							{{../../../translations.installWizard_installIncomplete_dependenciesLabel}}<span class="badge">{{dependencyCount ../plugin.name}}</span>

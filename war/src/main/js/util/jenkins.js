@@ -184,8 +184,22 @@ exports.loadTranslations = function(bundleName, handler, onError) {
 			}
 			throw 'Unable to load localization data: ' + res.message;
 		}
+		
+		var translations = res.data;
+		
+		if('undefined' !== typeof(Proxy)) {
+			translations = new Proxy(translations, {
+				get: function(target, property, receiver) {
+					if(property in target) {
+						return target[property];
+					}
+					console.log('"' + property + '" not found in translation bundle.');
+					return property;
+				}
+			});
+		}
 
-		handler(res.data);
+		handler(translations);
 	});
 };
 
@@ -233,9 +247,11 @@ exports.getWindow = function($form) {
 	$(top.document).find('iframe').each(function() {
 		var windowFrame = this.contentWindow;
 		var $f = $(this).contents().find('form');
-		if($f.length > 0 && $form[0] === $f[0]) {
-			wnd = windowFrame;
-		}
+		$f.each(function() {
+			if($form[0] === this) {
+				wnd = windowFrame;
+			}
+		});
 	});
 	return wnd;
 };

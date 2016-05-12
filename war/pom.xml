@@ -676,6 +676,11 @@ THE SOFTWARE.
         </file>
       </activation>
       <build>
+        <resources>
+          <resource>
+            <directory>${project.build.directory}/generated-resources/frontend</directory>
+          </resource>
+        </resources>
         <plugins>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>

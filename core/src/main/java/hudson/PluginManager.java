@@ -100,10 +100,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
+import java.net.HttpRetryException;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -1080,7 +1083,6 @@ public abstract class PluginManager extends AbstractModelObject implements OnMas
         }
         return hudson.util.HttpResponses.okJSON(response);
     }
-
     public HttpResponse doUpdateSources(StaplerRequest req) throws IOException {
         Jenkins.getInstance().checkPermission(CONFIGURE_UPDATECENTER);
 
@@ -1110,7 +1112,7 @@ public abstract class PluginManager extends AbstractModelObject implements OnMas
         Jenkins j = Jenkins.getInstance();
         j.checkPermission(Jenkins.ADMINISTER);
         if(InstallState.INITIAL_PLUGINS_INSTALLING.equals(j.getInstallState())) {
-            Jenkins.getInstance().setInstallState(InstallState.INITIAL_PLUGINS_INSTALLING.getNextState());
+            InstallState.INITIAL_PLUGINS_INSTALLING.proceed();
         }
     }
 
@@ -1262,7 +1264,7 @@ public abstract class PluginManager extends AbstractModelObject implements OnMas
                     }
                     updateCenter.persistInstallStatus();
                     if(!failures) {
-                        jenkins.setInstallState(InstallState.INITIAL_PLUGINS_INSTALLING.getNextState());
+                        InstallState.INITIAL_PLUGINS_INSTALLING.proceed();
                     }
                 }
             }.start();

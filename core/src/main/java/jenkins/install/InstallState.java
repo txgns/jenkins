@@ -23,67 +23,133 @@
  */
 package jenkins.install;
 
-import javax.annotation.CheckForNull;
+import java.io.IOException;
 
-import org.kohsuke.accmod.Restricted;
-import org.kohsuke.accmod.restrictions.NoExternalUse;
+import javax.annotation.Nonnull;
+
+import hudson.Extension;
+import hudson.ExtensionList;
+import hudson.ExtensionPoint;
+import jenkins.model.Jenkins;
 
 /**
  * Jenkins install state.
  *
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
-@Restricted(NoExternalUse.class)
-public enum InstallState {
+public class InstallState implements ExtensionPoint {
     /**
      * Need InstallState != NEW for tests by default
      */
-    UNKNOWN(true, null),
+    @Extension
+    public static final InstallState UNKNOWN = new InstallState("UNKNOWN", true, null);
+    
     /**
      * The initial set up has been completed
      */
-    INITIAL_SETUP_COMPLETED(true, null),
+    @Extension
+    public static final InstallState INITIAL_SETUP_COMPLETED = new InstallState("INITIAL_SETUP_COMPLETED", true, null) {
+        public void init() {
+            Jenkins j = Jenkins.getInstance();
+            try {
+                j.getSetupWizard().completeSetup(j);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    };
+    
     /**
      * Creating an admin user for an initial Jenkins install.
      */
-    CREATE_ADMIN_USER(false, INITIAL_SETUP_COMPLETED),
+    @Extension
+    public static final InstallState CREATE_ADMIN_USER = new InstallState("CREATE_ADMIN_USER", false, INITIAL_SETUP_COMPLETED);
+    
     /**
      * New Jenkins install. The user has kicked off the process of installing an
      * initial set of plugins (via the install wizard).
      */
-    INITIAL_PLUGINS_INSTALLING(false, CREATE_ADMIN_USER),
+    @Extension
+    public static final InstallState INITIAL_PLUGINS_INSTALLING = new InstallState("INITIAL_PLUGINS_INSTALLING", false, CREATE_ADMIN_USER);
+    
     /**
      * New Jenkins install.
      */
-    NEW(false, INITIAL_PLUGINS_INSTALLING),
+    @Extension
+    public static final InstallState NEW = new InstallState("NEW", false, INITIAL_PLUGINS_INSTALLING) {
+        public void init() {
+            try {
+                Jenkins.getInstance().getSetupWizard().init(true);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    };
+    
     /**
      * Restart of an existing Jenkins install.
      */
-    RESTART(true, INITIAL_SETUP_COMPLETED),
+    @Extension
+    public static final InstallState RESTART = new InstallState("RESTART", true, INITIAL_SETUP_COMPLETED) {
+        public void init() {
+            InstallUtil.saveLastExecVersion();
+        }
+    };
+    
     /**
      * Upgrade of an existing Jenkins install.
      */
-    UPGRADE(true, INITIAL_SETUP_COMPLETED),
+    @Extension
+    public static final InstallState UPGRADE = new InstallState("UPGRADE", true, INITIAL_SETUP_COMPLETED) {
+        public void init() {
+            SetupWizard wiz = Jenkins.getInstance().getSetupWizard();
+            if (!wiz.getPlatformPluginUpdates().isEmpty()) {
+                try {
+                    UpgradeWizard uw = new UpgradeWizard();
+                    Jenkins.getInstance().setInstallState(uw);
+                    uw.init();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    };
+    
     /**
      * Downgrade of an existing Jenkins install.
      */
-    DOWNGRADE(true, INITIAL_SETUP_COMPLETED),
+    @Extension
+    public static final InstallState DOWNGRADE = new InstallState("DOWNGRADE", true, INITIAL_SETUP_COMPLETED) {
+        public void init() {
+            InstallUtil.saveLastExecVersion();
+        }
+    };
+    
     /**
      * Jenkins started in test mode (JenkinsRule).
      */
-    TEST(true, INITIAL_SETUP_COMPLETED),
+    public static final InstallState TEST = new InstallState("TEST", true, INITIAL_SETUP_COMPLETED);
+    
     /**
      * Jenkins started in development mode: Bolean.getBoolean("hudson.Main.development").
      * Can be run normally with the -Djenkins.install.runSetupWizard=true
      */
-    DEVELOPMENT(true, INITIAL_SETUP_COMPLETED);
+    public static final InstallState DEVELOPMENT = new InstallState("DEVELOPMENT", true, INITIAL_SETUP_COMPLETED);
 
     private final boolean isSetupComplete;
     private final InstallState nextState;
+    private final String name;
 
-    private InstallState(boolean isSetupComplete, InstallState nextState) {
+    public InstallState(@Nonnull String name, boolean isSetupComplete, InstallState nextState) {
+        this.name = name;
         this.isSetupComplete = isSetupComplete;
         this.nextState = nextState;
+    }
+    
+    /**
+     * Process any initialization this install state requires
+     */
+    public void init() {
     }
 
     /**
@@ -96,8 +162,56 @@ public enum InstallState {
     /**
      * Gets the next state
      */
-    @CheckForNull
-    public InstallState getNextState() {
-        return nextState;
+    public void proceed() {
+        // Pass to extensions for any customizations to the state transitions
+        InstallState next = InstallUtil.getInstallState(this);
+        if(next == null) {
+            // fall back to setting the next state defined locally
+            next = nextState;
+        }
+        Jenkins.getInstance().setInstallState(next == null ? UNKNOWN : next);
+    }
+    
+    public String name() {
+        return name;
+    }
+    
+    @Override
+    public int hashCode() {
+        return name.hashCode();
+    }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if(obj instanceof InstallState) {
+            return name.equals(((InstallState)obj).name());
+        }
+        return false;
+    }
+    
+    @Override
+    public String toString() {
+        return "InstallState (" + name + ")";
+    }
+
+    /**
+     * Find an install state by name
+     * @param name
+     * @return
+     */
+    public static InstallState valueOf(String name) {
+        for(InstallState state : all()) {
+            if(name.equals(state.name)) {
+                return state;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns all install states in the system
+     */
+    static ExtensionList<InstallState> all() {
+        return ExtensionList.lookup(InstallState.class);
     }
 }

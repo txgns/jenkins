@@ -1,7 +1,6 @@
 /**
  * Jenkins first-run install wizard
  */
-
 // Require modules here, make sure they get browserify'd/bundled
 var jquery = require('jquery-detached');
 var bootstrap = require('bootstrap-detached');
@@ -138,9 +137,9 @@ var createPluginSetupWizard = function(appendTarget) {
 	};
 
 	// state variables for plugin data, selected plugins, etc.:
-	var pluginList = pluginManager.plugins();
-	var allPluginNames = pluginManager.pluginNames();
-	var selectedPluginNames = pluginManager.recommendedPluginNames();
+	var pluginList;
+	var allPluginNames;
+	var selectedPluginNames;
 	var visibleDependencies = {};
 	var categories = [];
 	var availablePlugins = {};
@@ -151,7 +150,10 @@ var createPluginSetupWizard = function(appendTarget) {
 	$wizard.appendTo(appendTarget);
 	var $container = $wizard.find('.modal-content');
 	var currentPanel;
-
+	
+	var pluginTemplates = {};
+	var self = this;
+	
 	// show tooltips; this is done here to work around a bootstrap/prototype incompatibility
 	$(document).on('mouseenter', '*[data-tooltip]', function() {
 		var $tip = $bs(this);
@@ -358,6 +360,36 @@ var createPluginSetupWizard = function(appendTarget) {
 			installPlugins(pluginManager.recommendedPluginNames());
 		});
 	};
+	
+	var enableButtonsAfterFrameLoad = function() {
+		$('iframe[src]').load(function() {
+			$('button').prop({disabled:false});
+		});
+	};
+	
+	var setupFirstUser = function() {
+		setPanel(firstUserPanel, {}, enableButtonsAfterFrameLoad);
+	};
+	
+	// used to handle displays based on current Jenkins install state
+	var transitions = {
+		CREATE_ADMIN_USER: function() { setupFirstUser(); },
+		INITIAL_SETUP_COMPLETED: function() { setPanel(setupCompletePanel); },
+		INITIAL_PLUGINS_INSTALLING: function() { showInstallProgress(); }
+	};
+	var transitionPanel = function(state) {
+		if(state in transitions) {
+			transitions[state]();
+			return true;
+		}
+		return false;
+	};
+	
+	var checkStateAndNavigate = function() {
+		pluginManager.installStatus(handleGenericError(function(data) {
+			transitionPanel(data.state);
+		}));
+	};
 
 	// Define actions
 	var showInstallProgress = function(state) {
@@ -367,11 +399,8 @@ var createPluginSetupWizard = function(appendTarget) {
 			return;
 		}
 		
-		if(state) {
-			if(/CREATE_ADMIN_USER/.test(state)) {
-				setupFirstUser();
-				return;
-			}
+		if(state && transitionPanel(state)) {
+			return;
 		}
 
 		initInstallingPluginList();
@@ -473,7 +502,7 @@ var createPluginSetupWizard = function(appendTarget) {
 				else {
 					// mark complete
 					$('.progress-bar').css({width: '100%'});
-					showInstallProgress('CREATE_ADMIN_USER'); // this temporary, changed in another PR
+					checkStateAndNavigate();
 				}
 			}));
 		};
@@ -721,45 +750,45 @@ var createPluginSetupWizard = function(appendTarget) {
 		}
 	};
 	
-	var enableButtonsAfterFrameLoad = function() {
-		$('iframe[src]').load(function() {
-			$('button').prop({disabled:false});
-		});
-	};
-	
-	var setupFirstUser = function() {
-		setPanel(firstUserPanel, {}, enableButtonsAfterFrameLoad);
+	var handleStaplerSubmit = function(data) {
+		if(data.status && data.status > 200) {
+			// Nothing we can really do here
+			setPanel(errorPanel, { errorMessage: data.statusText });
+			return;
+		}
+		
+		try {
+			if(JSON.parse(data).status == 'ok') {
+				checkStateAndNavigate();
+				return;
+			}
+		} catch(e) {
+			// ignore JSON parsing issues, this may be HTML
+		}
+		// we get 200 OK
+		var $page = $(data);
+		var $errors = $page.find('.error');
+		if($errors.length > 0) {
+			var $main = $page.find('#main-panel').detach();
+			if($main.length > 0) {
+				data = data.replace(/body([^>]*)[>](.|[\r\n])+[<][/]body/,'body$1>'+$main.html()+'</body');
+			}
+			var doc = $('iframe[src]').contents()[0];
+			doc.open();
+			doc.write(data);
+			doc.close();
+		}
+		else {
+			checkStateAndNavigate();
+		}
 	};
 	
 	// call to submit the firstuser
 	var saveFirstUser = function() {
 		$('button').prop({disabled:true});
-		var handleSubmit = function(data) {
-			if(data.status && data.status > 200) {
-				// Nothing we can really do here
-				setPanel(errorPanel, { errorMessage: data.statusText });
-				return;
-			}
-			// we get 200 OK
-			var $page = $(data);
-			var $errors = $page.find('.error');
-			if($errors.length > 0) {
-				var $main = $page.find('#main-panel').detach();
-				if($main.length > 0) {
-					data = data.replace(/body([^>]*)[>](.|[\r\n])+[<][/]body/,'body$1>'+$main.html()+'</body');
-				}
-				var doc = $('iframe[src]').contents()[0];
-				doc.open();
-				doc.write(data);
-				doc.close();
-			}
-			else {
-				setPanel(setupCompletePanel);
-			}
-		};
-		securityConfig.saveFirstUser($('iframe[src]').contents().find('form:not(.no-json)'), handleSubmit, handleSubmit);
+		securityConfig.saveFirstUser($('iframe[src]').contents().find('form:not(.no-json)'), handleStaplerSubmit, handleStaplerSubmit);
 	};
-	
+
 	var skipFirstUser = function() {
 		$('button').prop({disabled:true});
 		setPanel(setupCompletePanel, {message: translations.installWizard_firstUserSkippedMessage});
@@ -776,6 +805,7 @@ var createPluginSetupWizard = function(appendTarget) {
 			jenkins.goTo('/'); // this will re-run connectivity test
 		});
 	};
+	
 	
 	// push failed plugins to retry
 	var retryFailedPlugins = function() {
@@ -877,17 +907,34 @@ var createPluginSetupWizard = function(appendTarget) {
 		'.continue-with-failed-plugins': continueWithFailedPlugins,
 		'.start-over': startOver
 	};
-	for(var cls in actions) {
-		bindClickHandler(cls, actions[cls]);
-	}
 
 	// do this so the page isn't blank while doing connectivity checks and other downloads
 	setPanel(loadingPanel);
-
-	// kick off to get resource bundle
-	jenkins.loadTranslations('jenkins.install.pluginSetupWizard', handleGenericError(function(localizations) {
-		translations = localizations;
-
+	
+	// Process extensions
+	var extensionTranslationOverrides = [];
+	if ('undefined' != typeof(setupWizardExtensions)) {
+		$.each(setupWizardExtensions, function() {
+			this.call(self, {
+				'$wizard': $wizard,
+				pluginTemplates: pluginTemplates,
+				setPanel: setPanel,
+				actions: actions,
+				transitions: transitions,
+				translationOverride: function(it) { extensionTranslationOverrides.push(it); },
+				setSelectedPluginNames: function(pluginNames) { selectedPluginNames = pluginNames.slice(0); },
+				showInstallProgress: showInstallProgress,
+				installPlugins: installPlugins,
+				loadPluginData: loadPluginData
+			});
+		});
+	}
+	
+	for(var cls in actions) {
+		bindClickHandler(cls, actions[cls]);
+	}
+	
+	var showInitialSetupWizard = function() {
 		// check for connectivity
 		//TODO: make the Update Center ID configurable
 		var siteId = 'default';
@@ -900,6 +947,12 @@ var createPluginSetupWizard = function(appendTarget) {
 				}
 				return;
 			}
+			
+			// Initialize the plugin manager after connectivity checks
+			pluginManager.init(handleGenericError(function() {
+				pluginList = pluginManager.plugins();
+				allPluginNames = pluginManager.pluginNames();
+				selectedPluginNames = pluginManager.recommendedPluginNames();
 
 			// check for updates when first loaded...
 			pluginManager.installStatus(handleGenericError(function(data) {
@@ -983,8 +1036,37 @@ var createPluginSetupWizard = function(appendTarget) {
 					$('.install-recommended').focus();
 
 				}));
+				}));
 			}));
 		}));
+	};
+	
+	// kick off to get resource bundle
+	jenkins.loadTranslations('jenkins.install.pluginSetupWizard', handleGenericError(function(localizations) {
+		translations = localizations;
+		
+		// process any translation overrides
+		$.each(extensionTranslationOverrides, function() {
+			this(translations);
+		});
+		
+		// check for a start page
+		var initialPanelName = $(appendTarget).attr('data-show-wizard');
+		if(initialPanelName) {
+			try {
+				if(pluginTemplates[initialPanelName]) {
+					setPanel(pluginTemplates[initialPanelName]);
+					return;
+				}
+				var panelToShow = require('./templates/'+initialPanelName+'.hbs');
+				setPanel(panelToShow);
+			} catch(e) {
+				setPanel(errorPanel, { errorMessage: 'Missing: ' + initialPanelName });
+			}
+			return; // don't bother with connectivity checks and such here
+		}
+		
+		showInitialSetupWizard();
 	}));
 };
 

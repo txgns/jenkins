@@ -154,11 +154,9 @@ ${h.initPageVariables(context)}
         <st:include it="${pd}" page="header.jelly" optional="true" />
       </j:forEach>
     </j:if>
+    
+    <st:include it="${app.setupWizard}" page="client-scripts" optional="true"/>
 
-    <j:invokeStatic var="j" className="jenkins.model.Jenkins" method="getInstance" />
-    <j:if test="${!j.installState.setupComplete}">
-      <st:adjunct includes="${j.installWizardPath}" />
-    </j:if>
 
     <j:if test="${isMSIE}">
       <script src="${resURL}/scripts/msie.js" type="text/javascript"/>
