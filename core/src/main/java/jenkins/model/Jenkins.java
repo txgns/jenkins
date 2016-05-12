@@ -884,8 +884,8 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
                 System.exit(0);
 
             setupWizard = new SetupWizard();
-            installState = InstallUtil.getInstallState(installState);
-            installState.init();
+            installState = InstallUtil.getNextInstallState(installState);
+            installState.initializeState();
 
             launchTcpSlaveAgentListener();
 

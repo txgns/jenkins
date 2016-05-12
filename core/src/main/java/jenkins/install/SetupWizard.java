@@ -81,6 +81,7 @@ public class SetupWizard extends PageDecorator {
      */
     /*package*/ void init(boolean newInstall) throws IOException, InterruptedException {
         if(newInstall) {
+            // this was determined to be a new install, don't run the update wizard here
             completeUpgrade(jenkins);
             
             // Create an admin user by default with a 
@@ -202,7 +203,7 @@ public class SetupWizard extends PageDecorator {
                     throw new IOException(e);
                 }
                 
-                InstallState.CREATE_ADMIN_USER.proceed();
+                InstallState.CREATE_ADMIN_USER.proceedToNextState();
                 
                 // ... and then login
                 Authentication a = new UsernamePasswordAuthenticationToken(u.getId(),req.getParameter("password1"));
@@ -233,7 +234,6 @@ public class SetupWizard extends PageDecorator {
     }
     
     void completeSetup(Jenkins jenkins) throws IOException {
-        jenkins.setInstallState(InstallState.INITIAL_SETUP_COMPLETED);
         InstallUtil.saveLastExecVersion();
         completeUpgrade(jenkins);
     }
@@ -383,15 +383,15 @@ public class SetupWizard extends PageDecorator {
         return hudson.util.HttpResponses.okJSON();
     }
     
+    /*package*/ void completeUpgrade(Jenkins jenkins) throws IOException {
+        setCurrentLevel(Jenkins.getVersion());
+        jenkins.getInstallState().proceedToNextState();
+    }
+    
     /*package*/ void setCurrentLevel(VersionNumber v) throws IOException {
         FileUtils.writeStringToFile(getUpdateStateFile(), v.toString());
     }
     
-    /*package*/ void completeUpgrade(Jenkins jenkins) throws IOException {
-        // this was determined to be a new install, don't run the update wizard here
-        setCurrentLevel(Jenkins.getVersion());
-    }
-
     /**
      * File that captures the state of upgrade.
      *

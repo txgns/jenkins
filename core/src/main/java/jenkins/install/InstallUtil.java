@@ -98,16 +98,16 @@ public class InstallUtil {
     /**
      * Returns the next state during a transition from the current install state
      */
-    public static InstallState getInstallState() {
-        return getInstallState(InstallState.UNKNOWN);
+    public static InstallState getNextInstallState() {
+        return getNextInstallState(InstallState.UNKNOWN);
     }
     
     /**
      * Returns the next state during a transition from the current install state
      */
-    public static InstallState getInstallState(final InstallState current) {
+    public static InstallState getNextInstallState(final InstallState current) {
         List<Function<Iterator<InstallState>,InstallState>> installStateFilterChain = new ArrayList<>();
-        for (final SetupWizardExtension setupExtension : SetupWizardExtension.all()) {
+        for (final InstallStateFilter setupExtension : InstallStateFilter.all()) {
             installStateFilterChain.add(new Function<Iterator<InstallState>, InstallState>() {
                 @Override
                 public InstallState apply(Iterator<InstallState> next) {
@@ -169,7 +169,7 @@ public class InstallUtil {
             // Allow for skipping
             if(shouldNotRun) {
                 try {
-                    InstallState.INITIAL_SETUP_COMPLETED.init();
+                    InstallState.INITIAL_SETUP_COMPLETED.initializeState();
                     return j.getInstallState();
                 } catch (RuntimeException e) {
                     throw e;

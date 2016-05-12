@@ -42,19 +42,21 @@ public class UpgradeWizard extends InstallState {
     private static final String SHOW_UPGRADE_WIZARD_FLAG = UpgradeWizard.class.getName() + ".show";
 
     public UpgradeWizard() throws IOException {
-        super("UPGRADE", false, null);
+        super("UPGRADE", false, InstallState.RESTART);
     }
     
     @Override
-    public void init() {
-        try {
-            updateUpToDate();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    public void initializeState() {
+        updateUpToDate();
     }
-
-    private void updateUpToDate() throws IOException {
+    
+    @Override
+    public void proceedToNextState() {
+        updateUpToDate();
+        super.proceedToNextState();
+    }
+    
+    private void updateUpToDate() {
         // If we don't have any platform plugins, it's considered 'up to date' in terms
         // of the updater
         JSONArray platformPlugins = Jenkins.getInstance().getSetupWizard().getPlatformPluginUpdates();

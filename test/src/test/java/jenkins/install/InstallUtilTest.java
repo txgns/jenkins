@@ -36,7 +36,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.mockito.Mockito;
 
@@ -83,7 +82,7 @@ public class InstallUtilTest {
     @Test
     public void test_typeTransitions() {
         // A new test instance
-        Assert.assertEquals(InstallState.NEW, InstallUtil.getInstallState());
+        Assert.assertEquals(InstallState.NEW, InstallUtil.getNextInstallState());
 
         // Save the last exec version. This will only be done by Jenkins after one of:
         //   1. A successful run of the install wizard.
@@ -96,15 +95,15 @@ public class InstallUtilTest {
         // Now if we ask what is the InstallState, we should be told it's a RESTART because
         // the install wizard is complete and the version matches the currently executing
         // Jenkins version.
-        Assert.assertEquals(InstallState.RESTART, InstallUtil.getInstallState());
+        Assert.assertEquals(InstallState.RESTART, InstallUtil.getNextInstallState());
 
         // Fudge things again, changing the stored version to something old, faking an upgrade...
         InstallUtil.saveLastExecVersion("1.584");
-        Assert.assertEquals(InstallState.UPGRADE, InstallUtil.getInstallState());
+        Assert.assertEquals(InstallState.UPGRADE, InstallUtil.getNextInstallState());
 
         // Fudge things yet again, changing the stored version to something very very new, faking a downgrade...
         InstallUtil.saveLastExecVersion("1000.0");
-        Assert.assertEquals(InstallState.DOWNGRADE, InstallUtil.getInstallState());
+        Assert.assertEquals(InstallState.DOWNGRADE, InstallUtil.getNextInstallState());
     }
 
 

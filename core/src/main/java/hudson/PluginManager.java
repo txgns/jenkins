@@ -1110,7 +1110,7 @@ public abstract class PluginManager extends AbstractModelObject implements OnMas
         Jenkins j = Jenkins.getInstance();
         j.checkPermission(Jenkins.ADMINISTER);
         if(InstallState.INITIAL_PLUGINS_INSTALLING.equals(j.getInstallState())) {
-            InstallState.INITIAL_PLUGINS_INSTALLING.proceed();
+            InstallState.INITIAL_PLUGINS_INSTALLING.proceedToNextState();
         }
     }
 
@@ -1262,7 +1262,7 @@ public abstract class PluginManager extends AbstractModelObject implements OnMas
                     }
                     updateCenter.persistInstallStatus();
                     if(!failures) {
-                        InstallState.INITIAL_PLUGINS_INSTALLING.proceed();
+                        InstallState.INITIAL_PLUGINS_INSTALLING.proceedToNextState();
                     }
                 }
             }.start();
