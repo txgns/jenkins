@@ -557,9 +557,10 @@ public abstract class PluginManager extends AbstractModelObject implements OnMas
                 }
 
                 if (dependencyURL != null) {
-                    dependencySet.add(dependencyURL);
                     // And transitive deps...
                     addDependencies(dependencyURL, fromPath, dependencySet);
+                    // And then add the current plugin 
+                    dependencySet.add(dependencyURL);
                 }
             }
         }
