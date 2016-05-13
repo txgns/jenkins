@@ -24,6 +24,7 @@
 package hudson;
 
 import jenkins.util.SystemProperties;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.PluginWrapper.Dependency;
 import hudson.init.InitMilestone;
 import hudson.init.InitStrategy;
@@ -99,6 +100,7 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.HttpRetryException;
 import java.net.HttpURLConnection;
@@ -139,6 +141,7 @@ import static hudson.init.InitMilestone.*;
 import hudson.model.DownloadService;
 import hudson.util.FormValidation;
 
+import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.INFO;
 import static java.util.logging.Level.SEVERE;
 import static java.util.logging.Level.WARNING;
@@ -148,10 +151,69 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 /**
  * Manages {@link PluginWrapper}s.
  *
+ * <p>
+ * <b>Setting default Plugin Managers</b>. The default plugin manager in {@code Jenkins} can be replaced by defining a
+ * System Property (<code>hudson.PluginManager.className</code>). See {@link #createDefault(Jenkins)}.
+ * This className should be available on early startup, so it cannot come only from a library
+ * (e.g. Jenkins module or Extra library dependency in the WAR file project).
+ * Plugins cannot be used for such purpose.
+ * In order to be correctly instantiated, the class definition must have at least one constructor with the same
+ * siganture as the following ones:
+ * <ol>
+ *     <li>{@link LocalPluginManager#LocalPluginManager(Jenkins)} </li>
+ *     <li>{@link LocalPluginManager#LocalPluginManager(ServletContext, File)} </li>
+ *     <li>{@link LocalPluginManager#LocalPluginManager(File)} </li>
+ * </ol>
+ * Constructors are searched in the order provided above and only the first found suitable constructor is
+ * tried to build an instance. In the last two cases the {@link File} argument refers to the <i>Jenkins home directory</i>.
+ *
  * @author Kohsuke Kawaguchi
  */
 @ExportedBean
 public abstract class PluginManager extends AbstractModelObject implements OnMaster, StaplerOverridable {
+    /** Custom plugin manager system property or context param. */
+    public static final String CUSTOM_PLUGIN_MANAGER = PluginManager.class.getName() + ".className";
+
+    /**
+     * Creates the {@link PluginManager} to use if no one is provided to a {@link Jenkins} object.
+     * This method will be after creation of {@link Jenkins} object, but before it is fully initialized.
+     * @param jenkins Jenkins Instance.
+     * @return Plugin manager to use. If no custom class is configured or in case of any error, the default
+     * {@link LocalPluginManager} returned.
+     */
+    public static @NonNull PluginManager createDefault(@NonNull Jenkins jenkins) {
+        String pmClassName = System.getProperty(CUSTOM_PLUGIN_MANAGER);
+        if (StringUtils.isBlank(pmClassName) && jenkins.servletContext != null) {
+            pmClassName = jenkins.servletContext.getInitParameter(CUSTOM_PLUGIN_MANAGER);
+        }
+        if (!StringUtils.isBlank(pmClassName)) {
+            LOGGER.log(FINE, String.format("Use of custom plugin manager [%s] requested.", pmClassName));
+            try {
+                final Class<? extends PluginManager> klass = Class.forName(pmClassName).asSubclass(PluginManager.class);
+                try {
+                    return klass.getConstructor(Jenkins.class).newInstance(jenkins);
+                } catch(NoSuchMethodException e1) {
+                    try {
+                        return klass.getConstructor(ServletContext.class, File.class).newInstance(jenkins.servletContext, jenkins.getRootDir());
+                    } catch(NoSuchMethodException e2) {
+                        return klass.getConstructor(File.class).newInstance(jenkins.getRootDir());
+                    }
+                }
+            } catch(NullPointerException e) {
+                // Class.forName and Class.getConstructor are supposed to never return null though a broken ClassLoader
+                // could break the contract. Just in case we introduce this specific catch to avoid polluting the logs with NPEs.
+                LOGGER.log(WARNING, String.format("Unable to instantiate custom plugin manager [%s]. Using default.", pmClassName));
+            } catch(ClassCastException e) {
+                LOGGER.log(WARNING, String.format("Provided class [%s] does not extend PluginManager. Using default.", pmClassName));
+            } catch(NoSuchMethodException e) {
+                LOGGER.log(WARNING, String.format("Provided custom plugin manager [%s] does not provide any of the suitable constructors. Using default.", pmClassName), e);
+            } catch(Exception e) {
+                LOGGER.log(WARNING, String.format("Unable to instantiate custom plugin manager [%s]. Using default.", pmClassName), e);
+            }
+        }
+        return new LocalPluginManager(jenkins);
+    }
+
     /**
      * All discovered plugins.
      */

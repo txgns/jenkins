@@ -23,35 +23,16 @@
  */
 package hudson;
 
-import org.eclipse.jetty.server.HttpConfiguration;
-import org.eclipse.jetty.server.HttpConnectionFactory;
-import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.ServerConnector;
-import org.eclipse.jetty.util.component.AbstractLifeCycle;
-import org.eclipse.jetty.webapp.Configuration;
-import org.eclipse.jetty.webapp.WebAppContext;
-import org.eclipse.jetty.webapp.WebXmlConfiguration;
-import org.junit.AssumptionViolatedException;
+import jenkins.model.Jenkins;
 import org.junit.Rule;
 import org.junit.Test;
-import org.jvnet.hudson.test.HudsonTestCase;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRecipe;
 import org.jvnet.hudson.test.JenkinsRule;
-import org.jvnet.hudson.test.ThreadPoolImpl;
 import org.jvnet.hudson.test.recipes.WithPlugin;
 
-import javax.servlet.ServletContext;
-import javax.servlet.ServletContextListener;
-import java.io.File;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
@@ -62,117 +43,44 @@ import static org.junit.Assert.assertTrue;
  * Tests for the use of a custom plugin manager in custom wars.
  */
 public class CustomPluginManagerTest {
-    @Rule public final JenkinsRule r = new CustomPluginJenkinsRule();
+    @Rule public final JenkinsRule r = new JenkinsRule();
 
-    // TODO: to be greatly simplified when JENKINS-34701 is available.
-    private static final class CustomPluginJenkinsRule extends JenkinsRule {
-        ServletContext servletContext;
-
-        private File exploded() {
-            File d = new File(".").getAbsoluteFile();
-            for( ; d!=null; d=d.getParentFile()) {
-                if(new File(d,".jenkins").exists()) {
-                    File dir = new File(d,"war/target/jenkins");
-                    if(dir.exists()) {
-                        System.out.println("Using jenkins.war resources from "+dir);
-                        return dir;
-                    }
-                }
-            }
-            // Temporal solution until JENKINS-34701 is available.
-            throw new AssumptionViolatedException("No jenkins.war resources available");
-        }
-
-        protected ServletContext createWebServer() throws Exception {
-            if (System.getProperty(WebAppMain.CUSTOM_PLUGIN_MANAGER) != null) {
-                throw new AssumptionViolatedException("Testing Context Parameter, system property would override");
-            }
-            final File exploded = exploded();
-
-            server = new Server(new ThreadPoolImpl(new ThreadPoolExecutor(10, 10, 10L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(),new ThreadFactory() {
-                public Thread newThread(Runnable r) {
-                    Thread t = new Thread(r);
-                    t.setName("Jetty Thread Pool");
-                    return t;
-                }
-            })));
-
-            WebAppContext context = new WebAppContext(exploded.getPath(), contextPath);
-            context.setClassLoader(getClass().getClassLoader());
-            context.setConfigurations(new Configuration[]{new WebXmlConfiguration()});
-            context.addBean(new NoListenerConfiguration(context));
-            server.setHandler(context);
-            context.setMimeTypes(MIME_TYPES);
-            context.getSecurityHandler().setLoginService(configureUserRealm());
-            context.setResourceBase(exploded.getPath());
-
-            context.setInitParameter(WebAppMain.CUSTOM_PLUGIN_MANAGER, CustomPluginManager.class.getName());
-
-            ServerConnector connector = new ServerConnector(server);
-            HttpConfiguration config = connector.getConnectionFactory(HttpConnectionFactory.class).getHttpConfiguration();
-            // use a bigger buffer as Stapler traces can get pretty large on deeply nested URL
-            config.setRequestHeaderSize(12 * 1024);
-            connector.setHost("localhost");
-            if (System.getProperty("port")!=null)
-                connector.setPort(Integer.parseInt(System.getProperty("port")));
-
-            server.addConnector(connector);
-            server.start();
-
-            localPort = connector.getLocalPort();
-            Logger.getLogger(HudsonTestCase.class.getName()).log(Level.INFO, "Running on {0}", getURL());
-
-            servletContext = context.getServletContext();
-            return servletContext;
-        }
-
-    };
-
-    /**
-     * Kills off {@link ServletContextListener}s loaded from web.xml.
-     *
-     * <p>
-     * This is so that the harness can create the {@link jenkins.model.Jenkins} object.
-     * with the home directory of our choice.
-     *
-     * @author Kohsuke Kawaguchi
-     */
-    private static final class NoListenerConfiguration extends AbstractLifeCycle {
-        private final WebAppContext context;
-
-        NoListenerConfiguration(WebAppContext context) {
-            this.context = context;
-        }
-
-        @Override
-        protected void doStart() throws Exception {
-            context.setEventListeners(null);
-        }
-    }
-
-    @JenkinsRecipe(hudson.CustomPluginManagerTest.WithCustomPluginManager.RuleRunnerImpl.class)
+    // TODO: Move to jenkins-test-harness
+    @JenkinsRecipe(WithCustomLocalPluginManager.RuleRunnerImpl.class)
     @Target(METHOD)
     @Retention(RUNTIME)
-    public @interface WithCustomPluginManager {
-        class RuleRunnerImpl extends JenkinsRecipe.Runner<WithCustomPluginManager> {
+    public @interface WithCustomLocalPluginManager {
+        Class<? extends LocalPluginManager> value();
+
+        class RuleRunnerImpl extends JenkinsRecipe.Runner<WithCustomLocalPluginManager> {
+            private String oldValue;
+
             @Override
-            public void decorateHome(JenkinsRule jenkinsRule, File home) throws Exception {
-                jenkinsRule.setPluginManager(WebAppMain.createPluginManager(((CustomPluginJenkinsRule)jenkinsRule).servletContext, home));
+            public void setup(JenkinsRule jenkinsRule, WithCustomLocalPluginManager recipe) throws Exception {
+                jenkinsRule.useLocalPluginManager = true;
+                oldValue = System.getProperty(LocalPluginManager.CUSTOM_PLUGIN_MANAGER);
+                System.setProperty(LocalPluginManager.CUSTOM_PLUGIN_MANAGER, recipe.value().getName());
+
+            }
+
+            @Override
+            public void tearDown(JenkinsRule jenkinsRule, WithCustomLocalPluginManager recipe) throws Exception {
+                System.setProperty(LocalPluginManager.CUSTOM_PLUGIN_MANAGER, oldValue);
             }
         }
     }
 
     @Issue("JENKINS-34681")
     @WithPlugin("tasks.jpi")
-    @WithCustomPluginManager
+    @WithCustomLocalPluginManager(CustomPluginManager.class)
     @Test public void customPluginManager() {
         assertTrue("Correct plugin manager installed", r.getPluginManager() instanceof CustomPluginManager);
-        assertNotNull("Plugin tasks installed", r.jenkins.getPlugin("tasks"));
+        assertNotNull("Plugin 'tasks' installed", r.jenkins.getPlugin("tasks"));
     }
 
     public static class CustomPluginManager extends LocalPluginManager {
-        public CustomPluginManager(ServletContext context, File home) {
-            super(context, home);
+        public CustomPluginManager(Jenkins jenkins) {
+            super(jenkins);
         }
     }
 

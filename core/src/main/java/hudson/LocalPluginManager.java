@@ -25,17 +25,23 @@
 package hudson;
 
 import jenkins.util.SystemProperties;
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import jenkins.model.Jenkins;
+import org.apache.commons.lang.StringUtils;
 
 import javax.servlet.ServletContext;
 import java.io.File;
+import java.lang.reflect.Constructor;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.logging.Logger;
 
+import static java.util.logging.Level.FINE;
+import static java.util.logging.Level.WARNING;
+
 /**
- * {@link PluginManager}
+ * Default implementation of {@link PluginManager}.
  *
  * @author Kohsuke Kawaguchi
  */
@@ -45,7 +51,7 @@ public class LocalPluginManager extends PluginManager {
      * @param context Servlet context. Provided for compatibility as {@code Jenkins.getInstance().servletContext} should be used.
      * @param rootDir Jenkins home directory.
      */
-    public LocalPluginManager(ServletContext context, @NonNull File rootDir) {
+    public LocalPluginManager(@CheckForNull ServletContext context, @NonNull File rootDir) {
         super(context, new File(rootDir,"plugins"));
     }
 
