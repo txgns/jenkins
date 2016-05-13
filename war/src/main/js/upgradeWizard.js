@@ -3,9 +3,9 @@ setupWizardExtension(function(wizard) {
 	var jenkins = wizard.jenkins; // wizard-provided jenkins api
 	var upgradeUrl = wizard.$wizard.parent().attr('data-upgrade-url');
 	
-	wizard.pluginTemplates.upgradeTo20Panel = require('./templates/upgradeTo20Panel.hbs');
-	wizard.pluginTemplates.upgradeSuccessPanel = require('./templates/upgradeSuccessPanel.hbs');
-	wizard.pluginTemplates.upgradeSkippedPanel = require('./templates/upgradeSkippedPanel.hbs');
+	wizard.pluginTemplates.upgradeTo20Panel = handlebars.compile(fs.readFileSync(__dirname + '/./templates/upgradeTo20Panel.hbs', 'utf8'));
+	wizard.pluginTemplates.upgradeSuccessPanel = handlebars.compile(fs.readFileSync(__dirname + '/./templates/upgradeSuccessPanel.hbs', 'utf8'));
+	wizard.pluginTemplates.upgradeSkippedPanel = handlebars.compile(fs.readFileSync(__dirname + '/./templates/upgradeSkippedPanel.hbs', 'utf8'));
 	wizard.actions['.skip-recommended-plugins'] = function() {
 		wizard.setPanel(wizard.pluginTemplates.upgradeSkippedPanel);
 	};
