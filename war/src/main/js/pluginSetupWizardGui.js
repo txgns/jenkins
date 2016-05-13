@@ -916,7 +916,9 @@ var createPluginSetupWizard = function(appendTarget) {
 	if ('undefined' != typeof(setupWizardExtensions)) {
 		$.each(setupWizardExtensions, function() {
 			this.call(self, {
+				'$': $,
 				'$wizard': $wizard,
+				jenkins: jenkins,
 				pluginTemplates: pluginTemplates,
 				setPanel: setPanel,
 				actions: actions,
