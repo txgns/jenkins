@@ -9,6 +9,11 @@ var getJQuery = function() {
     return $;
 };
 
+var onPage = function(callback) {
+    var HTML = '<html><head data-rooturl="/jenkins" data-resurl="/jenkins/static/908d75c1" data-adjuncturl="/jenkins/adjuncts/908d75c1"></head><body></body></html>';
+    jsTest.onPage(callback, HTML);
+};
+
 var pluginList = jsTest.requireSrcModule('api/plugins');
 
 pluginList.recommendedPlugins = ['subversion'];
@@ -128,7 +133,7 @@ var ajaxMocks = function(responseMappings) {
 
 // call this for each test, it will provide a new wizard, jquery to the caller
 var test = function(test, ajaxMappings) {
-    jsTest.onPage(function() {
+    onPage(function() {
         // deps
         var $ = getJQuery();
 
@@ -183,7 +188,7 @@ describe("pluginSetupWizard.js", function () {
     });
 
     it("offline shows", function (done) {
-        jsTest.onPage(function() {
+        onPage(function() {
             // deps
             var jenkins = jsTest.requireSrcModule('./util/jenkins');
 
