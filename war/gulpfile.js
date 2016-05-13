@@ -23,7 +23,7 @@ builder.bundle('src/main/js/pluginSetupWizard.js')
     .withExternalModuleMapping('bootstrap', 'core-assets/bootstrap:bootstrap3', {addDefaultCSS: true})
     .withExternalModuleMapping('handlebars', 'core-assets/handlebars:handlebars3')
     .less('src/main/less/pluginSetupWizard.less')
-    .inDir('target/classes/org/jenkinsci/setup'); // bundle as an adjunct
+    .inDir('src/main/webapp/jsbundles');
 
 //
 //Bundle the Upgrade Wizard.
