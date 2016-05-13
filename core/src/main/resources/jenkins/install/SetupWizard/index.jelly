@@ -2,6 +2,6 @@
 <l:html norefresh="true" title="${it.displayName}" xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
   <l:main-panel>
     <div class="plugin-setup-wizard-container" data-show-wizard="${app.setupWizard.startPanel}"></div>
-    <st:adjunct includes="${j.installWizardPath}" />
+    <st:include page="wizard-ui"/>
   </l:main-panel>
 </l:html>
