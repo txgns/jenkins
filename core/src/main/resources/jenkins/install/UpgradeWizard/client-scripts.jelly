@@ -69,7 +69,11 @@
         $('page-body').insert({ top: e });
       })();
     </script>
+    <j:if test="${!app.installState.setupComplete || app.installState.name() == 'UPGRADE'}">
+      <script src="${resURL}/jsbundles/upgradeWizard.js" type="text/javascript"/>
+      <link rel="stylesheet" href="${resURL}/jsbundles/upgradeWizard.css" type="text/css" />
+    </j:if>
     <j:if test="${app.installState.showUpgradeWizard}">
-      <div class="plugin-setup-wizard-container" data-show-wizard="${app.installState.startPanel}" data-upgrade-url="/installState"></div>
+      <div class="plugin-setup-wizard-container" data-show-wizard="${app.setupWizard.startPanel}" data-upgrade-url="/installState"></div>
     </j:if>
 </j:jelly>

@@ -10,6 +10,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -322,15 +323,14 @@ public class SetupWizard extends PageDecorator {
      * Get the platform plugins added in the version range
      */
     /*package*/ JSONArray getPlatformPluginsForUpdate(VersionNumber from, VersionNumber to) {
-        JSONArray pluginCategories = getPlatformPluginList();
-        JSONArray added = new JSONArray();
+        JSONArray pluginCategories = JSONArray.fromObject(getPlatformPluginList().toString());
         for (Iterator<?> categoryIterator = pluginCategories.iterator(); categoryIterator.hasNext();) {
             Object category = categoryIterator.next();
             if (category instanceof JSONObject) {
-                JSONObject o = (JSONObject)category;
-                JSONArray plugins = o.getJSONArray("plugins");
+                JSONObject cat = (JSONObject)category;
+                JSONArray plugins = cat.getJSONArray("plugins");
                 
-                for (Iterator<?> pluginIterator = plugins.iterator(); pluginIterator.hasNext();) {
+                nextPlugin: for (Iterator<?> pluginIterator = plugins.iterator(); pluginIterator.hasNext();) {
                     Object pluginData = pluginIterator.next();
                     if (pluginData instanceof JSONObject) {
                         JSONObject plugin = (JSONObject)pluginData;
@@ -339,15 +339,22 @@ public class SetupWizard extends PageDecorator {
                             if (sinceVersion != null) {
                                 VersionNumber v = new VersionNumber(sinceVersion);
                                 if(v.compareTo(to) <= 0 && v.compareTo(from) > 0) {
-                                    added.add(pluginData);
+                                    plugin.put("suggested", false);
+                                    continue nextPlugin;
                                 }
                             }
                         }
                     }
+                    
+                    pluginIterator.remove();
+                }
+                
+                if (plugins.isEmpty()) {
+                    categoryIterator.remove();
                 }
             }
         }
-        return added;
+        return pluginCategories;
     }
     
     /**
