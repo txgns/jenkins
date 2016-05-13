@@ -1,4 +1,4 @@
-var jsTest = require("jenkins-js-test");
+var jsTest = require("@jenkins-cd/js-test");
 var jquery = require('jquery-detached');
 
 var debug = false;
