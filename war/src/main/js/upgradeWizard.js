@@ -3,6 +3,8 @@ setupWizardExtension(function(wizard) {
 	var jenkins = wizard.jenkins; // wizard-provided jenkins api
 	var upgradeUrl = wizard.$wizard.parent().attr('data-upgrade-url');
 	
+	var handlebars = require('handlebars');
+	var fs = require('fs');
 	wizard.pluginTemplates.upgradeTo20Panel = handlebars.compile(fs.readFileSync(__dirname + '/./templates/upgradeTo20Panel.hbs', 'utf8'));
 	wizard.pluginTemplates.upgradeSuccessPanel = handlebars.compile(fs.readFileSync(__dirname + '/./templates/upgradeSuccessPanel.hbs', 'utf8'));
 	wizard.pluginTemplates.upgradeSkippedPanel = handlebars.compile(fs.readFileSync(__dirname + '/./templates/upgradeSkippedPanel.hbs', 'utf8'));
