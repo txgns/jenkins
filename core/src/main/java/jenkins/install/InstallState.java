@@ -26,6 +26,7 @@ package jenkins.install;
 import java.io.IOException;
 
 import javax.annotation.Nonnull;
+import javax.inject.Provider;
 
 import hudson.Extension;
 import hudson.ExtensionList;
@@ -35,6 +36,19 @@ import jenkins.model.Jenkins;
 /**
  * Jenkins install state.
  *
+ * In order to hook into the setup wizard lifecycle, you should
+ * include something in a script that call
+ * to `onSetupWizardInitialized` with a callback, for example:
+ * 
+ * <pre>
+ * onSetupWizardInitialized(function($wizard){
+ *   $wizard.addTemplate(require('./templates/someTemplate.hbs'));
+ *   $wizard.on('click', '.saveSomeTemplate', function() {
+ *     // work here
+ *   });
+ * });
+ * </pre>
+ * 
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
 public class InstallState implements ExtensionPoint {
@@ -49,7 +63,7 @@ public class InstallState implements ExtensionPoint {
      */
     @Extension
     public static final InstallState INITIAL_SETUP_COMPLETED = new InstallState("INITIAL_SETUP_COMPLETED", true, null) {
-        public void init() {
+        public void initializeState() {
             Jenkins j = Jenkins.getInstance();
             try {
                 j.getSetupWizard().completeSetup(j);
@@ -77,7 +91,7 @@ public class InstallState implements ExtensionPoint {
      */
     @Extension
     public static final InstallState NEW = new InstallState("NEW", false, INITIAL_PLUGINS_INSTALLING) {
-        public void init() {
+        public void initializeState() {
             try {
                 Jenkins.getInstance().getSetupWizard().init(true);
             } catch (Exception e) {
@@ -91,7 +105,7 @@ public class InstallState implements ExtensionPoint {
      */
     @Extension
     public static final InstallState RESTART = new InstallState("RESTART", true, INITIAL_SETUP_COMPLETED) {
-        public void init() {
+        public void initializeState() {
             InstallUtil.saveLastExecVersion();
         }
     };
@@ -101,13 +115,13 @@ public class InstallState implements ExtensionPoint {
      */
     @Extension
     public static final InstallState UPGRADE = new InstallState("UPGRADE", true, INITIAL_SETUP_COMPLETED) {
-        public void init() {
+        public void initializeState() {
             SetupWizard wiz = Jenkins.getInstance().getSetupWizard();
             if (!wiz.getPlatformPluginUpdates().isEmpty()) {
                 try {
                     UpgradeWizard uw = new UpgradeWizard();
                     Jenkins.getInstance().setInstallState(uw);
-                    uw.init();
+                    uw.initializeState();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -120,7 +134,7 @@ public class InstallState implements ExtensionPoint {
      */
     @Extension
     public static final InstallState DOWNGRADE = new InstallState("DOWNGRADE", true, INITIAL_SETUP_COMPLETED) {
-        public void init() {
+        public void initializeState() {
             InstallUtil.saveLastExecVersion();
         }
     };
@@ -149,7 +163,7 @@ public class InstallState implements ExtensionPoint {
     /**
      * Process any initialization this install state requires
      */
-    public void init() {
+    public void initializeState() {
     }
 
     /**
@@ -162,14 +176,22 @@ public class InstallState implements ExtensionPoint {
     /**
      * Gets the next state
      */
-    public void proceed() {
+    public void proceedToNextState() {
         // Pass to extensions for any customizations to the state transitions
-        InstallState next = InstallUtil.getInstallState(this);
+        InstallState next = InstallUtil.getNextInstallState(this);
         if(next == null) {
             // fall back to setting the next state defined locally
             next = nextState;
         }
         Jenkins.getInstance().setInstallState(next == null ? UNKNOWN : next);
+    }
+    
+    /**
+     * Used to provide an alternate start panel
+     * based on some other logic
+     */
+    public String getStartPanel(Provider<String> next) {
+        return next.get();
     }
     
     public String name() {

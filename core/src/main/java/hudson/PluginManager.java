@@ -1112,7 +1112,7 @@ public abstract class PluginManager extends AbstractModelObject implements OnMas
         Jenkins j = Jenkins.getInstance();
         j.checkPermission(Jenkins.ADMINISTER);
         if(InstallState.INITIAL_PLUGINS_INSTALLING.equals(j.getInstallState())) {
-            InstallState.INITIAL_PLUGINS_INSTALLING.proceed();
+            InstallState.INITIAL_PLUGINS_INSTALLING.proceedToNextState();
         }
     }
 
@@ -1225,7 +1225,7 @@ public abstract class PluginManager extends AbstractModelObject implements OnMas
             installJobs.add(jobFuture);
         }
 
-        if (Jenkins.getActiveInstance().getInstallState() == InstallState.NEW) {
+        if (!Jenkins.getInstance().getInstallState().isSetupComplete()) {
             trackInitialPluginInstall(installJobs);
         }
 
@@ -1237,8 +1237,11 @@ public abstract class PluginManager extends AbstractModelObject implements OnMas
         final UpdateCenter updateCenter = jenkins.getUpdateCenter();
 
         updateCenter.persistInstallStatus();
-        if (jenkins.getInstallState() == InstallState.NEW) {
-            jenkins.setInstallState(InstallState.INITIAL_PLUGINS_INSTALLING);
+        if (!Jenkins.getInstance().getInstallState().isSetupComplete()) {
+            if (jenkins.getInstallState() == InstallState.NEW) {
+                jenkins.setInstallState(InstallState.INITIAL_PLUGINS_INSTALLING);
+            }
+            
             new Thread() {
                 @Override
                 public void run() {
@@ -1264,7 +1267,7 @@ public abstract class PluginManager extends AbstractModelObject implements OnMas
                     }
                     updateCenter.persistInstallStatus();
                     if(!failures) {
-                        InstallState.INITIAL_PLUGINS_INSTALLING.proceed();
+                        InstallState.INITIAL_PLUGINS_INSTALLING.proceedToNextState();
                     }
                 }
             }.start();

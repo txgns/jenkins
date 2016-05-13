@@ -1054,11 +1054,20 @@ var createPluginSetupWizard = function(appendTarget) {
 		var initialPanelName = $(appendTarget).attr('data-show-wizard');
 		if(initialPanelName) {
 			try {
+				if (!pluginList) { // force load plugin data
+					// Initialize the plugin manager after connectivity checks
+					pluginManager.init(handleGenericError(function() {
+						pluginList = pluginManager.plugins();
+						allPluginNames = pluginManager.pluginNames();
+						selectedPluginNames = pluginManager.recommendedPluginNames();
+					}));
+				}
 				if(pluginTemplates[initialPanelName]) {
 					setPanel(pluginTemplates[initialPanelName]);
 					return;
 				}
 				var panelToShow = require('./templates/'+initialPanelName+'.hbs');
+				// show the panel
 				setPanel(panelToShow);
 			} catch(e) {
 				setPanel(errorPanel, { errorMessage: 'Missing: ' + initialPanelName });

@@ -1,9 +1,14 @@
 package jenkins.install;
 
-import hudson.Extension;
-import hudson.util.HttpResponses;
-import jenkins.model.Jenkins;
-import net.sf.json.JSONArray;
+import static java.util.logging.Level.FINE;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
+
+import javax.inject.Provider;
+import javax.servlet.http.HttpSession;
 
 import org.apache.commons.io.FileUtils;
 import org.kohsuke.accmod.Restricted;
@@ -13,14 +18,10 @@ import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.WebApp;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
-import javax.servlet.http.HttpSession;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
-
-import static java.util.logging.Level.*;
+import hudson.Extension;
+import hudson.util.HttpResponses;
+import jenkins.model.Jenkins;
+import net.sf.json.JSONArray;
 
 /**
  * This is a stop-gap measure until JENKINS-33663 comes in.
@@ -42,19 +43,26 @@ public class UpgradeWizard extends InstallState {
     private static final String SHOW_UPGRADE_WIZARD_FLAG = UpgradeWizard.class.getName() + ".show";
 
     public UpgradeWizard() throws IOException {
-        super("UPGRADE", false, null);
+        super("UPGRADE", false, InstallState.RESTART);
     }
     
     @Override
-    public void init() {
-        try {
-            updateUpToDate();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    public void initializeState() {
+        updateUpToDate();
     }
-
-    private void updateUpToDate() throws IOException {
+    
+    @Override
+    public void proceedToNextState() {
+        updateUpToDate();
+        super.proceedToNextState();
+    }
+    
+    @Override
+    public String getStartPanel(Provider<String> next) {
+        return "upgradeTo20Panel";
+    }
+    
+    private void updateUpToDate() {
         // If we don't have any platform plugins, it's considered 'up to date' in terms
         // of the updater
         JSONArray platformPlugins = Jenkins.getInstance().getSetupWizard().getPlatformPluginUpdates();

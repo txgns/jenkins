@@ -10,6 +10,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -17,6 +18,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.annotation.CheckForNull;
+import javax.inject.Provider;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -81,6 +83,7 @@ public class SetupWizard extends PageDecorator {
      */
     /*package*/ void init(boolean newInstall) throws IOException, InterruptedException {
         if(newInstall) {
+            // this was determined to be a new install, don't run the update wizard here
             completeUpgrade(jenkins);
             
             // Create an admin user by default with a 
@@ -202,7 +205,7 @@ public class SetupWizard extends PageDecorator {
                     throw new IOException(e);
                 }
                 
-                InstallState.CREATE_ADMIN_USER.proceed();
+                InstallState.CREATE_ADMIN_USER.proceedToNextState();
                 
                 // ... and then login
                 Authentication a = new UsernamePasswordAuthenticationToken(u.getId(),req.getParameter("password1"));
@@ -233,7 +236,6 @@ public class SetupWizard extends PageDecorator {
     }
     
     void completeSetup(Jenkins jenkins) throws IOException {
-        jenkins.setInstallState(InstallState.INITIAL_SETUP_COMPLETED);
         InstallUtil.saveLastExecVersion();
         completeUpgrade(jenkins);
     }
@@ -321,15 +323,14 @@ public class SetupWizard extends PageDecorator {
      * Get the platform plugins added in the version range
      */
     /*package*/ JSONArray getPlatformPluginsForUpdate(VersionNumber from, VersionNumber to) {
-        JSONArray pluginCategories = getPlatformPluginList();
-        JSONArray added = new JSONArray();
+        JSONArray pluginCategories = JSONArray.fromObject(getPlatformPluginList().toString());
         for (Iterator<?> categoryIterator = pluginCategories.iterator(); categoryIterator.hasNext();) {
             Object category = categoryIterator.next();
             if (category instanceof JSONObject) {
-                JSONObject o = (JSONObject)category;
-                JSONArray plugins = o.getJSONArray("plugins");
+                JSONObject cat = (JSONObject)category;
+                JSONArray plugins = cat.getJSONArray("plugins");
                 
-                for (Iterator<?> pluginIterator = plugins.iterator(); pluginIterator.hasNext();) {
+                nextPlugin: for (Iterator<?> pluginIterator = plugins.iterator(); pluginIterator.hasNext();) {
                     Object pluginData = pluginIterator.next();
                     if (pluginData instanceof JSONObject) {
                         JSONObject plugin = (JSONObject)pluginData;
@@ -338,15 +339,22 @@ public class SetupWizard extends PageDecorator {
                             if (sinceVersion != null) {
                                 VersionNumber v = new VersionNumber(sinceVersion);
                                 if(v.compareTo(to) <= 0 && v.compareTo(from) > 0) {
-                                    added.add(pluginData);
+                                    plugin.put("suggested", false);
+                                    continue nextPlugin;
                                 }
                             }
                         }
                     }
+                    
+                    pluginIterator.remove();
+                }
+                
+                if (plugins.isEmpty()) {
+                    categoryIterator.remove();
                 }
             }
         }
-        return added;
+        return pluginCategories;
     }
     
     /**
@@ -383,15 +391,15 @@ public class SetupWizard extends PageDecorator {
         return hudson.util.HttpResponses.okJSON();
     }
     
+    /*package*/ void completeUpgrade(Jenkins jenkins) throws IOException {
+        setCurrentLevel(Jenkins.getVersion());
+        jenkins.getInstallState().proceedToNextState();
+    }
+    
     /*package*/ void setCurrentLevel(VersionNumber v) throws IOException {
         FileUtils.writeStringToFile(getUpdateStateFile(), v.toString());
     }
     
-    /*package*/ void completeUpgrade(Jenkins jenkins) throws IOException {
-        // this was determined to be a new install, don't run the update wizard here
-        setCurrentLevel(Jenkins.getVersion());
-    }
-
     /**
      * File that captures the state of upgrade.
      *
@@ -418,5 +426,14 @@ public class SetupWizard extends PageDecorator {
      */
     public List<InstallState> getInstallStates() {
         return InstallState.all();
+    }
+    
+    public String getStartPanel() {
+        return Jenkins.getInstance().getInstallState().getStartPanel(new Provider<String>() {
+            @Override
+            public String get() {
+                return "welcomePanel";
+            }
+        });
     }
 }

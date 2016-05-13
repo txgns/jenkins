@@ -89,12 +89,17 @@ public class UpgradeWizardTest {
         j.executeOnServer(new Callable<Void>() {
             @Override
             public Void call() throws Exception {
-                UpgradeWizard uw = newInstance();
-                assertTrue(uw.isDue());
-                j.jenkins.getSetupWizard().setCurrentLevel(Jenkins.getVersion());
-                assertFalse(uw.isDue());
-
-                return null;
+                InstallState prior = j.jenkins.getInstallState();
+                try {
+                    UpgradeWizard uw = newInstance();
+                    j.jenkins.setInstallState(uw);
+                    assertTrue(uw.isDue());
+                    j.jenkins.getSetupWizard().completeUpgrade(j.jenkins);
+                    assertFalse(uw.isDue());
+                    return null;
+                } finally {
+                    j.jenkins.setInstallState(prior);
+                }
             }
         });
     }
@@ -105,7 +110,7 @@ public class UpgradeWizardTest {
     private UpgradeWizard newInstance() throws Exception {
         try {
             UpgradeWizard uw = new UpgradeWizard();
-            uw.init();
+            uw.initializeState();
             return uw;
         } catch(Exception e) {
             e.printStackTrace();
