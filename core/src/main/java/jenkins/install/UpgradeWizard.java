@@ -1,9 +1,14 @@
 package jenkins.install;
 
-import hudson.Extension;
-import hudson.util.HttpResponses;
-import jenkins.model.Jenkins;
-import net.sf.json.JSONArray;
+import static java.util.logging.Level.FINE;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
+
+import javax.inject.Provider;
+import javax.servlet.http.HttpSession;
 
 import org.apache.commons.io.FileUtils;
 import org.kohsuke.accmod.Restricted;
@@ -13,14 +18,10 @@ import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.WebApp;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
-import javax.servlet.http.HttpSession;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
-
-import static java.util.logging.Level.*;
+import hudson.Extension;
+import hudson.util.HttpResponses;
+import jenkins.model.Jenkins;
+import net.sf.json.JSONArray;
 
 /**
  * This is a stop-gap measure until JENKINS-33663 comes in.
@@ -54,6 +55,11 @@ public class UpgradeWizard extends InstallState {
     public void proceedToNextState() {
         updateUpToDate();
         super.proceedToNextState();
+    }
+    
+    @Override
+    public String getStartPanel(Provider<String> next) {
+        return "upgradeTo20Panel";
     }
     
     private void updateUpToDate() {

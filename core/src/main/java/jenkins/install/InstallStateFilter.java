@@ -1,7 +1,8 @@
 package jenkins.install;
 
-import java.util.Iterator;
 import java.util.List;
+
+import javax.inject.Provider;
 
 import hudson.ExtensionList;
 import hudson.ExtensionPoint;
@@ -14,7 +15,7 @@ public abstract class InstallStateFilter implements ExtensionPoint {
     /**
      * Determine the current or next install state, proceed with `return proceed.next()`
      */
-    public abstract InstallState getInstallState(InstallState current, Iterator<InstallState> proceed);
+    public abstract InstallState getInstallState(InstallState current, Provider<InstallState> proceed);
     
     /**
      * Get all the InstallStateFilters, in extension order

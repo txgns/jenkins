@@ -17,6 +17,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.annotation.CheckForNull;
+import javax.inject.Provider;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -418,5 +419,14 @@ public class SetupWizard extends PageDecorator {
      */
     public List<InstallState> getInstallStates() {
         return InstallState.all();
+    }
+    
+    public String getStartPanel() {
+        return Jenkins.getInstance().getInstallState().getStartPanel(new Provider<String>() {
+            @Override
+            public String get() {
+                return "welcomePanel";
+            }
+        });
     }
 }

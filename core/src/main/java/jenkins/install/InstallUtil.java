@@ -37,9 +37,9 @@ import java.util.logging.Logger;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
+import javax.inject.Provider;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.NotImplementedException;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 
@@ -76,22 +76,14 @@ public class InstallUtil {
     /**
      * Simple chain pattern using iterator.next()
      */
-    private static class IteratorChain<T> implements Iterator<T> {
-        private final Iterator<Function<Iterator<T>,T>> functions;
-        public IteratorChain(Iterator<Function<Iterator<T>,T>> functions) {
+    private static class ProviderChain<T> implements Provider<T> {
+        private final Iterator<Function<Provider<T>,T>> functions;
+        public ProviderChain(Iterator<Function<Provider<T>,T>> functions) {
             this.functions = functions;
         }
         @Override
-        public boolean hasNext() {
-            return functions.hasNext();
-        }
-        @Override
-        public T next() {
+        public T get() {
             return functions.next().apply(this);
-        }
-        @Override
-        public void remove() {
-            throw new NotImplementedException();
         }
     }
     
@@ -106,19 +98,19 @@ public class InstallUtil {
      * Returns the next state during a transition from the current install state
      */
     public static InstallState getNextInstallState(final InstallState current) {
-        List<Function<Iterator<InstallState>,InstallState>> installStateFilterChain = new ArrayList<>();
+        List<Function<Provider<InstallState>,InstallState>> installStateFilterChain = new ArrayList<>();
         for (final InstallStateFilter setupExtension : InstallStateFilter.all()) {
-            installStateFilterChain.add(new Function<Iterator<InstallState>, InstallState>() {
+            installStateFilterChain.add(new Function<Provider<InstallState>, InstallState>() {
                 @Override
-                public InstallState apply(Iterator<InstallState> next) {
+                public InstallState apply(Provider<InstallState> next) {
                     return setupExtension.getInstallState(current, next);
                 }
             });
         }
         // Terminal condition: getNextState() on the current install state
-        installStateFilterChain.add(new Function<Iterator<InstallState>, InstallState>() {
+        installStateFilterChain.add(new Function<Provider<InstallState>, InstallState>() {
             @Override
-            public InstallState apply(Iterator<InstallState> input) {
+            public InstallState apply(Provider<InstallState> input) {
                 // Initially, install state is unknown and 
                 // needs to be determined
                 if (current == null || InstallState.UNKNOWN.equals(current)) {
@@ -128,8 +120,8 @@ public class InstallUtil {
             }
         });
         
-        IteratorChain<InstallState> chain = new IteratorChain<>(installStateFilterChain.iterator());
-        return chain.next();
+        ProviderChain<InstallState> chain = new ProviderChain<>(installStateFilterChain.iterator());
+        return chain.get();
     }
     
     private static InstallState getDefaultInstallState() {

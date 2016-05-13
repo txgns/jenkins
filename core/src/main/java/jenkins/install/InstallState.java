@@ -24,9 +24,9 @@
 package jenkins.install;
 
 import java.io.IOException;
-import java.util.Iterator;
 
 import javax.annotation.Nonnull;
+import javax.inject.Provider;
 
 import hudson.Extension;
 import hudson.ExtensionList;
@@ -190,8 +190,8 @@ public class InstallState implements ExtensionPoint {
      * Used to provide an alternate start panel
      * based on some other logic
      */
-    public String getStartPanel(Iterator<String> next) {
-        return next.next();
+    public String getStartPanel(Provider<String> next) {
+        return next.get();
     }
     
     public String name() {
