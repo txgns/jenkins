@@ -12,9 +12,10 @@ exclude-labels:
   - invalid
 change-template: |-
   - type: todo
-    message: $TITLE
+    message: |-
+      $TITLE
     pull: $NUMBER
-    authors: 
+    authors:
       - $AUTHOR
 template: |
   ```yaml
@@ -25,6 +26,8 @@ replacers:
     replace: |-
       issue: $1
         message: 
-  - search: 'message: issue:'
+  - search: |-
+      message: |- 
+        issue:
     replace: "issue:"
  
