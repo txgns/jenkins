@@ -12,8 +12,7 @@ exclude-labels:
   - invalid
 change-template: |-
   - type: todo
-    message: |-
-      $TITLE
+    message: $TITLE
     pull: $NUMBER
     authors:
       - $AUTHOR
@@ -25,8 +24,7 @@ replacers:
   - search: '/\[*JENKINS-(\d+)\]*\s*-*\s*/g'
     replace: |-
       issue: $1
-        message: |-
-          
+        message:
   - search: 'message: issue:'
     replace: "issue:"
  
