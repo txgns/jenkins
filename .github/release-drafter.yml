@@ -28,6 +28,6 @@ replacers:
         message:
   - search: |-
       message: |-
-        issue:
+          issue:
     replace: "issue:"
  
