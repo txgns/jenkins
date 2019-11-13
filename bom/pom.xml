@@ -41,7 +41,7 @@ THE SOFTWARE.
 
   <properties>
     <guavaVersion>11.0.1</guavaVersion>
-    <slf4jVersion>1.7.26</slf4jVersion>
+    <slf4jVersion>1.7.29</slf4jVersion>
   </properties>
 
   <dependencyManagement>
